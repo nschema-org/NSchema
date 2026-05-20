@@ -14,9 +14,10 @@ public sealed class DefaultSchemaMigrator(
     DatabaseModel desired
 ) : ISchemaMigrator
 {
-    public async Task<MigrationPlan> Plan(CancellationToken cancellationToken = default)
+    public async Task<MigrationPlan> Plan(DatabaseModel target, CancellationToken cancellationToken = default)
     {
-        var current = await extractor.Extract(cancellationToken);
+        string[] schemas = target.Schemas.Select(s => s.Name).ToArray();
+        var current = await extractor.Extract(schemas, cancellationToken);
         var instructions = comparer.Compare(current, desired);
         return new MigrationPlan(instructions);
     }

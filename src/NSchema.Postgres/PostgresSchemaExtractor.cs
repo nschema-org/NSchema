@@ -5,24 +5,24 @@ using NSchema.Postgres.Models;
 
 namespace NSchema.Postgres;
 
-public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params string[] schemaNames) : ISchemaExtractor
+public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource) : ISchemaExtractor
 {
-    public async Task<DatabaseModel> Extract(CancellationToken cancellationToken = default)
+    public async Task<DatabaseModel> Extract(string[] schemas, CancellationToken cancellationToken = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
-        var tables = await QueryTables(conn, cancellationToken);
-        var columns = await QueryColumns(conn, cancellationToken);
-        var primaryKeys = await QueryPrimaryKeys(conn, cancellationToken);
-        var foreignKeys = await QueryForeignKeys(conn, cancellationToken);
-        var indexes = await QueryIndexes(conn, cancellationToken);
+        var tables = await QueryTables(conn, schemas, cancellationToken);
+        var columns = await QueryColumns(conn, schemas, cancellationToken);
+        var primaryKeys = await QueryPrimaryKeys(conn, schemas, cancellationToken);
+        var foreignKeys = await QueryForeignKeys(conn, schemas, cancellationToken);
+        var indexes = await QueryIndexes(conn, schemas, cancellationToken);
 
-        return Build(tables, columns, primaryKeys, foreignKeys, indexes);
+        return Build(schemas, tables, columns, primaryKeys, foreignKeys, indexes);
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
 
-    private async Task<List<TableRow>> QueryTables(NpgsqlConnection conn, CancellationToken ct)
+    private async Task<List<TableRow>> QueryTables(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<TableRow>();
         await using var cmd = conn.CreateCommand();
@@ -33,7 +33,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
             AND table_schema = ANY(@schemas)
             ORDER BY table_schema, table_name
             """;
-        cmd.Parameters.AddWithValue("schemas", schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -42,7 +42,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
         return rows;
     }
 
-    private async Task<List<ColumnRow>> QueryColumns(NpgsqlConnection conn, CancellationToken ct)
+    private async Task<List<ColumnRow>> QueryColumns(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<ColumnRow>();
         await using var cmd = conn.CreateCommand();
@@ -63,7 +63,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
             WHERE table_schema = ANY(@schemas)
             ORDER BY table_schema, table_name, ordinal_position
             """;
-        cmd.Parameters.AddWithValue("schemas", schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -86,7 +86,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
         return rows;
     }
 
-    private async Task<List<PrimaryKeyRow>> QueryPrimaryKeys(NpgsqlConnection conn, CancellationToken ct)
+    private async Task<List<PrimaryKeyRow>> QueryPrimaryKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<PrimaryKeyRow>();
         await using var cmd = conn.CreateCommand();
@@ -105,7 +105,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
             AND tc.table_schema = ANY(@schemas)
             ORDER BY tc.table_schema, tc.table_name, kcu.ordinal_position
             """;
-        cmd.Parameters.AddWithValue("schemas", schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -121,7 +121,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
         return rows;
     }
 
-    private async Task<List<ForeignKeyRow>> QueryForeignKeys(NpgsqlConnection conn, CancellationToken ct)
+    private async Task<List<ForeignKeyRow>> QueryForeignKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<ForeignKeyRow>();
         await using var cmd = conn.CreateCommand();
@@ -150,7 +150,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
             GROUP BY n.nspname, t.relname, c.conname, fn.nspname, ft.relname, c.confupdtype, c.confdeltype
             ORDER BY n.nspname, t.relname, c.conname
             """;
-        cmd.Parameters.AddWithValue("schemas", schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -171,7 +171,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
         return rows;
     }
 
-    private async Task<List<IndexRow>> QueryIndexes(NpgsqlConnection conn, CancellationToken ct)
+    private async Task<List<IndexRow>> QueryIndexes(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<IndexRow>();
         await using var cmd = conn.CreateCommand();
@@ -196,7 +196,7 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
             GROUP BY n.nspname, t.relname, i.relname, ix.indisunique
             ORDER BY n.nspname, t.relname, i.relname
             """;
-        cmd.Parameters.AddWithValue("schemas", schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -216,11 +216,13 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
     // ── Model assembly ────────────────────────────────────────────────────────
 
     private DatabaseModel Build(
+        string[] schemas,
         List<TableRow> tables,
         List<ColumnRow> columns,
         List<PrimaryKeyRow> primaryKeys,
         List<ForeignKeyRow> foreignKeys,
-        List<IndexRow> indexes)
+        List<IndexRow> indexes
+    )
     {
         var bySchema = tables
             .GroupBy(t => t.Schema)
@@ -229,13 +231,13 @@ public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params 
                 g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes)).ToList());
 
         // Ensure every requested schema name appears in the result, even when it has no tables.
-        var schemas = schemaNames
+        var dbSchemas = schemas
             .Select(name => new DatabaseSchema(
                 name,
                 bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : []))
             .ToList();
 
-        return new DatabaseModel(schemas);
+        return new DatabaseModel(dbSchemas);
     }
 
     private static Table BuildTable(

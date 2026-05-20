@@ -67,12 +67,12 @@ public sealed class DefaultSchemaMigratorTests
         // Arrange
         var current = new DatabaseModel([]);
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
-        _extractor.Extract(Arg.Any<CancellationToken>()).Returns(current);
+        _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(current);
         _comparer.Compare(current, _desired).Returns(instructions);
         var migrator = CreateMigrator();
 
         // Act
-        var plan = await migrator.Plan();
+        var plan = await migrator.Plan(_desired);
 
         // Assert
         plan.Instructions.ShouldBe(instructions);
@@ -83,12 +83,12 @@ public sealed class DefaultSchemaMigratorTests
     {
         // Arrange
         var current = new DatabaseModel([new DatabaseSchema("public", [])]);
-        _extractor.Extract(Arg.Any<CancellationToken>()).Returns(current);
+        _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(current);
         _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
         var migrator = CreateMigrator();
 
         // Act
-        await migrator.Plan();
+        await migrator.Plan(_desired);
 
         // Assert
         _comparer.Received(1).Compare(current, _desired);
@@ -101,7 +101,7 @@ public sealed class DefaultSchemaMigratorTests
     {
         // Arrange
         var plan = new MigrationPlan([]);
-        _extractor.Extract(Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
+        _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
         _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
 
         var migrator = CreateMigrator();
@@ -124,7 +124,7 @@ public sealed class DefaultSchemaMigratorTests
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
         var plan = new MigrationPlan(instructions);
 
-        _extractor.Extract(Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
+        _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
 
         var migrator = CreateMigrator();
 
@@ -144,7 +144,7 @@ public sealed class DefaultSchemaMigratorTests
         // Arrange
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
         var options = new ExecutionOptions(DestructiveActionPolicy.Allow);
-        _extractor.Extract(Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
+        _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
         _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns(instructions);
         var migrator = CreateMigrator();
 

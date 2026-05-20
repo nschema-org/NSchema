@@ -4,5 +4,5 @@ namespace NSchema.Migration.Extraction;
 
 public interface ISchemaExtractor
 {
-    Task<DatabaseModel> Extract(CancellationToken cancellationToken = default);
+    Task<DatabaseModel> Extract(string[] schemas, CancellationToken cancellationToken = default);
 }

@@ -34,7 +34,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private PostgresSchemaExtractor Extractor() => new(_dataSource, _schema);
+    private PostgresSchemaExtractor Extractor() => new(_dataSource);
 
     // ── Schema / table structure ──────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
         // (schema created in InitializeAsync)
 
         // Act
-        var model = await Extractor().Extract();
+        var model = await Extractor().Extract([_schema]);
 
         // Assert
         model.Schemas.ShouldHaveSingleItem();
@@ -65,7 +65,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var model = await Extractor().Extract();
+        var model = await Extractor().Extract([_schema]);
 
         // Assert
         model.Schemas[0].Tables.ShouldHaveSingleItem();
@@ -86,7 +86,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var cols = (await Extractor().Extract())
+        var cols = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Columns.ToDictionary(c => c.Name);
 
         // Assert
@@ -122,7 +122,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var cols = (await Extractor().Extract())
+        var cols = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Columns.ToDictionary(c => c.Name);
 
         // Assert
@@ -156,7 +156,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var emailCol = (await Extractor().Extract())
+        var emailCol = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "email");
 
         // Assert
@@ -177,7 +177,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var idCol = (await Extractor().Extract())
+        var idCol = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "id");
 
         // Assert
@@ -197,7 +197,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var statusCol = (await Extractor().Extract())
+        var statusCol = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "status");
 
         // Assert
@@ -219,7 +219,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var table = (await Extractor().Extract()).Schemas[0].Tables[0];
+        var table = (await Extractor().Extract([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.PrimaryKey.ShouldNotBeNull();
@@ -240,7 +240,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var pk = (await Extractor().Extract()).Schemas[0].Tables[0].PrimaryKey;
+        var pk = (await Extractor().Extract([_schema])).Schemas[0].Tables[0].PrimaryKey;
 
         // Assert
         pk.ShouldNotBeNull();
@@ -258,7 +258,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var table = (await Extractor().Extract()).Schemas[0].Tables[0];
+        var table = (await Extractor().Extract([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.PrimaryKey.ShouldBeNull();
@@ -283,7 +283,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var fks = (await Extractor().Extract())
+        var fks = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables.Single(t => t.Name == "users").ForeignKeys;
 
         // Assert
@@ -317,7 +317,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var fk = (await Extractor().Extract())
+        var fk = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables.Single(t => t.Name == "users").ForeignKeys![0];
 
         // Assert
@@ -336,7 +336,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var table = (await Extractor().Extract()).Schemas[0].Tables[0];
+        var table = (await Extractor().Extract([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.ForeignKeys.ShouldBeNull();
@@ -357,7 +357,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var idx = (await Extractor().Extract())
+        var idx = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -379,7 +379,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var idx = (await Extractor().Extract())
+        var idx = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -400,7 +400,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var idx = (await Extractor().Extract())
+        var idx = (await Extractor().Extract([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -418,7 +418,7 @@ public sealed class PostgresSchemaExtractorTests : IAsyncLifetime
             """);
 
         // Act
-        var table = (await Extractor().Extract()).Schemas[0].Tables[0];
+        var table = (await Extractor().Extract([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.Indexes.ShouldBeNull();
