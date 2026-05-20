@@ -13,9 +13,8 @@ public sealed class DefaultSchemaMigratorTests
     private readonly ISchemaExtractor _extractor = Substitute.For<ISchemaExtractor>();
     private readonly ISchemaComparer _comparer = Substitute.For<ISchemaComparer>();
     private readonly IInstructionExecutor _executor = Substitute.For<IInstructionExecutor>();
-    private readonly DatabaseModel _desired = new([]);
 
-    private DefaultSchemaMigrator CreateMigrator() => new(NullLogger<DefaultSchemaMigrator>.Instance, _extractor, _comparer, _executor, _desired);
+    private DefaultSchemaMigrator CreateMigrator() => new(NullLogger<DefaultSchemaMigrator>.Instance, _extractor, _comparer, _executor);
 
     // ── MigrationPlan ─────────────────────────────────────────────────────────
 
@@ -66,13 +65,14 @@ public sealed class DefaultSchemaMigratorTests
     {
         // Arrange
         var current = new DatabaseModel([]);
+        var desired = new DatabaseModel([]);
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
         _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(current);
-        _comparer.Compare(current, _desired).Returns(instructions);
+        _comparer.Compare(current, desired).Returns(instructions);
         var migrator = CreateMigrator();
 
         // Act
-        var plan = await migrator.Plan(_desired);
+        var plan = await migrator.Plan(desired);
 
         // Assert
         plan.Instructions.ShouldBe(instructions);
@@ -83,15 +83,16 @@ public sealed class DefaultSchemaMigratorTests
     {
         // Arrange
         var current = new DatabaseModel([new DatabaseSchema("public", [])]);
+        var desired = new DatabaseModel([new DatabaseSchema("admin", [])]);
         _extractor.Extract(Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(current);
         _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
         var migrator = CreateMigrator();
 
         // Act
-        await migrator.Plan(_desired);
+        await migrator.Plan(desired);
 
         // Assert
-        _comparer.Received(1).Compare(current, _desired);
+        _comparer.Received(1).Compare(current, desired);
     }
 
     // ── SchemaMigrator.Apply ──────────────────────────────────────────────────

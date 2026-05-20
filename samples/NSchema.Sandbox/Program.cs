@@ -13,7 +13,10 @@ string connectionString = Environment.GetEnvironmentVariable("ConnectionStrings_
 var dataSource = NpgsqlDataSource.Create(connectionString);
 
 var services = new ServiceCollection()
-    .AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information))
+    .AddLogging(b => b.AddConsole()
+        .AddSimpleConsole(o => o.SingleLine = true)
+        .SetMinimumLevel(LogLevel.Debug)
+    )
     .AddSingleton(dataSource)
     .AddSingleton<ISchemaMigrator, DefaultSchemaMigrator>()
     .AddSingleton<ISchemaComparer, DefaultSchemaComparer>()
