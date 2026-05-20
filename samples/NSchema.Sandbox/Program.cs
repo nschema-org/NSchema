@@ -8,7 +8,7 @@ using NSchema.Migration.Execution;
 using NSchema.Postgres;
 
 string connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__sandbox")
-                          ?? "Host=localhost;Port=5433;Database=sandbox;Username=postgres;Password=postgres";
+    ?? throw new InvalidOperationException("Connection string not found in environment variables.");
 
 var dataSource = NpgsqlDataSource.Create(connectionString);
 
