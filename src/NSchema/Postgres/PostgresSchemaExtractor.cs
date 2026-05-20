@@ -19,11 +19,11 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
     {
         await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
 
-        var tables      = await QueryTables(conn, cancellationToken);
-        var columns     = await QueryColumns(conn, cancellationToken);
+        var tables = await QueryTables(conn, cancellationToken);
+        var columns = await QueryColumns(conn, cancellationToken);
         var primaryKeys = await QueryPrimaryKeys(conn, cancellationToken);
         var foreignKeys = await QueryForeignKeys(conn, cancellationToken);
-        var indexes     = await QueryIndexes(conn, cancellationToken);
+        var indexes = await QueryIndexes(conn, cancellationToken);
 
         return Build(tables, columns, primaryKeys, foreignKeys, indexes);
     }
@@ -77,17 +77,17 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         while (await reader.ReadAsync(ct))
         {
             rows.Add(new ColumnRow(
-                TableSchema:       reader.GetString(0),
-                TableName:         reader.GetString(1),
-                ColumnName:        reader.GetString(2),
-                DataType:          reader.GetString(3),
-                UdtName:           reader.GetString(4),
-                MaxLength:         reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                NumericPrecision:  reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                NumericScale:      reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                IsNullable:        reader.GetString(8) == "YES",
+                TableSchema: reader.GetString(0),
+                TableName: reader.GetString(1),
+                ColumnName: reader.GetString(2),
+                DataType: reader.GetString(3),
+                UdtName: reader.GetString(4),
+                MaxLength: reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                NumericPrecision: reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                NumericScale: reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                IsNullable: reader.GetString(8) == "YES",
                 DefaultExpression: reader.IsDBNull(9) ? null : reader.GetString(9),
-                IsIdentity:        reader.GetString(10) == "YES"
+                IsIdentity: reader.GetString(10) == "YES"
             ));
         }
 
@@ -119,10 +119,10 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         while (await reader.ReadAsync(ct))
         {
             rows.Add(new PrimaryKeyRow(
-                TableSchema:    reader.GetString(0),
-                TableName:      reader.GetString(1),
+                TableSchema: reader.GetString(0),
+                TableName: reader.GetString(1),
                 ConstraintName: reader.GetString(2),
-                ColumnName:     reader.GetString(3)
+                ColumnName: reader.GetString(3)
             ));
         }
 
@@ -164,15 +164,15 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         while (await reader.ReadAsync(ct))
         {
             rows.Add(new ForeignKeyRow(
-                TableSchema:        reader.GetString(0),
-                TableName:          reader.GetString(1),
-                ConstraintName:     reader.GetString(2),
-                ColumnNames:        reader.GetFieldValue<string[]>(3),
-                ForeignSchema:      reader.GetString(4),
-                ForeignTable:       reader.GetString(5),
+                TableSchema: reader.GetString(0),
+                TableName: reader.GetString(1),
+                ConstraintName: reader.GetString(2),
+                ColumnNames: reader.GetFieldValue<string[]>(3),
+                ForeignSchema: reader.GetString(4),
+                ForeignTable: reader.GetString(5),
                 ForeignColumnNames: reader.GetFieldValue<string[]>(6),
-                UpdateRule:         reader.GetString(7)[0],
-                DeleteRule:         reader.GetString(8)[0]
+                UpdateRule: reader.GetString(7)[0],
+                DeleteRule: reader.GetString(8)[0]
             ));
         }
 
@@ -210,10 +210,10 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         while (await reader.ReadAsync(ct))
         {
             rows.Add(new IndexRow(
-                SchemaName:  reader.GetString(0),
-                TableName:   reader.GetString(1),
-                IndexName:   reader.GetString(2),
-                IsUnique:    reader.GetBoolean(3),
+                SchemaName: reader.GetString(0),
+                TableName: reader.GetString(1),
+                IndexName: reader.GetString(2),
+                IsUnique: reader.GetBoolean(3),
                 ColumnNames: reader.GetFieldValue<string[]>(4)
             ));
         }
@@ -224,11 +224,11 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
     // ── Model assembly ────────────────────────────────────────────────────────
 
     private DatabaseModel Build(
-        List<TableRow>      tables,
-        List<ColumnRow>     columns,
+        List<TableRow> tables,
+        List<ColumnRow> columns,
         List<PrimaryKeyRow> primaryKeys,
         List<ForeignKeyRow> foreignKeys,
-        List<IndexRow>      indexes)
+        List<IndexRow> indexes)
     {
         var bySchema = tables
             .GroupBy(t => t.Schema)
@@ -247,11 +247,11 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
     }
 
     private static Table BuildTable(
-        TableRow            tableRow,
-        List<ColumnRow>     allColumns,
+        TableRow tableRow,
+        List<ColumnRow> allColumns,
         List<PrimaryKeyRow> allPrimaryKeys,
         List<ForeignKeyRow> allForeignKeys,
-        List<IndexRow>      allIndexes)
+        List<IndexRow> allIndexes)
     {
         var cols = allColumns
             .Where(c => c.TableSchema == tableRow.Schema && c.TableName == tableRow.Name)
@@ -278,7 +278,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             tableRow.Name,
             cols,
             pk,
-            fks.Count  > 0 ? fks  : null,
+            fks.Count > 0 ? fks : null,
             idxs.Count > 0 ? idxs : null);
     }
 
@@ -290,8 +290,8 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         return new Column(
             row.ColumnName,
             type,
-            IsNullable:        row.IsNullable,
-            IsIdentity:        row.IsIdentity,
+            IsNullable: row.IsNullable,
+            IsIdentity: row.IsIdentity,
             DefaultExpression: row.IsIdentity ? null : row.DefaultExpression);
     }
 
@@ -299,23 +299,23 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         string dataType, string udtName, int? maxLength, int? precision, int? scale) =>
         dataType switch
         {
-            "boolean"                     => SqlType.Boolean,
-            "smallint"                    => SqlType.SmallInt,
-            "integer"                     => SqlType.Int,
-            "bigint"                      => SqlType.BigInt,
-            "real"                        => SqlType.Float,
-            "double precision"            => SqlType.Double,
-            "numeric"                     => SqlType.Decimal(precision ?? 18, scale ?? 0),
-            "character"                   => SqlType.Char(maxLength ?? 1),
-            "character varying"           => SqlType.VarChar(maxLength),
-            "text"                        => SqlType.Text,
-            "date"                        => SqlType.Date,
-            "time without time zone"      => SqlType.Time,
+            "boolean" => SqlType.Boolean,
+            "smallint" => SqlType.SmallInt,
+            "integer" => SqlType.Int,
+            "bigint" => SqlType.BigInt,
+            "real" => SqlType.Float,
+            "double precision" => SqlType.Double,
+            "numeric" => SqlType.Decimal(precision ?? 18, scale ?? 0),
+            "character" => SqlType.Char(maxLength ?? 1),
+            "character varying" => SqlType.VarChar(maxLength),
+            "text" => SqlType.Text,
+            "date" => SqlType.Date,
+            "time without time zone" => SqlType.Time,
             "timestamp without time zone" => SqlType.DateTime,
-            "timestamp with time zone"    => SqlType.DateTimeOffset,
-            "uuid"                        => SqlType.Guid,
-            "bytea"                       => SqlType.VarBinary(),
-            _                             => SqlType.Custom(udtName),
+            "timestamp with time zone" => SqlType.DateTimeOffset,
+            "uuid" => SqlType.Guid,
+            "bytea" => SqlType.VarBinary(),
+            _ => SqlType.Custom(udtName),
         };
 
     private static ForeignKey MapForeignKey(ForeignKeyRow row) =>
@@ -332,6 +332,6 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
         'c' => ReferentialAction.Cascade,
         'n' => ReferentialAction.SetNull,
         'd' => ReferentialAction.SetDefault,
-        _   => ReferentialAction.NoAction, // 'a' = NO ACTION, 'r' = RESTRICT
+        _ => ReferentialAction.NoAction, // 'a' = NO ACTION, 'r' = RESTRICT
     };
 }

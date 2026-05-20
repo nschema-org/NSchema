@@ -1,12 +1,12 @@
 namespace NSchema.Postgres;
 
 internal sealed record ForeignKeyRow(
-    string   TableSchema,
-    string   TableName,
-    string   ConstraintName,
+    string TableSchema,
+    string TableName,
+    string ConstraintName,
     string[] ColumnNames,
-    string   ForeignSchema,
-    string   ForeignTable,
+    string ForeignSchema,
+    string ForeignTable,
     string[] ForeignColumnNames,
-    char     UpdateRule,
-    char     DeleteRule);
+    char UpdateRule,
+    char DeleteRule);
