@@ -1,0 +1,509 @@
+using Npgsql;
+using NSchema.Domain;
+using NSchema.Domain.Execution;
+using NSchema.Domain.Schema;
+using NSchema.Execution;
+using NSchema.Postgres;
+
+namespace NSchema.Tests.Postgres;
+
+[Collection("postgres")]
+public sealed class PostgresInstructionExecutorTests : IAsyncLifetime
+{
+    private readonly NpgsqlDataSource _dataSource;
+    private readonly string _schema = $"test_{Guid.NewGuid():N}";
+    private NpgsqlConnection _conn = null!;
+    private PostgresInstructionExecutor _executor = null!;
+
+    public PostgresInstructionExecutorTests(PostgresContainerFixture fixture)
+    {
+        _dataSource = fixture.DataSource;
+    }
+
+    public async Task InitializeAsync()
+    {
+        _conn = await _dataSource.OpenConnectionAsync();
+        _executor = new PostgresInstructionExecutor(_dataSource);
+        await Exec($"""CREATE SCHEMA "{_schema}" """);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Exec($"""DROP SCHEMA IF EXISTS "{_schema}" CASCADE""");
+        await _conn.DisposeAsync();
+    }
+
+    // ── Schema operations ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateSchema_CreatesSchemaInDatabase()
+    {
+        // Arrange
+        var name = $"test_{Guid.NewGuid():N}";
+
+        // Act
+        await _executor.Execute([new CreateSchema(name)], Allow);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{name}'");
+        exists.ShouldBeTrue();
+
+        await Exec($"""DROP SCHEMA "{name}" CASCADE""");
+    }
+
+    [Fact]
+    public async Task DropSchema_RemovesSchemaFromDatabase()
+    {
+        // Arrange
+        var name = $"test_{Guid.NewGuid():N}";
+        await Exec($"""CREATE SCHEMA "{name}" """);
+
+        // Act
+        await _executor.Execute([new DropSchema(name)], Allow);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{name}'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameSchema_RenamesSchemaInDatabase()
+    {
+        // Arrange
+        var oldName = $"test_{Guid.NewGuid():N}";
+        var newName = $"test_{Guid.NewGuid():N}";
+        await Exec($"""CREATE SCHEMA "{oldName}" """);
+
+        // Act
+        await _executor.Execute([new RenameSchema(oldName, newName)], Allow);
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{oldName}'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{newName}'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+
+        await Exec($"""DROP SCHEMA "{newName}" CASCADE""");
+    }
+
+    // ── Table operations ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateTable_CreatesTableInDatabase()
+    {
+        // Arrange
+        var table = new Table("users",
+            [new Column("id", SqlType.BigInt, IsNullable: false)]);
+
+        // Act
+        await _executor.Execute([new CreateTable(_schema, table)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'users'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateTable_WithPrimaryKey_CreatesPrimaryKeyConstraint()
+    {
+        // Arrange
+        var table = new Table("orders",
+            [new Column("id", SqlType.BigInt, IsNullable: false)],
+            PrimaryKey: new PrimaryKey("pk_orders", ["id"]));
+
+        // Act
+        await _executor.Execute([new CreateTable(_schema, table)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'orders' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'pk_orders'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropTable_RemovesTableFromDatabase()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."products" (id integer)""");
+
+        // Act
+        await _executor.Execute([new DropTable(_schema, "products")], Allow);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'products'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameTable_RenamesTableInDatabase()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."old_name" (id integer)""");
+
+        // Act
+        await _executor.Execute([new RenameTable(_schema, "old_name", "new_name")]);
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'old_name'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'new_name'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+    }
+
+    // ── Column operations ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddColumn_AddsColumnToTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer)""");
+        var column = new Column("name", SqlType.VarChar(100), IsNullable: false);
+
+        // Act
+        await _executor.Execute([new AddColumn(_schema, "items", column)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropColumn_RemovesColumnFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+
+        // Act
+        await _executor.Execute([new DropColumn(_schema, "items", "name")], Allow);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameColumn_RenamesColumnInTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, old_col text)""");
+
+        // Act
+        await _executor.Execute([new RenameColumn(_schema, "items", "old_col", "new_col")]);
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'old_col'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'new_col'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AlterColumnType_ChangesColumnDataType()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, value integer)""");
+
+        // Act
+        await _executor.Execute([new AlterColumnType(_schema, "items", "value", SqlType.Int, SqlType.BigInt)], Allow);
+
+        // Assert
+        var dataType = await ScalarString(
+            $"SELECT data_type FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'value'");
+        dataType.ShouldBe("bigint");
+    }
+
+    [Fact]
+    public async Task AlterColumnNullability_MakesColumnNotNull()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+
+        // Act
+        await _executor.Execute([new AlterColumnNullability(_schema, "items", "name", WasNullable: true, IsNullable: false)], Allow);
+
+        // Assert
+        var isNullable = await ScalarString(
+            $"SELECT is_nullable FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        isNullable.ShouldBe("NO");
+    }
+
+    [Fact]
+    public async Task AlterColumnNullability_MakesColumnNullable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text NOT NULL)""");
+
+        // Act
+        await _executor.Execute([new AlterColumnNullability(_schema, "items", "name", WasNullable: false, IsNullable: true)], Allow);
+
+        // Assert
+        var isNullable = await ScalarString(
+            $"SELECT is_nullable FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        isNullable.ShouldBe("YES");
+    }
+
+    [Fact]
+    public async Task SetColumnDefault_SetsDefaultExpression()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer)""");
+
+        // Act
+        await _executor.Execute([new SetColumnDefault(_schema, "items", "quantity", null, "0")]);
+
+        // Assert
+        var hasDefault = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'quantity' AND column_default IS NOT NULL");
+        hasDefault.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task SetColumnDefault_DropsDefaultExpression()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer DEFAULT 0)""");
+
+        // Act
+        await _executor.Execute([new SetColumnDefault(_schema, "items", "quantity", "0", null)]);
+
+        // Assert
+        var hasDefault = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'quantity' AND column_default IS NOT NULL");
+        hasDefault.ShouldBeFalse();
+    }
+
+    // ── Primary key operations ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddPrimaryKey_AddsConstraintToTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL)""");
+
+        // Act
+        await _executor.Execute([new AddPrimaryKey(_schema, "items", new PrimaryKey("pk_items", ["id"]))]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'items' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'pk_items'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropPrimaryKey_RemovesConstraintFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL, CONSTRAINT pk_items PRIMARY KEY (id))""");
+
+        // Act
+        await _executor.Execute([new DropPrimaryKey(_schema, "items", "pk_items")]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'items' AND constraint_type = 'PRIMARY KEY'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Foreign key operations ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddForeignKey_AddsReferentialConstraint()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."parents" (id integer NOT NULL, CONSTRAINT pk_parents PRIMARY KEY (id))""");
+        await Exec($"""CREATE TABLE "{_schema}"."children" (id integer NOT NULL, parent_id integer)""");
+        var fk = new ForeignKey("fk_children_parent", ["parent_id"], _schema, "parents", ["id"]);
+
+        // Act
+        await _executor.Execute([new AddForeignKey(_schema, "children", fk)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.referential_constraints WHERE constraint_schema = '{_schema}' AND constraint_name = 'fk_children_parent'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropForeignKey_RemovesReferentialConstraint()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."parents" (id integer NOT NULL, CONSTRAINT pk_parents PRIMARY KEY (id))""");
+        await Exec($"""CREATE TABLE "{_schema}"."children" (id integer, parent_id integer, CONSTRAINT fk_children_parent FOREIGN KEY (parent_id) REFERENCES "{_schema}"."parents" (id))""");
+
+        // Act
+        await _executor.Execute([new DropForeignKey(_schema, "children", "fk_children_parent")]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.referential_constraints WHERE constraint_schema = '{_schema}' AND constraint_name = 'fk_children_parent'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Index operations ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateIndex_CreatesIndexOnTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+        var index = new TableIndex("idx_items_name", ["name"]);
+
+        // Act
+        await _executor.Execute([new CreateIndex(_schema, "items", index)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM pg_indexes WHERE schemaname = '{_schema}' AND tablename = 'items' AND indexname = 'idx_items_name'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateIndex_Unique_CreatesUniqueIndexOnTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, code text)""");
+        var index = new TableIndex("idx_items_code_unique", ["code"], IsUnique: true);
+
+        // Act
+        await _executor.Execute([new CreateIndex(_schema, "items", index)]);
+
+        // Assert
+        var isUnique = await ScalarBool(
+            $"SELECT ix.indisunique FROM pg_indexes pi JOIN pg_class t ON t.relname = pi.tablename JOIN pg_index ix ON ix.indexrelid = (SELECT oid FROM pg_class WHERE relname = 'idx_items_code_unique') WHERE pi.schemaname = '{_schema}' AND pi.indexname = 'idx_items_code_unique'");
+        isUnique.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropIndex_RemovesIndexFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+        await Exec($"""CREATE INDEX "idx_items_name" ON "{_schema}"."items" (name)""");
+
+        // Act
+        await _executor.Execute([new DropIndex(_schema, "items", "idx_items_name")]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM pg_indexes WHERE schemaname = '{_schema}' AND indexname = 'idx_items_name'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Deployment scripts ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RunPreDeploymentScript_ExecutesSql()
+    {
+        // Arrange
+        var script = new DeploymentScript("seed", $"""CREATE TABLE "{_schema}"."seeded" (id integer)""");
+
+        // Act
+        await _executor.Execute([new RunPreDeploymentScript(script)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'seeded'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RunPostDeploymentScript_ExecutesSql()
+    {
+        // Arrange
+        var script = new DeploymentScript("seed", $"""CREATE TABLE "{_schema}"."seeded_post" (id integer)""");
+
+        // Act
+        await _executor.Execute([new RunPostDeploymentScript(script)]);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'seeded_post'");
+        exists.ShouldBeTrue();
+    }
+
+    // ── Destructive action policy ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Execute_WhenPolicyIsError_ThrowsOnDestructiveInstruction()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
+        var options = new ExecutionOptions(DestructiveActionPolicy.Error);
+
+        // Act
+        var act = () => _executor.Execute([new DropTable(_schema, "to_drop")], options);
+
+        // Assert
+        var ex = await act.ShouldThrowAsync<DestructiveActionException>();
+        ex.Instruction.ShouldBeOfType<DropTable>();
+    }
+
+    [Fact]
+    public async Task Execute_WhenPolicyIsAllow_ExecutesDestructiveInstruction()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
+        var options = new ExecutionOptions(DestructiveActionPolicy.Allow);
+
+        // Act
+        await _executor.Execute([new DropTable(_schema, "to_drop")], options);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'to_drop'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_WhenPolicyIsWarn_ExecutesDestructiveInstruction()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
+        var options = new ExecutionOptions(DestructiveActionPolicy.Warn);
+
+        // Act
+        await _executor.Execute([new DropTable(_schema, "to_drop")], options);
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'to_drop'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static readonly ExecutionOptions Allow = new(DestructiveActionPolicy.Allow);
+
+    private async Task Exec(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private async Task<bool> ScalarBool(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        return (bool)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    private async Task<string> ScalarString(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        return (string)(await cmd.ExecuteScalarAsync())!;
+    }
+}
