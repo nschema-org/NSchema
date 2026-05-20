@@ -3,4 +3,6 @@
   <Project Path="src/NSchema/NSchema.csproj" />
   <Project Path="tests/NSchema.Tests/NSchema.Tests.csproj" />
   <Project Path="tests/NSchema.Postgres.Tests/NSchema.Postgres.Tests.csproj" />
+  <Project Path="samples/NSchema.Sandbox/NSchema.Sandbox.csproj" />
+  <Project Path="samples/NSchema.Sandbox.AppHost/NSchema.Sandbox.AppHost.csproj" />
 </Solution>

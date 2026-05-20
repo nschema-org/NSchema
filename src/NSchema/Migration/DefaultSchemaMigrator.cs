@@ -1,14 +1,15 @@
 using Microsoft.Extensions.Logging;
-using NSchema.Diffing;
 using NSchema.Domain.Schema;
-using NSchema.Extractors;
+using NSchema.Migration.Comparison;
+using NSchema.Migration.Execution;
+using NSchema.Migration.Extraction;
 
 namespace NSchema.Migration;
 
 public sealed class DefaultSchemaMigrator(
     ILogger<DefaultSchemaMigrator> logger,
     ISchemaExtractor extractor,
-    ISchemaDiffer differ,
+    ISchemaComparer comparer,
     IInstructionExecutor executor,
     DatabaseModel desired
 ) : ISchemaMigrator
@@ -16,7 +17,7 @@ public sealed class DefaultSchemaMigrator(
     public async Task<MigrationPlan> Plan(CancellationToken cancellationToken = default)
     {
         var current = await extractor.Extract(cancellationToken);
-        var instructions = differ.Diff(current, desired);
+        var instructions = comparer.Compare(current, desired);
         return new MigrationPlan(instructions);
     }
 
@@ -28,7 +29,7 @@ public sealed class DefaultSchemaMigrator(
             return;
         }
 
-        logger.LogInformation("Applying {Count} schema change(s).", plan.Instructions.Count);
+        logger.LogDebug("Applying {Count} schema change(s).", plan.Instructions.Count);
         await executor.Execute(plan.Instructions, options, cancellationToken);
     }
 }

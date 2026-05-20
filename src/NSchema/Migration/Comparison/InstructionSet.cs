@@ -1,6 +1,6 @@
 using NSchema.Domain.Migration;
 
-namespace NSchema.Diffing;
+namespace NSchema.Migration.Comparison;
 
 internal sealed class InstructionSet
 {

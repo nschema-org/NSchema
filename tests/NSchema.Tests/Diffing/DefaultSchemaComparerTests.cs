@@ -1,12 +1,12 @@
-using NSchema.Diffing;
 using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
+using NSchema.Migration.Comparison;
 
 namespace NSchema.Tests.Diffing;
 
-public class DatabaseModelDifferTests
+public class DefaultSchemaComparerTests
 {
-    private readonly DatabaseModelDiffer _differ = new();
+    private readonly DefaultSchemaComparer _comparer = new();
 
     private static DatabaseModel Empty() => new([]);
 
@@ -25,7 +25,7 @@ public class DatabaseModelDifferTests
         var model = WithSchema("app", SimpleTable("users"));
 
         // Act
-        var result = _differ.Diff(model, model);
+        var result = _comparer.Compare(model, model);
 
         // Assert
         result.ShouldBeEmpty();
@@ -39,7 +39,7 @@ public class DatabaseModelDifferTests
         var desired = Empty();
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.ShouldBeEmpty();
@@ -55,7 +55,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app");
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is CreateSchema { SchemaName: "app" }).ShouldBeTrue();
@@ -69,7 +69,7 @@ public class DatabaseModelDifferTests
         var desired = Empty();
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropSchema { SchemaName: "app" }).ShouldBeTrue();
@@ -83,7 +83,7 @@ public class DatabaseModelDifferTests
         var desired = new DatabaseModel([new DatabaseSchema("application", [], PreviousName: "app")]);
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is RenameSchema { OldName: "app", NewName: "application" }).ShouldBeTrue();
@@ -101,7 +101,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", SimpleTable("users"));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is CreateTable { SchemaName: "app", Table.Name: "users" }).ShouldBeTrue();
@@ -115,7 +115,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app");
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropTable { SchemaName: "app", TableName: "users" }).ShouldBeTrue();
@@ -129,7 +129,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("accounts", [new Column("id", SqlType.Int)], PreviousName: "users"));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is RenameTable { SchemaName: "app", OldName: "users", NewName: "accounts" }).ShouldBeTrue();
@@ -150,7 +150,7 @@ public class DatabaseModelDifferTests
         ]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is AddColumn { TableName: "users", Column.Name: "email" }).ShouldBeTrue();
@@ -167,7 +167,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropColumn { TableName: "users", ColumnName: "email" }).ShouldBeTrue();
@@ -181,7 +181,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("email_address", SqlType.Text, PreviousName: "email")]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is RenameColumn { TableName: "users", OldName: "email", NewName: "email_address" }).ShouldBeTrue();
@@ -197,7 +197,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.BigInt)]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is AlterColumnType act
@@ -215,7 +215,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("email", SqlType.Text, IsNullable: false)]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is AlterColumnNullability acn
@@ -233,7 +233,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("status", SqlType.Text, DefaultExpression: "'active'")]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is SetColumnDefault scd
@@ -255,7 +255,7 @@ public class DatabaseModelDifferTests
             PrimaryKey: new PrimaryKey("pk_users", ["id"])));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is AddPrimaryKey { TableName: "users", PrimaryKey.Name: "pk_users" }).ShouldBeTrue();
@@ -271,7 +271,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropPrimaryKey { TableName: "users", PrimaryKeyName: "pk_users" }).ShouldBeTrue();
@@ -286,7 +286,7 @@ public class DatabaseModelDifferTests
             PrimaryKey: new PrimaryKey("pk_users", ["id"])));
 
         // Act
-        var result = _differ.Diff(model, model);
+        var result = _comparer.Compare(model, model);
 
         // Assert
         result.Any(i => i is AddPrimaryKey or DropPrimaryKey).ShouldBeFalse();
@@ -305,7 +305,7 @@ public class DatabaseModelDifferTests
             ForeignKeys: [fk]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is AddForeignKey { ForeignKey.Name: "fk_users_org" }).ShouldBeTrue();
@@ -322,7 +322,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", SimpleTable("users"));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
@@ -338,7 +338,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)], ForeignKeys: [modified]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
@@ -356,7 +356,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)], Indexes: [idx]));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is CreateIndex { Index.Name: "ix_users_email" }).ShouldBeTrue();
@@ -371,7 +371,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", SimpleTable("users"));
 
         // Act
-        var result = _differ.Diff(current, desired);
+        var result = _comparer.Compare(current, desired);
 
         // Assert
         result.Any(i => i is DropIndex { IndexName: "ix_users_email" }).ShouldBeTrue();
@@ -387,7 +387,7 @@ public class DatabaseModelDifferTests
         var desired = new DatabaseModel([], PreDeploymentScripts: [script]);
 
         // Act
-        var result = _differ.Diff(Empty(), desired);
+        var result = _comparer.Compare(Empty(), desired);
 
         // Assert
         result[0].ShouldBeOfType<RunPreDeploymentScript>()
@@ -404,7 +404,7 @@ public class DatabaseModelDifferTests
             PostDeploymentScripts: [script]);
 
         // Act
-        var result = _differ.Diff(Empty(), desired);
+        var result = _comparer.Compare(Empty(), desired);
 
         // Assert
         result[^1].ShouldBeOfType<RunPostDeploymentScript>()
@@ -424,7 +424,7 @@ public class DatabaseModelDifferTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
 
         // Act
-        var result = _differ.Diff(current, desired).ToList();
+        var result = _comparer.Compare(current, desired).ToList();
 
         // Assert
         result.FindIndex(i => i is DropForeignKey).ShouldBeLessThan(
@@ -443,7 +443,7 @@ public class DatabaseModelDifferTests
         ])]);
 
         // Act
-        var result = _differ.Diff(Empty(), desired).ToList();
+        var result = _comparer.Compare(Empty(), desired).ToList();
 
         // Assert
         result.FindLastIndex(i => i is CreateTable).ShouldBeLessThan(

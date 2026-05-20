@@ -1,3 +1,5 @@
+using NSchema.Migration.Execution;
+
 namespace NSchema.Migration;
 
 public interface ISchemaMigrator

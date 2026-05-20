@@ -1,6 +1,6 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Extractors;
+namespace NSchema.Migration.Extraction;
 
 public interface ISchemaExtractor
 {

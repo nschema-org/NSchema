@@ -1,20 +1,21 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using NSchema.Diffing;
 using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
-using NSchema.Extractors;
 using NSchema.Migration;
+using NSchema.Migration.Comparison;
+using NSchema.Migration.Execution;
+using NSchema.Migration.Extraction;
 
 namespace NSchema.Tests.Hosting;
 
 public sealed class DefaultSchemaMigratorTests
 {
     private readonly ISchemaExtractor _extractor = Substitute.For<ISchemaExtractor>();
-    private readonly ISchemaDiffer _differ = Substitute.For<ISchemaDiffer>();
+    private readonly ISchemaComparer _comparer = Substitute.For<ISchemaComparer>();
     private readonly IInstructionExecutor _executor = Substitute.For<IInstructionExecutor>();
     private readonly DatabaseModel _desired = new([]);
 
-    private DefaultSchemaMigrator CreateMigrator() => new(NullLogger<DefaultSchemaMigrator>.Instance, _extractor, _differ, _executor, _desired);
+    private DefaultSchemaMigrator CreateMigrator() => new(NullLogger<DefaultSchemaMigrator>.Instance, _extractor, _comparer, _executor, _desired);
 
     // ── MigrationPlan ─────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ public sealed class DefaultSchemaMigratorTests
         var current = new DatabaseModel([]);
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
         _extractor.Extract(Arg.Any<CancellationToken>()).Returns(current);
-        _differ.Diff(current, _desired).Returns(instructions);
+        _comparer.Compare(current, _desired).Returns(instructions);
         var migrator = CreateMigrator();
 
         // Act
@@ -83,14 +84,14 @@ public sealed class DefaultSchemaMigratorTests
         // Arrange
         var current = new DatabaseModel([new DatabaseSchema("public", [])]);
         _extractor.Extract(Arg.Any<CancellationToken>()).Returns(current);
-        _differ.Diff(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
+        _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
         var migrator = CreateMigrator();
 
         // Act
         await migrator.Plan();
 
         // Assert
-        _differ.Received(1).Diff(current, _desired);
+        _comparer.Received(1).Compare(current, _desired);
     }
 
     // ── SchemaMigrator.Apply ──────────────────────────────────────────────────
@@ -101,7 +102,7 @@ public sealed class DefaultSchemaMigratorTests
         // Arrange
         var plan = new MigrationPlan([]);
         _extractor.Extract(Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
-        _differ.Diff(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
+        _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns([]);
 
         var migrator = CreateMigrator();
 
@@ -144,15 +145,15 @@ public sealed class DefaultSchemaMigratorTests
         var instructions = new List<SchemaInstruction> { new CreateSchema("public") };
         var options = new ExecutionOptions(DestructiveActionPolicy.Allow);
         _extractor.Extract(Arg.Any<CancellationToken>()).Returns(new DatabaseModel([]));
-        _differ.Diff(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns(instructions);
+        _comparer.Compare(Arg.Any<DatabaseModel>(), Arg.Any<DatabaseModel>()).Returns(instructions);
         var migrator = CreateMigrator();
 
-        var plan = new  MigrationPlan(instructions);
+        var plan = new MigrationPlan(instructions);
 
         // Act
         await migrator.Apply(plan, options);
 
         // Assert
-        await _executor.Received(1).Execute(plan.Instructions, options,Arg.Any<CancellationToken>());
+        await _executor.Received(1).Execute(plan.Instructions, options, Arg.Any<CancellationToken>());
     }
 }

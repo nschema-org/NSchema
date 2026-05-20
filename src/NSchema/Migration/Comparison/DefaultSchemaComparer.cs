@@ -1,11 +1,11 @@
 using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
 
-namespace NSchema.Diffing;
+namespace NSchema.Migration.Comparison;
 
-public sealed class DatabaseModelDiffer : ISchemaDiffer
+public sealed class DefaultSchemaComparer : ISchemaComparer
 {
-    public IReadOnlyList<SchemaInstruction> Diff(DatabaseModel current, DatabaseModel desired)
+    public IReadOnlyList<SchemaInstruction> Compare(DatabaseModel current, DatabaseModel desired)
     {
         var instructions = new InstructionSet();
 

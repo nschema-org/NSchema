@@ -3,6 +3,7 @@ using Npgsql;
 using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
 using NSchema.Migration;
+using NSchema.Migration.Execution;
 
 namespace NSchema.Postgres.Tests;
 

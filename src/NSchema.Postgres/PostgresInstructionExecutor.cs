@@ -3,15 +3,13 @@ using Npgsql;
 using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
 using NSchema.Migration;
+using NSchema.Migration.Execution;
 
 namespace NSchema.Postgres;
 
 public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecutor> logger, NpgsqlDataSource dataSource) : IInstructionExecutor
 {
-    public async Task Execute(
-        IReadOnlyList<SchemaInstruction> instructions,
-        ExecutionOptions? options = null,
-        CancellationToken cancellationToken = default)
+    public async Task Execute(IReadOnlyList<SchemaInstruction> instructions, ExecutionOptions? options = null, CancellationToken cancellationToken = default)
     {
         var policy = options?.DestructiveActionPolicy ?? DestructiveActionPolicy.Error;
 
@@ -31,7 +29,7 @@ public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecu
                 }
             }
 
-            var sql = GenerateSql(instruction);
+            string sql = GenerateSql(instruction);
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -52,12 +50,9 @@ public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecu
         DropColumn x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" DROP COLUMN "{x.ColumnName}" """,
         RenameColumn x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" RENAME COLUMN "{x.OldName}" TO "{x.NewName}" """,
         AlterColumnType x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" TYPE {ToPostgresType(x.NewType)}""",
-        AlterColumnNullability { IsNullable: false } x
-                              => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" SET NOT NULL""",
-        AlterColumnNullability x
-                              => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP NOT NULL""",
-        SetColumnDefault { NewDefault: null } x
-                              => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP DEFAULT""",
+        AlterColumnNullability { IsNullable: false } x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" SET NOT NULL""",
+        AlterColumnNullability x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP NOT NULL""",
+        SetColumnDefault { NewDefault: null } x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP DEFAULT""",
         SetColumnDefault x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" SET DEFAULT {x.NewDefault}""",
         AddPrimaryKey x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ADD CONSTRAINT "{x.PrimaryKey.Name}" PRIMARY KEY ({ColList(x.PrimaryKey.ColumnNames)})""",
         DropPrimaryKey x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" DROP CONSTRAINT "{x.PrimaryKeyName}" """,
@@ -87,8 +82,8 @@ public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecu
     private static string BuildAddForeignKey(AddForeignKey x)
     {
         var fk = x.ForeignKey;
-        var onDelete = ToReferentialAction(fk.OnDelete);
-        var onUpdate = ToReferentialAction(fk.OnUpdate);
+        string onDelete = ToReferentialAction(fk.OnDelete);
+        string onUpdate = ToReferentialAction(fk.OnUpdate);
         return $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ADD CONSTRAINT "{fk.Name}" FOREIGN KEY ({ColList(fk.ColumnNames)}) REFERENCES "{fk.ReferencedSchema}"."{fk.ReferencedTable}" ({ColList(fk.ReferencedColumnNames)}) ON DELETE {onDelete} ON UPDATE {onUpdate}""";
     }
 
@@ -97,10 +92,10 @@ public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecu
 
     private static string BuildColumnDef(Column col)
     {
-        var type = ToPostgresType(col.Type);
-        var nullable = col.IsNullable ? "" : " NOT NULL";
-        var identity = col.IsIdentity ? " GENERATED ALWAYS AS IDENTITY" : "";
-        var def = col.DefaultExpression is { } d && !col.IsIdentity ? $" DEFAULT {d}" : "";
+        string type = ToPostgresType(col.Type);
+        string nullable = col.IsNullable ? "" : " NOT NULL";
+        string identity = col.IsIdentity ? " GENERATED ALWAYS AS IDENTITY" : "";
+        string def = col.DefaultExpression is { } d && !col.IsIdentity ? $" DEFAULT {d}" : "";
         return $"\"{col.Name}\" {type}{nullable}{identity}{def}";
     }
 

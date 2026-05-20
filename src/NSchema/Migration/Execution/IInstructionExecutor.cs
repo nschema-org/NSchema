@@ -1,6 +1,6 @@
 using NSchema.Domain.Migration;
 
-namespace NSchema.Migration;
+namespace NSchema.Migration.Execution;
 
 public interface IInstructionExecutor
 {
