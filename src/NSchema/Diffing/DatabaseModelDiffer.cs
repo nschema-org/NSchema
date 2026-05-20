@@ -10,7 +10,9 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         var instructions = new InstructionSet();
 
         foreach (var script in desired.PreDeploymentScripts ?? [])
+        {
             instructions.PreScripts.Add(new RunPreDeploymentScript(script));
+        }
 
         DiffSchemas(current.Schemas, desired.Schemas, instructions);
 
@@ -20,10 +22,7 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         return instructions.ToList();
     }
 
-    private static void DiffSchemas(
-        IReadOnlyList<DatabaseSchema> current,
-        IReadOnlyList<DatabaseSchema> desired,
-        InstructionSet instructions)
+    private static void DiffSchemas(IReadOnlyList<DatabaseSchema> current, IReadOnlyList<DatabaseSchema> desired, InstructionSet instructions)
     {
         foreach (var currentSchema in current)
         {
@@ -133,9 +132,10 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         string tableName,
         PrimaryKey? current,
         PrimaryKey? desired,
-        InstructionSet instructions)
+        InstructionSet instructions
+    )
     {
-        if (PrimaryKeysEqual(current, desired)) return;
+        if (current?.Equals(desired) ?? desired == null) return;
 
         if (current is not null)
             instructions.PrimaryKeyDrops.Add(new DropPrimaryKey(schemaName, tableName, current.Name));
@@ -149,19 +149,20 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         string tableName,
         IReadOnlyList<ForeignKey> current,
         IReadOnlyList<ForeignKey> desired,
-        InstructionSet instructions)
+        InstructionSet instructions
+    )
     {
         foreach (var currentFk in current)
         {
             var matchingDesired = desired.FirstOrDefault(d => d.Name == currentFk.Name);
-            if (matchingDesired is null || !ForeignKeysEqual(currentFk, matchingDesired))
+            if (matchingDesired is null || !currentFk.Equals(matchingDesired))
                 instructions.ForeignKeyDrops.Add(new DropForeignKey(schemaName, tableName, currentFk.Name));
         }
 
         foreach (var desiredFk in desired)
         {
             var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredFk.Name);
-            if (matchingCurrent is null || !ForeignKeysEqual(matchingCurrent, desiredFk))
+            if (matchingCurrent is null || !matchingCurrent.Equals(desiredFk))
                 instructions.ForeignKeyAdds.Add(new AddForeignKey(schemaName, tableName, desiredFk));
         }
     }
@@ -176,14 +177,14 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         foreach (var currentIdx in current)
         {
             var matchingDesired = desired.FirstOrDefault(d => d.Name == currentIdx.Name);
-            if (matchingDesired is null || !IndexesEqual(currentIdx, matchingDesired))
+            if (matchingDesired is null || !currentIdx.Equals(matchingDesired))
                 instructions.IndexDrops.Add(new DropIndex(schemaName, tableName, currentIdx.Name));
         }
 
         foreach (var desiredIdx in desired)
         {
             var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredIdx.Name);
-            if (matchingCurrent is null || !IndexesEqual(matchingCurrent, desiredIdx))
+            if (matchingCurrent is null || !matchingCurrent.Equals(desiredIdx))
                 instructions.IndexAdds.Add(new CreateIndex(schemaName, tableName, desiredIdx));
         }
     }
@@ -215,28 +216,4 @@ public sealed class DatabaseModelDiffer : ISchemaDiffer
         return collection.FirstOrDefault(x => getName(x) == name)
                ?? (previousName is not null ? collection.FirstOrDefault(x => getName(x) == previousName) : null);
     }
-
-    // ── Equality ─────────────────────────────────────────────────────────────
-
-    private static bool PrimaryKeysEqual(PrimaryKey? a, PrimaryKey? b)
-    {
-        if (a is null && b is null) return true;
-        if (a is null || b is null) return false;
-        return a.Name == b.Name && a.ColumnNames.SequenceEqual(b.ColumnNames);
-    }
-
-    private static bool ForeignKeysEqual(ForeignKey a, ForeignKey b) =>
-        a.Name == b.Name
-        && a.ColumnNames.SequenceEqual(b.ColumnNames)
-        && a.ReferencedSchema == b.ReferencedSchema
-        && a.ReferencedTable == b.ReferencedTable
-        && a.ReferencedColumnNames.SequenceEqual(b.ReferencedColumnNames)
-        && a.OnDelete == b.OnDelete
-        && a.OnUpdate == b.OnUpdate;
-
-    private static bool IndexesEqual(TableIndex a, TableIndex b) =>
-        a.Name == b.Name
-        && a.IsUnique == b.IsUnique
-        && a.ColumnNames.SequenceEqual(b.ColumnNames);
-
 }
