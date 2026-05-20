@@ -44,7 +44,7 @@ var desired = new DatabaseModelBuilder()
     .Build();
 
 var extractor = new PostgresSchemaExtractor(dataSource, "public");
-var differ = new DefaultSchemaComparer();
+var differ = new DefaultSchemaComparer(loggerFactory.CreateLogger<DefaultSchemaComparer>());
 var executor = new PostgresInstructionExecutor(loggerFactory.CreateLogger<PostgresInstructionExecutor>(), dataSource);
 var migrator = new DefaultSchemaMigrator(loggerFactory.CreateLogger<DefaultSchemaMigrator>(), extractor, differ, executor, desired);
 
