@@ -1,6 +1,8 @@
 using Npgsql;
 using NSchema.Domain;
+using NSchema.Domain.Schema;
 using NSchema.Extractors;
+using NSchema.Postgres.Models;
 
 namespace NSchema.Postgres;
 

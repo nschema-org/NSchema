@@ -1,4 +1,5 @@
 using NSchema.Domain;
+using NSchema.Domain.Schema;
 
 namespace NSchema.Extractors;
 

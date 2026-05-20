@@ -1,4 +1,4 @@
-using NSchema.Instructions;
+using NSchema.Domain.Execution;
 
 namespace NSchema.Diffing;
 

@@ -1,5 +1,6 @@
 using NSchema.Domain;
-using NSchema.Instructions;
+using NSchema.Domain.Execution;
+using NSchema.Domain.Schema;
 
 namespace NSchema.Diffing;
 
