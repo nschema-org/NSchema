@@ -1,5 +1,4 @@
 using Npgsql;
-using NSchema.Domain;
 using NSchema.Domain.Schema;
 using NSchema.Postgres;
 
