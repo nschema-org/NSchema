@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using NSchema.Domain.Execution;
+using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
-using NSchema.Execution;
-using NSchema.Postgres;
+using NSchema.Migration;
 
 namespace NSchema.Postgres.Tests;
 
@@ -22,7 +22,7 @@ public sealed class PostgresInstructionExecutorTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _conn = await _dataSource.OpenConnectionAsync();
-        _executor = new PostgresInstructionExecutor(_dataSource);
+        _executor = new PostgresInstructionExecutor(NullLogger<PostgresInstructionExecutor>.Instance, _dataSource);
         await Exec($"""CREATE SCHEMA "{_schema}" """);
     }
 

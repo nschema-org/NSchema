@@ -1,22 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using NSchema.Domain.Execution;
+using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
-using NSchema.Execution;
+using NSchema.Migration;
 
 namespace NSchema.Postgres;
 
-public sealed class PostgresInstructionExecutor : IInstructionExecutor
+public sealed class PostgresInstructionExecutor(ILogger<PostgresInstructionExecutor> logger, NpgsqlDataSource dataSource) : IInstructionExecutor
 {
-    private readonly NpgsqlDataSource _dataSource;
-    private readonly ILogger<PostgresInstructionExecutor>? _logger;
-
-    public PostgresInstructionExecutor(NpgsqlDataSource dataSource, ILogger<PostgresInstructionExecutor>? logger = null)
-    {
-        _dataSource = dataSource;
-        _logger = logger;
-    }
-
     public async Task Execute(
         IReadOnlyList<SchemaInstruction> instructions,
         ExecutionOptions? options = null,
@@ -24,7 +15,7 @@ public sealed class PostgresInstructionExecutor : IInstructionExecutor
     {
         var policy = options?.DestructiveActionPolicy ?? DestructiveActionPolicy.Error;
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
         foreach (var instruction in instructions)
         {
@@ -35,7 +26,7 @@ public sealed class PostgresInstructionExecutor : IInstructionExecutor
                     case DestructiveActionPolicy.Error:
                         throw new DestructiveActionException(instruction);
                     case DestructiveActionPolicy.Warn:
-                        _logger?.LogWarning("Executing destructive instruction: {InstructionType}", instruction.GetType().Name);
+                        logger.LogWarning("Executing destructive instruction: {InstructionType}", instruction.GetType().Name);
                         break;
                 }
             }

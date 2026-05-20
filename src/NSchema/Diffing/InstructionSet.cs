@@ -1,4 +1,4 @@
-using NSchema.Domain.Execution;
+using NSchema.Domain.Migration;
 
 namespace NSchema.Diffing;
 

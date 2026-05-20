@@ -1,5 +1,5 @@
 using NSchema.Diffing;
-using NSchema.Domain.Execution;
+using NSchema.Domain.Migration;
 using NSchema.Domain.Schema;
 
 namespace NSchema.Tests.Diffing;

@@ -5,20 +5,11 @@ using NSchema.Postgres.Models;
 
 namespace NSchema.Postgres;
 
-public sealed class PostgresSchemaExtractor : ISchemaExtractor
+public sealed class PostgresSchemaExtractor(NpgsqlDataSource dataSource, params string[] schemaNames) : ISchemaExtractor
 {
-    private readonly NpgsqlDataSource _dataSource;
-    private readonly string[] _schemaNames;
-
-    public PostgresSchemaExtractor(NpgsqlDataSource dataSource, params string[] schemaNames)
-    {
-        _dataSource = dataSource;
-        _schemaNames = schemaNames;
-    }
-
     public async Task<DatabaseModel> Extract(CancellationToken cancellationToken = default)
     {
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
         var tables = await QueryTables(conn, cancellationToken);
         var columns = await QueryColumns(conn, cancellationToken);
@@ -42,7 +33,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             AND table_schema = ANY(@schemas)
             ORDER BY table_schema, table_name
             """;
-        cmd.Parameters.AddWithValue("schemas", _schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemaNames);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -72,7 +63,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             WHERE table_schema = ANY(@schemas)
             ORDER BY table_schema, table_name, ordinal_position
             """;
-        cmd.Parameters.AddWithValue("schemas", _schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemaNames);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -114,7 +105,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             AND tc.table_schema = ANY(@schemas)
             ORDER BY tc.table_schema, tc.table_name, kcu.ordinal_position
             """;
-        cmd.Parameters.AddWithValue("schemas", _schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemaNames);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -159,7 +150,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             GROUP BY n.nspname, t.relname, c.conname, fn.nspname, ft.relname, c.confupdtype, c.confdeltype
             ORDER BY n.nspname, t.relname, c.conname
             """;
-        cmd.Parameters.AddWithValue("schemas", _schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemaNames);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -205,7 +196,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
             GROUP BY n.nspname, t.relname, i.relname, ix.indisunique
             ORDER BY n.nspname, t.relname, i.relname
             """;
-        cmd.Parameters.AddWithValue("schemas", _schemaNames);
+        cmd.Parameters.AddWithValue("schemas", schemaNames);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -238,7 +229,7 @@ public sealed class PostgresSchemaExtractor : ISchemaExtractor
                 g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes)).ToList());
 
         // Ensure every requested schema name appears in the result, even when it has no tables.
-        var schemas = _schemaNames
+        var schemas = schemaNames
             .Select(name => new DatabaseSchema(
                 name,
                 bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : []))
