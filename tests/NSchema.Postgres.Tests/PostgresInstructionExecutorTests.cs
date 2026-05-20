@@ -4,7 +4,7 @@ using NSchema.Domain.Schema;
 using NSchema.Execution;
 using NSchema.Postgres;
 
-namespace NSchema.Tests.Postgres;
+namespace NSchema.Postgres.Tests;
 
 [Collection("postgres")]
 public sealed class PostgresInstructionExecutorTests : IAsyncLifetime

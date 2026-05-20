@@ -1,7 +1,7 @@
 using Npgsql;
 using Testcontainers.PostgreSql;
 
-namespace NSchema.Tests.Postgres;
+namespace NSchema.Postgres.Tests;
 
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {

@@ -2,7 +2,7 @@ using Npgsql;
 using NSchema.Domain.Schema;
 using NSchema.Postgres;
 
-namespace NSchema.Tests.Postgres;
+namespace NSchema.Postgres.Tests;
 
 [Collection("postgres")]
 public sealed class PostgresSchemaExtractorTests : IAsyncLifetime

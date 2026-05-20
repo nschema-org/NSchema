@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="src/NSchema.Postgres/NSchema.Postgres.csproj" />
   <Project Path="src/NSchema/NSchema.csproj" />
   <Project Path="tests/NSchema.Tests/NSchema.Tests.csproj" />
+  <Project Path="tests/NSchema.Postgres.Tests/NSchema.Postgres.Tests.csproj" />
 </Solution>
