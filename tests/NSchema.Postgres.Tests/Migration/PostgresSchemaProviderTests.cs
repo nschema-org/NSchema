@@ -11,10 +11,12 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     private readonly NpgsqlDataSource _dataSource = fixture.DataSource;
     private readonly string _schema = $"test_{Guid.NewGuid():N}";
     private NpgsqlConnection _connection = null!;
+    private PostgresSchemaProvider _sut = null!;
 
     public async Task InitializeAsync()
     {
         _connection = await _dataSource.OpenConnectionAsync();
+        _sut = new PostgresSchemaProvider(_dataSource);
         await Exec($"CREATE SCHEMA \"{_schema}\"");
     }
 
@@ -31,18 +33,16 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private PostgresSchemaProvider Extractor() => new(_dataSource);
-
     // ── Schema / table structure ──────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_EmptySchema_ReturnsSchemaWithNoTables()
+    public async Task GetSchema_EmptySchema_ReturnsSchemaWithNoTables()
     {
         // Arrange
         // (schema created in InitializeAsync)
 
         // Act
-        var model = await Extractor().GetSchema([_schema]);
+        var model = await _sut.GetSchema([_schema]);
 
         // Assert
         model.Schemas.ShouldHaveSingleItem();
@@ -51,7 +51,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_SingleTable_ReturnsTable()
+    public async Task GetSchema_SingleTable_ReturnsTable()
     {
         // Arrange
         await Exec($"""
@@ -62,7 +62,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var model = await Extractor().GetSchema([_schema]);
+        var model = await _sut.GetSchema([_schema]);
 
         // Assert
         model.Schemas[0].Tables.ShouldHaveSingleItem();
@@ -72,7 +72,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Nullability ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_Columns_NullabilityMappedCorrectly()
+    public async Task GetSchema_Columns_NullabilityMappedCorrectly()
     {
         // Arrange
         await Exec($"""
@@ -83,7 +83,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var cols = (await Extractor().GetSchema([_schema]))
+        var cols = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Columns.ToDictionary(c => c.Name);
 
         // Assert
@@ -94,7 +94,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Type mapping ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_Columns_StandardTypesMappedCorrectly()
+    public async Task GetSchema_Columns_StandardTypesMappedCorrectly()
     {
         // Arrange
         await Exec($"""
@@ -119,7 +119,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var cols = (await Extractor().GetSchema([_schema]))
+        var cols = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Columns.ToDictionary(c => c.Name);
 
         // Assert
@@ -142,7 +142,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_CustomType_MapsToCustomSqlType()
+    public async Task GetSchema_CustomType_MapsToCustomSqlType()
     {
         // Arrange
         await Exec($"""
@@ -153,7 +153,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var emailCol = (await Extractor().GetSchema([_schema]))
+        var emailCol = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "email");
 
         // Assert
@@ -163,7 +163,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Identity & defaults ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_IdentityColumn_SetsIsIdentityAndClearsDefault()
+    public async Task GetSchema_IdentityColumn_SetsIsIdentityAndClearsDefault()
     {
         // Arrange
         await Exec($"""
@@ -174,7 +174,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var idCol = (await Extractor().GetSchema([_schema]))
+        var idCol = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "id");
 
         // Assert
@@ -183,7 +183,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_ColumnDefault_CapturesExpression()
+    public async Task GetSchema_ColumnDefault_CapturesExpression()
     {
         // Arrange
         await Exec($"""
@@ -194,7 +194,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var statusCol = (await Extractor().GetSchema([_schema]))
+        var statusCol = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Columns.Single(c => c.Name == "status");
 
         // Assert
@@ -205,7 +205,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Primary key ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_PrimaryKey_ReturnsPrimaryKey()
+    public async Task GetSchema_PrimaryKey_ReturnsPrimaryKey()
     {
         // Arrange
         await Exec($"""
@@ -216,7 +216,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var table = (await Extractor().GetSchema([_schema])).Schemas[0].Tables[0];
+        var table = (await _sut.GetSchema([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.PrimaryKey.ShouldNotBeNull();
@@ -225,7 +225,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_CompositePrimaryKey_ReturnsColumnsInOrder()
+    public async Task GetSchema_CompositePrimaryKey_ReturnsColumnsInOrder()
     {
         // Arrange
         await Exec($"""
@@ -237,7 +237,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var pk = (await Extractor().GetSchema([_schema])).Schemas[0].Tables[0].PrimaryKey;
+        var pk = (await _sut.GetSchema([_schema])).Schemas[0].Tables[0].PrimaryKey;
 
         // Assert
         pk.ShouldNotBeNull();
@@ -245,7 +245,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_TableWithNoPrimaryKey_ReturnsNullPrimaryKey()
+    public async Task GetSchema_TableWithNoPrimaryKey_ReturnsNullPrimaryKey()
     {
         // Arrange
         await Exec($"""
@@ -255,7 +255,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var table = (await Extractor().GetSchema([_schema])).Schemas[0].Tables[0];
+        var table = (await _sut.GetSchema([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.PrimaryKey.ShouldBeNull();
@@ -264,7 +264,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Foreign keys ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_ForeignKey_ReturnsConstraint()
+    public async Task GetSchema_ForeignKey_ReturnsConstraint()
     {
         // Arrange
         await Exec($"""
@@ -280,7 +280,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var fks = (await Extractor().GetSchema([_schema]))
+        var fks = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables.Single(t => t.Name == "users").ForeignKeys;
 
         // Assert
@@ -296,7 +296,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_ForeignKeyOnDelete_MapsReferentialAction()
+    public async Task GetSchema_ForeignKeyOnDelete_MapsReferentialAction()
     {
         // Arrange
         await Exec($"""
@@ -314,7 +314,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var fk = (await Extractor().GetSchema([_schema]))
+        var fk = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables.Single(t => t.Name == "users").ForeignKeys![0];
 
         // Assert
@@ -323,7 +323,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_TableWithNoForeignKeys_ReturnsNullForeignKeys()
+    public async Task GetSchema_TableWithNoForeignKeys_ReturnsNullForeignKeys()
     {
         // Arrange
         await Exec($"""
@@ -333,7 +333,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var table = (await Extractor().GetSchema([_schema])).Schemas[0].Tables[0];
+        var table = (await _sut.GetSchema([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.ForeignKeys.ShouldBeNull();
@@ -342,7 +342,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     // ── Indexes ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Extract_Index_ReturnsIndex()
+    public async Task GetSchema_Index_ReturnsIndex()
     {
         // Arrange
         await Exec($"""
@@ -354,7 +354,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var idx = (await Extractor().GetSchema([_schema]))
+        var idx = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -364,7 +364,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_UniqueIndex_SetsIsUniqueTrue()
+    public async Task GetSchema_UniqueIndex_SetsIsUniqueTrue()
     {
         // Arrange
         await Exec($"""
@@ -376,7 +376,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var idx = (await Extractor().GetSchema([_schema]))
+        var idx = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -384,7 +384,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_CompositeIndex_ReturnsColumnsInOrder()
+    public async Task GetSchema_CompositeIndex_ReturnsColumnsInOrder()
     {
         // Arrange
         await Exec($"""
@@ -397,7 +397,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var idx = (await Extractor().GetSchema([_schema]))
+        var idx = (await _sut.GetSchema([_schema]))
             .Schemas[0].Tables[0].Indexes!.Single();
 
         // Assert
@@ -405,7 +405,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Extract_PrimaryKeyIndex_IsNotReturnedAsTableIndex()
+    public async Task GetSchema_PrimaryKeyIndex_IsNotReturnedAsTableIndex()
     {
         // Arrange
         await Exec($"""
@@ -415,7 +415,7 @@ public sealed class PostgresSchemaProviderTests(PostgresContainerFixture fixture
             """);
 
         // Act
-        var table = (await Extractor().GetSchema([_schema])).Schemas[0].Tables[0];
+        var table = (await _sut.GetSchema([_schema])).Schemas[0].Tables[0];
 
         // Assert
         table.Indexes.ShouldBeNull();
