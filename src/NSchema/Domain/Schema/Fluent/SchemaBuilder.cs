@@ -1,6 +1,4 @@
-using NSchema.Domain.Schema;
-
-namespace NSchema.Desired.Fluent;
+namespace NSchema.Domain.Schema.Fluent;
 
 public sealed class SchemaBuilder
 {

@@ -1,4 +1,4 @@
-namespace NSchema.Validation;
+namespace NSchema.Policies;
 
 public sealed class PolicyViolationException(IReadOnlyList<PolicyError> errors)
     : Exception($"Policy violated with {errors.Count} error(s).")

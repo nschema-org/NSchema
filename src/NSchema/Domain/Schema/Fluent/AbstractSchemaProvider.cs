@@ -1,6 +1,6 @@
-using NSchema.Domain.Schema;
+using NSchema.Desired;
 
-namespace NSchema.Desired.Fluent;
+namespace NSchema.Domain.Schema.Fluent;
 
 public abstract class AbstractSchemaProvider : IDesiredSchemaProvider
 {

@@ -1,6 +1,6 @@
 using NSchema.Domain.Migration;
 
-namespace NSchema.Validation;
+namespace NSchema.Policies;
 
 public interface IActionPolicy
 {

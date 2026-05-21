@@ -1,5 +1,5 @@
-using NSchema.Desired.Fluent;
 using NSchema.Domain.Schema;
+using NSchema.Domain.Schema.Fluent;
 
 namespace NSchema.Sandbox;
 

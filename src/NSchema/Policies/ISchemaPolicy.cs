@@ -1,6 +1,6 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Validation;
+namespace NSchema.Policies;
 
 public interface ISchemaPolicy
 {

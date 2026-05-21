@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSchema.Domain.Migration;
-using NSchema.Validation;
+using NSchema.Policies;
 
 namespace NSchema.Migration;
 

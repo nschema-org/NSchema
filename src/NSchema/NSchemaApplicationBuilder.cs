@@ -8,7 +8,7 @@ using NSchema.Comparison;
 using NSchema.Desired;
 using NSchema.Hosting;
 using NSchema.Migration;
-using NSchema.Validation;
+using NSchema.Policies;
 
 namespace NSchema;
 
