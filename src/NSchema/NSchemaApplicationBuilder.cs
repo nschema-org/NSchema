@@ -8,6 +8,7 @@ using NSchema.Comparison;
 using NSchema.Desired;
 using NSchema.Hosting;
 using NSchema.Migration;
+using NSchema.Validation;
 
 namespace NSchema;
 
@@ -66,6 +67,13 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     {
         var schema = new ServiceDescriptor(typeof(IDesiredSchemaProvider), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(schema);
+        return this;
+    }
+
+    public NSchemaApplicationBuilder AddValidationPolicy<T>() where T : class, ISchemaValidationPolicy
+    {
+        var descriptor = new ServiceDescriptor(typeof(ISchemaValidationPolicy), typeof(T), ServiceLifetime.Singleton);
+        Services.TryAddEnumerable(descriptor);
         return this;
     }
 

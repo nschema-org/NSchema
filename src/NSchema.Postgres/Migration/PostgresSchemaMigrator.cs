@@ -60,7 +60,7 @@ public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logge
         DropIndex x => $"""DROP INDEX "{x.SchemaName}"."{x.IndexName}" """,
         RunPreDeploymentScript x => x.Script.Sql,
         RunPostDeploymentScript x => x.Script.Sql,
-        _ => throw new ArgumentOutOfRangeException(nameof(action), $"Unhandled action type: {instruction.GetType().Name}")
+        _ => throw new ArgumentOutOfRangeException(nameof(action), $"Unhandled action type: {action.GetType().Name}")
     };
 
     private static string BuildCreateTable(CreateTable x)
