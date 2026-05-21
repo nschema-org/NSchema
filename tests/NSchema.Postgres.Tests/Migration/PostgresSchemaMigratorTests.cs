@@ -437,7 +437,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
-        var options = new MigrationOptions() { DestructiveActionPolicy = DestructiveActionPolicy.Error};
+        var options = new MigrationOptions() { DestructiveActionPolicy = DestructiveActionPolicy.Error };
 
         // Act
         var act = () => _executor.Migrate(new MigrationPlan([new DropTable(_schema, "to_drop")]), options);
