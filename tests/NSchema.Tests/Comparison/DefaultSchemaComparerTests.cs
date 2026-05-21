@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Migration;
 using NSchema.Migration.Actions;
 using NSchema.Schema;
-using DbSchema = NSchema.Schema.Schema;
 
 namespace NSchema.Tests.Comparison;
 
@@ -13,7 +12,7 @@ public class DefaultSchemaComparerTests
     private static DatabaseSchema Empty() => new([]);
 
     private static DatabaseSchema WithSchema(string name, params Table[] tables) =>
-        new([new DbSchema(name, tables)]);
+        new([new SchemaDefinition(name, tables)]);
 
     private static Table SimpleTable(string name, params Column[] columns) =>
         new(name, columns.Length > 0 ? columns : [new Column("id", SqlType.Int)]);
@@ -82,7 +81,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app");
-        var desired = new DatabaseSchema([new DbSchema("application", [], PreviousName: "app")]);
+        var desired = new DatabaseSchema([new SchemaDefinition("application", [], PreviousName: "app")]);
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -398,7 +397,7 @@ public class DefaultSchemaComparerTests
         // Arrange
         var script = new Script("seed", "INSERT INTO app.config VALUES ('version', '1');");
         var desired = new DatabaseSchema(
-            [new DbSchema("app", [SimpleTable("config")])],
+            [new SchemaDefinition("app", [SimpleTable("config")])],
             PreDeploymentScripts: [],
             PostDeploymentScripts: [script]
         );

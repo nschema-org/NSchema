@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -61,10 +62,30 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// <inheritdoc />
     public IServiceCollection Services => _innerBuilder.Services;
 
-    public NSchemaApplicationBuilder AddDesiredSchema<T>() where T : IDesiredSchemaProvider
+    public NSchemaApplicationBuilder AddSchema<T>() where T : IDesiredSchemaProvider
     {
         var schema = new ServiceDescriptor(typeof(IDesiredSchemaProvider), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(schema);
+        return this;
+    }
+
+    public NSchemaApplicationBuilder AddSchemasFromAssembly(Assembly assembly)
+    {
+        var types = assembly.GetTypes()
+            .Where(t => t is { IsAbstract: false, IsInterface: false } && typeof(IDesiredSchemaProvider).IsAssignableFrom(t));
+        foreach (var type in types)
+        {
+            Services.TryAddEnumerable(new ServiceDescriptor(typeof(IDesiredSchemaProvider), type, ServiceLifetime.Singleton));
+        }
+        return this;
+    }
+
+    public NSchemaApplicationBuilder AddSchemasFromAssemblyContaining<T>()
+        => AddSchemasFromAssembly(typeof(T).Assembly);
+
+    public NSchemaApplicationBuilder WithDestructiveActionPolicy(DestructiveActionPolicy policy)
+    {
+        Services.Configure<MigrationOptions>(o => o.DestructiveActionPolicy = policy);
         return this;
     }
 

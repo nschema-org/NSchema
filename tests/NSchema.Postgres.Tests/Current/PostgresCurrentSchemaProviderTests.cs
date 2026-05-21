@@ -1,7 +1,7 @@
 using Npgsql;
-using NSchema.Schema;
 using NSchema.Postgres.Current;
 using NSchema.Postgres.Tests.Fixtures;
+using NSchema.Schema;
 
 namespace NSchema.Postgres.Tests.Current;
 

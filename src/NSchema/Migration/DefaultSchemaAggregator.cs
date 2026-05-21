@@ -1,5 +1,4 @@
 using NSchema.Schema;
-using DbSchema = NSchema.Schema.Schema;
 
 namespace NSchema.Migration;
 
@@ -21,7 +20,7 @@ public sealed class DefaultSchemaAggregator : ISchemaAggregator
         return new DatabaseSchema(mergedSchemas, preScripts, postScripts);
     }
 
-    private static DbSchema MergeSchemaGroup(IGrouping<string, DbSchema> group)
+    private static SchemaDefinition MergeSchemaGroup(IGrouping<string, SchemaDefinition> group)
     {
         var tables = new List<Table>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +42,6 @@ public sealed class DefaultSchemaAggregator : ISchemaAggregator
         // PreviousName: use whichever provider sets it (expect at most one).
         string? previousName = group.Select(s => s.PreviousName).FirstOrDefault(n => n is not null);
 
-        return new DbSchema(group.Key, tables, previousName);
+        return new SchemaDefinition(group.Key, tables, previousName);
     }
 }

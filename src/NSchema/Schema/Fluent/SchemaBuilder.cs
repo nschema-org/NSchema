@@ -17,6 +17,6 @@ public sealed class SchemaBuilder
 
     public SchemaBuilder WasPreviouslyNamed(string previousName) { _previousName = previousName; return this; }
 
-    internal Schema Build() =>
+    internal SchemaDefinition Build() =>
         new(_name, _tables.Select(t => t.Build()).ToList(), _previousName);
 }

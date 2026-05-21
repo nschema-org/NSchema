@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NSchema.Migration.Actions;
 using NSchema.Schema;
-using DbSchema = NSchema.Schema.Schema;
 
 namespace NSchema.Migration;
 
@@ -32,7 +31,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         return new MigrationPlan(actions);
     }
 
-    private void CompareSchemas(IReadOnlyList<DbSchema> current, IReadOnlyList<DbSchema> desired, List<SchemaAction> actions)
+    private void CompareSchemas(IReadOnlyList<SchemaDefinition> current, IReadOnlyList<SchemaDefinition> desired, List<SchemaAction> actions)
     {
         foreach (var currentSchema in current)
         {
