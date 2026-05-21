@@ -89,6 +89,12 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
+    public NSchemaApplicationBuilder WithDryRun(bool dryRun = true)
+    {
+        Services.Configure<MigrationOptions>(o => o.DryRun = dryRun);
+        return this;
+    }
+
     public NSchemaApplicationBuilder AddSchemaPolicy<T>() where T : class, ISchemaPolicy
     {
         var descriptor = new ServiceDescriptor(typeof(ISchemaPolicy), typeof(T), ServiceLifetime.Singleton);

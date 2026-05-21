@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSchema.Migration;
 
 namespace NSchema.Hosting;
@@ -12,13 +12,13 @@ namespace NSchema.Hosting;
 /// <param name="lifetime">The application lifetime.</param>
 /// <param name="runner">The service that will be used to run the pipeline.</param>
 /// <param name="migrator">The migrator, used to generate SQL in dry-run mode.</param>
-/// <param name="configuration">The host configuration, used to detect --dry-run.</param>
+/// <param name="options">The migration options.</param>
 internal class NSchemaHost(
     ILogger<NSchemaHost> logger,
+    IOptions<MigrationOptions> options,
     IHostApplicationLifetime lifetime,
     INSchemaRunner runner,
-    ISchemaMigrator migrator,
-    IConfiguration configuration
+    ISchemaMigrator migrator
 ) : BackgroundService
 {
     /// <inheritdoc />
@@ -26,7 +26,7 @@ internal class NSchemaHost(
     {
         try
         {
-            bool isDryRun = configuration["dry-run"] is not null;
+            bool isDryRun = options.Value.DryRun;
 
             if (isDryRun)
             {
