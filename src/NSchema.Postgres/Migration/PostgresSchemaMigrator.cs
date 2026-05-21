@@ -36,6 +36,7 @@ public sealed class PostgresSchemaMigrator(NpgsqlDataSource dataSource) : ISchem
         AlterColumnType x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" TYPE {ToPostgresType(x.NewType)}""",
         AlterColumnNullability { IsNullable: false } x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" SET NOT NULL""",
         AlterColumnNullability x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP NOT NULL""",
+        AlterIdentitySequence x => BuildAlterIdentitySequence(x),
         SetColumnDefault { NewDefault: null } x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" DROP DEFAULT""",
         SetColumnDefault x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" SET DEFAULT {x.NewDefault}""",
         AddPrimaryKey x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ADD CONSTRAINT "{x.PrimaryKey.Name}" PRIMARY KEY ({ColList(x.PrimaryKey.ColumnNames)})""",
@@ -56,6 +57,10 @@ public sealed class PostgresSchemaMigrator(NpgsqlDataSource dataSource) : ISchem
         SetIndexComment x => x.NewComment is null
             ? $"""COMMENT ON INDEX "{x.SchemaName}"."{x.IndexName}" IS NULL"""
             : $"""COMMENT ON INDEX "{x.SchemaName}"."{x.IndexName}" IS $comment${x.NewComment}$comment$""",
+        GrantSchemaUsage x => $"""GRANT USAGE ON SCHEMA "{x.SchemaName}" TO {x.Role}""",
+        RevokeSchemaUsage x => $"""REVOKE USAGE ON SCHEMA "{x.SchemaName}" FROM {x.Role}""",
+        GrantTablePrivileges x => $"""GRANT {PrivilegeList(x.Privileges)} ON TABLE "{x.SchemaName}"."{x.TableName}" TO {x.Role}""",
+        RevokeTablePrivileges x => $"""REVOKE ALL PRIVILEGES ON TABLE "{x.SchemaName}"."{x.TableName}" FROM {x.Role}""",
         RunPreDeploymentScript x => x.Script.Sql,
         RunPostDeploymentScript x => x.Script.Sql,
         _ => throw new ArgumentOutOfRangeException(nameof(action), $"Unhandled action type: {action.GetType().Name}")
@@ -83,20 +88,57 @@ public sealed class PostgresSchemaMigrator(NpgsqlDataSource dataSource) : ISchem
         return $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ADD CONSTRAINT "{fk.Name}" FOREIGN KEY ({ColList(fk.ColumnNames)}) REFERENCES "{fk.ReferencedSchema}"."{fk.ReferencedTable}" ({ColList(fk.ReferencedColumnNames)}) ON DELETE {onDelete} ON UPDATE {onUpdate}""";
     }
 
-    private static string BuildCreateIndex(CreateIndex x) =>
-        $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
+    private static string BuildCreateIndex(CreateIndex x)
+    {
+        var sql = $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
+        return x.Index.Predicate is { } pred ? $"{sql} WHERE {pred}" : sql;
+    }
 
     private static string BuildColumnDef(Column col)
     {
         string type = ToPostgresType(col.Type);
         string nullable = col.IsNullable ? "" : " NOT NULL";
-        string identity = col.IsIdentity ? " GENERATED ALWAYS AS IDENTITY" : "";
+        string identity = col.IsIdentity ? BuildIdentityClause(col.IdentityOptions) : "";
         string def = col.DefaultExpression is { } d && !col.IsIdentity ? $" DEFAULT {d}" : "";
         return $"\"{col.Name}\" {type}{nullable}{identity}{def}";
     }
 
+    private static string BuildIdentityClause(IdentityOptions? options)
+    {
+        if (options is null)
+            return " GENERATED ALWAYS AS IDENTITY";
+        var parts = new List<string>();
+        if (options.MinValue.HasValue) parts.Add($"MINVALUE {options.MinValue}");
+        if (options.StartWith.HasValue) parts.Add($"START WITH {options.StartWith}");
+        if (options.IncrementBy.HasValue) parts.Add($"INCREMENT BY {options.IncrementBy}");
+        return parts.Count > 0
+            ? $" GENERATED ALWAYS AS IDENTITY ({string.Join(" ", parts)})"
+            : " GENERATED ALWAYS AS IDENTITY";
+    }
+
+    private static string BuildAlterIdentitySequence(AlterIdentitySequence x)
+    {
+        var opts = x.NewOptions;
+        var parts = new List<string>();
+        if (opts?.MinValue.HasValue == true) parts.Add($"SET MINVALUE {opts.MinValue}");
+        if (opts?.StartWith.HasValue == true) parts.Add($"SET START {opts.StartWith}");
+        if (opts?.IncrementBy.HasValue == true) parts.Add($"SET INCREMENT BY {opts.IncrementBy}");
+        parts.Add("RESTART");
+        return $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" {string.Join(" ", parts)}""";
+    }
+
     private static string ColList(IReadOnlyList<string> cols) =>
         string.Join(", ", cols.Select(c => $"\"{c}\""));
+
+    private static string PrivilegeList(TablePrivilege privileges)
+    {
+        var parts = new List<string>();
+        if (privileges.HasFlag(TablePrivilege.Select)) parts.Add("SELECT");
+        if (privileges.HasFlag(TablePrivilege.Insert)) parts.Add("INSERT");
+        if (privileges.HasFlag(TablePrivilege.Update)) parts.Add("UPDATE");
+        if (privileges.HasFlag(TablePrivilege.Delete)) parts.Add("DELETE");
+        return parts.Count > 0 ? string.Join(", ", parts) : "ALL PRIVILEGES";
+    }
 
     // ── Type mapping ──────────────────────────────────────────────────────────
 

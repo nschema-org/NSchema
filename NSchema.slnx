@@ -15,4 +15,5 @@
     <File Path="CLAUDE.md" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Project Path="../Abodio/database/src/Abodio.Database/Abodio.Database.csproj" />
 </Solution>

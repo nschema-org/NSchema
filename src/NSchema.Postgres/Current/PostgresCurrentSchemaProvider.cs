@@ -20,9 +20,12 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         var tableComments = await QueryTableComments(conn, schemas, cancellationToken);
         var columnComments = await QueryColumnComments(conn, schemas, cancellationToken);
         var indexComments = await QueryIndexComments(conn, schemas, cancellationToken);
+        var schemaGrants = await QuerySchemaGrants(conn, schemas, cancellationToken);
+        var tableGrants = await QueryTableGrants(conn, schemas, cancellationToken);
 
         return Build(schemas, tables, columns, primaryKeys, foreignKeys, indexes,
-                     schemaComments, tableComments, columnComments, indexComments);
+                     schemaComments, tableComments, columnComments, indexComments,
+                     schemaGrants, tableGrants);
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -53,20 +56,35 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             SELECT
-                table_schema,
-                table_name,
-                column_name,
-                data_type,
-                udt_name,
-                character_maximum_length,
-                numeric_precision,
-                numeric_scale,
-                is_nullable,
-                column_default,
-                is_identity
-            FROM information_schema.columns
-            WHERE table_schema = ANY(@schemas)
-            ORDER BY table_schema, table_name, ordinal_position
+                c.table_schema,
+                c.table_name,
+                c.column_name,
+                c.data_type,
+                c.udt_name,
+                c.character_maximum_length,
+                c.numeric_precision,
+                c.numeric_scale,
+                c.is_nullable,
+                c.column_default,
+                c.is_identity,
+                seq.seqstart   AS identity_start,
+                seq.seqmin     AS identity_min_value,
+                seq.seqincrement AS identity_increment
+            FROM information_schema.columns c
+            LEFT JOIN pg_class        t  ON t.relname   = c.table_name
+                                        AND t.relkind   = 'r'
+            LEFT JOIN pg_namespace    n  ON n.oid        = t.relnamespace
+                                        AND n.nspname   = c.table_schema
+            LEFT JOIN pg_attribute    a  ON a.attrelid  = t.oid
+                                        AND a.attname   = c.column_name
+            LEFT JOIN pg_depend       d  ON d.refobjid  = t.oid
+                                        AND d.refobjsubid = a.attnum
+                                        AND d.deptype   = 'i'
+            LEFT JOIN pg_class        sc ON sc.oid       = d.objid
+                                        AND sc.relkind  = 'S'
+            LEFT JOIN pg_sequence     seq ON seq.seqrelid = sc.oid
+            WHERE c.table_schema = ANY(@schemas)
+            ORDER BY c.table_schema, c.table_name, c.ordinal_position
             """;
         cmd.Parameters.AddWithValue("schemas", schemes);
 
@@ -84,7 +102,10 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
                 NumericScale: reader.IsDBNull(7) ? null : reader.GetInt32(7),
                 IsNullable: reader.GetString(8) == "YES",
                 DefaultExpression: reader.IsDBNull(9) ? null : reader.GetString(9),
-                IsIdentity: reader.GetString(10) == "YES"
+                IsIdentity: reader.GetString(10) == "YES",
+                IdentityStart: reader.IsDBNull(11) ? null : reader.GetInt64(11),
+                IdentityMinValue: reader.IsDBNull(12) ? null : reader.GetInt64(12),
+                IdentityIncrement: reader.IsDBNull(13) ? null : reader.GetInt64(13)
             ));
         }
 
@@ -188,7 +209,8 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
                 t.relname  AS table_name,
                 i.relname  AS index_name,
                 ix.indisunique AS is_unique,
-                array_agg(a.attname ORDER BY k.ordinality) AS column_names
+                array_agg(a.attname ORDER BY k.ordinality) AS column_names,
+                pg_get_expr(ix.indpred, ix.indrelid) AS predicate
             FROM pg_index ix
             JOIN pg_class     t ON t.oid = ix.indrelid
             JOIN pg_class     i ON i.oid = ix.indexrelid
@@ -198,7 +220,7 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
             WHERE n.nspname = ANY(@schemas)
             AND NOT ix.indisprimary
             AND k.attnum > 0
-            GROUP BY n.nspname, t.relname, i.relname, ix.indisunique
+            GROUP BY n.nspname, t.relname, i.relname, ix.indisunique, ix.indpred
             ORDER BY n.nspname, t.relname, i.relname
             """;
         cmd.Parameters.AddWithValue("schemas", schemes);
@@ -211,7 +233,8 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
                 TableName: reader.GetString(1),
                 IndexName: reader.GetString(2),
                 IsUnique: reader.GetBoolean(3),
-                ColumnNames: reader.GetFieldValue<string[]>(4)
+                ColumnNames: reader.GetFieldValue<string[]>(4),
+                Predicate: reader.IsDBNull(5) ? null : reader.GetString(5)
             ));
         }
 
@@ -310,6 +333,45 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         return result;
     }
 
+    private async Task<List<SchemaGrantRow>> QuerySchemaGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var rows = new List<SchemaGrantRow>();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.nspname AS schema_name,
+                   acl.grantee::regrole::text AS role
+            FROM pg_namespace n
+            CROSS JOIN LATERAL aclexplode(n.nspacl) AS acl(grantor, grantee, privilege_type, is_grantable)
+            WHERE n.nspname = ANY(@schemas)
+            AND acl.privilege_type = 'USAGE'
+            AND acl.grantee != 0
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            rows.Add(new SchemaGrantRow(reader.GetString(0), reader.GetString(1)));
+        return rows;
+    }
+
+    private async Task<List<TableGrantRow>> QueryTableGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var rows = new List<TableGrantRow>();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT table_schema, table_name, grantee, privilege_type
+            FROM information_schema.role_table_grants
+            WHERE table_schema = ANY(@schemas)
+            AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+            AND grantee != 'PUBLIC'
+            ORDER BY table_schema, table_name, grantee, privilege_type
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            rows.Add(new TableGrantRow(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+        return rows;
+    }
+
     // ── Model assembly ────────────────────────────────────────────────────────
 
     private DatabaseSchema Build(
@@ -322,20 +384,29 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         Dictionary<string, string?> schemaComments,
         Dictionary<(string, string), string?> tableComments,
         Dictionary<(string, string, string), string?> columnComments,
-        Dictionary<(string, string), string?> indexComments)
+        Dictionary<(string, string), string?> indexComments,
+        List<SchemaGrantRow> schemaGrants,
+        List<TableGrantRow> tableGrants)
     {
         var bySchema = tables
             .GroupBy(t => t.Schema)
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes, tableComments, columnComments, indexComments)).ToList());
+                g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes, tableComments, columnComments, indexComments, tableGrants)).ToList());
 
-        // Ensure every requested schema name appears in the result, even when it has no tables.
         var dbSchemas = schemas
-            .Select(name => new SchemaDefinition(
-                name,
-                bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : [],
-                Comment: schemaComments.TryGetValue(name, out var sc) ? sc : null))
+            .Select(name =>
+            {
+                var grants = schemaGrants
+                    .Where(g => g.SchemaName == name)
+                    .Select(g => new SchemaGrant(g.Role))
+                    .ToList();
+                return new SchemaDefinition(
+                    name,
+                    bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : [],
+                    Comment: schemaComments.TryGetValue(name, out var sc) ? sc : null,
+                    Grants: grants.Count > 0 ? grants : null);
+            })
             .ToList();
 
         return new DatabaseSchema(dbSchemas);
@@ -349,7 +420,8 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         List<IndexRow> allIndexes,
         Dictionary<(string, string), string?> tableComments,
         Dictionary<(string, string, string), string?> columnComments,
-        Dictionary<(string, string), string?> indexComments)
+        Dictionary<(string, string), string?> indexComments,
+        List<TableGrantRow> allTableGrants)
     {
         var cols = allColumns
             .Where(c => c.TableSchema == tableRow.Schema && c.TableName == tableRow.Name)
@@ -371,10 +443,17 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
             .Where(i => i.SchemaName == tableRow.Schema && i.TableName == tableRow.Name)
             .Select(i => new TableIndex(
                 i.IndexName, i.ColumnNames, i.IsUnique,
-                indexComments.TryGetValue((tableRow.Schema, i.IndexName), out var ic) ? ic : null))
+                indexComments.TryGetValue((tableRow.Schema, i.IndexName), out var ic) ? ic : null,
+                i.Predicate))
             .ToList();
 
         tableComments.TryGetValue((tableRow.Schema, tableRow.Name), out var tableComment);
+
+        var grants = allTableGrants
+            .Where(g => g.SchemaName == tableRow.Schema && g.TableName == tableRow.Name)
+            .GroupBy(g => g.Role)
+            .Select(g => new TableGrant(g.Key, ToTablePrivilege(g.Select(r => r.Privilege))))
+            .ToList();
 
         return new Table(
             tableRow.Name,
@@ -382,7 +461,8 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
             pk,
             fks.Count > 0 ? fks : null,
             idxs.Count > 0 ? idxs : null,
-            Comment: tableComment);
+            Comment: tableComment,
+            Grants: grants.Count > 0 ? grants : null);
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────
@@ -391,13 +471,17 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
     {
         var type = MapSqlType(row.DataType, row.UdtName, row.MaxLength, row.NumericPrecision, row.NumericScale);
         columnComments.TryGetValue((row.TableSchema, row.TableName, row.ColumnName), out var comment);
+        IdentityOptions? identityOptions = row.IsIdentity
+            ? new IdentityOptions(row.IdentityStart, row.IdentityMinValue, row.IdentityIncrement)
+            : null;
         return new Column(
             row.ColumnName,
             type,
             IsNullable: row.IsNullable,
             IsIdentity: row.IsIdentity,
             DefaultExpression: row.IsIdentity ? null : row.DefaultExpression,
-            Comment: comment);
+            Comment: comment,
+            IdentityOptions: identityOptions);
     }
 
     private static SqlType MapSqlType(
@@ -422,6 +506,21 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
             "bytea" => SqlType.VarBinary(),
             _ => SqlType.Custom(udtName),
         };
+
+    private static TablePrivilege ToTablePrivilege(IEnumerable<string> privileges)
+    {
+        var result = TablePrivilege.None;
+        foreach (var p in privileges)
+            result |= p switch
+            {
+                "SELECT" => TablePrivilege.Select,
+                "INSERT" => TablePrivilege.Insert,
+                "UPDATE" => TablePrivilege.Update,
+                "DELETE" => TablePrivilege.Delete,
+                _ => TablePrivilege.None,
+            };
+        return result;
+    }
 
     private static ForeignKey MapForeignKey(ForeignKeyRow row) =>
         new(row.ConstraintName,

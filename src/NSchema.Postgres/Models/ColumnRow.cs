@@ -11,4 +11,7 @@ internal sealed record ColumnRow(
     int? NumericScale,
     bool IsNullable,
     string? DefaultExpression,
-    bool IsIdentity);
+    bool IsIdentity,
+    long? IdentityStart = null,
+    long? IdentityMinValue = null,
+    long? IdentityIncrement = null);

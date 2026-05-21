@@ -6,5 +6,6 @@ public record SchemaDefinition(
     string? PreviousName = null,
     bool IsPartial = false,
     IReadOnlyList<string>? DroppedTables = null,
-    string? Comment = null
+    string? Comment = null,
+    IReadOnlyList<SchemaGrant>? Grants = null
 );

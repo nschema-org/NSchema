@@ -6,6 +6,7 @@ public sealed class TableBuilder
     private readonly List<ColumnBuilder> _columns = [];
     private readonly List<ForeignKeyBuilder> _foreignKeys = [];
     private readonly List<IndexBuilder> _indexes = [];
+    private readonly List<TableGrant> _grants = [];
     private PrimaryKey? _primaryKey;
     private string? _previousName;
     private string? _comment;
@@ -41,6 +42,7 @@ public sealed class TableBuilder
 
     public TableBuilder Comment(string? comment) { _comment = comment; return this; }
     public TableBuilder WasPreviouslyNamed(string previousName) { _previousName = previousName; return this; }
+    public TableBuilder Grant(string role, TablePrivilege privileges) { _grants.Add(new TableGrant(role, privileges)); return this; }
 
     internal Table Build() =>
         new(_name,
@@ -49,5 +51,6 @@ public sealed class TableBuilder
             _foreignKeys.Count > 0 ? _foreignKeys.Select(f => f.Build()).ToList() : null,
             _indexes.Count > 0 ? _indexes.Select(i => i.Build()).ToList() : null,
             _previousName,
-            _comment);
+            _comment,
+            _grants.Count > 0 ? _grants : null);
 }

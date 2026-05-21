@@ -6,6 +6,7 @@ public sealed class IndexBuilder
     private readonly IReadOnlyList<string> _columnNames;
     private bool _isUnique;
     private string? _comment;
+    private string? _predicate;
 
     internal IndexBuilder(string name, IReadOnlyList<string> columnNames)
     {
@@ -15,6 +16,7 @@ public sealed class IndexBuilder
 
     public IndexBuilder Unique() { _isUnique = true; return this; }
     public IndexBuilder Comment(string? comment) { _comment = comment; return this; }
+    public IndexBuilder Where(string predicate) { _predicate = predicate; return this; }
 
-    internal TableIndex Build() => new(_name, _columnNames, _isUnique, _comment);
+    internal TableIndex Build() => new(_name, _columnNames, _isUnique, _comment, _predicate);
 }

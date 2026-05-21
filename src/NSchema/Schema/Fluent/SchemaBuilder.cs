@@ -5,6 +5,7 @@ public sealed class SchemaBuilder
     private readonly string _name;
     private readonly List<TableBuilder> _tables = [];
     private readonly List<string> _droppedTables = [];
+    private readonly List<SchemaGrant> _grants = [];
     private string? _previousName;
     private bool _isPartial;
     private string? _comment;
@@ -20,6 +21,7 @@ public sealed class SchemaBuilder
 
     public SchemaBuilder Comment(string? comment) { _comment = comment; return this; }
     public SchemaBuilder WasPreviouslyNamed(string previousName) { _previousName = previousName; return this; }
+    public SchemaBuilder Grant(string role) { _grants.Add(new SchemaGrant(role)); return this; }
 
     public SchemaBuilder AsPartial() { _isPartial = true; return this; }
 
@@ -27,5 +29,6 @@ public sealed class SchemaBuilder
 
     internal SchemaDefinition Build() =>
         new(_name, _tables.Select(t => t.Build()).ToList(), _previousName, _isPartial,
-            _droppedTables.Count > 0 ? _droppedTables : null, _comment);
+            _droppedTables.Count > 0 ? _droppedTables : null, _comment,
+            _grants.Count > 0 ? _grants : null);
 }

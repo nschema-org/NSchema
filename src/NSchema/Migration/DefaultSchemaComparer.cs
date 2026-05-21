@@ -61,6 +61,10 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                 {
                     actions.Add(new SetSchemaComment(desiredSchema.Name, null, desiredSchema.Comment));
                 }
+                foreach (var grant in desiredSchema.Grants ?? [])
+                {
+                    actions.Add(new GrantSchemaUsage(desiredSchema.Name, grant.Role));
+                }
             }
             else
             {
@@ -81,6 +85,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                     actions.Add(new SetSchemaComment(desiredSchema.Name, matchingCurrent.Comment, desiredSchema.Comment));
                 }
 
+                CompareSchemaGrants(desiredSchema.Name, matchingCurrent.Grants ?? [], desiredSchema.Grants ?? [], actions);
                 CompareTables(desiredSchema.Name, matchingCurrent.Tables, desiredSchema, actions);
             }
         }
@@ -142,6 +147,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                 ComparePrimaryKey(schemaName, desiredTable.Name, matchingCurrent.PrimaryKey, desiredTable.PrimaryKey, actions);
                 CompareForeignKeys(schemaName, desiredTable.Name, matchingCurrent.ForeignKeys ?? [], desiredTable.ForeignKeys ?? [], actions);
                 CompareIndexes(schemaName, desiredTable.Name, matchingCurrent.Indexes ?? [], desiredTable.Indexes ?? [], actions);
+                CompareTableGrants(schemaName, desiredTable.Name, matchingCurrent.Grants ?? [], desiredTable.Grants ?? [], actions);
             }
         }
     }
@@ -221,6 +227,13 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
             {
                 logger.LogDebug("Column '{Schema}.{Table}.{Column}' comment changed", schemaName, tableName, desiredCol.Name);
                 actions.Add(new SetColumnComment(schemaName, tableName, desiredCol.Name, matchingCurrent.Comment, desiredCol.Comment));
+            }
+
+            if (matchingCurrent.IsIdentity && desiredCol.IsIdentity
+                && matchingCurrent.IdentityOptions != desiredCol.IdentityOptions)
+            {
+                logger.LogDebug("Column '{Schema}.{Table}.{Column}' identity sequence options changed", schemaName, tableName, desiredCol.Name);
+                actions.Add(new AlterIdentitySequence(schemaName, tableName, desiredCol.Name, matchingCurrent.IdentityOptions, desiredCol.IdentityOptions));
             }
         }
     }
@@ -328,6 +341,44 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
+    private void CompareSchemaGrants(string schemaName, IReadOnlyList<SchemaGrant> current, IReadOnlyList<SchemaGrant> desired, List<SchemaAction> actions)
+    {
+        foreach (var g in current.Where(c => !desired.Any(d => d.Role == c.Role)))
+        {
+            logger.LogDebug("Revoking USAGE on schema '{Schema}' from '{Role}'", schemaName, g.Role);
+            actions.Add(new RevokeSchemaUsage(schemaName, g.Role));
+        }
+        foreach (var g in desired.Where(d => !current.Any(c => c.Role == d.Role)))
+        {
+            logger.LogDebug("Granting USAGE on schema '{Schema}' to '{Role}'", schemaName, g.Role);
+            actions.Add(new GrantSchemaUsage(schemaName, g.Role));
+        }
+    }
+
+    private void CompareTableGrants(string schemaName, string tableName, IReadOnlyList<TableGrant> current, IReadOnlyList<TableGrant> desired, List<SchemaAction> actions)
+    {
+        foreach (var g in current)
+        {
+            var matching = desired.FirstOrDefault(d => d.Role == g.Role);
+            if (matching is null)
+            {
+                logger.LogDebug("Revoking all privileges on '{Schema}.{Table}' from '{Role}'", schemaName, tableName, g.Role);
+                actions.Add(new RevokeTablePrivileges(schemaName, tableName, g.Role, g.Privileges));
+            }
+            else if (matching.Privileges != g.Privileges)
+            {
+                logger.LogDebug("Updating privileges on '{Schema}.{Table}' for '{Role}'", schemaName, tableName, g.Role);
+                actions.Add(new RevokeTablePrivileges(schemaName, tableName, g.Role, g.Privileges));
+                actions.Add(new GrantTablePrivileges(schemaName, tableName, g.Role, matching.Privileges));
+            }
+        }
+        foreach (var g in desired.Where(d => !current.Any(c => c.Role == d.Role)))
+        {
+            logger.LogDebug("Granting privileges on '{Schema}.{Table}' to '{Role}'", schemaName, tableName, g.Role);
+            actions.Add(new GrantTablePrivileges(schemaName, tableName, g.Role, g.Privileges));
+        }
+    }
+
     private void AddNewTable(string schemaName, Table table, List<SchemaAction> actions)
     {
         logger.LogDebug("Creating table '{Schema}.{Table}'", schemaName, table.Name);
@@ -352,5 +403,11 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
 
         foreach (var col in table.Columns.Where(c => c.Comment is not null))
             actions.Add(new SetColumnComment(schemaName, table.Name, col.Name, null, col.Comment));
+
+        foreach (var grant in table.Grants ?? [])
+        {
+            logger.LogDebug("Granting privileges on new table '{Schema}.{Table}' to '{Role}'", schemaName, table.Name, grant.Role);
+            actions.Add(new GrantTablePrivileges(schemaName, table.Name, grant.Role, grant.Privileges));
+        }
     }
 }

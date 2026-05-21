@@ -7,5 +7,6 @@ public record Table(
     IReadOnlyList<ForeignKey>? ForeignKeys = null,
     IReadOnlyList<TableIndex>? Indexes = null,
     string? PreviousName = null,
-    string? Comment = null
+    string? Comment = null,
+    IReadOnlyList<TableGrant>? Grants = null
 );

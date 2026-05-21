@@ -5,4 +5,5 @@ internal sealed record IndexRow(
     string TableName,
     string IndexName,
     bool IsUnique,
-    string[] ColumnNames);
+    string[] ColumnNames,
+    string? Predicate);
