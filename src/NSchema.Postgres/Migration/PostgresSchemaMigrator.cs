@@ -9,17 +9,15 @@ namespace NSchema.Postgres.Migration;
 
 public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logger, NpgsqlDataSource dataSource) : ISchemaMigrator
 {
-    public async Task Migrate(MigrationPlan plan, MigrationOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task Migrate(MigrationPlan plan, MigrationOptions options, CancellationToken cancellationToken = default)
     {
-        var policy = options?.DestructiveActionPolicy ?? DestructiveActionPolicy.Error;
-
         await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
         foreach (var instruction in plan.Instructions)
         {
             if (instruction.IsDestructive)
             {
-                switch (policy)
+                switch (options.DestructiveActionPolicy)
                 {
                     case DestructiveActionPolicy.Error:
                         throw new DestructiveActionException(instruction);

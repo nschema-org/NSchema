@@ -97,7 +97,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
             [new Column("id", SqlType.BigInt, IsNullable: false)]);
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new CreateTable(_schema, table)]));
+        await _executor.Migrate(new MigrationPlan([new CreateTable(_schema, table)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -114,7 +114,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
             PrimaryKey: new PrimaryKey("pk_orders", ["id"]));
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new CreateTable(_schema, table)]));
+        await _executor.Migrate(new MigrationPlan([new CreateTable(_schema, table)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -144,7 +144,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."old_name" (id integer)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new RenameTable(_schema, "old_name", "new_name")]));
+        await _executor.Migrate(new MigrationPlan([new RenameTable(_schema, "old_name", "new_name")]), Allow);
 
         // Assert
         var oldExists = await ScalarBool(
@@ -165,7 +165,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var column = new Column("name", SqlType.VarChar(100), IsNullable: false);
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new AddColumn(_schema, "items", column)]));
+        await _executor.Migrate(new MigrationPlan([new AddColumn(_schema, "items", column)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -195,7 +195,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, old_col text)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new RenameColumn(_schema, "items", "old_col", "new_col")]));
+        await _executor.Migrate(new MigrationPlan([new RenameColumn(_schema, "items", "old_col", "new_col")]), Allow);
 
         // Assert
         var oldExists = await ScalarBool(
@@ -258,7 +258,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", null, "0")]));
+        await _executor.Migrate(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", null, "0")]), Allow);
 
         // Assert
         var hasDefault = await ScalarBool(
@@ -273,7 +273,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer DEFAULT 0)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", "0", null)]));
+        await _executor.Migrate(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", "0", null)]), Allow);
 
         // Assert
         var hasDefault = await ScalarBool(
@@ -290,7 +290,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new AddPrimaryKey(_schema, "items", new PrimaryKey("pk_items", ["id"]))]));
+        await _executor.Migrate(new MigrationPlan([new AddPrimaryKey(_schema, "items", new PrimaryKey("pk_items", ["id"]))]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -305,7 +305,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL, CONSTRAINT pk_items PRIMARY KEY (id))""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new DropPrimaryKey(_schema, "items", "pk_items")]));
+        await _executor.Migrate(new MigrationPlan([new DropPrimaryKey(_schema, "items", "pk_items")]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -324,7 +324,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var fk = new ForeignKey("fk_children_parent", ["parent_id"], _schema, "parents", ["id"]);
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new AddForeignKey(_schema, "children", fk)]));
+        await _executor.Migrate(new MigrationPlan([new AddForeignKey(_schema, "children", fk)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -340,7 +340,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE TABLE "{_schema}"."children" (id integer, parent_id integer, CONSTRAINT fk_children_parent FOREIGN KEY (parent_id) REFERENCES "{_schema}"."parents" (id))""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new DropForeignKey(_schema, "children", "fk_children_parent")]));
+        await _executor.Migrate(new MigrationPlan([new DropForeignKey(_schema, "children", "fk_children_parent")]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -358,7 +358,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var index = new TableIndex("idx_items_name", ["name"]);
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new CreateIndex(_schema, "items", index)]));
+        await _executor.Migrate(new MigrationPlan([new CreateIndex(_schema, "items", index)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -374,7 +374,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var index = new TableIndex("idx_items_code_unique", ["code"], IsUnique: true);
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new CreateIndex(_schema, "items", index)]));
+        await _executor.Migrate(new MigrationPlan([new CreateIndex(_schema, "items", index)]), Allow);
 
         // Assert
         var isUnique = await ScalarBool(
@@ -390,7 +390,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         await Exec($"""CREATE INDEX "idx_items_name" ON "{_schema}"."items" (name)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new DropIndex(_schema, "items", "idx_items_name")]));
+        await _executor.Migrate(new MigrationPlan([new DropIndex(_schema, "items", "idx_items_name")]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -407,7 +407,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var script = new Script("seed", $"""CREATE TABLE "{_schema}"."seeded" (id integer)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new RunPreDeploymentScript(script)]));
+        await _executor.Migrate(new MigrationPlan([new RunPreDeploymentScript(script)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
@@ -422,7 +422,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
         var script = new Script("seed", $"""CREATE TABLE "{_schema}"."seeded_post" (id integer)""");
 
         // Act
-        await _executor.Migrate(new MigrationPlan([new RunPostDeploymentScript(script)]));
+        await _executor.Migrate(new MigrationPlan([new RunPostDeploymentScript(script)]), Allow);
 
         // Assert
         var exists = await ScalarBool(
