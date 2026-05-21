@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSchema.Domain.Migration;
 using NSchema.Domain.Migration.Actions;
@@ -7,26 +6,14 @@ using NSchema.Migration;
 
 namespace NSchema.Postgres.Migration;
 
-public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logger, NpgsqlDataSource dataSource) : ISchemaMigrator
+public sealed class PostgresSchemaMigrator(NpgsqlDataSource dataSource) : ISchemaMigrator
 {
-    public async Task Migrate(MigrationPlan plan, MigrationOptions options, CancellationToken cancellationToken = default)
+    public async Task Migrate(MigrationPlan plan, CancellationToken cancellationToken = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
         foreach (var action in plan.Actions)
         {
-            if (action.IsDestructive)
-            {
-                switch (options.DestructiveActionPolicy)
-                {
-                    case DestructiveActionPolicy.Error:
-                        throw new DestructiveActionException(action);
-                    case DestructiveActionPolicy.Warn:
-                        logger.LogWarning("Executing destructive action: {ActionType}", action.GetType().Name);
-                        break;
-                }
-            }
-
             string sql = GenerateSql(action);
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;

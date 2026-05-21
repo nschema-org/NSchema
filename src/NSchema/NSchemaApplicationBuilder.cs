@@ -77,6 +77,13 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
+    public NSchemaApplicationBuilder AddMigrationActionPolicy<T>() where T : class, IMigrationActionPolicy
+    {
+        var descriptor = new ServiceDescriptor(typeof(IMigrationActionPolicy), typeof(T), ServiceLifetime.Singleton);
+        Services.TryAddEnumerable(descriptor);
+        return this;
+    }
+
     /// <summary>
     /// Builds the <see cref="NSchemaApplication" />.
     /// </summary>
@@ -101,6 +108,9 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<ISchemaComparer, DefaultSchemaComparer>();
         services.TryAddSingleton<ISchemaAggregator, DefaultSchemaAggregator>();
         services.TryAddSingleton<INSchemaRunner, DefaultNSchemaRunner>();
+
+        services.TryAddEnumerable(
+            new ServiceDescriptor(typeof(IMigrationActionPolicy), typeof(DestructiveActionPolicyEnforcer), ServiceLifetime.Singleton));
 
         // This is the service responsible for running the migration.
         services.AddHostedService<NSchemaHost>();
