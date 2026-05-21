@@ -1,9 +1,9 @@
-using NSchema.Domain.Migration.Instructions;
+using NSchema.Domain.Migration.Actions;
 
 namespace NSchema.Migration;
 
-public sealed class DestructiveActionException(SchemaInstruction instruction)
-    : Exception($"Destructive instruction blocked by policy: {instruction.GetType().Name}")
+public sealed class DestructiveActionException(SchemaAction action)
+    : Exception($"Destructive action blocked by policy: {action.GetType().Name}")
 {
-    public SchemaInstruction Instruction { get; } = instruction;
+    public SchemaAction Action { get; } = action;
 }

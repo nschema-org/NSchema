@@ -1,10 +1,10 @@
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record DropForeignKey(
     string SchemaName,
     string TableName,
     string ForeignKeyName
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => false;
 }

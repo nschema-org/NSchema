@@ -1,12 +1,12 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record AddForeignKey(
     string SchemaName,
     string TableName,
     ForeignKey ForeignKey
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => false;
 }

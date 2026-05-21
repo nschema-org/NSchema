@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using NSchema.Domain.Migration;
-using NSchema.Domain.Migration.Instructions;
+using NSchema.Domain.Migration.Actions;
 using NSchema.Domain.Schema;
 using NSchema.Migration;
 using NSchema.Postgres.Migration;
@@ -433,7 +433,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
     // ── Destructive action policy ─────────────────────────────────────────────
 
     [Fact]
-    public async Task Execute_WhenPolicyIsError_ThrowsOnDestructiveInstruction()
+    public async Task Execute_WhenPolicyIsError_ThrowsOnDestructiveAction()
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
@@ -444,11 +444,11 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
 
         // Assert
         var ex = await act.ShouldThrowAsync<DestructiveActionException>();
-        ex.Instruction.ShouldBeOfType<DropTable>();
+        ex.Action.ShouldBeOfType<DropTable>();
     }
 
     [Fact]
-    public async Task Execute_WhenPolicyIsAllow_ExecutesDestructiveInstruction()
+    public async Task Execute_WhenPolicyIsAllow_ExecutesDestructiveAction()
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");
@@ -464,7 +464,7 @@ public sealed class PostgresSchemaMigratorTests(PostgresContainerFixture fixture
     }
 
     [Fact]
-    public async Task Execute_WhenPolicyIsWarn_ExecutesDestructiveInstruction()
+    public async Task Execute_WhenPolicyIsWarn_ExecutesDestructiveAction()
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."to_drop" (id integer)""");

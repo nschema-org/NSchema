@@ -1,4 +1,4 @@
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record SetColumnDefault(
     string SchemaName,
@@ -6,7 +6,7 @@ public sealed record SetColumnDefault(
     string ColumnName,
     string? OldDefault,
     string? NewDefault
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => false;
 }

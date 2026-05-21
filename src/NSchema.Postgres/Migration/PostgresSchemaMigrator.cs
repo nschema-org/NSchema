@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSchema.Domain.Migration;
-using NSchema.Domain.Migration.Instructions;
+using NSchema.Domain.Migration.Actions;
 using NSchema.Domain.Schema;
 using NSchema.Migration;
 
@@ -13,21 +13,21 @@ public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logge
     {
         await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);
 
-        foreach (var instruction in plan.Instructions)
+        foreach (var action in plan.Actions)
         {
-            if (instruction.IsDestructive)
+            if (action.IsDestructive)
             {
                 switch (options.DestructiveActionPolicy)
                 {
                     case DestructiveActionPolicy.Error:
-                        throw new DestructiveActionException(instruction);
+                        throw new DestructiveActionException(action);
                     case DestructiveActionPolicy.Warn:
-                        logger.LogWarning("Executing destructive instruction: {InstructionType}", instruction.GetType().Name);
+                        logger.LogWarning("Executing destructive action: {ActionType}", action.GetType().Name);
                         break;
                 }
             }
 
-            string sql = GenerateSql(instruction);
+            string sql = GenerateSql(action);
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -36,7 +36,7 @@ public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logge
 
     // ── SQL generation ────────────────────────────────────────────────────────
 
-    private static string GenerateSql(SchemaInstruction instruction) => instruction switch
+    private static string GenerateSql(SchemaAction action) => action switch
     {
         CreateSchema x => $"""CREATE SCHEMA IF NOT EXISTS "{x.SchemaName}" """,
         DropSchema x => $"""DROP SCHEMA "{x.SchemaName}" CASCADE""",
@@ -60,7 +60,7 @@ public sealed class PostgresSchemaMigrator(ILogger<PostgresSchemaMigrator> logge
         DropIndex x => $"""DROP INDEX "{x.SchemaName}"."{x.IndexName}" """,
         RunPreDeploymentScript x => x.Script.Sql,
         RunPostDeploymentScript x => x.Script.Sql,
-        _ => throw new ArgumentOutOfRangeException(nameof(instruction), $"Unhandled instruction type: {instruction.GetType().Name}")
+        _ => throw new ArgumentOutOfRangeException(nameof(action), $"Unhandled action type: {instruction.GetType().Name}")
     };
 
     private static string BuildCreateTable(CreateTable x)

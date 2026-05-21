@@ -1,8 +1,8 @@
-using NSchema.Domain.Migration.Instructions;
+using NSchema.Domain.Migration.Actions;
 
 namespace NSchema.Domain.Migration;
 
-public sealed record MigrationPlan(IReadOnlyList<SchemaInstruction> Instructions)
+public sealed record MigrationPlan(IReadOnlyList<SchemaAction> Actions)
 {
-    public bool IsEmpty => Instructions.Count == 0;
+    public bool IsEmpty => Actions.Count == 0;
 }

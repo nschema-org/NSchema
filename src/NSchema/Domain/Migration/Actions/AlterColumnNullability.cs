@@ -1,4 +1,4 @@
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record AlterColumnNullability(
     string SchemaName,
@@ -6,7 +6,7 @@ public sealed record AlterColumnNullability(
     string ColumnName,
     bool WasNullable,
     bool IsNullable
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => true;
 }

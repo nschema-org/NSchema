@@ -1,6 +1,6 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record AlterColumnType(
     string SchemaName,
@@ -8,7 +8,7 @@ public sealed record AlterColumnType(
     string ColumnName,
     SqlType OldType,
     SqlType NewType
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => true;
 }

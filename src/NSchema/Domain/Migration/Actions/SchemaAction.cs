@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(CreateSchema), "create_schema")]
@@ -23,7 +23,7 @@ namespace NSchema.Domain.Migration.Instructions;
 [JsonDerivedType(typeof(DropIndex), "drop_index")]
 [JsonDerivedType(typeof(RunPreDeploymentScript), "run_pre_deployment_script")]
 [JsonDerivedType(typeof(RunPostDeploymentScript), "run_post_deployment_script")]
-public abstract record SchemaInstruction
+public abstract record SchemaAction
 {
     public abstract bool IsDestructive { get; }
 }

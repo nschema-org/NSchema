@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Comparison;
-using NSchema.Domain.Migration.Instructions;
+using NSchema.Domain.Migration.Actions;
 using NSchema.Domain.Schema;
 
 namespace NSchema.Tests.Comparison;
@@ -20,7 +20,7 @@ public class DefaultSchemaComparerTests
     // ── No changes ───────────────────────────────────────────────────────────
 
     [Fact]
-    public void Diff_IdenticalModels_ProducesNoInstructions()
+    public void Diff_IdenticalModels_ProducesNoActions()
     {
         // Arrange
         var model = WithSchema("app", SimpleTable("users"));
@@ -29,11 +29,11 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(model, model);
 
         // Assert
-        result.Instructions.ShouldBeEmpty();
+        result.Actions.ShouldBeEmpty();
     }
 
     [Fact]
-    public void Diff_BothEmpty_ProducesNoInstructions()
+    public void Diff_BothEmpty_ProducesNoActions()
     {
         // Arrange
         var current = Empty();
@@ -59,7 +59,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is CreateSchema { SchemaName: "app" }).ShouldBeTrue();
+        result.Actions.Any(i => i is CreateSchema { SchemaName: "app" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropSchema { SchemaName: "app" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropSchema { SchemaName: "app" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -87,9 +87,9 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is RenameSchema { OldName: "app", NewName: "application" }).ShouldBeTrue();
-        result.Instructions.Any(i => i is CreateSchema).ShouldBeFalse();
-        result.Instructions.Any(i => i is DropSchema).ShouldBeFalse();
+        result.Actions.Any(i => i is RenameSchema { OldName: "app", NewName: "application" }).ShouldBeTrue();
+        result.Actions.Any(i => i is CreateSchema).ShouldBeFalse();
+        result.Actions.Any(i => i is DropSchema).ShouldBeFalse();
     }
 
     // ── Tables ───────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is CreateTable { SchemaName: "app", Table.Name: "users" }).ShouldBeTrue();
+        result.Actions.Any(i => i is CreateTable { SchemaName: "app", Table.Name: "users" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropTable { SchemaName: "app", TableName: "users" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropTable { SchemaName: "app", TableName: "users" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -133,9 +133,9 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is RenameTable { SchemaName: "app", OldName: "users", NewName: "accounts" }).ShouldBeTrue();
-        result.Instructions.Any(i => i is CreateTable).ShouldBeFalse();
-        result.Instructions.Any(i => i is DropTable).ShouldBeFalse();
+        result.Actions.Any(i => i is RenameTable { SchemaName: "app", OldName: "users", NewName: "accounts" }).ShouldBeTrue();
+        result.Actions.Any(i => i is CreateTable).ShouldBeFalse();
+        result.Actions.Any(i => i is DropTable).ShouldBeFalse();
     }
 
     // ── Columns ──────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is AddColumn { TableName: "users", Column.Name: "email" }).ShouldBeTrue();
+        result.Actions.Any(i => i is AddColumn { TableName: "users", Column.Name: "email" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropColumn { TableName: "users", ColumnName: "email" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropColumn { TableName: "users", ColumnName: "email" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -185,9 +185,9 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is RenameColumn { TableName: "users", OldName: "email", NewName: "email_address" }).ShouldBeTrue();
-        result.Instructions.Any(i => i is AddColumn).ShouldBeFalse();
-        result.Instructions.Any(i => i is DropColumn).ShouldBeFalse();
+        result.Actions.Any(i => i is RenameColumn { TableName: "users", OldName: "email", NewName: "email_address" }).ShouldBeTrue();
+        result.Actions.Any(i => i is AddColumn).ShouldBeFalse();
+        result.Actions.Any(i => i is DropColumn).ShouldBeFalse();
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is AlterColumnType act
+        result.Actions.Any(i => i is AlterColumnType act
             && act.TableName == "users"
             && act.ColumnName == "id"
             && act.OldType == SqlType.Int
@@ -219,7 +219,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is AlterColumnNullability acn
+        result.Actions.Any(i => i is AlterColumnNullability acn
             && acn.TableName == "users"
             && acn.ColumnName == "email"
             && acn.WasNullable == true
@@ -237,7 +237,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is SetColumnDefault { TableName: "users", ColumnName: "status", OldDefault: null, NewDefault: "'active'" }).ShouldBeTrue();
+        result.Actions.Any(i => i is SetColumnDefault { TableName: "users", ColumnName: "status", OldDefault: null, NewDefault: "'active'" }).ShouldBeTrue();
     }
 
     // ── Primary Key ──────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is AddPrimaryKey { TableName: "users", PrimaryKey.Name: "pk_users" }).ShouldBeTrue();
+        result.Actions.Any(i => i is AddPrimaryKey { TableName: "users", PrimaryKey.Name: "pk_users" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -271,11 +271,11 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropPrimaryKey { TableName: "users", PrimaryKeyName: "pk_users" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropPrimaryKey { TableName: "users", PrimaryKeyName: "pk_users" }).ShouldBeTrue();
     }
 
     [Fact]
-    public void Diff_UnchangedPrimaryKey_ProducesNoKeyInstructions()
+    public void Diff_UnchangedPrimaryKey_ProducesNoKeyActions()
     {
         // Arrange
         var model = WithSchema("app", new Table("users",
@@ -286,7 +286,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(model, model);
 
         // Assert
-        result.Instructions.Any(i => i is AddPrimaryKey or DropPrimaryKey).ShouldBeFalse();
+        result.Actions.Any(i => i is AddPrimaryKey or DropPrimaryKey).ShouldBeFalse();
     }
 
     // ── Foreign Keys ─────────────────────────────────────────────────────────
@@ -305,7 +305,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is AddForeignKey { ForeignKey.Name: "fk_users_org" }).ShouldBeTrue();
+        result.Actions.Any(i => i is AddForeignKey { ForeignKey.Name: "fk_users_org" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -322,7 +322,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -338,8 +338,8 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
-        result.Instructions.Any(i => i is AddForeignKey { ForeignKey.Name: "fk_users_org" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropForeignKey { ForeignKeyName: "fk_users_org" }).ShouldBeTrue();
+        result.Actions.Any(i => i is AddForeignKey { ForeignKey.Name: "fk_users_org" }).ShouldBeTrue();
     }
 
     // ── Indexes ──────────────────────────────────────────────────────────────
@@ -356,7 +356,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is CreateIndex { Index.Name: "ix_users_email" }).ShouldBeTrue();
+        result.Actions.Any(i => i is CreateIndex { Index.Name: "ix_users_email" }).ShouldBeTrue();
     }
 
     [Fact]
@@ -371,13 +371,13 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(current, desired);
 
         // Assert
-        result.Instructions.Any(i => i is DropIndex { IndexName: "ix_users_email" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropIndex { IndexName: "ix_users_email" }).ShouldBeTrue();
     }
 
     // ── Deployment scripts ───────────────────────────────────────────────────
 
     [Fact]
-    public void Diff_PreDeploymentScript_IsFirstInstruction()
+    public void Diff_PreDeploymentScript_IsFirstAction()
     {
         // Arrange
         var script = new Script("install_citext", "CREATE EXTENSION IF NOT EXISTS citext;");
@@ -387,12 +387,12 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(Empty(), desired);
 
         // Assert
-        result.Instructions[0].ShouldBeOfType<RunPreDeploymentScript>()
+        result.Actions[0].ShouldBeOfType<RunPreDeploymentScript>()
             .Script.Name.ShouldBe("install_citext");
     }
 
     [Fact]
-    public void Diff_PostDeploymentScript_IsLastInstruction()
+    public void Diff_PostDeploymentScript_IsLastAction()
     {
         // Arrange
         var script = new Script("seed", "INSERT INTO app.config VALUES ('version', '1');");
@@ -406,7 +406,7 @@ public class DefaultSchemaComparerTests
         var result = _comparer.Compare(Empty(), desired);
 
         // Assert
-        result.Instructions[^1].ShouldBeOfType<RunPostDeploymentScript>()
+        result.Actions[^1].ShouldBeOfType<RunPostDeploymentScript>()
             .Script.Name.ShouldBe("seed");
     }
 
@@ -423,7 +423,7 @@ public class DefaultSchemaComparerTests
         var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
 
         // Act
-        var result = _comparer.Compare(current, desired).Instructions.ToList();
+        var result = _comparer.Compare(current, desired).Actions.ToList();
 
         // Assert
         result.FindIndex(i => i is DropForeignKey).ShouldBeLessThan(
@@ -442,7 +442,7 @@ public class DefaultSchemaComparerTests
         ])]);
 
         // Act
-        var result = _comparer.Compare(Empty(), desired).Instructions.ToList();
+        var result = _comparer.Compare(Empty(), desired).Actions.ToList();
 
         // Assert
         result.FindLastIndex(i => i is CreateTable).ShouldBeLessThan(

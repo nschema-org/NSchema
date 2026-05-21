@@ -1,11 +1,11 @@
-namespace NSchema.Domain.Migration.Instructions;
+namespace NSchema.Domain.Migration.Actions;
 
 public sealed record RenameColumn(
     string SchemaName,
     string TableName,
     string OldName,
     string NewName
-) : SchemaInstruction
+) : SchemaAction
 {
     public override bool IsDestructive => false;
 }
