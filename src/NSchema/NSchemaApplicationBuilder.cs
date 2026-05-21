@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSchema.Comparison;
 using NSchema.Hosting;
+using NSchema.Migration;
 using NSchema.Source;
 using NSchema.Target;
 
