@@ -12,8 +12,8 @@ public sealed class DefaultNSchemaRunner(
     ISchemaAggregator schemaAggregator,
     ISchemaComparer comparer,
     ISchemaMigrator migrator,
-    IEnumerable<ISchemaValidationPolicy> schemaValidationPolicies,
-    IEnumerable<IMigrationActionPolicy> migrationActionPolicies
+    IEnumerable<ISchemaPolicy> schemaValidationPolicies,
+    IEnumerable<IActionPolicy> actionValidationPolicies
 ) : INSchemaRunner
 {
     public async Task Run(CancellationToken cancellationToken = default)
@@ -25,7 +25,9 @@ public sealed class DefaultNSchemaRunner(
         // Run all registered schema validation policies.
         var schemaErrors = schemaValidationPolicies.SelectMany(p => p.Validate(desiredSchema)).ToList();
         if (schemaErrors.Count > 0)
-            throw new SchemaValidationException(schemaErrors);
+        {
+            throw new PolicyViolationException(schemaErrors);
+        }
 
         string[] schemasInScope = desiredSchema.Schemas.Select(s => s.Name).ToArray();
 
@@ -36,9 +38,11 @@ public sealed class DefaultNSchemaRunner(
         var plan = comparer.Compare(current, desiredSchema);
 
         // Run all registered migration action policies.
-        var actionErrors = migrationActionPolicies.SelectMany(p => p.Validate(plan)).ToList();
+        var actionErrors = actionValidationPolicies.SelectMany(p => p.Validate(plan)).ToList();
         if (actionErrors.Count > 0)
-            throw new MigrationActionException(actionErrors);
+        {
+            throw new PolicyViolationException(actionErrors);
+        }
 
         // Migrate to the desired schema.
         await migrator.Migrate(plan, cancellationToken);

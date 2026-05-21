@@ -6,23 +6,27 @@ using NSchema.Validation;
 namespace NSchema.Migration;
 
 public sealed class DestructiveActionPolicyEnforcer(
-    IOptions<MigrationOptions> options,
-    ILogger<DestructiveActionPolicyEnforcer> logger
-) : IMigrationActionPolicy
+    ILogger<DestructiveActionPolicyEnforcer> logger,
+    IOptions<MigrationOptions> options
+) : IActionPolicy
 {
-    public IEnumerable<MigrationActionError> Validate(MigrationPlan plan)
+    public IEnumerable<PolicyError> Validate(MigrationPlan plan)
     {
         foreach (var action in plan.Actions.Where(a => a.IsDestructive))
         {
             switch (options.Value.DestructiveActionPolicy)
             {
-                case DestructiveActionPolicy.Error:
-                    yield return new MigrationActionError(
-                        nameof(DestructiveActionPolicyEnforcer),
-                        $"Destructive action blocked by policy: {action.GetType().Name}");
+                case DestructiveActionPolicy.Allow:
+                    // Do nothing.
                     break;
                 case DestructiveActionPolicy.Warn:
                     logger.LogWarning("Destructive action will be executed: {ActionType}", action.GetType().Name);
+                    break;
+                case DestructiveActionPolicy.Error:
+                default:
+                    yield return new PolicyError(
+                        nameof(DestructiveActionPolicyEnforcer),
+                        $"Destructive action blocked by policy: {action.GetType().Name}");
                     break;
             }
         }

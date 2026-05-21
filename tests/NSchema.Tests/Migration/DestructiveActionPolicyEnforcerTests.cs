@@ -4,15 +4,15 @@ using NSchema.Domain.Migration;
 using NSchema.Domain.Migration.Actions;
 using NSchema.Domain.Schema;
 using NSchema.Migration;
-using NSchema.Validation;
 
 namespace NSchema.Tests.Migration;
 
 public class DestructiveActionPolicyEnforcerTests
 {
-    private static DestructiveActionPolicyEnforcer Create(DestructiveActionPolicy policy) =>
-        new(Options.Create(new MigrationOptions { DestructiveActionPolicy = policy }),
-            NullLogger<DestructiveActionPolicyEnforcer>.Instance);
+    private static DestructiveActionPolicyEnforcer Create(DestructiveActionPolicy policy) => new(
+        NullLogger<DestructiveActionPolicyEnforcer>.Instance,
+        Options.Create(new MigrationOptions { DestructiveActionPolicy = policy })
+    );
 
     private static MigrationPlan PlanWith(params SchemaAction[] actions) => new(actions);
 

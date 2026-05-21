@@ -70,16 +70,16 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
-    public NSchemaApplicationBuilder AddValidationPolicy<T>() where T : class, ISchemaValidationPolicy
+    public NSchemaApplicationBuilder AddValidationPolicy<T>() where T : class, ISchemaPolicy
     {
-        var descriptor = new ServiceDescriptor(typeof(ISchemaValidationPolicy), typeof(T), ServiceLifetime.Singleton);
+        var descriptor = new ServiceDescriptor(typeof(ISchemaPolicy), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(descriptor);
         return this;
     }
 
-    public NSchemaApplicationBuilder AddMigrationActionPolicy<T>() where T : class, IMigrationActionPolicy
+    public NSchemaApplicationBuilder AddMigrationActionPolicy<T>() where T : class, IActionPolicy
     {
-        var descriptor = new ServiceDescriptor(typeof(IMigrationActionPolicy), typeof(T), ServiceLifetime.Singleton);
+        var descriptor = new ServiceDescriptor(typeof(IActionPolicy), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(descriptor);
         return this;
     }
@@ -110,7 +110,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<INSchemaRunner, DefaultNSchemaRunner>();
 
         services.TryAddEnumerable(
-            new ServiceDescriptor(typeof(IMigrationActionPolicy), typeof(DestructiveActionPolicyEnforcer), ServiceLifetime.Singleton));
+            new ServiceDescriptor(typeof(IActionPolicy), typeof(DestructiveActionPolicyEnforcer), ServiceLifetime.Singleton));
 
         // This is the service responsible for running the migration.
         services.AddHostedService<NSchemaHost>();
