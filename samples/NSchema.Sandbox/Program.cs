@@ -7,6 +7,7 @@ using NSchema.Sandbox;
 
 string connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
                           ?? throw new InvalidOperationException("CONNECTION_STRING environment variable is not set.");
+
 var builder = NSchemaApplication.CreateBuilder(args);
 
 builder.Services

@@ -10,7 +10,7 @@ var postgres = builder.AddPostgres("sandbox-postgres", password: pgPassword)
 var db = postgres.AddDatabase("sandbox");
 
 builder.AddProject<Projects.NSchema_Sandbox>("migrator")
-    .WithReference(db)
+    .WithEnvironment("CONNECTION_STRING", db)
     .WaitFor(db);
 
 await builder.Build().RunAsync();
