@@ -1,4 +1,4 @@
-using NSchema.Domain.Migration;
+using NSchema.Migration;
 
 namespace NSchema.Policies;
 

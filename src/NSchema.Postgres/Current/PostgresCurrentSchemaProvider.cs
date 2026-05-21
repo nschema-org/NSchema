@@ -1,7 +1,8 @@
 using Npgsql;
-using NSchema.Current;
-using NSchema.Domain.Schema;
+using NSchema.Migration;
+using NSchema.Schema;
 using NSchema.Postgres.Models;
+using DbSchema = NSchema.Schema.Schema;
 
 namespace NSchema.Postgres.Current;
 
@@ -232,7 +233,7 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
 
         // Ensure every requested schema name appears in the result, even when it has no tables.
         var dbSchemas = schemas
-            .Select(name => new Schema(
+            .Select(name => new DbSchema(
                 name,
                 bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : []))
             .ToList();

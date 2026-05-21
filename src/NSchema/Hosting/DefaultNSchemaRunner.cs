@@ -1,6 +1,3 @@
-using NSchema.Comparison;
-using NSchema.Current;
-using NSchema.Desired;
 using NSchema.Migration;
 using NSchema.Policies;
 

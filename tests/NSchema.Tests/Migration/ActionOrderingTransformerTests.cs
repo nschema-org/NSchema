@@ -1,7 +1,6 @@
-using NSchema.Domain.Migration;
-using NSchema.Domain.Migration.Actions;
-using NSchema.Domain.Schema;
 using NSchema.Migration;
+using NSchema.Migration.Actions;
+using NSchema.Schema;
 
 namespace NSchema.Tests.Migration;
 

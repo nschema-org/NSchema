@@ -1,7 +1,7 @@
 using Npgsql;
-using NSchema.Domain.Migration;
-using NSchema.Domain.Migration.Actions;
-using NSchema.Domain.Schema;
+using NSchema.Migration;
+using NSchema.Migration.Actions;
+using NSchema.Schema;
 using NSchema.Postgres.Migration;
 using NSchema.Postgres.Tests.Fixtures;
 

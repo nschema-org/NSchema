@@ -1,5 +1,5 @@
-using NSchema.Domain.Schema;
-using NSchema.Domain.Schema.Fluent;
+using NSchema.Schema;
+using NSchema.Schema.Fluent;
 
 namespace NSchema.Tests.Desired.Fluent;
 

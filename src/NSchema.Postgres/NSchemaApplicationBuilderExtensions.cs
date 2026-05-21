@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using NSchema.Current;
 using NSchema.Migration;
 using NSchema.Postgres.Current;
 using NSchema.Postgres.Migration;

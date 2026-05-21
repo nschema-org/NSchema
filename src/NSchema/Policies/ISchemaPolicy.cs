@@ -1,4 +1,4 @@
-using NSchema.Domain.Schema;
+using NSchema.Schema;
 
 namespace NSchema.Policies;
 

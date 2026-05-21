@@ -1,5 +1,5 @@
 using Npgsql;
-using NSchema.Domain.Schema;
+using NSchema.Schema;
 using NSchema.Postgres.Current;
 using NSchema.Postgres.Tests.Fixtures;
 

@@ -4,8 +4,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.Metrics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NSchema.Comparison;
-using NSchema.Desired;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Policies;

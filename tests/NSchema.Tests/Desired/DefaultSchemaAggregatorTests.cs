@@ -1,5 +1,6 @@
-using NSchema.Desired;
-using NSchema.Domain.Schema;
+using NSchema.Migration;
+using NSchema.Schema;
+using DbSchema = NSchema.Schema.Schema;
 
 namespace NSchema.Tests.Desired;
 
@@ -7,13 +8,13 @@ public sealed class DefaultSchemaAggregatorTests
 {
     private static readonly DefaultSchemaAggregator s_aggregator = new();
 
-    private static DatabaseSchema Db(params Schema[] schemas) =>
+    private static DatabaseSchema Db(params DbSchema[] schemas) =>
         new(schemas, [], []);
 
-    private static DatabaseSchema Db(IReadOnlyList<Schema> schemas, IReadOnlyList<Script> pre, IReadOnlyList<Script> post) =>
+    private static DatabaseSchema Db(IReadOnlyList<DbSchema> schemas, IReadOnlyList<Script> pre, IReadOnlyList<Script> post) =>
         new(schemas, pre, post);
 
-    private static Schema Schema(string name, params Table[] tables) =>
+    private static DbSchema Schema(string name, params Table[] tables) =>
         new(name, tables);
 
     private static Table Table(string name) =>
