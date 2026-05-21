@@ -77,6 +77,13 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
+    public NSchemaApplicationBuilder AddPlanTransformer<T>() where T : class, IMigrationPlanTransformer
+    {
+        var descriptor = new ServiceDescriptor(typeof(IMigrationPlanTransformer), typeof(T), ServiceLifetime.Singleton);
+        Services.TryAddEnumerable(descriptor);
+        return this;
+    }
+
     public NSchemaApplicationBuilder AddMigrationActionPolicy<T>() where T : class, IActionPolicy
     {
         var descriptor = new ServiceDescriptor(typeof(IActionPolicy), typeof(T), ServiceLifetime.Singleton);
@@ -108,6 +115,9 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<ISchemaComparer, DefaultSchemaComparer>();
         services.TryAddSingleton<ISchemaAggregator, DefaultSchemaAggregator>();
         services.TryAddSingleton<INSchemaRunner, DefaultNSchemaRunner>();
+
+        services.TryAddEnumerable(
+            new ServiceDescriptor(typeof(IMigrationPlanTransformer), typeof(ActionOrderingTransformer), ServiceLifetime.Singleton));
 
         services.TryAddEnumerable(
             new ServiceDescriptor(typeof(IActionPolicy), typeof(DestructiveActionPolicyEnforcer), ServiceLifetime.Singleton));

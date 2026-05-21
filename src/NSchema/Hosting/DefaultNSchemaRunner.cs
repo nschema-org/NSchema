@@ -13,6 +13,7 @@ public sealed class DefaultNSchemaRunner(
     ISchemaComparer comparer,
     ISchemaMigrator migrator,
     IEnumerable<ISchemaPolicy> schemaValidationPolicies,
+    IEnumerable<IMigrationPlanTransformer> planTransformers,
     IEnumerable<IActionPolicy> actionValidationPolicies
 ) : INSchemaRunner
 {
@@ -37,7 +38,10 @@ public sealed class DefaultNSchemaRunner(
         // Diff the two schemas.
         var plan = comparer.Compare(current, desiredSchema);
 
-        // Run all registered migration action policies.
+        // Apply all registered plan transformers in order.
+        plan = planTransformers.Aggregate(plan, (p, t) => t.Transform(p));
+
+        // Run all registered action policies against the transformed plan.
         var actionErrors = actionValidationPolicies.SelectMany(p => p.Validate(plan)).ToList();
         if (actionErrors.Count > 0)
         {

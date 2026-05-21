@@ -410,42 +410,4 @@ public class DefaultSchemaComparerTests
             .Script.Name.ShouldBe("seed");
     }
 
-    // ── Ordering ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void Diff_ForeignKeyDroppedBeforeColumnDrop()
-    {
-        // Arrange
-        var fk = new ForeignKey("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
-        var current = WithSchema("app", new Table("users",
-            [new Column("id", SqlType.Int), new Column("org_id", SqlType.Int)],
-            ForeignKeys: [fk]));
-        var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
-
-        // Act
-        var result = _comparer.Compare(current, desired).Actions.ToList();
-
-        // Assert
-        result.FindIndex(i => i is DropForeignKey).ShouldBeLessThan(
-            result.FindIndex(i => i is DropColumn));
-    }
-
-    [Fact]
-    public void Diff_ForeignKeysAddedAfterTablesCreated()
-    {
-        // Arrange
-        var fk = new ForeignKey("fk_orders_user", ["user_id"], "app", "users", ["id"]);
-        var desired = new DatabaseSchema([new Schema("app", [
-            new Table("users",  [new Column("id", SqlType.Int)]),
-            new Table("orders", [new Column("id", SqlType.Int), new Column("user_id", SqlType.Int)],
-                ForeignKeys: [fk]),
-        ])]);
-
-        // Act
-        var result = _comparer.Compare(Empty(), desired).Actions.ToList();
-
-        // Assert
-        result.FindLastIndex(i => i is CreateTable).ShouldBeLessThan(
-            result.FindIndex(i => i is AddForeignKey));
-    }
 }

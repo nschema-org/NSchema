@@ -11,7 +11,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
     {
         logger.LogDebug("Beginning schema comparison");
 
-        var actions = new ActionSet();
+        var actions = new List<SchemaAction>();
 
         foreach (var script in target.PreDeploymentScripts ?? [])
         {
@@ -27,12 +27,12 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
             actions.Add(new RunPostDeploymentScript(script));
         }
 
-        logger.LogDebug("Comparison complete: {ActionCount} actions generated", actions.ToList().Count);
+        logger.LogDebug("Comparison complete: {ActionCount} actions generated", actions.Count);
 
-        return new MigrationPlan(actions.ToList());
+        return new MigrationPlan(actions);
     }
 
-    private void CompareSchemas(IReadOnlyList<Schema> current, IReadOnlyList<Schema> desired, ActionSet actions)
+    private void CompareSchemas(IReadOnlyList<Schema> current, IReadOnlyList<Schema> desired, List<SchemaAction> actions)
     {
         foreach (var currentSchema in current)
         {
@@ -77,7 +77,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
-    private void CompareTables(string schemaName, IReadOnlyList<Table> current, IReadOnlyList<Table> desired, ActionSet actions)
+    private void CompareTables(string schemaName, IReadOnlyList<Table> current, IReadOnlyList<Table> desired, List<SchemaAction> actions)
     {
         foreach (var currentTable in current)
         {
@@ -120,7 +120,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
-    private void CompareColumns(string schemaName, string tableName, IReadOnlyList<Column> current, IReadOnlyList<Column> desired, ActionSet actions)
+    private void CompareColumns(string schemaName, string tableName, IReadOnlyList<Column> current, IReadOnlyList<Column> desired, List<SchemaAction> actions)
     {
         foreach (var currentCol in current)
         {
@@ -192,7 +192,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
     }
 
     private void ComparePrimaryKey(string schemaName, string tableName, PrimaryKey? current, PrimaryKey? desired,
-        ActionSet actions)
+        List<SchemaAction> actions)
     {
         if (current?.Equals(desired) ?? desired == null)
         {
@@ -215,7 +215,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
-    private void CompareForeignKeys(string schemaName, string tableName, IReadOnlyList<ForeignKey> current, IReadOnlyList<ForeignKey> desired, ActionSet actions)
+    private void CompareForeignKeys(string schemaName, string tableName, IReadOnlyList<ForeignKey> current, IReadOnlyList<ForeignKey> desired, List<SchemaAction> actions)
     {
         foreach (var currentFk in current)
         {
@@ -250,7 +250,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
-    private void CompareIndexes(string schemaName, string tableName, IReadOnlyList<TableIndex> current, IReadOnlyList<TableIndex> desired, ActionSet actions)
+    private void CompareIndexes(string schemaName, string tableName, IReadOnlyList<TableIndex> current, IReadOnlyList<TableIndex> desired, List<SchemaAction> actions)
     {
         foreach (var currentIdx in current)
         {
@@ -285,7 +285,7 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         }
     }
 
-    private void AddNewTable(string schemaName, Table table, ActionSet actions)
+    private void AddNewTable(string schemaName, Table table, List<SchemaAction> actions)
     {
         logger.LogDebug("Creating table '{Schema}.{Table}'", schemaName, table.Name);
         actions.Add(new CreateTable(schemaName, table));
