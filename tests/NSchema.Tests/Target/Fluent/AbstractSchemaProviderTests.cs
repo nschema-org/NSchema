@@ -5,66 +5,51 @@ namespace NSchema.Tests.Target.Fluent;
 
 public sealed class AbstractSchemaProviderTests
 {
+    private sealed class TestSchemaProvider : AbstractSchemaProvider;
+
+    private static async Task<DatabaseSchema> Build(Action<TestSchemaProvider> configure)
+    {
+        var provider = new TestSchemaProvider();
+        configure(provider);
+        return await provider.GetSchema();
+    }
+
     // ── DatabaseModelBuilder ──────────────────────────────────────────────────
 
     [Fact]
-    public void Build_WithNoSchemas_ReturnsModelWithEmptySchemaList()
+    public async Task Build_WithNoSchemas_ReturnsModelWithEmptySchemaList()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
-
-        // Act
-        var model = builder.Build();
-
-        // Assert
+        var model = await Build(_ => { });
         model.Schemas.ShouldBeEmpty();
     }
 
     [Fact]
-    public void Schema_AddsSchemaToModel()
+    public async Task Schema_AddsSchemaToModel()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
+        var model = await Build(p => p.Schema("public"));
 
-        // Act
-        var model = builder
-            .Schema("public", _ => { })
-            .Build();
-
-        // Assert
         model.Schemas.Count.ShouldBe(1);
         model.Schemas[0].Name.ShouldBe("public");
     }
 
     [Fact]
-    public void Schema_MultipleSchemas_AllAppearInModel()
+    public async Task Schema_MultipleSchemas_AllAppearInModel()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
+        var model = await Build(p =>
+        {
+            p.Schema("public");
+            p.Schema("admin");
+        });
 
-        // Act
-        var model = builder
-            .Schema("public", _ => { })
-            .Schema("admin", _ => { })
-            .Build();
-
-        // Assert
         model.Schemas.Count.ShouldBe(2);
         model.Schemas.Select(s => s.Name).ShouldBe(["public", "admin"]);
     }
 
     [Fact]
-    public void PreDeploymentScript_AddsScriptToModel()
+    public async Task PreDeploymentScript_AddsScriptToModel()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
+        var model = await Build(p => p.PreDeploymentScript("init", "SELECT 1"));
 
-        // Act
-        var model = builder
-            .PreDeploymentScript("init", "SELECT 1")
-            .Build();
-
-        // Assert
         model.PreDeploymentScripts.ShouldNotBeNull();
         model.PreDeploymentScripts!.Count.ShouldBe(1);
         model.PreDeploymentScripts[0].Name.ShouldBe("init");
@@ -72,32 +57,20 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void PostDeploymentScript_AddsScriptToModel()
+    public async Task PostDeploymentScript_AddsScriptToModel()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
+        var model = await Build(p => p.PostDeploymentScript("seed", "INSERT INTO config DEFAULT VALUES"));
 
-        // Act
-        var model = builder
-            .PostDeploymentScript("seed", "INSERT INTO config DEFAULT VALUES")
-            .Build();
-
-        // Assert
         model.PostDeploymentScripts.ShouldNotBeNull();
         model.PostDeploymentScripts!.Count.ShouldBe(1);
         model.PostDeploymentScripts[0].Name.ShouldBe("seed");
     }
 
     [Fact]
-    public void Build_WithNoScripts_ScriptListsAreNull()
+    public async Task Build_WithNoScripts_ScriptListsAreNull()
     {
-        // Arrange
-        var builder = new AbstractSchemaProvider();
+        var model = await Build(_ => { });
 
-        // Act
-        var model = builder.Build();
-
-        // Assert
         model.PreDeploymentScripts.ShouldBeNull();
         model.PostDeploymentScripts.ShouldBeNull();
     }
@@ -105,69 +78,46 @@ public sealed class AbstractSchemaProviderTests
     // ── SchemaBuilder ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void SchemaBuilder_Table_AddsTableToSchema()
+    public async Task SchemaBuilder_Table_AddsTableToSchema()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", _ => { });
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("users"));
 
-        // Assert
         model.Schemas[0].Tables.Count.ShouldBe(1);
         model.Schemas[0].Tables[0].Name.ShouldBe("users");
     }
 
     [Fact]
-    public void SchemaBuilder_MultipleTables_AllAppearInSchema()
+    public async Task SchemaBuilder_MultipleTables_AllAppearInSchema()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", _ => { })
-                      .Table("posts", _ => { });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var schema = p.Schema("public");
+            schema.Table("users");
+            schema.Table("posts");
+        });
 
-        // Assert
         model.Schemas[0].Tables.Select(t => t.Name).ShouldBe(["users", "posts"]);
     }
 
     [Fact]
-    public void SchemaBuilder_WasPreviouslyNamed_SetsPreviousNameOnSchema()
+    public async Task SchemaBuilder_WasPreviouslyNamed_SetsPreviousNameOnSchema()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.WasPreviouslyNamed("old_schema");
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").WasPreviouslyNamed("old_schema"));
 
-        // Assert
         model.Schemas[0].PreviousName.ShouldBe("old_schema");
     }
 
     // ── TableBuilder ──────────────────────────────────────────────────────────
 
     [Fact]
-    public void TableBuilder_Column_AddsColumnToTable()
+    public async Task TableBuilder_Column_AddsColumnToTable()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Column("id", SqlType.BigInt);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("users");
+            table.Column("id", SqlType.BigInt);
+        });
 
-        // Assert
         var table = model.Schemas[0].Tables[0];
         table.Columns.Count.ShouldBe(1);
         table.Columns[0].Name.ShouldBe("id");
@@ -175,21 +125,15 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void TableBuilder_PrimaryKey_AttachesPrimaryKeyToTable()
+    public async Task TableBuilder_PrimaryKey_AttachesPrimaryKeyToTable()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Column("id", SqlType.BigInt).NotNull();
-                    table.PrimaryKey("pk_users", ["id"]);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("users");
+            table.Column("id", SqlType.BigInt).NotNull();
+            table.PrimaryKey("pk_users", ["id"]);
+        });
 
-        // Assert
         var table = model.Schemas[0].Tables[0];
         table.PrimaryKey.ShouldNotBeNull();
         table.PrimaryKey!.Name.ShouldBe("pk_users");
@@ -197,21 +141,15 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void TableBuilder_ForeignKey_AddsForeignKeyToTable()
+    public async Task TableBuilder_ForeignKey_AddsForeignKeyToTable()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("posts", table =>
-                {
-                    table.Column("user_id", SqlType.BigInt);
-                    table.ForeignKey("fk_posts_user", ["user_id"], "public", "users", ["id"]);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("posts");
+            table.Column("user_id", SqlType.BigInt);
+            table.ForeignKey("fk_posts_user", ["user_id"], "public", "users", ["id"]);
+        });
 
-        // Assert
         var table = model.Schemas[0].Tables[0];
         table.ForeignKeys.ShouldNotBeNull();
         table.ForeignKeys!.Count.ShouldBe(1);
@@ -223,21 +161,15 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void TableBuilder_Index_AddsIndexToTable()
+    public async Task TableBuilder_Index_AddsIndexToTable()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Column("email", SqlType.Text);
-                    table.Index("idx_users_email", ["email"]);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("users");
+            table.Column("email", SqlType.Text);
+            table.Index("idx_users_email", ["email"]);
+        });
 
-        // Assert
         var table = model.Schemas[0].Tables[0];
         table.Indexes.ShouldNotBeNull();
         table.Indexes!.Count.ShouldBe(1);
@@ -247,73 +179,44 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void TableBuilder_WasPreviouslyNamed_SetsPreviousNameOnTable()
+    public async Task TableBuilder_WasPreviouslyNamed_SetsPreviousNameOnTable()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.WasPreviouslyNamed("members");
-                });
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("users").WasPreviouslyNamed("members"));
 
-        // Assert
         model.Schemas[0].Tables[0].PreviousName.ShouldBe("members");
     }
 
     [Fact]
-    public void TableBuilder_NoForeignKeys_ForeignKeysIsNull()
+    public async Task TableBuilder_NoForeignKeys_ForeignKeysIsNull()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Column("id", SqlType.BigInt);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("users");
+            table.Column("id", SqlType.BigInt);
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].ForeignKeys.ShouldBeNull();
     }
 
     [Fact]
-    public void TableBuilder_NoIndexes_IndexesIsNull()
+    public async Task TableBuilder_NoIndexes_IndexesIsNull()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Column("id", SqlType.BigInt);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            var table = p.Schema("public").Table("users");
+            table.Column("id", SqlType.BigInt);
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].Indexes.ShouldBeNull();
     }
 
     // ── ColumnBuilder ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void ColumnBuilder_Defaults_IsNullableWithNoIdentityOrDefault()
+    public async Task ColumnBuilder_Defaults_IsNullableWithNoIdentityOrDefault()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("col", SqlType.Text));
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("col", SqlType.Text));
 
-        // Assert
         var column = model.Schemas[0].Tables[0].Columns[0];
         column.IsNullable.ShouldBeTrue();
         column.IsIdentity.ShouldBeFalse();
@@ -322,135 +225,82 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public void ColumnBuilder_NotNull_SetsIsNullableFalse()
+    public async Task ColumnBuilder_NotNull_SetsIsNullableFalse()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("col", SqlType.Text).NotNull());
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("col", SqlType.Text).NotNull());
 
-        // Assert
         model.Schemas[0].Tables[0].Columns[0].IsNullable.ShouldBeFalse();
     }
 
     [Fact]
-    public void ColumnBuilder_Nullable_SetsIsNullableTrue()
+    public async Task ColumnBuilder_Nullable_SetsIsNullableTrue()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("col", SqlType.Text).NotNull().Nullable());
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("col", SqlType.Text).NotNull().Nullable());
 
-        // Assert
         model.Schemas[0].Tables[0].Columns[0].IsNullable.ShouldBeTrue();
     }
 
     [Fact]
-    public void ColumnBuilder_Identity_SetsIsIdentityTrue()
+    public async Task ColumnBuilder_Identity_SetsIsIdentityTrue()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("id", SqlType.BigInt).Identity());
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("id", SqlType.BigInt).Identity());
 
-        // Assert
         model.Schemas[0].Tables[0].Columns[0].IsIdentity.ShouldBeTrue();
     }
 
     [Fact]
-    public void ColumnBuilder_Default_SetsDefaultExpression()
+    public async Task ColumnBuilder_Default_SetsDefaultExpression()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("created_at", SqlType.DateTimeOffset).Default("now()"));
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("created_at", SqlType.DateTimeOffset).Default("now()"));
 
-        // Assert
         model.Schemas[0].Tables[0].Columns[0].DefaultExpression.ShouldBe("now()");
     }
 
     [Fact]
-    public void ColumnBuilder_WasPreviouslyNamed_SetsPreviousName()
+    public async Task ColumnBuilder_WasPreviouslyNamed_SetsPreviousName()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table => table.Column("full_name", SqlType.Text).WasPreviouslyNamed("name"));
-            })
-            .Build();
+        var model = await Build(p => p.Schema("public").Table("t").Column("full_name", SqlType.Text).WasPreviouslyNamed("name"));
 
-        // Assert
         model.Schemas[0].Tables[0].Columns[0].PreviousName.ShouldBe("name");
     }
 
     // ── ForeignKeyBuilder ─────────────────────────────────────────────────────
 
     [Fact]
-    public void ForeignKeyBuilder_OnDelete_SetsDeleteAction()
+    public async Task ForeignKeyBuilder_OnDelete_SetsDeleteAction()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("posts", table =>
-                {
-                    table.ForeignKey("fk", ["user_id"], "public", "users", ["id"])
-                         .OnDelete(ReferentialAction.Cascade);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            p.Schema("public").Table("posts")
+                .ForeignKey("fk", ["user_id"], "public", "users", ["id"])
+                .OnDelete(ReferentialAction.Cascade);
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].ForeignKeys![0].OnDelete.ShouldBe(ReferentialAction.Cascade);
     }
 
     [Fact]
-    public void ForeignKeyBuilder_OnUpdate_SetsUpdateAction()
+    public async Task ForeignKeyBuilder_OnUpdate_SetsUpdateAction()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("posts", table =>
-                {
-                    table.ForeignKey("fk", ["user_id"], "public", "users", ["id"])
-                         .OnUpdate(ReferentialAction.SetNull);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            p.Schema("public").Table("posts")
+                .ForeignKey("fk", ["user_id"], "public", "users", ["id"])
+                .OnUpdate(ReferentialAction.SetNull);
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].ForeignKeys![0].OnUpdate.ShouldBe(ReferentialAction.SetNull);
     }
 
     [Fact]
-    public void ForeignKeyBuilder_Defaults_NoActionForBothRules()
+    public async Task ForeignKeyBuilder_Defaults_NoActionForBothRules()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("posts", table =>
-                {
-                    table.ForeignKey("fk", ["user_id"], "public", "users", ["id"]);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            p.Schema("public").Table("posts")
+                .ForeignKey("fk", ["user_id"], "public", "users", ["id"]);
+        });
 
-        // Assert
         var fk = model.Schemas[0].Tables[0].ForeignKeys![0];
         fk.OnDelete.ShouldBe(ReferentialAction.NoAction);
         fk.OnUpdate.ShouldBe(ReferentialAction.NoAction);
@@ -459,38 +309,27 @@ public sealed class AbstractSchemaProviderTests
     // ── IndexBuilder ──────────────────────────────────────────────────────────
 
     [Fact]
-    public void IndexBuilder_Unique_SetsIsUniqueTrue()
+    public async Task IndexBuilder_Unique_SetsIsUniqueTrue()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("users", table =>
-                {
-                    table.Index("idx_email", ["email"]).Unique();
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            p.Schema("public").Table("users")
+                .Index("idx_email", ["email"])
+                .Unique();
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].Indexes![0].IsUnique.ShouldBeTrue();
     }
 
     [Fact]
-    public void IndexBuilder_CompositeIndex_PreservesColumnOrder()
+    public async Task IndexBuilder_CompositeIndex_PreservesColumnOrder()
     {
-        // Arrange & Act
-        var model = new AbstractSchemaProvider()
-            .Schema("public", schema =>
-            {
-                schema.Table("t", table =>
-                {
-                    table.Index("idx_composite", ["last_name", "first_name"]);
-                });
-            })
-            .Build();
+        var model = await Build(p =>
+        {
+            p.Schema("public").Table("t")
+                .Index("idx_composite", ["last_name", "first_name"]);
+        });
 
-        // Assert
         model.Schemas[0].Tables[0].Indexes![0].ColumnNames.ShouldBe(["last_name", "first_name"]);
     }
 }
