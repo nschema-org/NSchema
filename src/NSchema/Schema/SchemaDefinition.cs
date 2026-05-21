@@ -5,5 +5,6 @@ public record SchemaDefinition(
     IReadOnlyList<Table> Tables,
     string? PreviousName = null,
     bool IsPartial = false,
-    IReadOnlyList<string>? DroppedTables = null
+    IReadOnlyList<string>? DroppedTables = null,
+    string? Comment = null
 );

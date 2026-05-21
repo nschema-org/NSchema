@@ -6,5 +6,6 @@ public record Column(
     bool IsNullable = true,
     bool IsIdentity = false,
     string? DefaultExpression = null,
-    string? PreviousName = null
+    string? PreviousName = null,
+    string? Comment = null
 );

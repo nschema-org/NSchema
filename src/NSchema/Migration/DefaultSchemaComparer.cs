@@ -57,6 +57,10 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                 {
                     AddNewTable(desiredSchema.Name, table, actions);
                 }
+                if (desiredSchema.Comment is not null)
+                {
+                    actions.Add(new SetSchemaComment(desiredSchema.Name, null, desiredSchema.Comment));
+                }
             }
             else
             {
@@ -69,6 +73,12 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                     logger.LogDebug("Schema '{OldName}' renamed to '{NewName}'", matchingCurrent.Name,
                         desiredSchema.Name);
                     actions.Add(new RenameSchema(matchingCurrent.Name, desiredSchema.Name));
+                }
+
+                if (matchingCurrent.Comment != desiredSchema.Comment)
+                {
+                    logger.LogDebug("Schema '{Schema}' comment changed", desiredSchema.Name);
+                    actions.Add(new SetSchemaComment(desiredSchema.Name, matchingCurrent.Comment, desiredSchema.Comment));
                 }
 
                 CompareTables(desiredSchema.Name, matchingCurrent.Tables, desiredSchema, actions);
@@ -122,6 +132,12 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                     actions.Add(new RenameTable(schemaName, matchingCurrent.Name, desiredTable.Name));
                 }
 
+                if (matchingCurrent.Comment != desiredTable.Comment)
+                {
+                    logger.LogDebug("Table '{Schema}.{Table}' comment changed", schemaName, desiredTable.Name);
+                    actions.Add(new SetTableComment(schemaName, desiredTable.Name, matchingCurrent.Comment, desiredTable.Comment));
+                }
+
                 CompareColumns(schemaName, desiredTable.Name, matchingCurrent.Columns, desiredTable.Columns, actions);
                 ComparePrimaryKey(schemaName, desiredTable.Name, matchingCurrent.PrimaryKey, desiredTable.PrimaryKey, actions);
                 CompareForeignKeys(schemaName, desiredTable.Name, matchingCurrent.ForeignKeys ?? [], desiredTable.ForeignKeys ?? [], actions);
@@ -152,6 +168,8 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
             {
                 logger.LogDebug("Column '{Schema}.{Table}.{Column}' is new", schemaName, tableName, desiredCol.Name);
                 actions.Add(new AddColumn(schemaName, tableName, desiredCol));
+                if (desiredCol.Comment is not null)
+                    actions.Add(new SetColumnComment(schemaName, tableName, desiredCol.Name, null, desiredCol.Comment));
                 continue;
             }
 
@@ -197,6 +215,12 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                     desiredCol.DefaultExpression);
                 actions.Add(new SetColumnDefault(schemaName, tableName, desiredCol.Name,
                     matchingCurrent.DefaultExpression, desiredCol.DefaultExpression));
+            }
+
+            if (matchingCurrent.Comment != desiredCol.Comment)
+            {
+                logger.LogDebug("Column '{Schema}.{Table}.{Column}' comment changed", schemaName, tableName, desiredCol.Name);
+                actions.Add(new SetColumnComment(schemaName, tableName, desiredCol.Name, matchingCurrent.Comment, desiredCol.Comment));
             }
         }
     }
@@ -273,8 +297,15 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
             }
             else
             {
-                logger.LogDebug("Index '{IndexName}' on '{Schema}.{Table}' is unchanged", currentIdx.Name, schemaName,
-                    tableName);
+                if (currentIdx.Comment != matchingDesired.Comment)
+                {
+                    logger.LogDebug("Index '{IndexName}' on '{Schema}.{Table}' comment changed", currentIdx.Name, schemaName, tableName);
+                    actions.Add(new SetIndexComment(schemaName, tableName, currentIdx.Name, currentIdx.Comment, matchingDesired.Comment));
+                }
+                else
+                {
+                    logger.LogDebug("Index '{IndexName}' on '{Schema}.{Table}' is unchanged", currentIdx.Name, schemaName, tableName);
+                }
             }
         }
 
@@ -286,6 +317,8 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
                 logger.LogDebug("Index '{IndexName}' on '{Schema}.{Table}' is new or changed", desiredIdx.Name,
                     schemaName, tableName);
                 actions.Add(new CreateIndex(schemaName, tableName, desiredIdx));
+                if (desiredIdx.Comment is not null)
+                    actions.Add(new SetIndexComment(schemaName, tableName, desiredIdx.Name, null, desiredIdx.Comment));
             }
             else
             {
@@ -310,6 +343,14 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
         {
             logger.LogDebug("Adding index '{IndexName}' to new table '{Schema}.{Table}'", idx.Name, schemaName, table.Name);
             actions.Add(new CreateIndex(schemaName, table.Name, idx));
+            if (idx.Comment is not null)
+                actions.Add(new SetIndexComment(schemaName, table.Name, idx.Name, null, idx.Comment));
         }
+
+        if (table.Comment is not null)
+            actions.Add(new SetTableComment(schemaName, table.Name, null, table.Comment));
+
+        foreach (var col in table.Columns.Where(c => c.Comment is not null))
+            actions.Add(new SetColumnComment(schemaName, table.Name, col.Name, null, col.Comment));
     }
 }

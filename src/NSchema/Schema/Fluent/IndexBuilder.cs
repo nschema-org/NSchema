@@ -5,6 +5,7 @@ public sealed class IndexBuilder
     private readonly string _name;
     private readonly IReadOnlyList<string> _columnNames;
     private bool _isUnique;
+    private string? _comment;
 
     internal IndexBuilder(string name, IReadOnlyList<string> columnNames)
     {
@@ -13,6 +14,7 @@ public sealed class IndexBuilder
     }
 
     public IndexBuilder Unique() { _isUnique = true; return this; }
+    public IndexBuilder Comment(string? comment) { _comment = comment; return this; }
 
-    internal TableIndex Build() => new(_name, _columnNames, _isUnique);
+    internal TableIndex Build() => new(_name, _columnNames, _isUnique, _comment);
 }

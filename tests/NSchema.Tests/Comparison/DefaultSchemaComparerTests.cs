@@ -420,6 +420,124 @@ public class DefaultSchemaComparerTests
         result.Actions.Any(i => i is DropTable { TableName: "nonexistent" }).ShouldBeFalse();
     }
 
+    // ── Comments ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Diff_SchemaCommentAdded_ProducesSetSchemaComment()
+    {
+        var current = new DatabaseSchema([new SchemaDefinition("app", [])]);
+        var desired = new DatabaseSchema([new SchemaDefinition("app", [], Comment: "Application schema")]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetSchemaComment { SchemaName: "app", OldComment: null, NewComment: "Application schema" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_SchemaCommentRemoved_ProducesSetSchemaComment()
+    {
+        var current = new DatabaseSchema([new SchemaDefinition("app", [], Comment: "Old comment")]);
+        var desired = new DatabaseSchema([new SchemaDefinition("app", [])]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetSchemaComment { SchemaName: "app", OldComment: "Old comment", NewComment: null }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_NewSchemaWithComment_ProducesSetSchemaComment()
+    {
+        var current = Empty();
+        var desired = new DatabaseSchema([new SchemaDefinition("app", [], Comment: "Application schema")]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetSchemaComment { SchemaName: "app", NewComment: "Application schema" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_TableCommentAdded_ProducesSetTableComment()
+    {
+        var current = WithSchema("app", SimpleTable("users"));
+        var desired = new DatabaseSchema([new SchemaDefinition("app", [new Table("users", [new Column("id", SqlType.Int)], Comment: "User accounts")])]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetTableComment { TableName: "users", OldComment: null, NewComment: "User accounts" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_NewTableWithComment_ProducesSetTableComment()
+    {
+        var current = WithSchema("app");
+        var desired = new DatabaseSchema([new SchemaDefinition("app", [new Table("users", [new Column("id", SqlType.Int)], Comment: "User accounts")])]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetTableComment { TableName: "users", NewComment: "User accounts" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_ColumnCommentAdded_ProducesSetColumnComment()
+    {
+        var current = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
+        var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int, Comment: "Primary key")]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetColumnComment { ColumnName: "id", OldComment: null, NewComment: "Primary key" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_NewColumnWithComment_ProducesSetColumnComment()
+    {
+        var current = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)]));
+        var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int), new Column("email", SqlType.Text, Comment: "Email address")]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetColumnComment { ColumnName: "email", NewComment: "Email address" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_IndexCommentAdded_ProducesSetIndexComment()
+    {
+        var idx = new TableIndex("ix_users_email", ["email"]);
+        var idxWithComment = new TableIndex("ix_users_email", ["email"], Comment: "Email lookup index");
+        var current = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)], Indexes: [idx]));
+        var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)], Indexes: [idxWithComment]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is SetIndexComment { IndexName: "ix_users_email", OldComment: null, NewComment: "Email lookup index" }).ShouldBeTrue();
+        result.Actions.Any(i => i is DropIndex or CreateIndex).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Diff_NewIndexWithComment_ProducesCreateIndexAndSetIndexComment()
+    {
+        var idx = new TableIndex("ix_users_email", ["email"], Comment: "Email lookup index");
+        var current = WithSchema("app", SimpleTable("users"));
+        var desired = WithSchema("app", new Table("users", [new Column("id", SqlType.Int)], Indexes: [idx]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is CreateIndex { Index.Name: "ix_users_email" }).ShouldBeTrue();
+        result.Actions.Any(i => i is SetIndexComment { IndexName: "ix_users_email", NewComment: "Email lookup index" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_CommentUnchanged_ProducesNoCommentActions()
+    {
+        var model = new DatabaseSchema([new SchemaDefinition("app",
+            [new Table("users", [new Column("id", SqlType.Int, Comment: "PK")], Comment: "Users")],
+            Comment: "App schema")]);
+
+        var result = _comparer.Compare(model, model);
+
+        result.Actions.Any(i => i is SetSchemaComment or SetTableComment or SetColumnComment or SetIndexComment).ShouldBeFalse();
+    }
+
     // ── Deployment scripts ───────────────────────────────────────────────────
 
     [Fact]

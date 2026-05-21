@@ -44,6 +44,18 @@ public sealed class PostgresSchemaMigrator(NpgsqlDataSource dataSource) : ISchem
         DropForeignKey x => $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" DROP CONSTRAINT "{x.ForeignKeyName}" """,
         CreateIndex x => BuildCreateIndex(x),
         DropIndex x => $"""DROP INDEX "{x.SchemaName}"."{x.IndexName}" """,
+        SetSchemaComment x => x.NewComment is null
+            ? $"""COMMENT ON SCHEMA "{x.SchemaName}" IS NULL"""
+            : $"""COMMENT ON SCHEMA "{x.SchemaName}" IS $comment${x.NewComment}$comment$""",
+        SetTableComment x => x.NewComment is null
+            ? $"""COMMENT ON TABLE "{x.SchemaName}"."{x.TableName}" IS NULL"""
+            : $"""COMMENT ON TABLE "{x.SchemaName}"."{x.TableName}" IS $comment${x.NewComment}$comment$""",
+        SetColumnComment x => x.NewComment is null
+            ? $"""COMMENT ON COLUMN "{x.SchemaName}"."{x.TableName}"."{x.ColumnName}" IS NULL"""
+            : $"""COMMENT ON COLUMN "{x.SchemaName}"."{x.TableName}"."{x.ColumnName}" IS $comment${x.NewComment}$comment$""",
+        SetIndexComment x => x.NewComment is null
+            ? $"""COMMENT ON INDEX "{x.SchemaName}"."{x.IndexName}" IS NULL"""
+            : $"""COMMENT ON INDEX "{x.SchemaName}"."{x.IndexName}" IS $comment${x.NewComment}$comment$""",
         RunPreDeploymentScript x => x.Script.Sql,
         RunPostDeploymentScript x => x.Script.Sql,
         _ => throw new ArgumentOutOfRangeException(nameof(action), $"Unhandled action type: {action.GetType().Name}")

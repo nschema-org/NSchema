@@ -16,8 +16,13 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         var primaryKeys = await QueryPrimaryKeys(conn, schemas, cancellationToken);
         var foreignKeys = await QueryForeignKeys(conn, schemas, cancellationToken);
         var indexes = await QueryIndexes(conn, schemas, cancellationToken);
+        var schemaComments = await QuerySchemaComments(conn, schemas, cancellationToken);
+        var tableComments = await QueryTableComments(conn, schemas, cancellationToken);
+        var columnComments = await QueryColumnComments(conn, schemas, cancellationToken);
+        var indexComments = await QueryIndexComments(conn, schemas, cancellationToken);
 
-        return Build(schemas, tables, columns, primaryKeys, foreignKeys, indexes);
+        return Build(schemas, tables, columns, primaryKeys, foreignKeys, indexes,
+                     schemaComments, tableComments, columnComments, indexComments);
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -213,6 +218,98 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         return rows;
     }
 
+    private async Task<Dictionary<string, string?>> QuerySchemaComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.nspname, d.description
+            FROM pg_namespace n
+            LEFT JOIN pg_description d
+                ON d.objoid = n.oid
+                AND d.classoid = 'pg_namespace'::regclass
+                AND d.objsubid = 0
+            WHERE n.nspname = ANY(@schemas)
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            result[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+        return result;
+    }
+
+    private async Task<Dictionary<(string, string), string?>> QueryTableComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var result = new Dictionary<(string, string), string?>();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.nspname, c.relname, d.description
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            LEFT JOIN pg_description d
+                ON d.objoid = c.oid
+                AND d.classoid = 'pg_class'::regclass
+                AND d.objsubid = 0
+            WHERE n.nspname = ANY(@schemas)
+            AND c.relkind = 'r'
+            ORDER BY n.nspname, c.relname
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            result[(reader.GetString(0), reader.GetString(1))] = reader.IsDBNull(2) ? null : reader.GetString(2);
+        return result;
+    }
+
+    private async Task<Dictionary<(string, string, string), string?>> QueryColumnComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var result = new Dictionary<(string, string, string), string?>();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.nspname, c.relname, a.attname, d.description
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+            LEFT JOIN pg_description d
+                ON d.objoid = c.oid
+                AND d.classoid = 'pg_class'::regclass
+                AND d.objsubid = a.attnum
+            WHERE n.nspname = ANY(@schemas)
+            AND c.relkind = 'r'
+            ORDER BY n.nspname, c.relname, a.attnum
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            result[(reader.GetString(0), reader.GetString(1), reader.GetString(2))] = reader.IsDBNull(3) ? null : reader.GetString(3);
+        return result;
+    }
+
+    private async Task<Dictionary<(string, string), string?>> QueryIndexComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    {
+        var result = new Dictionary<(string, string), string?>();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.nspname, i.relname, d.description
+            FROM pg_class i
+            JOIN pg_index ix ON ix.indexrelid = i.oid
+            JOIN pg_class t ON t.oid = ix.indrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            LEFT JOIN pg_description d
+                ON d.objoid = i.oid
+                AND d.classoid = 'pg_class'::regclass
+                AND d.objsubid = 0
+            WHERE n.nspname = ANY(@schemas)
+            AND NOT ix.indisprimary
+            ORDER BY n.nspname, i.relname
+            """;
+        cmd.Parameters.AddWithValue("schemas", schemas);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            result[(reader.GetString(0), reader.GetString(1))] = reader.IsDBNull(2) ? null : reader.GetString(2);
+        return result;
+    }
+
     // ── Model assembly ────────────────────────────────────────────────────────
 
     private DatabaseSchema Build(
@@ -221,20 +318,24 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         List<ColumnRow> columns,
         List<PrimaryKeyRow> primaryKeys,
         List<ForeignKeyRow> foreignKeys,
-        List<IndexRow> indexes
-    )
+        List<IndexRow> indexes,
+        Dictionary<string, string?> schemaComments,
+        Dictionary<(string, string), string?> tableComments,
+        Dictionary<(string, string, string), string?> columnComments,
+        Dictionary<(string, string), string?> indexComments)
     {
         var bySchema = tables
             .GroupBy(t => t.Schema)
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes)).ToList());
+                g => g.Select(t => BuildTable(t, columns, primaryKeys, foreignKeys, indexes, tableComments, columnComments, indexComments)).ToList());
 
         // Ensure every requested schema name appears in the result, even when it has no tables.
         var dbSchemas = schemas
             .Select(name => new SchemaDefinition(
                 name,
-                bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : []))
+                bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : [],
+                Comment: schemaComments.TryGetValue(name, out var sc) ? sc : null))
             .ToList();
 
         return new DatabaseSchema(dbSchemas);
@@ -245,11 +346,14 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
         List<ColumnRow> allColumns,
         List<PrimaryKeyRow> allPrimaryKeys,
         List<ForeignKeyRow> allForeignKeys,
-        List<IndexRow> allIndexes)
+        List<IndexRow> allIndexes,
+        Dictionary<(string, string), string?> tableComments,
+        Dictionary<(string, string, string), string?> columnComments,
+        Dictionary<(string, string), string?> indexComments)
     {
         var cols = allColumns
             .Where(c => c.TableSchema == tableRow.Schema && c.TableName == tableRow.Name)
-            .Select(MapColumn)
+            .Select(c => MapColumn(c, columnComments))
             .ToList();
 
         var pk = allPrimaryKeys
@@ -265,28 +369,35 @@ public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) :
 
         var idxs = allIndexes
             .Where(i => i.SchemaName == tableRow.Schema && i.TableName == tableRow.Name)
-            .Select(i => new TableIndex(i.IndexName, i.ColumnNames, i.IsUnique))
+            .Select(i => new TableIndex(
+                i.IndexName, i.ColumnNames, i.IsUnique,
+                indexComments.TryGetValue((tableRow.Schema, i.IndexName), out var ic) ? ic : null))
             .ToList();
+
+        tableComments.TryGetValue((tableRow.Schema, tableRow.Name), out var tableComment);
 
         return new Table(
             tableRow.Name,
             cols,
             pk,
             fks.Count > 0 ? fks : null,
-            idxs.Count > 0 ? idxs : null);
+            idxs.Count > 0 ? idxs : null,
+            Comment: tableComment);
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────
 
-    private static Column MapColumn(ColumnRow row)
+    private static Column MapColumn(ColumnRow row, Dictionary<(string, string, string), string?> columnComments)
     {
         var type = MapSqlType(row.DataType, row.UdtName, row.MaxLength, row.NumericPrecision, row.NumericScale);
+        columnComments.TryGetValue((row.TableSchema, row.TableName, row.ColumnName), out var comment);
         return new Column(
             row.ColumnName,
             type,
             IsNullable: row.IsNullable,
             IsIdentity: row.IsIdentity,
-            DefaultExpression: row.IsIdentity ? null : row.DefaultExpression);
+            DefaultExpression: row.IsIdentity ? null : row.DefaultExpression,
+            Comment: comment);
     }
 
     private static SqlType MapSqlType(

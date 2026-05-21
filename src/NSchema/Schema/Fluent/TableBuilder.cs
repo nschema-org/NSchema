@@ -8,6 +8,7 @@ public sealed class TableBuilder
     private readonly List<IndexBuilder> _indexes = [];
     private PrimaryKey? _primaryKey;
     private string? _previousName;
+    private string? _comment;
 
     internal TableBuilder(string name) => _name = name;
 
@@ -38,6 +39,7 @@ public sealed class TableBuilder
         return builder;
     }
 
+    public TableBuilder Comment(string? comment) { _comment = comment; return this; }
     public TableBuilder WasPreviouslyNamed(string previousName) { _previousName = previousName; return this; }
 
     internal Table Build() =>
@@ -46,5 +48,6 @@ public sealed class TableBuilder
             _primaryKey,
             _foreignKeys.Count > 0 ? _foreignKeys.Select(f => f.Build()).ToList() : null,
             _indexes.Count > 0 ? _indexes.Select(i => i.Build()).ToList() : null,
-            _previousName);
+            _previousName,
+            _comment);
 }

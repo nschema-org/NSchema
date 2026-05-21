@@ -1,6 +1,6 @@
 namespace NSchema.Schema;
 
-public record TableIndex(string Name, IReadOnlyList<string> ColumnNames, bool IsUnique = false)
+public record TableIndex(string Name, IReadOnlyList<string> ColumnNames, bool IsUnique = false, string? Comment = null)
 {
     public virtual bool Equals(TableIndex? other) =>
         other != null

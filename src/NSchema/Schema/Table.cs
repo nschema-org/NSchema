@@ -6,5 +6,6 @@ public record Table(
     PrimaryKey? PrimaryKey = null,
     IReadOnlyList<ForeignKey>? ForeignKeys = null,
     IReadOnlyList<TableIndex>? Indexes = null,
-    string? PreviousName = null
+    string? PreviousName = null,
+    string? Comment = null
 );

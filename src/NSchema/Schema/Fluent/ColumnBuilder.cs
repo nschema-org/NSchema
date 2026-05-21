@@ -8,6 +8,7 @@ public sealed class ColumnBuilder
     private bool _isIdentity;
     private string? _defaultExpression;
     private string? _previousName;
+    private string? _comment;
 
     internal ColumnBuilder(string name, SqlType type)
     {
@@ -19,8 +20,9 @@ public sealed class ColumnBuilder
     public ColumnBuilder Nullable() { _isNullable = true; return this; }
     public ColumnBuilder Identity() { _isIdentity = true; return this; }
     public ColumnBuilder Default(string expression) { _defaultExpression = expression; return this; }
+    public ColumnBuilder Comment(string? comment) { _comment = comment; return this; }
     public ColumnBuilder WasPreviouslyNamed(string previousName) { _previousName = previousName; return this; }
 
     internal Column Build() =>
-        new(_name, _type, _isNullable, _isIdentity, _defaultExpression, _previousName);
+        new(_name, _type, _isNullable, _isIdentity, _defaultExpression, _previousName, _comment);
 }
