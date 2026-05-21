@@ -1,6 +1,6 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Target;
+namespace NSchema.Desired;
 
 public sealed class DefaultSchemaAggregator : ISchemaAggregator
 {

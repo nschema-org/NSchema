@@ -15,7 +15,7 @@ builder.Services
 
 builder
     .AddSchema<BooksSchema>()
-    .UsePostgresSource(connectionString);
+    .UsePostgresCurrent(connectionString);
 
 var migration = builder.Build();
 

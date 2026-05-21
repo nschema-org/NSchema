@@ -5,10 +5,9 @@ using Microsoft.Extensions.Diagnostics.Metrics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSchema.Comparison;
+using NSchema.Desired;
 using NSchema.Hosting;
 using NSchema.Migration;
-using NSchema.Source;
-using NSchema.Target;
 
 namespace NSchema;
 
@@ -63,9 +62,9 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// <inheritdoc />
     public IServiceCollection Services => _innerBuilder.Services;
 
-    public NSchemaApplicationBuilder AddSchema<T>() where T : ITargetSchemaProvider
+    public NSchemaApplicationBuilder AddSchema<T>() where T : IDesiredSchemaProvider
     {
-        var schema = new ServiceDescriptor(typeof(ITargetSchemaProvider), typeof(T), ServiceLifetime.Singleton);
+        var schema = new ServiceDescriptor(typeof(IDesiredSchemaProvider), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(schema);
         return this;
     }

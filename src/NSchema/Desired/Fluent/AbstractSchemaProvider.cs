@@ -1,8 +1,8 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Target.Fluent;
+namespace NSchema.Desired.Fluent;
 
-public abstract class AbstractSchemaProvider : ITargetSchemaProvider
+public abstract class AbstractSchemaProvider : IDesiredSchemaProvider
 {
     private readonly List<SchemaBuilder> _schemas = [];
     private readonly List<Script> _preScripts = [];

@@ -1,16 +1,16 @@
+using NSchema.Desired;
 using NSchema.Domain.Schema;
-using NSchema.Target;
 
-namespace NSchema.Tests.Target;
+namespace NSchema.Tests.Desired;
 
 public sealed class DefaultSchemaAggregatorTests
 {
     private static readonly DefaultSchemaAggregator s_aggregator = new();
 
     private static DatabaseSchema Db(params Schema[] schemas) =>
-        new(schemas, null, null);
+        new(schemas, [], []);
 
-    private static DatabaseSchema Db(IReadOnlyList<Schema> schemas, IReadOnlyList<Script>? pre = null, IReadOnlyList<Script>? post = null) =>
+    private static DatabaseSchema Db(IReadOnlyList<Schema> schemas, IReadOnlyList<Script> pre, IReadOnlyList<Script> post) =>
         new(schemas, pre, post);
 
     private static Schema Schema(string name, params Table[] tables) =>
@@ -80,8 +80,8 @@ public sealed class DefaultSchemaAggregatorTests
         var result = s_aggregator.Aggregate([]);
 
         result.Schemas.ShouldBeEmpty();
-        result.PreDeploymentScripts.ShouldBeNull();
-        result.PostDeploymentScripts.ShouldBeNull();
+        result.PreDeploymentScripts.ShouldBeEmpty();
+        result.PostDeploymentScripts.ShouldBeEmpty();
     }
 
     // ── Scripts ───────────────────────────────────────────────────────────────
@@ -89,36 +89,34 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_ConcatenatesPreDeploymentScripts()
     {
-        var db1 = Db([], [new Script("a", "SELECT 1")], null);
-        var db2 = Db([], [new Script("b", "SELECT 2")], null);
+        var db1 = Db([], [new Script("a", "SELECT 1")], []);
+        var db2 = Db([], [new Script("b", "SELECT 2")], []);
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
-        result.PreDeploymentScripts.ShouldNotBeNull();
-        result.PreDeploymentScripts!.Select(s => s.Name).ShouldBe(["a", "b"]);
+        result.PreDeploymentScripts.Select(s => s.Name).ShouldBe(["a", "b"]);
     }
 
     [Fact]
     public void Merge_ConcatenatesPostDeploymentScripts()
     {
-        var db1 = Db([], null, [new Script("seed1", "INSERT INTO t VALUES (1)")]);
-        var db2 = Db([], null, [new Script("seed2", "INSERT INTO t VALUES (2)")]);
+        var db1 = Db([], [], [new Script("seed1", "INSERT INTO t VALUES (1)")]);
+        var db2 = Db([], [], [new Script("seed2", "INSERT INTO t VALUES (2)")]);
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
-        result.PostDeploymentScripts.ShouldNotBeNull();
-        result.PostDeploymentScripts!.Select(s => s.Name).ShouldBe(["seed1", "seed2"]);
+        result.PostDeploymentScripts.Select(s => s.Name).ShouldBe(["seed1", "seed2"]);
     }
 
     [Fact]
-    public void Merge_NoScripts_ScriptListsAreNull()
+    public void Merge_NoScripts_ScriptListsAreEmpty()
     {
         var db1 = Db(Schema("public", Table("users")));
         var db2 = Db(Schema("admin", Table("roles")));
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
-        result.PreDeploymentScripts.ShouldBeNull();
-        result.PostDeploymentScripts.ShouldBeNull();
+        result.PreDeploymentScripts.ShouldBeEmpty();
+        result.PostDeploymentScripts.ShouldBeEmpty();
     }
 }

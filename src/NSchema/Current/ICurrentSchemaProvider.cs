@@ -1,8 +1,8 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Source;
+namespace NSchema.Current;
 
-public interface ISourceSchemaProvider
+public interface ICurrentSchemaProvider
 {
     Task<DatabaseSchema> GetSchema(string[] schemaNames, CancellationToken cancellationToken = default);
 }

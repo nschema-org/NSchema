@@ -1,11 +1,11 @@
 using Npgsql;
+using NSchema.Current;
 using NSchema.Domain.Schema;
 using NSchema.Postgres.Models;
-using NSchema.Source;
 
-namespace NSchema.Postgres.Source;
+namespace NSchema.Postgres.Current;
 
-public sealed class PostgresSourceSchemaProvider(NpgsqlDataSource dataSource) : ISourceSchemaProvider
+public sealed class PostgresCurrentSchemaProvider(NpgsqlDataSource dataSource) : ICurrentSchemaProvider
 {
     public async Task<DatabaseSchema> GetSchema(string[] schemas, CancellationToken cancellationToken = default)
     {

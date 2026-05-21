@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using NSchema.Current;
 using NSchema.Migration;
+using NSchema.Postgres.Current;
 using NSchema.Postgres.Migration;
-using NSchema.Postgres.Source;
-using NSchema.Source;
 
 namespace NSchema.Postgres;
 
@@ -11,19 +11,19 @@ public static class NSchemaApplicationBuilderExtensions
 {
     extension(NSchemaApplicationBuilder builder)
     {
-        public NSchemaApplicationBuilder UsePostgresSource(string connectionString)
+        public NSchemaApplicationBuilder UsePostgresCurrent(string connectionString)
         {
             builder.Services.AddNpgsqlDataSource(connectionString);
             return builder.AddPostgresCore();
         }
 
-        public NSchemaApplicationBuilder UsePostgresSource(Action<NpgsqlDataSourceBuilder> configure)
+        public NSchemaApplicationBuilder UsePostgresCurrent(Action<NpgsqlDataSourceBuilder> configure)
         {
             builder.Services.AddNpgsqlDataSource("", configure);
             return builder.AddPostgresCore();
         }
 
-        public NSchemaApplicationBuilder UsePostgresSource(Action<IServiceProvider, NpgsqlDataSourceBuilder> configure)
+        public NSchemaApplicationBuilder UsePostgresCurrent(Action<IServiceProvider, NpgsqlDataSourceBuilder> configure)
         {
             builder.Services.AddNpgsqlDataSource("", configure);
             return builder.AddPostgresCore();
@@ -32,7 +32,7 @@ public static class NSchemaApplicationBuilderExtensions
         private NSchemaApplicationBuilder AddPostgresCore()
         {
             builder.Services
-                .AddSingleton<ISourceSchemaProvider, PostgresSourceSchemaProvider>()
+                .AddSingleton<ICurrentSchemaProvider, PostgresCurrentSchemaProvider>()
                 .AddSingleton<ISchemaMigrator, PostgresSchemaMigrator>();
 
             return builder;

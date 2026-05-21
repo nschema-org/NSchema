@@ -1,7 +1,7 @@
+using NSchema.Desired.Fluent;
 using NSchema.Domain.Schema;
-using NSchema.Target.Fluent;
 
-namespace NSchema.Tests.Target.Fluent;
+namespace NSchema.Tests.Desired.Fluent;
 
 public sealed class AbstractSchemaProviderTests
 {
@@ -50,8 +50,7 @@ public sealed class AbstractSchemaProviderTests
     {
         var model = await Build(p => p.PreDeploymentScript("init", "SELECT 1"));
 
-        model.PreDeploymentScripts.ShouldNotBeNull();
-        model.PreDeploymentScripts!.Count.ShouldBe(1);
+        model.PreDeploymentScripts.Count.ShouldBe(1);
         model.PreDeploymentScripts[0].Name.ShouldBe("init");
         model.PreDeploymentScripts[0].Sql.ShouldBe("SELECT 1");
     }
@@ -61,18 +60,17 @@ public sealed class AbstractSchemaProviderTests
     {
         var model = await Build(p => p.PostDeploymentScript("seed", "INSERT INTO config DEFAULT VALUES"));
 
-        model.PostDeploymentScripts.ShouldNotBeNull();
-        model.PostDeploymentScripts!.Count.ShouldBe(1);
+        model.PostDeploymentScripts.Count.ShouldBe(1);
         model.PostDeploymentScripts[0].Name.ShouldBe("seed");
     }
 
     [Fact]
-    public async Task Build_WithNoScripts_ScriptListsAreNull()
+    public async Task Build_WithNoScripts_ScriptListsAreEmpty()
     {
         var model = await Build(_ => { });
 
-        model.PreDeploymentScripts.ShouldBeNull();
-        model.PostDeploymentScripts.ShouldBeNull();
+        model.PreDeploymentScripts.ShouldBeEmpty();
+        model.PostDeploymentScripts.ShouldBeEmpty();
     }
 
     // ── SchemaBuilder ─────────────────────────────────────────────────────────

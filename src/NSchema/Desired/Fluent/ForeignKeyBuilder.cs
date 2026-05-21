@@ -1,6 +1,6 @@
 using NSchema.Domain.Schema;
 
-namespace NSchema.Target.Fluent;
+namespace NSchema.Desired.Fluent;
 
 public sealed class ForeignKeyBuilder
 {
