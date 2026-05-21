@@ -11,4 +11,8 @@
     <Project Path="samples/NSchema.Sandbox.AppHost/NSchema.Sandbox.AppHost.csproj" />
     <Project Path="samples/NSchema.Sandbox/NSchema.Sandbox.csproj" />
   </Folder>
+  <Folder Name="/_/">
+    <File Path="CLAUDE.md" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
 </Solution>
