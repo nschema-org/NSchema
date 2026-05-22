@@ -132,6 +132,54 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
+    public NSchemaApplicationBuilder AddPreDeploymentScriptFromFile(string path, string? name = null)
+        => AddPreDeploymentScript(name ?? Path.GetFileNameWithoutExtension(path), File.ReadAllText(path));
+
+    public NSchemaApplicationBuilder AddPostDeploymentScriptFromFile(string path, string? name = null)
+        => AddPostDeploymentScript(name ?? Path.GetFileNameWithoutExtension(path), File.ReadAllText(path));
+
+    public NSchemaApplicationBuilder AddPreDeploymentScriptFromEmbeddedResource(Assembly assembly, string resourceName, string? name = null)
+        => AddPreDeploymentScript(name ?? DeriveScriptName(resourceName), ReadEmbeddedResource(assembly, resourceName));
+
+    public NSchemaApplicationBuilder AddPostDeploymentScriptFromEmbeddedResource(Assembly assembly, string resourceName, string? name = null)
+        => AddPostDeploymentScript(name ?? DeriveScriptName(resourceName), ReadEmbeddedResource(assembly, resourceName));
+
+    public NSchemaApplicationBuilder AddPreDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
+    {
+        foreach (var resourceName in MatchingResources(assembly, resourcePrefix))
+            AddPreDeploymentScriptFromEmbeddedResource(assembly, resourceName);
+        return this;
+    }
+
+    public NSchemaApplicationBuilder AddPostDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
+    {
+        foreach (var resourceName in MatchingResources(assembly, resourcePrefix))
+            AddPostDeploymentScriptFromEmbeddedResource(assembly, resourceName);
+        return this;
+    }
+
+    private static IEnumerable<string> MatchingResources(Assembly assembly, string resourcePrefix) =>
+        assembly.GetManifestResourceNames()
+            .Where(n => n.StartsWith(resourcePrefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
+
+    private static string DeriveScriptName(string resourceName)
+    {
+        var lastDot = resourceName.LastIndexOf('.');
+        var secondLastDot = resourceName.LastIndexOf('.', lastDot - 1);
+        return secondLastDot >= 0
+            ? resourceName[(secondLastDot + 1)..lastDot]
+            : resourceName[..lastDot];
+    }
+
+    private static string ReadEmbeddedResource(Assembly assembly, string resourceName)
+    {
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found in assembly '{assembly.GetName().Name}'.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
     /// <summary>
     /// Builds the <see cref="NSchemaApplication" />.
     /// </summary>
