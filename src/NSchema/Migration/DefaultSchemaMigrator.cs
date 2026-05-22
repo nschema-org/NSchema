@@ -42,12 +42,10 @@ public sealed class DefaultSchemaMigrator(
         var providerList = scriptProviders.ToList();
         if (providerList.Count > 0)
         {
-            var preActions = providerList
-                .SelectMany(p => p.PreDeploymentScripts)
-                .Select(MigrationAction (s) => new RunPreDeploymentScript(s));
-            var postActions = providerList
-                .SelectMany(p => p.PostDeploymentScripts)
-                .Select(MigrationAction (s) => new RunPostDeploymentScript(s));
+            var preLists = await Task.WhenAll(providerList.Select(p => p.GetPreDeploymentScripts(cancellationToken)));
+            var postLists = await Task.WhenAll(providerList.Select(p => p.GetPostDeploymentScripts(cancellationToken)));
+            var preActions = preLists.SelectMany(s => s).Select(MigrationAction (s) => new RunPreDeploymentScript(s));
+            var postActions = postLists.SelectMany(s => s).Select(MigrationAction (s) => new RunPostDeploymentScript(s));
             schemaPlan = new MigrationPlan([.. preActions, .. schemaPlan.Actions, .. postActions]);
         }
 

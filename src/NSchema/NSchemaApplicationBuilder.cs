@@ -128,67 +128,33 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     }
 
     public NSchemaApplicationBuilder AddPreDeploymentScript(string name, string sql)
-    {
-        Services.AddSingleton<IDeploymentScriptProvider>(new InlineScriptProvider(pre: [new Script(name, sql)], post: []));
-        return this;
-    }
+        => AddScriptProvider(new InlineScriptProvider(DeploymentPhase.Pre, new Script(name, sql)));
 
     public NSchemaApplicationBuilder AddPostDeploymentScript(string name, string sql)
-    {
-        Services.AddSingleton<IDeploymentScriptProvider>(new InlineScriptProvider(pre: [], post: [new Script(name, sql)]));
-        return this;
-    }
+        => AddScriptProvider(new InlineScriptProvider(DeploymentPhase.Post, new Script(name, sql)));
 
     public NSchemaApplicationBuilder AddPreDeploymentScriptFromFile(string path, string? name = null)
-        => AddPreDeploymentScript(name ?? Path.GetFileNameWithoutExtension(path), File.ReadAllText(path));
+        => AddScriptProvider(new FileScriptProvider(DeploymentPhase.Pre, path, name));
 
     public NSchemaApplicationBuilder AddPostDeploymentScriptFromFile(string path, string? name = null)
-        => AddPostDeploymentScript(name ?? Path.GetFileNameWithoutExtension(path), File.ReadAllText(path));
+        => AddScriptProvider(new FileScriptProvider(DeploymentPhase.Post, path, name));
 
     public NSchemaApplicationBuilder AddPreDeploymentScriptFromEmbeddedResource(Assembly assembly, string resourceName, string? name = null)
-        => AddPreDeploymentScript(name ?? DeriveScriptName(resourceName), ReadEmbeddedResource(assembly, resourceName));
+        => AddScriptProvider(new EmbeddedResourceScriptProvider(DeploymentPhase.Pre, assembly, resourceName, name));
 
     public NSchemaApplicationBuilder AddPostDeploymentScriptFromEmbeddedResource(Assembly assembly, string resourceName, string? name = null)
-        => AddPostDeploymentScript(name ?? DeriveScriptName(resourceName), ReadEmbeddedResource(assembly, resourceName));
+        => AddScriptProvider(new EmbeddedResourceScriptProvider(DeploymentPhase.Post, assembly, resourceName, name));
 
     public NSchemaApplicationBuilder AddPreDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
-    {
-        foreach (string resourceName in MatchingResources(assembly, resourcePrefix))
-        {
-            AddPreDeploymentScriptFromEmbeddedResource(assembly, resourceName);
-        }
-        return this;
-    }
+        => AddScriptProvider(new EmbeddedResourcePrefixScriptProvider(DeploymentPhase.Pre, assembly, resourcePrefix));
 
     public NSchemaApplicationBuilder AddPostDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
+        => AddScriptProvider(new EmbeddedResourcePrefixScriptProvider(DeploymentPhase.Post, assembly, resourcePrefix));
+
+    private NSchemaApplicationBuilder AddScriptProvider(IDeploymentScriptProvider provider)
     {
-        foreach (string resourceName in MatchingResources(assembly, resourcePrefix))
-        {
-            AddPostDeploymentScriptFromEmbeddedResource(assembly, resourceName);
-        }
+        Services.AddSingleton(provider);
         return this;
-    }
-
-    private static IEnumerable<string> MatchingResources(Assembly assembly, string resourcePrefix) =>
-        assembly.GetManifestResourceNames()
-            .Where(n => n.StartsWith(resourcePrefix, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
-
-    private static string DeriveScriptName(string resourceName)
-    {
-        int lastDot = resourceName.LastIndexOf('.');
-        int secondLastDot = resourceName.LastIndexOf('.', lastDot - 1);
-        return secondLastDot >= 0
-            ? resourceName[(secondLastDot + 1)..lastDot]
-            : resourceName[..lastDot];
-    }
-
-    private static string ReadEmbeddedResource(Assembly assembly, string resourceName)
-    {
-        using var stream = assembly.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found in assembly '{assembly.GetName().Name}'.");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 
     /// <summary>
