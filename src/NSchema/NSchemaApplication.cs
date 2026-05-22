@@ -2,9 +2,12 @@ using Microsoft.Extensions.Hosting;
 
 namespace NSchema;
 
-public class NSchemaApplication : IHost
+/// <summary>
+/// The main entry point for an NSchema application.
+/// </summary>
+public sealed class NSchemaApplication : IHost
 {
-    private bool _hasRun = false;
+    private bool _hasRun;
     private readonly IHost _host;
 
     internal NSchemaApplication(IHost host)
@@ -36,7 +39,17 @@ public class NSchemaApplication : IHost
         _host.Dispose();
     }
 
-    public static NSchemaApplicationBuilder CreateBuilder() => new(new NSchemaApplicationOptions());
-    public static NSchemaApplicationBuilder CreateBuilder(string[] args) => new(new NSchemaApplicationOptions { Args = args });
+    /// <summary>
+    /// Creates a new <see cref="NSchemaApplicationBuilder"/> with the specified command-line arguments.
+    /// </summary>
+    /// <param name="args">The command-line arguments to add to the builder's configuration.</param>
+    /// <returns>A new application builder.</returns>
+    public static NSchemaApplicationBuilder CreateBuilder(string[]? args = null) => new(new NSchemaApplicationOptions { Args = args });
+
+    /// <summary>
+    /// Creates a new <see cref="NSchemaApplicationBuilder"/> with the specified options.
+    /// </summary>
+    /// <param name="options">The options to configure the builder.</param>
+    /// <returns>A new application builder.</returns>
     public static NSchemaApplicationBuilder CreateBuilder(NSchemaApplicationOptions options) => new(options);
 }

@@ -227,7 +227,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
 
         // Act
-        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", WasNullable: true, IsNullable: false)])));
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", OldNullable: true, NewNullable: false)])));
 
         // Assert
         var isNullable = await ScalarString(
@@ -242,7 +242,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text NOT NULL)""");
 
         // Act
-        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", WasNullable: false, IsNullable: true)])));
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", OldNullable: false, NewNullable: true)])));
 
         // Assert
         var isNullable = await ScalarString(

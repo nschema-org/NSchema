@@ -1,5 +1,8 @@
 namespace NSchema;
 
+/// <summary>
+/// Options for configuring the behavior of an <see cref="NSchemaApplication"/>.
+/// </summary>
 public class NSchemaApplicationOptions
 {
     /// <summary>

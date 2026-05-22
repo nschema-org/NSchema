@@ -222,8 +222,8 @@ public class DefaultSchemaComparerTests
         result.Actions.Any(i => i is AlterColumnNullability acn
             && acn.TableName == "users"
             && acn.ColumnName == "email"
-            && acn.WasNullable == true
-            && acn.IsNullable == false).ShouldBeTrue();
+            && acn.OldNullable == true
+            && acn.NewNullable == false).ShouldBeTrue();
     }
 
     [Fact]
