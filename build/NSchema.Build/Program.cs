@@ -1,7 +1,6 @@
 ﻿using Hamelin;
 using Hamelin.Runtimes.GitHubActions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NSchema.Build.Models;
 using NSchema.Build.Services;
 using NSchema.Build.Steps;
@@ -23,30 +22,29 @@ builder.Services.AddOptions<BuildOptions>()
     .ValidateOnStart();
 
 var pipeline = builder.Build();
-
-var mode = builder.Configuration["Mode"];
-switch (mode)
+return args switch
 {
-    case "PullRequest":
-        pipeline
-            .UseStep<Clean>()
-            .UseStep<Format>()
-            .UseStep<ExtractProject>()
-            .UseStep<Version>()
-            .UseStep<Restore>()
-            .UseStep<Build>()
-            .UseStep<Test>();
-        break;
-    case "Release":
-        pipeline
-            .UseStep<Clean>()
-            .UseStep<Restore>()
-            .UseStep<Build>()
-            .UseStep<Pack>()
-            .UseStep<Publish>();
-        break;
-    default:
-        throw new InvalidOperationException($"Unknown mode: {mode}");
-}
+    ["build"] => pipeline
+        .UseStep<Clean>()
+        .UseStep<Format>()
+        .UseStep<ExtractProject>()
+        .UseStep<Version>()
+        .UseStep<Restore>()
+        .UseStep<Build>()
+        .UseStep<Test>()
+        .RunWithExitCode(),
+    ["deploy"] => pipeline
+        .UseStep<Clean>()
+        .UseStep<Restore>()
+        .UseStep<Build>()
+        .UseStep<Pack>()
+        .UseStep<Publish>()
+        .RunWithExitCode(),
+    _ => Help()
+};
 
-pipeline.Run();
+static int Help()
+{
+    Console.Error.WriteLine("Usage: nschema-build <build|deploy>");
+    return 1;
+}
