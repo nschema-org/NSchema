@@ -218,7 +218,12 @@ public sealed class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger)
             if (matchingCurrent.IsIdentity && desiredCol.IsIdentity
                 && matchingCurrent.IdentityOptions != desiredCol.IdentityOptions)
             {
-                logger.LogInformation("Column '{Schema}.{Table}.{Column}' identity sequence options changed", schemaName, tableName, desiredCol.Name);
+                logger.LogInformation(
+                    "Column '{Schema}.{Table}.{Column}' identity sequence options changed: start {OldStart} -> {NewStart}, min {OldMin} -> {NewMin}, increment {OldIncrement} -> {NewIncrement}",
+                    schemaName, tableName, desiredCol.Name,
+                    matchingCurrent.IdentityOptions?.StartWith, desiredCol.IdentityOptions?.StartWith,
+                    matchingCurrent.IdentityOptions?.MinValue, desiredCol.IdentityOptions?.MinValue,
+                    matchingCurrent.IdentityOptions?.IncrementBy, desiredCol.IdentityOptions?.IncrementBy);
                 actions.Add(new AlterIdentitySequence(schemaName, tableName, desiredCol.Name, matchingCurrent.IdentityOptions, desiredCol.IdentityOptions));
             }
         }
