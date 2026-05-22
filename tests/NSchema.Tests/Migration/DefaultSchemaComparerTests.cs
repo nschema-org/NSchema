@@ -81,7 +81,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app");
-        var desired = new DatabaseSchema([new SchemaDefinition("application", PreviousName: "app")]);
+        var desired = new DatabaseSchema([new SchemaDefinition("application", OldName: "app")]);
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -127,7 +127,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = WithSchema("app", new Table("accounts", PreviousName: "users", Columns: [new Column("id", SqlType.Int)]));
+        var desired = WithSchema("app", new Table("accounts", OldName: "users", Columns: [new Column("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -179,7 +179,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app", new Table("users", Columns: [new Column("email", SqlType.Text)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("email_address", SqlType.Text, PreviousName: "email")]));
+        var desired = WithSchema("app", new Table("users", Columns: [new Column("email_address", SqlType.Text, OldName: "email")]));
 
         // Act
         var result = _comparer.Compare(current, desired);

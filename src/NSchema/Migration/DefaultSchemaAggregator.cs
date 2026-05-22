@@ -19,7 +19,7 @@ internal sealed class DefaultSchemaAggregator : ISchemaAggregator
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new DatabaseSchema(mergedSchemas, droppedSchemas.Count > 0 ? droppedSchemas : null);
+        return new DatabaseSchema(mergedSchemas, droppedSchemas);
     }
 
     private static SchemaDefinition AggregateSchemaGroup(IReadOnlyList<SchemaDefinition> schemas)
@@ -53,13 +53,13 @@ internal sealed class DefaultSchemaAggregator : ISchemaAggregator
             .SelectMany(s => s.DroppedTables)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        string? previousName = schemas.Select(s => s.PreviousName).FirstOrDefault(n => n is not null);
+        string? oldName = schemas.Select(s => s.OldName).FirstOrDefault(n => n is not null);
 
         var grants = schemas
             .SelectMany(s => s.Grants)
             .Distinct()
             .ToList();
 
-        return new SchemaDefinition(schemaName, previousName, isPartial, comment, tables, droppedTables, grants);
+        return new SchemaDefinition(schemaName, oldName, isPartial, comment, tables, droppedTables, grants);
     }
 }

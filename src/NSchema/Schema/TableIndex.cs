@@ -11,7 +11,7 @@ namespace NSchema.Schema;
 /// <param name="Comment">An optional comment or description for the index.</param>
 /// <param name="Predicate">An optional predicate that defines a partial index.</param>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public record TableIndex(string Name, IReadOnlyList<string> ColumnNames, bool IsUnique = false, string? Comment = null, string? Predicate = null)
+public record TableIndex(string Name, IReadOnlyList<string> ColumnNames, bool IsUnique, string? Comment, string? Predicate)
 {
     private string DebuggerDisplay =>
         $"{Name}: ({string.Join(", ", ColumnNames)})" +

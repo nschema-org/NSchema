@@ -22,7 +22,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
     {
         foreach (var currentSchema in current)
         {
-            if (desired.Any(d => d.Name == currentSchema.Name || d.PreviousName == currentSchema.Name))
+            if (desired.Any(d => d.Name == currentSchema.Name || d.OldName == currentSchema.Name))
             {
                 LogSchemaExists(currentSchema.Name);
             }
@@ -35,7 +35,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
 
         foreach (var desiredSchema in desired)
         {
-            var matchingCurrent = current.FirstOrDefault(schema => schema.Name == desiredSchema.Name || schema.Name == desiredSchema.PreviousName);
+            var matchingCurrent = current.FirstOrDefault(schema => schema.Name == desiredSchema.Name || schema.Name == desiredSchema.OldName);
             if (matchingCurrent is null)
             {
                 LogSchemaNew(desiredSchema.Name);
@@ -83,7 +83,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
 
         foreach (var currentTable in current)
         {
-            if (desired.Tables.Any(d => d.Name == currentTable.Name || d.PreviousName == currentTable.Name))
+            if (desired.Tables.Any(d => d.Name == currentTable.Name || d.OldName == currentTable.Name))
             {
                 LogTableExists(schemaName, currentTable.Name);
             }
@@ -105,7 +105,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
 
         foreach (var desiredTable in desired.Tables)
         {
-            var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredTable.Name || c.Name == desiredTable.PreviousName);
+            var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredTable.Name || c.Name == desiredTable.OldName);
             if (matchingCurrent is null)
             {
                 LogTableNew(schemaName, desiredTable.Name);
@@ -142,7 +142,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
     {
         foreach (var currentCol in current)
         {
-            if (desired.Any(d => d.Name == currentCol.Name || d.PreviousName == currentCol.Name))
+            if (desired.Any(d => d.Name == currentCol.Name || d.OldName == currentCol.Name))
             {
                 LogColumnExists(schemaName, tableName, currentCol.Name);
             }
@@ -155,7 +155,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
 
         foreach (var desiredCol in desired)
         {
-            var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredCol.Name || c.Name == desiredCol.PreviousName);
+            var matchingCurrent = current.FirstOrDefault(c => c.Name == desiredCol.Name || c.Name == desiredCol.OldName);
             if (matchingCurrent is null)
             {
                 LogColumnNew(schemaName, tableName, desiredCol.Name);

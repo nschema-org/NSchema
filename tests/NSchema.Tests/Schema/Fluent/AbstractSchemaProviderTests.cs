@@ -77,11 +77,11 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public async Task SchemaBuilder_WasPreviouslyNamed_SetsPreviousNameOnSchema()
+    public async Task SchemaBuilder_RenamedFrom_SetsOldNameOnSchema()
     {
-        var model = await Build(p => p.Schema("public").WasPreviouslyNamed("old_schema"));
+        var model = await Build(p => p.Schema("public").RenamedFrom("old_schema"));
 
-        model.Schemas[0].PreviousName.ShouldBe("old_schema");
+        model.Schemas[0].OldName.ShouldBe("old_schema");
     }
 
     // ── TableBuilder ──────────────────────────────────────────────────────────
@@ -154,11 +154,11 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public async Task TableBuilder_WasPreviouslyNamed_SetsPreviousNameOnTable()
+    public async Task TableBuilder_RenamedFrom_SetsOldNameOnTable()
     {
-        var model = await Build(p => p.Schema("public").Table("users").WasPreviouslyNamed("members"));
+        var model = await Build(p => p.Schema("public").Table("users").RenamedFrom("members"));
 
-        model.Schemas[0].Tables[0].PreviousName.ShouldBe("members");
+        model.Schemas[0].Tables[0].OldName.ShouldBe("members");
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public sealed class AbstractSchemaProviderTests
         column.IsNullable.ShouldBeTrue();
         column.IsIdentity.ShouldBeFalse();
         column.DefaultExpression.ShouldBeNull();
-        column.PreviousName.ShouldBeNull();
+        column.OldName.ShouldBeNull();
     }
 
     [Fact]
@@ -232,11 +232,11 @@ public sealed class AbstractSchemaProviderTests
     }
 
     [Fact]
-    public async Task ColumnBuilder_WasPreviouslyNamed_SetsPreviousName()
+    public async Task ColumnBuilder_RenamedFrom_SetsOldName()
     {
-        var model = await Build(p => p.Schema("public").Table("t").Column("full_name", SqlType.Text).WasPreviouslyNamed("name"));
+        var model = await Build(p => p.Schema("public").Table("t").Column("full_name", SqlType.Text).RenamedFrom("name"));
 
-        model.Schemas[0].Tables[0].Columns[0].PreviousName.ShouldBe("name");
+        model.Schemas[0].Tables[0].Columns[0].OldName.ShouldBe("name");
     }
 
     // ── ForeignKeyBuilder ─────────────────────────────────────────────────────
