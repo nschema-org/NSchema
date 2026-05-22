@@ -4,7 +4,7 @@ using NSchema.Schema;
 
 namespace NSchema.Postgres.Migration;
 
-public sealed class PostgresSqlPlanner : ISqlPlanner
+internal sealed class PostgresSqlPlanner : ISqlPlanner
 {
     public SqlPlan Plan(MigrationPlan plan)
     {
@@ -60,7 +60,7 @@ public sealed class PostgresSqlPlanner : ISqlPlanner
 
     private static string BuildCreateTable(CreateTable x)
     {
-        var parts = x.Table.Columns.Select(BuildColumnDef).ToList<string>();
+        var parts = x.Table.Columns.Select(BuildColumnDef).ToList();
 
         if (x.Table.PrimaryKey is { } pk)
             parts.Add($"""CONSTRAINT "{pk.Name}" PRIMARY KEY ({ColList(pk.ColumnNames)})""");
@@ -82,7 +82,7 @@ public sealed class PostgresSqlPlanner : ISqlPlanner
 
     private static string BuildCreateIndex(CreateIndex x)
     {
-        var sql = $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
+        string sql = $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
         return x.Index.Predicate is { } pred ? $"{sql} WHERE {pred}" : sql;
     }
 
@@ -91,7 +91,7 @@ public sealed class PostgresSqlPlanner : ISqlPlanner
         string type = ToPostgresType(col.Type);
         string nullable = col.IsNullable ? "" : " NOT NULL";
         string identity = col.IsIdentity ? BuildIdentityClause(col.IdentityOptions) : "";
-        string def = col.DefaultExpression is { } d && !col.IsIdentity ? $" DEFAULT {d}" : "";
+        string def = col is { DefaultExpression: { } d, IsIdentity: false } ? $" DEFAULT {d}" : "";
         return $"\"{col.Name}\" {type}{nullable}{identity}{def}";
     }
 
@@ -134,7 +134,7 @@ public sealed class PostgresSqlPlanner : ISqlPlanner
 
     // ── Type mapping ──────────────────────────────────────────────────────────
 
-    internal static string ToPostgresType(SqlType type) => type switch
+    private static string ToPostgresType(SqlType type) => type switch
     {
         SqlType.BooleanType => "boolean",
         SqlType.TinyIntType => "smallint",

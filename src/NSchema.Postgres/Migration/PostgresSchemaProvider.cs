@@ -5,7 +5,7 @@ using NSchema.Schema;
 
 namespace NSchema.Postgres.Migration;
 
-public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurrentSchemaProvider
+internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurrentSchemaProvider
 {
     public async Task<DatabaseSchema> GetSchema(string[] schemas, CancellationToken cancellationToken = default)
     {
@@ -23,14 +23,16 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         var schemaGrants = await QuerySchemaGrants(conn, schemas, cancellationToken);
         var tableGrants = await QueryTableGrants(conn, schemas, cancellationToken);
 
-        return Build(tables, columns, primaryKeys, foreignKeys, indexes,
-                     schemaComments, tableComments, columnComments, indexComments,
-                     schemaGrants, tableGrants);
+        return Build(
+            tables, columns, primaryKeys, foreignKeys, indexes,
+            schemaComments, tableComments, columnComments, indexComments,
+            schemaGrants, tableGrants
+        );
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
 
-    private async Task<List<TableRow>> QueryTables(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
+    private static async Task<List<TableRow>> QueryTables(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<TableRow>();
         await using var cmd = conn.CreateCommand();
@@ -50,7 +52,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<List<ColumnRow>> QueryColumns(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
+    private static async Task<List<ColumnRow>> QueryColumns(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<ColumnRow>();
         await using var cmd = conn.CreateCommand();
@@ -112,7 +114,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<List<PrimaryKeyRow>> QueryPrimaryKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
+    private static async Task<List<PrimaryKeyRow>> QueryPrimaryKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<PrimaryKeyRow>();
         await using var cmd = conn.CreateCommand();
@@ -147,7 +149,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<List<ForeignKeyRow>> QueryForeignKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
+    private static async Task<List<ForeignKeyRow>> QueryForeignKeys(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<ForeignKeyRow>();
         await using var cmd = conn.CreateCommand();
@@ -197,7 +199,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<List<IndexRow>> QueryIndexes(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
+    private static async Task<List<IndexRow>> QueryIndexes(NpgsqlConnection conn, string[] schemes, CancellationToken ct)
     {
         var rows = new List<IndexRow>();
         await using var cmd = conn.CreateCommand();
@@ -241,7 +243,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<Dictionary<string, string?>> QuerySchemaComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<Dictionary<string, string?>> QuerySchemaComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         await using var cmd = conn.CreateCommand();
@@ -261,7 +263,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return result;
     }
 
-    private async Task<Dictionary<(string, string), string?>> QueryTableComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<Dictionary<(string, string), string?>> QueryTableComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var result = new Dictionary<(string, string), string?>();
         await using var cmd = conn.CreateCommand();
@@ -284,7 +286,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return result;
     }
 
-    private async Task<Dictionary<(string, string, string), string?>> QueryColumnComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<Dictionary<(string, string, string), string?>> QueryColumnComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var result = new Dictionary<(string, string, string), string?>();
         await using var cmd = conn.CreateCommand();
@@ -308,7 +310,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return result;
     }
 
-    private async Task<Dictionary<(string, string), string?>> QueryIndexComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<Dictionary<(string, string), string?>> QueryIndexComments(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var result = new Dictionary<(string, string), string?>();
         await using var cmd = conn.CreateCommand();
@@ -333,7 +335,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return result;
     }
 
-    private async Task<List<SchemaGrantRow>> QuerySchemaGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<List<SchemaGrantRow>> QuerySchemaGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var rows = new List<SchemaGrantRow>();
         await using var cmd = conn.CreateCommand();
@@ -353,7 +355,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         return rows;
     }
 
-    private async Task<List<TableGrantRow>> QueryTableGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
+    private static async Task<List<TableGrantRow>> QueryTableGrants(NpgsqlConnection conn, string[] schemas, CancellationToken ct)
     {
         var rows = new List<TableGrantRow>();
         await using var cmd = conn.CreateCommand();
@@ -374,7 +376,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
 
     // ── Model assembly ────────────────────────────────────────────────────────
 
-    private DatabaseSchema Build(
+    private static DatabaseSchema Build(
         List<TableRow> tables,
         List<ColumnRow> columns,
         List<PrimaryKeyRow> primaryKeys,
@@ -385,7 +387,8 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         Dictionary<(string, string, string), string?> columnComments,
         Dictionary<(string, string), string?> indexComments,
         List<SchemaGrantRow> schemaGrants,
-        List<TableGrantRow> tableGrants)
+        List<TableGrantRow> tableGrants
+    )
     {
         var bySchema = tables
             .GroupBy(t => t.Schema)
@@ -406,14 +409,11 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
                     .Where(g => g.SchemaName == name)
                     .Select(g => new SchemaGrant(g.Role))
                     .ToList();
-                return new SchemaDefinition(
-                    name,
-                    Comment: schemaComments.GetValueOrDefault(name),
-                    Tables: bySchema.TryGetValue(name, out var schemaTables) ? schemaTables : [], Grants: grants);
+                return new SchemaDefinition(name, null, false, schemaComments.GetValueOrDefault(name), bySchema.GetValueOrDefault(name, []), [], grants);
             })
             .ToList();
 
-        return new DatabaseSchema(dbSchemas);
+        return new DatabaseSchema(dbSchemas, []);
     }
 
     private static Table BuildTable(
@@ -425,7 +425,8 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         Dictionary<(string, string), string?> tableComments,
         Dictionary<(string, string, string), string?> columnComments,
         Dictionary<(string, string), string?> indexComments,
-        List<TableGrantRow> allTableGrants)
+        List<TableGrantRow> allTableGrants
+    )
     {
         var cols = allColumns
             .Where(c => c.TableSchema == tableRow.Schema && c.TableName == tableRow.Name)
@@ -459,7 +460,7 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
             .Select(g => new TableGrant(g.Key, ToTablePrivilege(g.Select(r => r.Privilege))))
             .ToList();
 
-        return new Table(tableRow.Name, PrimaryKey: pk, Comment: tableComment, Columns: cols, ForeignKeys: fks, Indexes: idxs, Grants: grants);
+        return new Table(tableRow.Name, null, pk, tableComment, cols, fks, idxs, grants);
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────
@@ -471,37 +472,29 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         IdentityOptions? identityOptions = row.IsIdentity
             ? new IdentityOptions(row.IdentityStart, row.IdentityMinValue, row.IdentityIncrement)
             : null;
-        return new Column(
-            row.ColumnName,
-            type,
-            IsNullable: row.IsNullable,
-            IsIdentity: row.IsIdentity,
-            DefaultExpression: row.IsIdentity ? null : row.DefaultExpression,
-            Comment: comment,
-            IdentityOptions: identityOptions);
+        return new Column(row.ColumnName, type, row.IsNullable, row.IsIdentity, row.DefaultExpression, null, comment, identityOptions);
     }
 
-    private static SqlType MapSqlType(string dataType, string udtName, int? maxLength, int? precision, int? scale) =>
-        dataType switch
-        {
-            "boolean" => SqlType.Boolean,
-            "smallint" => SqlType.SmallInt,
-            "integer" => SqlType.Int,
-            "bigint" => SqlType.BigInt,
-            "real" => SqlType.Float,
-            "double precision" => SqlType.Double,
-            "numeric" => SqlType.Decimal(precision ?? 18, scale ?? 0),
-            "character" => SqlType.Char(maxLength ?? 1),
-            "character varying" => SqlType.VarChar(maxLength),
-            "text" => SqlType.Text,
-            "date" => SqlType.Date,
-            "time without time zone" => SqlType.Time,
-            "timestamp without time zone" => SqlType.DateTime,
-            "timestamp with time zone" => SqlType.DateTimeOffset,
-            "uuid" => SqlType.Guid,
-            "bytea" => SqlType.VarBinary(),
-            _ => SqlType.Custom(udtName),
-        };
+    private static SqlType MapSqlType(string dataType, string udtName, int? maxLength, int? precision, int? scale) => dataType switch
+    {
+        "boolean" => SqlType.Boolean,
+        "smallint" => SqlType.SmallInt,
+        "integer" => SqlType.Int,
+        "bigint" => SqlType.BigInt,
+        "real" => SqlType.Float,
+        "double precision" => SqlType.Double,
+        "numeric" => SqlType.Decimal(precision ?? 18, scale ?? 0),
+        "character" => SqlType.Char(maxLength ?? 1),
+        "character varying" => SqlType.VarChar(maxLength),
+        "text" => SqlType.Text,
+        "date" => SqlType.Date,
+        "time without time zone" => SqlType.Time,
+        "timestamp without time zone" => SqlType.DateTime,
+        "timestamp with time zone" => SqlType.DateTimeOffset,
+        "uuid" => SqlType.Guid,
+        "bytea" => SqlType.VarBinary(),
+        _ => SqlType.Custom(udtName),
+    };
 
     private static TablePrivilege ToTablePrivilege(IEnumerable<string> privileges)
     {
@@ -515,13 +508,14 @@ public sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICurre
         });
     }
 
-    private static ForeignKey MapForeignKey(ForeignKeyRow row) => new(row.ConstraintName,
+    private static ForeignKey MapForeignKey(ForeignKeyRow row) => new(
+        row.ConstraintName,
         row.ColumnNames,
         row.ForeignSchema,
         row.ForeignTable,
         row.ForeignColumnNames,
-        OnDelete: MapReferentialAction(row.DeleteRule),
-        OnUpdate: MapReferentialAction(row.UpdateRule)
+        MapReferentialAction(row.DeleteRule),
+        MapReferentialAction(row.UpdateRule)
     );
 
     private static ReferentialAction MapReferentialAction(char code) => code switch

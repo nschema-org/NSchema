@@ -20,7 +20,7 @@ public sealed class IndexBuilder
     /// <summary>
     /// Specifies that the index being defined should enforce uniqueness on the indexed columns.
     /// </summary>
-    /// <returns>>The current <see cref="IndexBuilder"/> instance, allowing for method chaining.</returns>
+    /// <returns>The current <see cref="IndexBuilder"/> instance, allowing for method chaining.</returns>
     public IndexBuilder Unique() { _isUnique = true; return this; }
 
     /// <summary>

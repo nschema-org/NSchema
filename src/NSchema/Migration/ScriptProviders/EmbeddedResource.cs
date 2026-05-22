@@ -13,7 +13,7 @@ internal static class EmbeddedResource
     /// <param name="assembly">The assembly containing the embedded resource.</param>
     /// <param name="resourceName">The name of the embedded resource to read.</param>
     /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
-    /// <returns>>A task containing the content of the embedded resource as a string.</returns>
+    /// <returns>A task containing the content of the embedded resource as a string.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the specified embedded resource is not found in the assembly.</exception>
     public static async Task<string> Read(Assembly assembly, string resourceName, CancellationToken cancellationToken)
     {
