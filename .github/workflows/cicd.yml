@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run Deploy Pipeline
-        run: dotnet run --project build/src/NSchema.Build/NSchema.Build.csproj -- deploy
+        run: dotnet run --project build/NSchema.Build/NSchema.Build.csproj -- deploy
         shell: bash
         env:
           Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
