@@ -28,7 +28,7 @@ internal class NSchemaHost(
     {
         try
         {
-            var schemaPlan = await migrator.GetMigrationPlan(cancellationToken);
+            var schemaPlan = await migrator.ComputeMigrationPlan(cancellationToken);
             var sqlPlan = sqlPlanner.Plan(schemaPlan);
 
             if (options.Value.DryRun)

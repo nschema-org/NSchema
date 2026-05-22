@@ -12,5 +12,5 @@ internal interface IMigrationPlanProvider
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests. If the operation is canceled, the method should stop processing and return as soon as possible.</param>
     /// <returns>The generated migration plan.</returns>
-    Task<MigrationPlan> GetMigrationPlan(CancellationToken cancellationToken = default);
+    Task<MigrationPlan> ComputeMigrationPlan(CancellationToken cancellationToken = default);
 }

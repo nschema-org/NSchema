@@ -523,6 +523,171 @@ public class DefaultSchemaComparerTests
         result.Actions.Any(i => i is SetIndexComment { IndexName: "ix_users_email", NewComment: "Email lookup index" }).ShouldBeTrue();
     }
 
+    // ── Schema grants ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Diff_SchemaGrantAdded_ProducesGrantSchemaUsage()
+    {
+        var current = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", grants: [new SchemaGrant("reporting")])]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is GrantSchemaUsage { SchemaName: "app", Role: "reporting" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_SchemaGrantRemoved_ProducesRevokeSchemaUsage()
+    {
+        var current = DatabaseSchema.Create([SchemaDefinition.Create("app", grants: [new SchemaGrant("reporting")])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is RevokeSchemaUsage { SchemaName: "app", Role: "reporting" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_NewSchemaWithGrants_ProducesGrantSchemaUsage()
+    {
+        var current = Empty();
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", grants: [new SchemaGrant("app_user")])]);
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is GrantSchemaUsage { SchemaName: "app", Role: "app_user" }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_SchemaGrantsUnchanged_ProducesNoGrantActions()
+    {
+        var model = DatabaseSchema.Create([SchemaDefinition.Create("app", grants: [new SchemaGrant("app_user")])]);
+
+        var result = _comparer.Compare(model, model);
+
+        result.Actions.Any(i => i is GrantSchemaUsage or RevokeSchemaUsage).ShouldBeFalse();
+    }
+
+    // ── Table grants ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Diff_TableGrantAdded_ProducesGrantTablePrivileges()
+    {
+        var current = WithSchema("app", SimpleTable("users"));
+        var desired = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("reporting", TablePrivilege.Select)]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is GrantTablePrivileges
+        { TableName: "users", Role: "reporting", Privileges: TablePrivilege.Select }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_TableGrantRemoved_ProducesRevokeTablePrivileges()
+    {
+        var current = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("reporting", TablePrivilege.Select)]));
+        var desired = WithSchema("app", SimpleTable("users"));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is RevokeTablePrivileges
+        { TableName: "users", Role: "reporting", Privileges: TablePrivilege.Select }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_TableGrantPrivilegesChanged_ProducesRevokeThenGrant()
+    {
+        var current = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("app_user", TablePrivilege.Select)]));
+        var desired = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("app_user", TablePrivilege.All)]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is RevokeTablePrivileges
+        { Role: "app_user", Privileges: TablePrivilege.Select }).ShouldBeTrue();
+        result.Actions.Any(i => i is GrantTablePrivileges
+        { Role: "app_user", Privileges: TablePrivilege.All }).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_TableGrantUnchanged_ProducesNoGrantActions()
+    {
+        var model = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("app_user", TablePrivilege.All)]));
+
+        var result = _comparer.Compare(model, model);
+
+        result.Actions.Any(i => i is GrantTablePrivileges or RevokeTablePrivileges).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Diff_NewTableWithGrants_ProducesGrantTablePrivileges()
+    {
+        var current = WithSchema("app");
+        var desired = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            grants: [new TableGrant("app_user", TablePrivilege.All)]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is GrantTablePrivileges
+        { TableName: "users", Role: "app_user", Privileges: TablePrivilege.All }).ShouldBeTrue();
+    }
+
+    // ── Identity ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Diff_IdentityOptionsChanged_ProducesAlterIdentitySequence()
+    {
+        var current = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int, isIdentity: true,
+                identityOptions: new IdentityOptions(1, 1, 1))]));
+        var desired = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int, isIdentity: true,
+                identityOptions: new IdentityOptions(1000, 1000, 1))]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is AlterIdentitySequence ais
+            && ais.ColumnName == "id"
+            && ais.NewOptions == new IdentityOptions(1000, 1000, 1)
+            && ais.OldOptions == new IdentityOptions(1, 1, 1)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Diff_IdentityOptionsUnchanged_ProducesNoAlterIdentitySequence()
+    {
+        var model = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int, isIdentity: true,
+                identityOptions: new IdentityOptions(1, 1, 1))]));
+
+        var result = _comparer.Compare(model, model);
+
+        result.Actions.Any(i => i is AlterIdentitySequence).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Diff_NonIdentityToIdentity_DoesNotProduceAlterIdentitySequence()
+    {
+        // Identity sequence is only altered when both sides are identity.
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int, isIdentity: true,
+                identityOptions: new IdentityOptions(1, 1, 1))]));
+
+        var result = _comparer.Compare(current, desired);
+
+        result.Actions.Any(i => i is AlterIdentitySequence).ShouldBeFalse();
+    }
+
     [Fact]
     public void Diff_CommentUnchanged_ProducesNoCommentActions()
     {

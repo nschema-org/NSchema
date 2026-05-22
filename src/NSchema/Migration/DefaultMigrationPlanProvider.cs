@@ -25,7 +25,7 @@ internal sealed class DefaultMigrationPlanProvider(
     IEnumerable<IMigrationPolicy> migrationPolicies
 ) : IMigrationPlanProvider
 {
-    public async Task<MigrationPlan> GetMigrationPlan(CancellationToken cancellationToken = default)
+    public async Task<MigrationPlan> ComputeMigrationPlan(CancellationToken cancellationToken = default)
     {
         // Get desired schema state from all registered providers and merge.
         var schemas = await Task.WhenAll(desiredProviders.Select(p => p.GetSchema(cancellationToken)));

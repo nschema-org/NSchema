@@ -489,7 +489,7 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
     {
         var type = MapSqlType(row.DataType, row.UdtName, row.MaxLength, row.NumericPrecision, row.NumericScale);
         columnComments.TryGetValue((row.TableSchema, row.TableName, row.ColumnName), out var comment);
-        IdentityOptions? identityOptions = row.IsIdentity
+        var identityOptions = row.IsIdentity
             ? new IdentityOptions(row.IdentityStart, row.IdentityMinValue, row.IdentityIncrement)
             : null;
         return new Column(row.ColumnName, type, row.IsNullable, row.IsIdentity, row.DefaultExpression, null, comment, identityOptions);
