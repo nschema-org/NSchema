@@ -17,7 +17,6 @@ builder
     .AddSchemasFromAssemblyContaining<Program>()
     .AddPreDeploymentScriptsFromEmbeddedResources(assembly, "NSchema.Sandbox.Scripts.PreDeployment.")
     .UsePostgres(connectionString)
-    .WithDryRun()
     .WithDestructiveActionPolicy(DestructiveActionPolicy.Warn);
 
 var migration = builder.Build();
