@@ -15,6 +15,7 @@ public class Pack(IOptions<BuildOptions> options, ICommandRunner commands) : IPi
             command: "dotnet",
             arguments: [
                 "pack",
+                "--project", options.Value.ProjectFile,
                 "--no-build",
                 "--configuration", options.Value.Configuration,
                 "--output", options.Value.ArtifactsDirectory
