@@ -2,8 +2,13 @@ using System.Data.Common;
 
 namespace NSchema.Migration;
 
-internal sealed class DefaultSqlExecutor(DbDataSource dataSource) : ISqlExecutor
+/// <summary>
+/// A default implementation of the ISqlExecutor interface that executes SQL statements using a provided DbDataSource.
+/// </summary>
+/// <param name="dataSource">The DbDataSource used to obtain database connections for executing SQL statements.</param>
+public sealed class DefaultSqlExecutor(DbDataSource dataSource) : ISqlExecutor
 {
+    /// <inheritdoc/>
     public async Task Execute(SqlPlan plan, CancellationToken cancellationToken = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(cancellationToken);

@@ -17,7 +17,7 @@ public class DestructiveActionMigrationPolicyTests
 
     private static readonly MigrationAction DestructiveAction = new DropTable("public", "users");
     private static readonly MigrationAction NonDestructiveAction = new CreateTable("public",
-        new Table("users", Columns: [new Column("id", SqlType.BigInt, IsNullable: false)]));
+        Table.Create("users", columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]));
 
     [Fact]
     public void Validate_WhenPolicyIsError_ReturnsErrorForDestructiveAction()

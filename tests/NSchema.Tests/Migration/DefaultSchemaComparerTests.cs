@@ -9,13 +9,13 @@ public class DefaultSchemaComparerTests
 {
     private readonly DefaultSchemaComparer _comparer = new(NullLogger<DefaultSchemaComparer>.Instance);
 
-    private static DatabaseSchema Empty() => new([]);
+    private static DatabaseSchema Empty() => DatabaseSchema.Create([]);
 
     private static DatabaseSchema WithSchema(string name, params Table[] tables) =>
-        new([new SchemaDefinition(name, Tables: tables)]);
+        DatabaseSchema.Create([SchemaDefinition.Create(name, tables: tables)]);
 
     private static Table SimpleTable(string name, params Column[] columns) =>
-        new(name, Columns: columns.Length > 0 ? columns : [new Column("id", SqlType.Int)]);
+        Table.Create(name, columns: columns.Length > 0 ? columns : [Column.Create("id", SqlType.Int)]);
 
     // ── No changes ───────────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app");
-        var desired = new DatabaseSchema([new SchemaDefinition("application", OldName: "app")]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("application", oldName: "app")]);
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -127,7 +127,7 @@ public class DefaultSchemaComparerTests
     {
         // Arrange
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = WithSchema("app", new Table("accounts", OldName: "users", Columns: [new Column("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("accounts", oldName: "users", columns: [Column.Create("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -144,10 +144,10 @@ public class DefaultSchemaComparerTests
     public void Diff_NewColumn_ProducesAddColumn()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users", Columns: [
-            new Column("id", SqlType.Int),
-            new Column("email", SqlType.Text)
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int),
+            Column.Create("email", SqlType.Text)
         ]));
 
         // Act
@@ -161,11 +161,11 @@ public class DefaultSchemaComparerTests
     public void Diff_DroppedColumn_ProducesDropColumn()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [
-            new Column("id", SqlType.Int),
-            new Column("email", SqlType.Text)
+        var current = WithSchema("app", Table.Create("users", columns: [
+            Column.Create("id", SqlType.Int),
+            Column.Create("email", SqlType.Text)
         ]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -178,8 +178,8 @@ public class DefaultSchemaComparerTests
     public void Diff_RenamedColumn_ProducesRenameColumn()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("email", SqlType.Text)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("email_address", SqlType.Text, OldName: "email")]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("email", SqlType.Text)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("email_address", SqlType.Text, oldName: "email")]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -194,8 +194,8 @@ public class DefaultSchemaComparerTests
     public void Diff_ColumnTypeChanged_ProducesAlterColumnType()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.BigInt)]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.BigInt)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -212,8 +212,8 @@ public class DefaultSchemaComparerTests
     public void Diff_ColumnNullabilityChanged_ProducesAlterColumnNullability()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("email", SqlType.Text, IsNullable: true)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("email", SqlType.Text, IsNullable: false)]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("email", SqlType.Text, isNullable: true)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("email", SqlType.Text, isNullable: false)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -230,8 +230,8 @@ public class DefaultSchemaComparerTests
     public void Diff_ColumnDefaultChanged_ProducesSetColumnDefault()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("status", SqlType.Text)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("status", SqlType.Text, DefaultExpression: "'active'")]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("status", SqlType.Text)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("status", SqlType.Text, defaultExpression: "'active'")]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -246,9 +246,9 @@ public class DefaultSchemaComparerTests
     public void Diff_PrimaryKeyAdded_ProducesAddPrimaryKey()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users",
-            PrimaryKey: new PrimaryKey("pk_users", ["id"]), Columns: [new Column("id", SqlType.Int)]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users",
+            primaryKey: new PrimaryKey("pk_users", ["id"]), columns: [Column.Create("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -261,9 +261,9 @@ public class DefaultSchemaComparerTests
     public void Diff_PrimaryKeyDropped_ProducesDropPrimaryKey()
     {
         // Arrange
-        var current = WithSchema("app", new Table("users",
-            PrimaryKey: new PrimaryKey("pk_users", ["id"]), Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
+        var current = WithSchema("app", Table.Create("users",
+            primaryKey: new PrimaryKey("pk_users", ["id"]), columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -276,8 +276,8 @@ public class DefaultSchemaComparerTests
     public void Diff_UnchangedPrimaryKey_ProducesNoKeyActions()
     {
         // Arrange
-        var model = WithSchema("app", new Table("users",
-            PrimaryKey: new PrimaryKey("pk_users", ["id"]), Columns: [new Column("id", SqlType.Int)]));
+        var model = WithSchema("app", Table.Create("users",
+            primaryKey: new PrimaryKey("pk_users", ["id"]), columns: [Column.Create("id", SqlType.Int)]));
 
         // Act
         var result = _comparer.Compare(model, model);
@@ -292,11 +292,11 @@ public class DefaultSchemaComparerTests
     public void Diff_ForeignKeyAdded_ProducesAddForeignKey()
     {
         // Arrange
-        var fk = new ForeignKey("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
+        var fk = ForeignKey.Create("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = WithSchema("app", new Table("users",
-            Columns: [new Column("id", SqlType.Int)],
-            ForeignKeys: [fk]));
+        var desired = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            foreignKeys: [fk]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -309,10 +309,10 @@ public class DefaultSchemaComparerTests
     public void Diff_ForeignKeyDropped_ProducesDropForeignKey()
     {
         // Arrange
-        var fk = new ForeignKey("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
-        var current = WithSchema("app", new Table("users",
-            Columns: [new Column("id", SqlType.Int)],
-            ForeignKeys: [fk]));
+        var fk = ForeignKey.Create("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
+        var current = WithSchema("app", Table.Create("users",
+            columns: [Column.Create("id", SqlType.Int)],
+            foreignKeys: [fk]));
         var desired = WithSchema("app", SimpleTable("users"));
 
         // Act
@@ -326,10 +326,10 @@ public class DefaultSchemaComparerTests
     public void Diff_ForeignKeyModified_ProducesDropThenAdd()
     {
         // Arrange
-        var original = new ForeignKey("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
+        var original = ForeignKey.Create("fk_users_org", ["org_id"], "app", "organisations", ["id"]);
         var modified = original with { OnDelete = ReferentialAction.Cascade };
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], ForeignKeys: [original]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], ForeignKeys: [modified]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], foreignKeys: [original]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], foreignKeys: [modified]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -345,9 +345,9 @@ public class DefaultSchemaComparerTests
     public void Diff_IndexAdded_ProducesCreateIndex()
     {
         // Arrange
-        var idx = new TableIndex("ix_users_email", ["email"]);
+        var idx = TableIndex.Create("ix_users_email", ["email"]);
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], Indexes: [idx]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], indexes: [idx]));
 
         // Act
         var result = _comparer.Compare(current, desired);
@@ -360,8 +360,8 @@ public class DefaultSchemaComparerTests
     public void Diff_IndexDropped_ProducesDropIndex()
     {
         // Arrange
-        var idx = new TableIndex("ix_users_email", ["email"]);
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], Indexes: [idx]));
+        var idx = TableIndex.Create("ix_users_email", ["email"]);
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], indexes: [idx]));
         var desired = WithSchema("app", SimpleTable("users"));
 
         // Act
@@ -377,7 +377,7 @@ public class DefaultSchemaComparerTests
     public void Diff_PartialSchema_DoesNotDropUnmanagedTables()
     {
         var current = WithSchema("app", SimpleTable("users"), SimpleTable("legacy"));
-        var desired = new DatabaseSchema([new SchemaDefinition("app", IsPartial: true, Tables: [SimpleTable("users")])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", isPartial: true, tables: [SimpleTable("users")])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -388,7 +388,7 @@ public class DefaultSchemaComparerTests
     public void Diff_PartialSchema_StillManagesDeclaredTables()
     {
         var current = WithSchema("app", SimpleTable("users"), SimpleTable("legacy"));
-        var desired = new DatabaseSchema([new SchemaDefinition("app", IsPartial: true, Tables: [SimpleTable("users"), SimpleTable("orders")])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", isPartial: true, tables: [SimpleTable("users"), SimpleTable("orders")])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -399,7 +399,7 @@ public class DefaultSchemaComparerTests
     public void Diff_PartialSchema_ExplicitDropTable_DropsSpecifiedTable()
     {
         var current = WithSchema("app", SimpleTable("users"), SimpleTable("legacy"));
-        var desired = new DatabaseSchema([new SchemaDefinition("app", IsPartial: true, Tables: [SimpleTable("users")], DroppedTables: ["legacy"])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", isPartial: true, tables: [SimpleTable("users")], droppedTables: ["legacy"])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -410,7 +410,7 @@ public class DefaultSchemaComparerTests
     public void Diff_PartialSchema_ExplicitDropTable_NotInCurrent_ProducesNoAction()
     {
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = new DatabaseSchema([new SchemaDefinition("app", IsPartial: true, Tables: [SimpleTable("users")], DroppedTables: ["nonexistent"])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", isPartial: true, tables: [SimpleTable("users")], droppedTables: ["nonexistent"])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -422,8 +422,8 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_SchemaCommentAdded_ProducesSetSchemaComment()
     {
-        var current = new DatabaseSchema([new SchemaDefinition("app")]);
-        var desired = new DatabaseSchema([new SchemaDefinition("app", Comment: "Application schema")]);
+        var current = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", comment: "Application schema")]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -433,8 +433,8 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_SchemaCommentRemoved_ProducesSetSchemaComment()
     {
-        var current = new DatabaseSchema([new SchemaDefinition("app", Comment: "Old comment")]);
-        var desired = new DatabaseSchema([new SchemaDefinition("app")]);
+        var current = DatabaseSchema.Create([SchemaDefinition.Create("app", comment: "Old comment")]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -445,7 +445,7 @@ public class DefaultSchemaComparerTests
     public void Diff_NewSchemaWithComment_ProducesSetSchemaComment()
     {
         var current = Empty();
-        var desired = new DatabaseSchema([new SchemaDefinition("app", Comment: "Application schema", Tables: [])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", comment: "Application schema", tables: [])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -456,7 +456,7 @@ public class DefaultSchemaComparerTests
     public void Diff_TableCommentAdded_ProducesSetTableComment()
     {
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = new DatabaseSchema([new SchemaDefinition("app", Tables: [new Table("users", Comment: "User accounts", Columns: [new Column("id", SqlType.Int)])])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", tables: [Table.Create("users", comment: "User accounts", columns: [Column.Create("id", SqlType.Int)])])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -467,7 +467,7 @@ public class DefaultSchemaComparerTests
     public void Diff_NewTableWithComment_ProducesSetTableComment()
     {
         var current = WithSchema("app");
-        var desired = new DatabaseSchema([new SchemaDefinition("app", Tables: [new Table("users", Comment: "User accounts", Columns: [new Column("id", SqlType.Int)])])]);
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app", tables: [Table.Create("users", comment: "User accounts", columns: [Column.Create("id", SqlType.Int)])])]);
 
         var result = _comparer.Compare(current, desired);
 
@@ -477,8 +477,8 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_ColumnCommentAdded_ProducesSetColumnComment()
     {
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int, Comment: "Primary key")]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int, comment: "Primary key")]));
 
         var result = _comparer.Compare(current, desired);
 
@@ -488,8 +488,8 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_NewColumnWithComment_ProducesSetColumnComment()
     {
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int), new Column("email", SqlType.Text, Comment: "Email address")]));
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int), Column.Create("email", SqlType.Text, comment: "Email address")]));
 
         var result = _comparer.Compare(current, desired);
 
@@ -499,10 +499,10 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_IndexCommentAdded_ProducesSetIndexComment()
     {
-        var idx = new TableIndex("ix_users_email", ["email"]);
-        var idxWithComment = new TableIndex("ix_users_email", ["email"], Comment: "Email lookup index");
-        var current = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], Indexes: [idx]));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], Indexes: [idxWithComment]));
+        var idx = TableIndex.Create("ix_users_email", ["email"]);
+        var idxWithComment = TableIndex.Create("ix_users_email", ["email"], comment: "Email lookup index");
+        var current = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], indexes: [idx]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], indexes: [idxWithComment]));
 
         var result = _comparer.Compare(current, desired);
 
@@ -513,9 +513,9 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_NewIndexWithComment_ProducesCreateIndexAndSetIndexComment()
     {
-        var idx = new TableIndex("ix_users_email", ["email"], Comment: "Email lookup index");
+        var idx = TableIndex.Create("ix_users_email", ["email"], comment: "Email lookup index");
         var current = WithSchema("app", SimpleTable("users"));
-        var desired = WithSchema("app", new Table("users", Columns: [new Column("id", SqlType.Int)], Indexes: [idx]));
+        var desired = WithSchema("app", Table.Create("users", columns: [Column.Create("id", SqlType.Int)], indexes: [idx]));
 
         var result = _comparer.Compare(current, desired);
 
@@ -526,8 +526,8 @@ public class DefaultSchemaComparerTests
     [Fact]
     public void Diff_CommentUnchanged_ProducesNoCommentActions()
     {
-        var model = new DatabaseSchema([new SchemaDefinition("app",
-            Comment: "App schema", Tables: [new Table("users", Comment: "Users", Columns: [new Column("id", SqlType.Int, Comment: "PK")])])]);
+        var model = DatabaseSchema.Create([SchemaDefinition.Create("app",
+            comment: "App schema", tables: [Table.Create("users", comment: "Users", columns: [Column.Create("id", SqlType.Int, comment: "PK")])])]);
 
         var result = _comparer.Compare(model, model);
 

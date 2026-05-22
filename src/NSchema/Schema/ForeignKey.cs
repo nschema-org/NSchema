@@ -23,6 +23,26 @@ public record ForeignKey(
     ReferentialAction OnUpdate
 )
 {
+    /// <summary>
+    /// Creates a new <see cref="ForeignKey"/> with the given options, defaulting unspecified members.
+    /// </summary>
+    /// <param name="name">The name of the foreign key constraint.</param>
+    /// <param name="columnNames">A list of column names in the current table that are part of the foreign key constraint.</param>
+    /// <param name="referencedSchema">The name of the schema that contains the referenced table.</param>
+    /// <param name="referencedTable">The name of the table that is referenced by the foreign key constraint.</param>
+    /// <param name="referencedColumnNames">A list of column names in the referenced table that are part of the foreign key constraint.</param>
+    /// <param name="onDelete">The referential action to be taken when a referenced row is deleted (e.g., CASCADE, SET NULL, NO ACTION).</param>
+    /// <param name="onUpdate">The referential action to be taken when a referenced row is updated (e.g., CASCADE, SET NULL, NO ACTION).</param>
+    public static ForeignKey Create(
+        string name,
+        IReadOnlyList<string> columnNames,
+        string referencedSchema,
+        string referencedTable,
+        IReadOnlyList<string> referencedColumnNames,
+        ReferentialAction onDelete = ReferentialAction.NoAction,
+        ReferentialAction onUpdate = ReferentialAction.NoAction
+    ) => new(name, columnNames, referencedSchema, referencedTable, referencedColumnNames, onDelete, onUpdate);
+
     private string DebuggerDisplay =>
         $"{Name}: ({string.Join(", ", ColumnNames)}) -> {ReferencedSchema}.{ReferencedTable} ({string.Join(", ", ReferencedColumnNames)})";
 

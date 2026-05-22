@@ -93,8 +93,8 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
     public async Task CreateTable_CreatesTableInDatabase()
     {
         // Arrange
-        var table = new Table("users",
-            Columns: [new Column("id", SqlType.BigInt, IsNullable: false)]);
+        var table = Table.Create("users",
+            columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateTable(_schema, table)])));
@@ -109,8 +109,8 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
     public async Task CreateTable_WithPrimaryKey_CreatesPrimaryKeyConstraint()
     {
         // Arrange
-        var table = new Table("orders",
-            PrimaryKey: new PrimaryKey("pk_orders", ["id"]), Columns: [new Column("id", SqlType.BigInt, IsNullable: false)]);
+        var table = Table.Create("orders",
+            primaryKey: new PrimaryKey("pk_orders", ["id"]), columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateTable(_schema, table)])));
@@ -161,7 +161,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer)""");
-        var column = new Column("name", SqlType.VarChar(100), IsNullable: false);
+        var column = Column.Create("name", SqlType.VarChar(100), isNullable: false);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new AddColumn(_schema, "items", column)])));
@@ -320,7 +320,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."parents" (id integer NOT NULL, CONSTRAINT pk_parents PRIMARY KEY (id))""");
         await Exec($"""CREATE TABLE "{_schema}"."children" (id integer NOT NULL, parent_id integer)""");
-        var fk = new ForeignKey("fk_children_parent", ["parent_id"], _schema, "parents", ["id"]);
+        var fk = ForeignKey.Create("fk_children_parent", ["parent_id"], _schema, "parents", ["id"]);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new AddForeignKey(_schema, "children", fk)])));
@@ -354,7 +354,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
-        var index = new TableIndex("idx_items_name", ["name"]);
+        var index = TableIndex.Create("idx_items_name", ["name"]);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateIndex(_schema, "items", index)])));
@@ -370,7 +370,7 @@ public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : 
     {
         // Arrange
         await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, code text)""");
-        var index = new TableIndex("idx_items_code_unique", ["code"], IsUnique: true);
+        var index = TableIndex.Create("idx_items_code_unique", ["code"], isUnique: true);
 
         // Act
         await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateIndex(_schema, "items", index)])));

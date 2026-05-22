@@ -7,11 +7,11 @@ public sealed class DefaultSchemaAggregatorTests
 {
     private static readonly DefaultSchemaAggregator s_aggregator = new();
 
-    private static DatabaseSchema Db(params SchemaDefinition[] schemas) => new(schemas);
+    private static DatabaseSchema Db(params SchemaDefinition[] schemas) => DatabaseSchema.Create(schemas);
 
-    private static SchemaDefinition Schema(string name, params Table[] tables) => new(name, Tables: tables);
+    private static SchemaDefinition Schema(string name, params Table[] tables) => SchemaDefinition.Create(name, tables: tables);
 
-    private static Table Table(string name) => new(name);
+    private static Table Table(string name) => NSchema.Schema.Table.Create(name);
 
     // ── Single provider ───────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_AnyProviderPartial_ResultIsPartial()
     {
-        var db1 = Db(new SchemaDefinition("public", IsPartial: true));
+        var db1 = Db(SchemaDefinition.Create("public", isPartial: true));
         var db2 = Db(Schema("public", Table("posts")));
 
         var result = s_aggregator.Aggregate([db1, db2]);
@@ -103,8 +103,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_DroppedTables_AreCombinedAcrossProviders()
     {
-        var db1 = Db(new SchemaDefinition("public", DroppedTables: ["old_users"]));
-        var db2 = Db(new SchemaDefinition("public", DroppedTables: ["legacy_data"]));
+        var db1 = Db(SchemaDefinition.Create("public", droppedTables: ["old_users"]));
+        var db2 = Db(SchemaDefinition.Create("public", droppedTables: ["legacy_data"]));
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
@@ -114,8 +114,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_DroppedSchemas_AreCombinedAcrossProviders()
     {
-        var db1 = new DatabaseSchema([], ["old_schema"]);
-        var db2 = new DatabaseSchema([], ["legacy"]);
+        var db1 = DatabaseSchema.Create([], ["old_schema"]);
+        var db2 = DatabaseSchema.Create([], ["legacy"]);
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
@@ -137,7 +137,7 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_Comment_FromSingleProvider_IsPreserved()
     {
-        var db = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db = Db(SchemaDefinition.Create("public", comment: "App schema"));
 
         var result = s_aggregator.Aggregate([db]);
 
@@ -147,7 +147,7 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_Comment_FromOneOfMultipleProviders_IsPreserved()
     {
-        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db1 = Db(SchemaDefinition.Create("public", comment: "App schema"));
         var db2 = Db(Schema("public", Table("posts")));
 
         var result = s_aggregator.Aggregate([db1, db2]);
@@ -159,8 +159,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_SameCommentFromMultipleProviders_IsPreserved()
     {
-        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
-        var db2 = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db1 = Db(SchemaDefinition.Create("public", comment: "App schema"));
+        var db2 = Db(SchemaDefinition.Create("public", comment: "App schema"));
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
@@ -170,8 +170,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_ConflictingComments_Throws()
     {
-        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
-        var db2 = Db(new SchemaDefinition("public", Comment: "Different comment"));
+        var db1 = Db(SchemaDefinition.Create("public", comment: "App schema"));
+        var db2 = Db(SchemaDefinition.Create("public", comment: "Different comment"));
 
         var ex = Should.Throw<InvalidOperationException>(() => s_aggregator.Aggregate([db1, db2]));
         ex.Message.ShouldContain("public");
@@ -182,7 +182,7 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_Grants_FromSingleProvider_ArePreserved()
     {
-        var db = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+        var db = Db(SchemaDefinition.Create("public", grants: [new SchemaGrant("app_user")]));
 
         var result = s_aggregator.Aggregate([db]);
 
@@ -192,8 +192,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_Grants_AreCombinedAcrossProviders()
     {
-        var db1 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
-        var db2 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("reporting")]));
+        var db1 = Db(SchemaDefinition.Create("public", grants: [new SchemaGrant("app_user")]));
+        var db2 = Db(SchemaDefinition.Create("public", grants: [new SchemaGrant("reporting")]));
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
@@ -203,8 +203,8 @@ public sealed class DefaultSchemaAggregatorTests
     [Fact]
     public void Merge_DuplicateGrants_AreDeduplicated()
     {
-        var db1 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
-        var db2 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+        var db1 = Db(SchemaDefinition.Create("public", grants: [new SchemaGrant("app_user")]));
+        var db2 = Db(SchemaDefinition.Create("public", grants: [new SchemaGrant("app_user")]));
 
         var result = s_aggregator.Aggregate([db1, db2]);
 
