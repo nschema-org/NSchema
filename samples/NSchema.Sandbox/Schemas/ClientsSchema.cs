@@ -72,7 +72,7 @@ public class ClientsSchema : AbstractSchemaProvider
             .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.Text).Comment("Primary key.").PrimaryKey("insurers_pkey");
         table.Column("name", SqlType.Text).NotNull().Comment("Business name of the insurer.");
-        table.Index("uc_insurers_name", ["name"]).Unique();
+        table.Index("uc_clients_name", ["name"]).Unique();
     }
 
     private static void AddPolicyTypes(SchemaBuilder schema)

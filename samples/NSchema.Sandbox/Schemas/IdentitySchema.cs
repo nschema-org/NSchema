@@ -116,10 +116,10 @@ public class IdentitySchema : AbstractSchemaProvider
         table.Column("changed_by_user_name", SqlType.Text).Comment("Name of the user who made the change.");
         table.Column("created_at", SqlType.DateTimeOffset).NotNull().Comment("Timestamp when the change occurred.");
         table.Index("ix_audit_event_type", ["event_type"]);
-        table.Index("ix_audit_user_id", ["user_id"]).Where("user_id IS NOT NULL");
-        table.Index("ix_audit_profile_id", ["profile_id"]).Where("profile_id IS NOT NULL");
-        table.Index("ix_audit_role_id", ["role_id"]).Where("role_id IS NOT NULL");
-        table.Index("ix_audit_permission_id", ["permission_id"]).Where("permission_id IS NOT NULL");
+        table.Index("ix_audit_user_id", ["user_id"]).Where("(user_id IS NOT NULL)");
+        table.Index("ix_audit_profile_id", ["profile_id"]).Where("(profile_id IS NOT NULL)");
+        table.Index("ix_audit_role_id", ["role_id"]).Where("(role_id IS NOT NULL)");
+        table.Index("ix_audit_permission_id", ["permission_id"]).Where("(permission_id IS NOT NULL)");
         table.Index("ix_audit_changed_by", ["changed_by_user_id"]);
         table.Index("ix_audit_created_at", ["created_at"]);
     }
