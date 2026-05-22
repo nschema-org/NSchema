@@ -2,12 +2,10 @@ name: NSchema CI/CD Pipeline
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
+  release:
+    types: [ released ]
 
 jobs:
   build:
@@ -26,7 +24,7 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     environment: Development
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: github.event_name == 'release'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
