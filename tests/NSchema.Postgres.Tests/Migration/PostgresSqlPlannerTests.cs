@@ -1,0 +1,502 @@
+using Npgsql;
+using NSchema.Migration;
+using NSchema.Migration.Plan;
+using NSchema.Postgres.Migration;
+using NSchema.Postgres.Tests.Fixtures;
+using NSchema.Schema;
+
+namespace NSchema.Postgres.Tests.Migration;
+
+[Collection("postgres")]
+public sealed class PostgresSqlPlannerTests(PostgresContainerFixture fixture) : IAsyncLifetime
+{
+    private readonly NpgsqlDataSource _dataSource = fixture.DataSource;
+    private readonly string _schema = $"test_{Guid.NewGuid():N}";
+    private NpgsqlConnection _conn = null!;
+    private PostgresSqlPlanner _planner = null!;
+    private DefaultSqlExecutor _executor = null!;
+
+    public async Task InitializeAsync()
+    {
+        _conn = await _dataSource.OpenConnectionAsync();
+        _planner = new PostgresSqlPlanner();
+        _executor = new DefaultSqlExecutor(_dataSource);
+        await Exec($"""CREATE SCHEMA "{_schema}" """);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Exec($"""DROP SCHEMA IF EXISTS "{_schema}" CASCADE""");
+        await _conn.DisposeAsync();
+    }
+
+    // ── Schema operations ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateSchema_CreatesSchemaInDatabase()
+    {
+        // Arrange
+        var name = $"test_{Guid.NewGuid():N}";
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateSchema(name)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{name}'");
+        exists.ShouldBeTrue();
+
+        await Exec($"""DROP SCHEMA "{name}" CASCADE""");
+    }
+
+    [Fact]
+    public async Task DropSchema_RemovesSchemaFromDatabase()
+    {
+        // Arrange
+        var name = $"test_{Guid.NewGuid():N}";
+        await Exec($"""CREATE SCHEMA "{name}" """);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropSchema(name)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{name}'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameSchema_RenamesSchemaInDatabase()
+    {
+        // Arrange
+        var oldName = $"test_{Guid.NewGuid():N}";
+        var newName = $"test_{Guid.NewGuid():N}";
+        await Exec($"""CREATE SCHEMA "{oldName}" """);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new RenameSchema(oldName, newName)])));
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{oldName}'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.schemata WHERE schema_name = '{newName}'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+
+        await Exec($"""DROP SCHEMA "{newName}" CASCADE""");
+    }
+
+    // ── Table operations ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateTable_CreatesTableInDatabase()
+    {
+        // Arrange
+        var table = Table.Create("users",
+            columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateTable(_schema, table)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'users'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateTable_WithPrimaryKey_CreatesPrimaryKeyConstraint()
+    {
+        // Arrange
+        var table = Table.Create("orders",
+            primaryKey: new PrimaryKey("pk_orders", ["id"]), columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateTable(_schema, table)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'orders' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'pk_orders'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropTable_RemovesTableFromDatabase()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."products" (id integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropTable(_schema, "products")])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'products'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameTable_RenamesTableInDatabase()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."old_name" (id integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new RenameTable(_schema, "old_name", "new_name")])));
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'old_name'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'new_name'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+    }
+
+    // ── Column operations ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddColumn_AddsColumnToTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer)""");
+        var column = Column.Create("name", SqlType.VarChar(100), isNullable: false);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AddColumn(_schema, "items", column)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropColumn_RemovesColumnFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropColumn(_schema, "items", "name")])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RenameColumn_RenamesColumnInTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, old_col text)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new RenameColumn(_schema, "items", "old_col", "new_col")])));
+
+        // Assert
+        var oldExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'old_col'");
+        var newExists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'new_col'");
+        oldExists.ShouldBeFalse();
+        newExists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AlterColumnType_ChangesColumnDataType()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, value integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnType(_schema, "items", "value", SqlType.Int, SqlType.BigInt)])));
+
+        // Assert
+        var dataType = await ScalarString(
+            $"SELECT data_type FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'value'");
+        dataType.ShouldBe("bigint");
+    }
+
+    [Fact]
+    public async Task AlterColumnNullability_MakesColumnNotNull()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", OldNullable: true, NewNullable: false)])));
+
+        // Assert
+        var isNullable = await ScalarString(
+            $"SELECT is_nullable FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        isNullable.ShouldBe("NO");
+    }
+
+    [Fact]
+    public async Task AlterColumnNullability_MakesColumnNullable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text NOT NULL)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AlterColumnNullability(_schema, "items", "name", OldNullable: false, NewNullable: true)])));
+
+        // Assert
+        var isNullable = await ScalarString(
+            $"SELECT is_nullable FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'name'");
+        isNullable.ShouldBe("YES");
+    }
+
+    [Fact]
+    public async Task SetColumnDefault_SetsDefaultExpression()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", null, "0")])));
+
+        // Assert
+        var hasDefault = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'quantity' AND column_default IS NOT NULL");
+        hasDefault.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task SetColumnDefault_DropsDefaultExpression()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, quantity integer DEFAULT 0)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new SetColumnDefault(_schema, "items", "quantity", "0", null)])));
+
+        // Assert
+        var hasDefault = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = '{_schema}' AND table_name = 'items' AND column_name = 'quantity' AND column_default IS NOT NULL");
+        hasDefault.ShouldBeFalse();
+    }
+
+    // ── Primary key operations ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddPrimaryKey_AddsConstraintToTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AddPrimaryKey(_schema, "items", new PrimaryKey("pk_items", ["id"]))])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'items' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'pk_items'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropPrimaryKey_RemovesConstraintFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer NOT NULL, CONSTRAINT pk_items PRIMARY KEY (id))""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropPrimaryKey(_schema, "items", "pk_items")])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.table_constraints WHERE table_schema = '{_schema}' AND table_name = 'items' AND constraint_type = 'PRIMARY KEY'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Foreign key operations ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddForeignKey_AddsReferentialConstraint()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."parents" (id integer NOT NULL, CONSTRAINT pk_parents PRIMARY KEY (id))""");
+        await Exec($"""CREATE TABLE "{_schema}"."children" (id integer NOT NULL, parent_id integer)""");
+        var fk = ForeignKey.Create("fk_children_parent", ["parent_id"], _schema, "parents", ["id"]);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new AddForeignKey(_schema, "children", fk)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.referential_constraints WHERE constraint_schema = '{_schema}' AND constraint_name = 'fk_children_parent'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropForeignKey_RemovesReferentialConstraint()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."parents" (id integer NOT NULL, CONSTRAINT pk_parents PRIMARY KEY (id))""");
+        await Exec($"""CREATE TABLE "{_schema}"."children" (id integer, parent_id integer, CONSTRAINT fk_children_parent FOREIGN KEY (parent_id) REFERENCES "{_schema}"."parents" (id))""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropForeignKey(_schema, "children", "fk_children_parent")])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.referential_constraints WHERE constraint_schema = '{_schema}' AND constraint_name = 'fk_children_parent'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Index operations ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateIndex_CreatesIndexOnTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+        var index = TableIndex.Create("idx_items_name", ["name"]);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateIndex(_schema, "items", index)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM pg_indexes WHERE schemaname = '{_schema}' AND tablename = 'items' AND indexname = 'idx_items_name'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateIndex_Unique_CreatesUniqueIndexOnTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, code text)""");
+        var index = TableIndex.Create("idx_items_code_unique", ["code"], isUnique: true);
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new CreateIndex(_schema, "items", index)])));
+
+        // Assert
+        var isUnique = await ScalarBool(
+            $"SELECT ix.indisunique FROM pg_indexes pi JOIN pg_class t ON t.relname = pi.tablename JOIN pg_index ix ON ix.indexrelid = (SELECT oid FROM pg_class WHERE relname = 'idx_items_code_unique') WHERE pi.schemaname = '{_schema}' AND pi.indexname = 'idx_items_code_unique'");
+        isUnique.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DropIndex_RemovesIndexFromTable()
+    {
+        // Arrange
+        await Exec($"""CREATE TABLE "{_schema}"."items" (id integer, name text)""");
+        await Exec($"""CREATE INDEX "idx_items_name" ON "{_schema}"."items" (name)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new DropIndex(_schema, "items", "idx_items_name")])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM pg_indexes WHERE schemaname = '{_schema}' AND indexname = 'idx_items_name'");
+        exists.ShouldBeFalse();
+    }
+
+    // ── Deployment scripts ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RunPreDeploymentScript_ExecutesSql()
+    {
+        // Arrange
+        var script = new Script("seed", $"""CREATE TABLE "{_schema}"."seeded" (id integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new RunPreDeploymentScript(script)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'seeded'");
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RunPostDeploymentScript_ExecutesSql()
+    {
+        // Arrange
+        var script = new Script("seed", $"""CREATE TABLE "{_schema}"."seeded_post" (id integer)""");
+
+        // Act
+        await _executor.Execute(_planner.Plan(new MigrationPlan([new RunPostDeploymentScript(script)])));
+
+        // Assert
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'seeded_post'");
+        exists.ShouldBeTrue();
+    }
+
+    // ── Transactions ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Execute_FailingStatement_RollsBackEarlierSchemaChanges()
+    {
+        // Arrange — a plan that creates a table successfully, then fails on a bad statement.
+        var goodTable = Table.Create("rollback_target",
+            columns: [Column.Create("id", SqlType.BigInt)]);
+        var planActions = new MigrationAction[]
+        {
+            new CreateTable(_schema, goodTable),
+            new RunPostDeploymentScript(new Script("boom", "SELECT * FROM does_not_exist_xyz")),
+        };
+
+        // Act
+        await Should.ThrowAsync<Npgsql.PostgresException>(() =>
+            _executor.Execute(_planner.Plan(new MigrationPlan(planActions))));
+
+        // Assert — the create from earlier in the plan should have been rolled back.
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'rollback_target'");
+        exists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_ScriptMarkedRunOutsideTransaction_CommitsIndependentlyOfLaterFailure()
+    {
+        // Arrange — a pre-deployment script with RunOutsideTransaction=true, followed by a failing action.
+        var preScript = new Script("seed_outside", $"""CREATE TABLE "{_schema}"."outside_tx" (id integer)""")
+        {
+            RunOutsideTransaction = true,
+        };
+        var planActions = new MigrationAction[]
+        {
+            new RunPreDeploymentScript(preScript),
+            new RunPostDeploymentScript(new Script("boom", "SELECT * FROM does_not_exist_xyz")),
+        };
+
+        // Act
+        await Should.ThrowAsync<Npgsql.PostgresException>(() =>
+            _executor.Execute(_planner.Plan(new MigrationPlan(planActions))));
+
+        // Assert — the out-of-tx script committed before the failure, so its table survives.
+        var exists = await ScalarBool(
+            $"SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = '{_schema}' AND table_name = 'outside_tx'");
+        exists.ShouldBeTrue();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private async Task Exec(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private async Task<bool> ScalarBool(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        return (bool)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    private async Task<string> ScalarString(string sql)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        return (string)(await cmd.ExecuteScalarAsync())!;
+    }
+}

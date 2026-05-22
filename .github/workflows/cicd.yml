@@ -1,0 +1,36 @@
+name: NSchema CI/CD Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ released ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Build Pipeline
+        run: dotnet run --project build/NSchema.Build/NSchema.Build.csproj -- build
+        shell: bash
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: Development
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Deploy Pipeline
+        run: dotnet run --project build/src/NSchema.Build/NSchema.Build.csproj -- deploy
+        shell: bash
+        env:
+          Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
