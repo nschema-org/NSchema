@@ -1,3 +1,7 @@
 <Solution>
+  <Folder Name="/build/">
+    <File Path="..\.github\workflows\cicd.yml" />
+    <File Path="..\Directory.Packages.props" />
+  </Folder>
   <Project Path="NSchema.Build/NSchema.Build.csproj" />
 </Solution>
