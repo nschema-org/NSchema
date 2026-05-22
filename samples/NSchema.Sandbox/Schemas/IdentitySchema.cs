@@ -10,7 +10,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var identity = Schema("identity")
             .Comment("Schema for identity and access management, including users, roles, and permissions.")
-            .Grant(AbodioRoles.Api);
+            .Grant(Roles.Api);
 
         AddUsers(identity);
         AddProfiles(identity);
@@ -26,7 +26,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("users")
             .Comment("Stores information about all users.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Full name of the user.");
         table.Column("email", SqlType.Citext).NotNull().Comment("Email address of the user. Must be unique (case insensitive).");
@@ -41,7 +41,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("profiles")
             .Comment("Stores profile information for users.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Name of the profile.");
         table.Column("user_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the user to whom this profile belongs.");
@@ -53,7 +53,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("roles")
             .Comment("Authorization roles that can be assigned to user profiles.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Text).NotNull().Comment("Unique name of the role. Appears in access tokens.");
         table.Column("friendly_name", SqlType.Citext).NotNull().Comment("Human-readable name of the role.");
@@ -68,7 +68,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("permissions")
             .Comment("Access control permissions that can be assigned to roles.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Text).NotNull().Comment("Unique name of the permission. Appears in access tokens.");
         table.Column("friendly_name", SqlType.Citext).NotNull().Comment("Human-readable name of the permission.");
@@ -81,7 +81,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("profile_roles")
             .Comment("Associative table linking user profiles to their assigned roles.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("profile_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the profile.");
         table.Column("role_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the role.");
         table.PrimaryKey("pk_profile_roles", ["profile_id", "role_id"]);
@@ -93,7 +93,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("role_permissions")
             .Comment("Associative table linking roles to their assigned permissions.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("role_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the role.");
         table.Column("permission_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the permission.");
         table.PrimaryKey("pk_role_permissions", ["role_id", "permission_id"]);
@@ -105,7 +105,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("audit")
             .Comment("Audit log for tracking changes to permissions, roles, and profile assignments.")
-            .Grant(AbodioRoles.Api, TablePrivilege.AppendOnly);
+            .Grant(Roles.Api, TablePrivilege.AppendOnly);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("event_type", SqlType.Text).NotNull().Comment("Type of event (e.g. role_permission_added, profile_role_removed).");
         table.Column("description", SqlType.Citext).NotNull().Comment("Description providing additional context about the change.");
@@ -134,7 +134,7 @@ public class IdentitySchema : AbstractSchemaProvider
     {
         var table = schema.Table("user_activity")
             .Comment("Tracks the last time each user was seen making an API request.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("user_id", SqlType.TypeId).NotNull().Comment("User ID (references identity.users).");
         table.Column("last_seen_at", SqlType.DateTimeOffset).NotNull().Comment("Timestamp of the user's most recent API request.");
         table.PrimaryKey("pk_user_activity", ["user_id"]);

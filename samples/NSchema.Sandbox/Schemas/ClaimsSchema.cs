@@ -10,10 +10,10 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var claims = Schema("claims")
             .Comment("Schema for claim logging.")
-            .Grant(AbodioRoles.Api)
-            .AddEventsTable(AbodioRoles.Api)
-            .AddIntegrationEventsTable(AbodioRoles.Api)
-            .AddProjectionsTable(AbodioRoles.Api);
+            .Grant(Roles.Api)
+            .AddEventsTable(Roles.Api)
+            .AddIntegrationEventsTable(Roles.Api)
+            .AddProjectionsTable(Roles.Api);
 
         AddDamageSources(claims);
         AddPerils(claims);
@@ -27,7 +27,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("damage_sources")
             .Comment("Stores information about all damage sources that might cause a claim.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("The name of the damage source.");
         table.Column("description", SqlType.Citext).NotNull().Comment("Description of the damage source.");
@@ -39,7 +39,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("perils")
             .Comment("Stores information about all perils that might need to be resolved as part of a claim.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("The name of the peril.");
         table.Column("description", SqlType.Citext).NotNull().Comment("Description of the peril.");
@@ -51,7 +51,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("claim_types")
             .Comment("Stores information about all the different claim types.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("The name of the claim type.");
         table.Column("description", SqlType.Citext).NotNull().Comment("A description of the claim type.");
@@ -65,7 +65,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("claim_statuses")
             .Comment("Stores information about all the different claim statuses.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("The name of the claim status.");
         table.Column("description", SqlType.Citext).NotNull().Comment("Description of the claim status.");
@@ -77,7 +77,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("claim_priorities")
             .Comment("Stores information about all the different claim priority levels.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("The name of the claim priority.");
         table.Column("description", SqlType.Citext).NotNull().Comment("A description of the claim priority.");
@@ -91,7 +91,7 @@ public class ClaimsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("projection_claim_summaries")
             .Comment("Stores a projected view of the most up to date claim dashboard data.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("type_id", SqlType.TypeId).NotNull().Comment("The id for the claim type.");
         table.Column("type_name", SqlType.Text).NotNull().Comment("The name for the claim type.");

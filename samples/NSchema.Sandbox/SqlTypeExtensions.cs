@@ -2,7 +2,7 @@ using NSchema.Schema;
 
 namespace NSchema.Sandbox;
 
-internal static class SqlTypeAbodioExtensions
+internal static class SqlTypeExtensions
 {
     extension(SqlType)
     {

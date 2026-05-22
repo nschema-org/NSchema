@@ -1,6 +1,6 @@
 namespace NSchema.Sandbox;
 
-internal static class AbodioRoles
+internal static class Roles
 {
     public const string Api = "abodio_api";
 }

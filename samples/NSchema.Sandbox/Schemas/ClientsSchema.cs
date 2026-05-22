@@ -10,7 +10,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var clients = Schema("clients")
             .Comment("Schema for client and policy management.")
-            .Grant(AbodioRoles.Api);
+            .Grant(Roles.Api);
 
         AddInsurers(clients);
         AddPolicyTypes(clients);
@@ -23,7 +23,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("insurers")
             .Comment("Stores information about all the insurance companies we work for.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Business name of the insurer.");
         table.PrimaryKey("pk_insurers", ["id"]);
@@ -34,7 +34,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("policy_types")
             .Comment("Stores types of insurance policies that Abodio manages.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Name of the policy type. Must be unique.");
         table.Column("description", SqlType.Citext).NotNull().Default("''").Comment("Description of the policy type.");
@@ -48,7 +48,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("policies")
             .Comment("Stores policies that belong to insurers.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Name of the policy.");
         table.Column("insurer_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the insurer to whom this policy belongs.");
@@ -62,7 +62,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("loss_adjusters")
             .Comment("Stores information about all the loss adjusters we work with.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Business name of the loss adjuster.");
         table.PrimaryKey("pk_loss_adjusters", ["id"]);
@@ -73,7 +73,7 @@ public class ClientsSchema : AbstractSchemaProvider
     {
         var table = schema.Table("insurer_references")
             .Comment("Describes reference numbers that must be given when a claim is logged for the given insurer.")
-            .Grant(AbodioRoles.Api, TablePrivilege.All);
+            .Grant(Roles.Api, TablePrivilege.All);
         table.Column("id", SqlType.TypeId).NotNull().Comment("Primary key.");
         table.Column("insurer_id", SqlType.TypeId).NotNull().Comment("Foreign key referencing the insurer.");
         table.Column("name", SqlType.Citext).NotNull().Comment("Name of the reference (e.g. \"Aviva Reference\").");
