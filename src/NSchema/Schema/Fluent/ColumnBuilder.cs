@@ -28,11 +28,10 @@ public sealed class ColumnBuilder
     public ColumnBuilder NotNull() { _isNullable = false; return this; }
     public ColumnBuilder Nullable() { _isNullable = true; return this; }
 
-    public ColumnBuilder Identity(long? startWith = null, long? minValue = null, long? incrementBy = null)
+    public ColumnBuilder Identity(long startWith = 1, long minValue = 1, long incrementBy = 1)
     {
         _isIdentity = true;
-        if (startWith.HasValue || minValue.HasValue || incrementBy.HasValue)
-            _identityOptions = new IdentityOptions(startWith, minValue, incrementBy);
+        _identityOptions = new IdentityOptions(startWith, minValue, incrementBy);
         return this;
     }
 
