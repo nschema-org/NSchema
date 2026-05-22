@@ -8,7 +8,7 @@ public sealed record AlterIdentitySequence(
     string ColumnName,
     IdentityOptions? OldOptions,
     IdentityOptions? NewOptions
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

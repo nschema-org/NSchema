@@ -4,7 +4,7 @@ public sealed record DropPrimaryKey(
     string SchemaName,
     string TableName,
     string PrimaryKeyName
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

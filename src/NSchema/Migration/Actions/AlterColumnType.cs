@@ -8,7 +8,7 @@ public sealed record AlterColumnType(
     string ColumnName,
     SqlType OldType,
     SqlType NewType
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => true;
 }

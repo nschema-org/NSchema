@@ -8,7 +8,7 @@ public class ActionOrderingTransformerTests
 {
     private readonly ActionOrderingTransformer _sut = new();
 
-    private static SchemaPlan PlanWith(params SchemaAction[] actions) => new(actions);
+    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions);
 
     [Fact]
     public void Transform_OrdersForeignKeyDropBeforeColumnDrop()
@@ -94,9 +94,9 @@ public class ActionOrderingTransformerTests
     public void Priorities_RegistersEveryConcreteActionType()
     {
         // Arrange
-        var allActionTypes = typeof(SchemaAction).Assembly
+        var allActionTypes = typeof(MigrationAction).Assembly
             .GetTypes()
-            .Where(t => t is { IsSealed: true, IsAbstract: false } && t.IsAssignableTo(typeof(SchemaAction)))
+            .Where(t => t is { IsSealed: true, IsAbstract: false } && t.IsAssignableTo(typeof(MigrationAction)))
             .ToList();
 
         // Assert

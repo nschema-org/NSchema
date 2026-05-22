@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSchema.Hosting;
 using NSchema.Migration;
+using NSchema.Migration.ScriptProviders;
 using NSchema.Policies;
 using NSchema.Schema;
 
@@ -119,9 +120,9 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         return this;
     }
 
-    public NSchemaApplicationBuilder AddActionPolicy<T>() where T : class, IActionPolicy
+    public NSchemaApplicationBuilder AddActionPolicy<T>() where T : class, IMigrationPolicy
     {
-        var descriptor = new ServiceDescriptor(typeof(IActionPolicy), typeof(T), ServiceLifetime.Singleton);
+        var descriptor = new ServiceDescriptor(typeof(IMigrationPolicy), typeof(T), ServiceLifetime.Singleton);
         Services.TryAddEnumerable(descriptor);
         return this;
     }
@@ -220,7 +221,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
             new ServiceDescriptor(typeof(IMigrationPlanTransformer), typeof(ActionOrderingTransformer), ServiceLifetime.Singleton));
 
         services.TryAddEnumerable(
-            new ServiceDescriptor(typeof(IActionPolicy), typeof(DestructiveActionPolicyEnforcer), ServiceLifetime.Singleton));
+            new ServiceDescriptor(typeof(IMigrationPolicy), typeof(DestructiveActionMigrationPolicy), ServiceLifetime.Singleton));
 
         // This is the service responsible for running the migration.
         services.AddHostedService<NSchemaHost>();

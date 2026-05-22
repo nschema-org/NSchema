@@ -4,7 +4,7 @@ public sealed record DropForeignKey(
     string SchemaName,
     string TableName,
     string ForeignKeyName
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

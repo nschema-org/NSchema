@@ -3,6 +3,9 @@ using NSchema.Migration.Actions;
 
 namespace NSchema.Migration;
 
+/// <summary>
+/// A migration plan transformer that orders migration actions based on a predefined priority list.
+/// </summary>
 internal sealed class ActionOrderingTransformer : IMigrationPlanTransformer
 {
     public static readonly IReadOnlyDictionary<Type, int> Priorities = new List<Type> {
@@ -37,9 +40,9 @@ internal sealed class ActionOrderingTransformer : IMigrationPlanTransformer
         typeof(RunPostDeploymentScript),
     }.Index().ToFrozenDictionary(x => x.Item, x => x.Index);
 
-    public SchemaPlan Transform(SchemaPlan plan)
+    public MigrationPlan Transform(MigrationPlan plan)
     {
         var actions = plan.Actions.OrderBy(a => Priorities[a.GetType()]).ToList();
-        return new SchemaPlan(actions);
+        return new MigrationPlan(actions);
     }
 }

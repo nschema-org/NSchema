@@ -4,9 +4,9 @@ using NSchema.Policies;
 
 namespace NSchema.Migration;
 
-internal sealed class DestructiveActionPolicyEnforcer(ILogger<DestructiveActionPolicyEnforcer> logger, IOptions<MigrationOptions> options) : IActionPolicy
+internal sealed class DestructiveActionMigrationPolicy(ILogger<DestructiveActionMigrationPolicy> logger, IOptions<MigrationOptions> options) : IMigrationPolicy
 {
-    public IEnumerable<PolicyError> Validate(SchemaPlan plan)
+    public IEnumerable<PolicyError> Validate(MigrationPlan plan)
     {
         foreach (var action in plan.Actions.Where(a => a.IsDestructive))
         {
@@ -21,7 +21,7 @@ internal sealed class DestructiveActionPolicyEnforcer(ILogger<DestructiveActionP
                 case DestructiveActionPolicy.Error:
                 default:
                     yield return new PolicyError(
-                        nameof(DestructiveActionPolicyEnforcer),
+                        nameof(DestructiveActionMigrationPolicy),
                         $"Destructive action blocked by policy: {action.GetType().Name}");
                     break;
             }

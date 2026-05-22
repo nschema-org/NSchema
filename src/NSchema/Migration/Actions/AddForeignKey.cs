@@ -6,7 +6,7 @@ public sealed record AddForeignKey(
     string SchemaName,
     string TableName,
     ForeignKey ForeignKey
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

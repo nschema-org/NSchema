@@ -6,19 +6,19 @@ namespace NSchema.Migration;
 
 public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger) : ISchemaComparer
 {
-    public SchemaPlan Compare(DatabaseSchema current, DatabaseSchema desired)
+    public MigrationPlan Compare(DatabaseSchema current, DatabaseSchema desired)
     {
         LogBeginningComparison();
 
-        var actions = new List<SchemaAction>();
+        var actions = new List<MigrationAction>();
         CompareSchemas(current.Schemas, desired.Schemas, actions);
 
         LogComparisonComplete(actions.Count);
 
-        return new SchemaPlan(actions);
+        return new MigrationPlan(actions);
     }
 
-    private void CompareSchemas(IReadOnlyList<SchemaDefinition> current, IReadOnlyList<SchemaDefinition> desired, List<SchemaAction> actions)
+    private void CompareSchemas(IReadOnlyList<SchemaDefinition> current, IReadOnlyList<SchemaDefinition> desired, List<MigrationAction> actions)
     {
         foreach (var currentSchema in current)
         {
@@ -77,7 +77,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareTables(string schemaName, IReadOnlyList<Table> current, SchemaDefinition desired, List<SchemaAction> actions)
+    private void CompareTables(string schemaName, IReadOnlyList<Table> current, SchemaDefinition desired, List<MigrationAction> actions)
     {
         var droppedTables = desired.DroppedTables;
 
@@ -138,7 +138,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareColumns(string schemaName, string tableName, IReadOnlyList<Column> current, IReadOnlyList<Column> desired, List<SchemaAction> actions)
+    private void CompareColumns(string schemaName, string tableName, IReadOnlyList<Column> current, IReadOnlyList<Column> desired, List<MigrationAction> actions)
     {
         foreach (var currentCol in current)
         {
@@ -224,7 +224,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void ComparePrimaryKey(string schemaName, string tableName, PrimaryKey? current, PrimaryKey? desired, List<SchemaAction> actions)
+    private void ComparePrimaryKey(string schemaName, string tableName, PrimaryKey? current, PrimaryKey? desired, List<MigrationAction> actions)
     {
         if (current?.Equals(desired) ?? desired == null)
         {
@@ -245,7 +245,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareForeignKeys(string schemaName, string tableName, IReadOnlyList<ForeignKey> current, IReadOnlyList<ForeignKey> desired, List<SchemaAction> actions)
+    private void CompareForeignKeys(string schemaName, string tableName, IReadOnlyList<ForeignKey> current, IReadOnlyList<ForeignKey> desired, List<MigrationAction> actions)
     {
         foreach (var currentFk in current)
         {
@@ -276,7 +276,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareIndexes(string schemaName, string tableName, IReadOnlyList<TableIndex> current, IReadOnlyList<TableIndex> desired, List<SchemaAction> actions)
+    private void CompareIndexes(string schemaName, string tableName, IReadOnlyList<TableIndex> current, IReadOnlyList<TableIndex> desired, List<MigrationAction> actions)
     {
         foreach (var currentIdx in current)
         {
@@ -317,7 +317,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareSchemaGrants(string schemaName, IReadOnlyList<SchemaGrant> current, IReadOnlyList<SchemaGrant> desired, List<SchemaAction> actions)
+    private void CompareSchemaGrants(string schemaName, IReadOnlyList<SchemaGrant> current, IReadOnlyList<SchemaGrant> desired, List<MigrationAction> actions)
     {
         foreach (var g in current.Where(c => desired.All(d => d.Role != c.Role)))
         {
@@ -331,7 +331,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void CompareTableGrants(string schemaName, string tableName, IReadOnlyList<TableGrant> current, IReadOnlyList<TableGrant> desired, List<SchemaAction> actions)
+    private void CompareTableGrants(string schemaName, string tableName, IReadOnlyList<TableGrant> current, IReadOnlyList<TableGrant> desired, List<MigrationAction> actions)
     {
         foreach (var g in current)
         {
@@ -355,7 +355,7 @@ public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer>
         }
     }
 
-    private void AddNewTable(string schemaName, Table table, List<SchemaAction> actions)
+    private void AddNewTable(string schemaName, Table table, List<MigrationAction> actions)
     {
         LogTableCreating(schemaName, table.Name);
         actions.Add(new CreateTable(schemaName, table));

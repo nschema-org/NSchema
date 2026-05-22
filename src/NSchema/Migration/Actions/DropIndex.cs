@@ -4,7 +4,7 @@ public sealed record DropIndex(
     string SchemaName,
     string TableName,
     string IndexName
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

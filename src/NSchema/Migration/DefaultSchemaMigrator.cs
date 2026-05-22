@@ -11,10 +11,10 @@ public sealed class DefaultSchemaMigrator(
     ISchemaComparer comparer,
     IEnumerable<ISchemaPolicy> schemaValidationPolicies,
     IEnumerable<IMigrationPlanTransformer> planTransformers,
-    IEnumerable<IActionPolicy> actionValidationPolicies
+    IEnumerable<IMigrationPolicy> actionValidationPolicies
 ) : ISchemaMigrator
 {
-    public async Task<SchemaPlan> Plan(CancellationToken cancellationToken = default)
+    public async Task<MigrationPlan> Plan(CancellationToken cancellationToken = default)
     {
         // Get desired schema state from all registered providers and merge.
         var schemas = await Task.WhenAll(desiredProviders.Select(p => p.GetSchema(cancellationToken)));
@@ -44,11 +44,11 @@ public sealed class DefaultSchemaMigrator(
         {
             var preActions = providerList
                 .SelectMany(p => p.PreDeploymentScripts)
-                .Select(SchemaAction (s) => new RunPreDeploymentScript(s));
+                .Select(MigrationAction (s) => new RunPreDeploymentScript(s));
             var postActions = providerList
                 .SelectMany(p => p.PostDeploymentScripts)
-                .Select(SchemaAction (s) => new RunPostDeploymentScript(s));
-            schemaPlan = new SchemaPlan([.. preActions, .. schemaPlan.Actions, .. postActions]);
+                .Select(MigrationAction (s) => new RunPostDeploymentScript(s));
+            schemaPlan = new MigrationPlan([.. preActions, .. schemaPlan.Actions, .. postActions]);
         }
 
         // Apply all registered plan transformers in order.

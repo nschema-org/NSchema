@@ -2,5 +2,5 @@ namespace NSchema.Migration;
 
 public interface IMigrationPlanTransformer
 {
-    SchemaPlan Transform(SchemaPlan plan);
+    MigrationPlan Transform(MigrationPlan plan);
 }

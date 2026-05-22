@@ -6,7 +6,7 @@ public sealed record AddPrimaryKey(
     string SchemaName,
     string TableName,
     PrimaryKey PrimaryKey
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

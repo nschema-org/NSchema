@@ -6,7 +6,7 @@ public sealed record CreateIndex(
     string SchemaName,
     string TableName,
     TableIndex Index
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

@@ -5,7 +5,7 @@ public sealed record RenameColumn(
     string TableName,
     string OldName,
     string NewName
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }

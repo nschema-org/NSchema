@@ -4,5 +4,5 @@ namespace NSchema.Migration;
 
 public interface ISchemaComparer
 {
-    SchemaPlan Compare(DatabaseSchema current, DatabaseSchema desired);
+    MigrationPlan Compare(DatabaseSchema current, DatabaseSchema desired);
 }

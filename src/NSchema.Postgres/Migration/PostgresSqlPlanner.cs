@@ -6,7 +6,7 @@ namespace NSchema.Postgres.Migration;
 
 public sealed class PostgresSqlPlanner : ISqlPlanner
 {
-    public SqlPlan Plan(SchemaPlan plan)
+    public SqlPlan Plan(MigrationPlan plan)
     {
         var statements = plan.Actions.Select(GenerateSql).ToList();
         return new SqlPlan(statements);
@@ -14,7 +14,7 @@ public sealed class PostgresSqlPlanner : ISqlPlanner
 
     // ── SQL generation ────────────────────────────────────────────────────────
 
-    private static string GenerateSql(SchemaAction action) => action switch
+    private static string GenerateSql(MigrationAction action) => action switch
     {
         CreateSchema x => $"""CREATE SCHEMA IF NOT EXISTS "{x.SchemaName}" """,
         DropSchema x => $"""DROP SCHEMA "{x.SchemaName}" CASCADE""",

@@ -6,7 +6,7 @@ public sealed record AlterColumnNullability(
     string ColumnName,
     bool WasNullable,
     bool IsNullable
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => true;
 }

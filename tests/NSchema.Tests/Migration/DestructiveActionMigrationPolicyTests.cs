@@ -6,17 +6,17 @@ using NSchema.Schema;
 
 namespace NSchema.Tests.Migration;
 
-public class DestructiveActionPolicyEnforcerTests
+public class DestructiveActionMigrationPolicyTests
 {
-    private static DestructiveActionPolicyEnforcer Create(DestructiveActionPolicy policy) => new(
-        NullLogger<DestructiveActionPolicyEnforcer>.Instance,
+    private static DestructiveActionMigrationPolicy Create(DestructiveActionPolicy policy) => new(
+        NullLogger<DestructiveActionMigrationPolicy>.Instance,
         Options.Create(new MigrationOptions { DestructiveActionPolicy = policy })
     );
 
-    private static SchemaPlan PlanWith(params SchemaAction[] actions) => new(actions);
+    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions);
 
-    private static readonly SchemaAction DestructiveAction = new DropTable("public", "users");
-    private static readonly SchemaAction NonDestructiveAction = new CreateTable("public",
+    private static readonly MigrationAction DestructiveAction = new DropTable("public", "users");
+    private static readonly MigrationAction NonDestructiveAction = new CreateTable("public",
         new Table("users", Columns: [new Column("id", SqlType.BigInt, IsNullable: false)]));
 
     [Fact]
@@ -27,7 +27,7 @@ public class DestructiveActionPolicyEnforcerTests
         var errors = enforcer.Validate(PlanWith(DestructiveAction)).ToList();
 
         errors.ShouldHaveSingleItem();
-        errors[0].PolicyName.ShouldBe(nameof(DestructiveActionPolicyEnforcer));
+        errors[0].PolicyName.ShouldBe(nameof(DestructiveActionMigrationPolicy));
         errors[0].Message.ShouldContain(nameof(DropTable));
     }
 

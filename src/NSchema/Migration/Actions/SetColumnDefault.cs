@@ -6,7 +6,7 @@ public sealed record SetColumnDefault(
     string ColumnName,
     string? OldDefault,
     string? NewDefault
-) : SchemaAction
+) : MigrationAction
 {
     public override bool IsDestructive => false;
 }
