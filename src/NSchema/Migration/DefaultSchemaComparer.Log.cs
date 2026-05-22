@@ -3,7 +3,7 @@ using NSchema.Schema;
 
 namespace NSchema.Migration;
 
-public sealed partial class DefaultSchemaComparer
+internal sealed partial class DefaultSchemaComparer
 {
     [LoggerMessage(EventId = 1, Level = LogLevel.Debug, Message = "Beginning schema comparison")]
     private partial void LogBeginningComparison();

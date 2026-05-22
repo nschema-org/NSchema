@@ -2,7 +2,7 @@ using System.Data.Common;
 
 namespace NSchema.Migration;
 
-public sealed class DefaultSqlExecutor(DbDataSource dataSource) : ISqlExecutor
+internal sealed class DefaultSqlExecutor(DbDataSource dataSource) : ISqlExecutor
 {
     public async Task Execute(SqlPlan plan, CancellationToken cancellationToken = default)
     {

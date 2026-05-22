@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Migration;
-using NSchema.Migration.Actions;
+using NSchema.Migration.Plan;
 using NSchema.Schema;
 
 namespace NSchema.Tests.Migration;

@@ -1,5 +1,5 @@
 using NSchema.Migration;
-using NSchema.Migration.Actions;
+using NSchema.Migration.Plan;
 using NSchema.Schema;
 
 namespace NSchema.Postgres.Migration;

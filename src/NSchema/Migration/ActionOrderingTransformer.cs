@@ -1,5 +1,5 @@
 using System.Collections.Frozen;
-using NSchema.Migration.Actions;
+using NSchema.Migration.Plan;
 
 namespace NSchema.Migration;
 

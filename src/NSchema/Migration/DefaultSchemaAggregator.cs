@@ -2,7 +2,7 @@ using NSchema.Schema;
 
 namespace NSchema.Migration;
 
-public sealed class DefaultSchemaAggregator : ISchemaAggregator
+internal sealed class DefaultSchemaAggregator : ISchemaAggregator
 {
     public DatabaseSchema Aggregate(IEnumerable<DatabaseSchema> schemas)
     {
@@ -22,7 +22,7 @@ public sealed class DefaultSchemaAggregator : ISchemaAggregator
         return new DatabaseSchema(mergedSchemas, droppedSchemas.Count > 0 ? droppedSchemas : null);
     }
 
-    private SchemaDefinition AggregateSchemaGroup(IReadOnlyList<SchemaDefinition> schemas)
+    private static SchemaDefinition AggregateSchemaGroup(IReadOnlyList<SchemaDefinition> schemas)
     {
         var tables = new List<Table>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

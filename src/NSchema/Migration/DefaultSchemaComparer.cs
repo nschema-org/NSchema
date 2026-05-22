@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NSchema.Migration.Actions;
+using NSchema.Migration.Plan;
 using NSchema.Schema;
 
 namespace NSchema.Migration;
 
-public sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger) : ISchemaComparer
+internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaComparer> logger) : ISchemaComparer
 {
     public MigrationPlan Compare(DatabaseSchema current, DatabaseSchema desired)
     {

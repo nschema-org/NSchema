@@ -243,6 +243,12 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     public NSchemaApplicationBuilder AddPreDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
         => AddScriptProvider(new EmbeddedResourcePrefixScriptProvider(DeploymentPhase.Pre, assembly, resourcePrefix));
 
+    /// <summary>
+    /// Adds SQL scripts to the application from embedded resources in an assembly that will be run after all other migration actions. The scripts will be run in alphabetical order.
+    /// </summary>
+    /// <param name="assembly">The assembly containing the embedded resources.</param>
+    /// <param name="resourcePrefix">The prefix of the embedded resources to include as scripts. For example, if the assembly contains embedded resources "Scripts.Post.Script1.sql" and "Scripts.Post.Script2.sql", a prefix of "Scripts.Post." would include both of these as scripts.</param>
+    /// <returns>The application builder, for chaining.</returns>
     public NSchemaApplicationBuilder AddPostDeploymentScriptsFromEmbeddedResources(Assembly assembly, string resourcePrefix)
         => AddScriptProvider(new EmbeddedResourcePrefixScriptProvider(DeploymentPhase.Post, assembly, resourcePrefix));
 
@@ -267,7 +273,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     {
         services.TryAddSingleton<ISchemaComparer, DefaultSchemaComparer>();
         services.TryAddSingleton<ISchemaAggregator, DefaultSchemaAggregator>();
-        services.TryAddSingleton<ISchemaMigrator, DefaultSchemaMigrator>();
+        services.TryAddSingleton<IMigrationPlanProvider, DefaultMigrationPlanProvider>();
         services.TryAddSingleton<ISqlExecutor, DefaultSqlExecutor>();
 
         services.TryAddEnumerable(

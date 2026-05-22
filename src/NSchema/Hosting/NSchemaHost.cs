@@ -18,7 +18,7 @@ internal class NSchemaHost(
     ILogger<NSchemaHost> logger,
     IOptions<MigrationOptions> options,
     IHostApplicationLifetime lifetime,
-    ISchemaMigrator migrator,
+    IMigrationPlanProvider migrator,
     ISqlPlanner sqlPlanner,
     ISqlExecutor sqlExecutor
 ) : BackgroundService
@@ -28,7 +28,7 @@ internal class NSchemaHost(
     {
         try
         {
-            var schemaPlan = await migrator.Plan(cancellationToken);
+            var schemaPlan = await migrator.GetMigrationPlan(cancellationToken);
             var sqlPlan = sqlPlanner.Plan(schemaPlan);
 
             if (options.Value.DryRun)
