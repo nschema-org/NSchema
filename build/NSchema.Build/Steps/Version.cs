@@ -28,7 +28,7 @@ public class Version(
 
         PackageSourceCredential credentials = new(options.Value.NuGetFeed, "dummy", "", true, null);
         var packageSource = new PackageSource(options.Value.NuGetFeed) { Credentials = credentials };
-        SourceRepository repository = Repository.Factory.GetCoreV3(packageSource);
+        var repository = Repository.Factory.GetCoreV3(packageSource);
         var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
         var versions = (await resource.GetAllVersionsAsync(
             projectInfo.Name,
@@ -47,46 +47,47 @@ public class Version(
             }
         }
 
-        NuGetVersion? match = versions.FirstOrDefault(c => c == projectInfo.Version);
+        var match = versions.FirstOrDefault(c => c == projectInfo.Version);
         if (match != null)
         {
             throw new Exception("Package version already exists.");
         }
 
-        var latestVersion = versions.Max(v => v) ?? versions.Last();
-        Queue<int> versionParts = new([projectInfo.Version.Major, projectInfo.Version.Minor, projectInfo.Version.Patch, projectInfo.Version.Revision]);
-        Queue<int> latestVersionParts = new([latestVersion.Major, latestVersion.Minor, latestVersion.Patch, latestVersion.Revision]);
-
-        while (versionParts.Count != 0)
+        var latestVersion = versions.Max(v => v);
+        if (latestVersion != null)
         {
-            var part = versionParts.Dequeue();
-            var latestPart = latestVersionParts.Dequeue();
+            Queue<int> versionParts = new([projectInfo.Version.Major, projectInfo.Version.Minor, projectInfo.Version.Patch, projectInfo.Version.Revision]);
+            Queue<int> latestVersionParts = new([latestVersion.Major, latestVersion.Minor, latestVersion.Patch, latestVersion.Revision]);
 
-            if (part < latestPart)
+            while (versionParts.Count != 0)
             {
-                throw new Exception(
-                    $"Project version {projectInfo.Version} is not greater than the latest version {latestVersion}.");
+                var part = versionParts.Dequeue();
+                var latestPart = latestVersionParts.Dequeue();
+
+                if (part < latestPart)
+                {
+                    throw new Exception($"Project version {projectInfo.Version} is not greater than the latest version {latestVersion}.");
+                }
+
+                if (part > latestPart + 1)
+                {
+                    throw new Exception($"Project version {projectInfo.Version} is not a valid increment of the latest version {latestVersion}.");
+                }
+
+                if (part == latestPart + 1)
+                {
+                    // If we are incrementing the version, we can stop checking further parts
+                    break;
+                }
             }
 
-            if (part > latestPart + 1)
+            while (versionParts.Count != 0)
             {
-                throw new Exception(
-                    $"Project version {projectInfo.Version} is not a valid increment of the latest version {latestVersion}.");
-            }
-
-            if (part == latestPart + 1)
-            {
-                // If we are incrementing the version, we can stop checking further parts
-                break;
-            }
-        }
-
-        while (versionParts.Count != 0)
-        {
-            var part = versionParts.Dequeue();
-            if (part != 0)
-            {
-                throw new Exception("When incrementing a version number, all remaining version parts must be 0.");
+                var part = versionParts.Dequeue();
+                if (part != 0)
+                {
+                    throw new Exception("When incrementing a version number, all remaining version parts must be 0.");
+                }
             }
         }
 
