@@ -15,7 +15,7 @@ public sealed class TableBuilder
 
     public ColumnBuilder Column(string name, SqlType type)
     {
-        var builder = new ColumnBuilder(name, type);
+        var builder = new ColumnBuilder(this, name, type);
         _columns.Add(builder);
         return builder;
     }

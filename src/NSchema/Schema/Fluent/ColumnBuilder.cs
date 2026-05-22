@@ -4,6 +4,7 @@ public sealed class ColumnBuilder
 {
     private readonly string _name;
     private readonly SqlType _type;
+    private readonly TableBuilder _table;
     private bool _isNullable = true;
     private bool _isIdentity;
     private IdentityOptions? _identityOptions;
@@ -11,10 +12,17 @@ public sealed class ColumnBuilder
     private string? _previousName;
     private string? _comment;
 
-    internal ColumnBuilder(string name, SqlType type)
+    internal ColumnBuilder(TableBuilder table, string name, SqlType type)
     {
+        _table = table;
         _name = name;
         _type = type;
+    }
+
+    public TableBuilder PrimaryKey(string name)
+    {
+        _isNullable = false;
+        return _table.PrimaryKey(name, [_name]);
     }
 
     public ColumnBuilder NotNull() { _isNullable = false; return this; }
