@@ -102,6 +102,8 @@ public class ActionOrderingTransformerTests
         // Assert
         allActionTypes.ShouldNotBeEmpty();
         foreach (var type in allActionTypes)
+        {
             ActionOrderingTransformer.Priorities.ShouldContainKey(type, $"{type.Name} is missing from ActionOrderingTransformer");
+        }
     }
 }

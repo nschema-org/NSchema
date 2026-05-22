@@ -20,7 +20,7 @@ internal sealed class FileScriptProvider(DeploymentPhase phase, string path, str
 
     private async Task<IReadOnlyList<Script>> Load(CancellationToken cancellationToken)
     {
-        string sql = await File.ReadAllTextAsync(path, cancellationToken);
+        var sql = await File.ReadAllTextAsync(path, cancellationToken);
         return [new Script(name ?? Path.GetFileNameWithoutExtension(path), sql)];
     }
 }

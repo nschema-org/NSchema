@@ -26,9 +26,9 @@ internal sealed class EmbeddedResourcePrefixScriptProvider(DeploymentPhase phase
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
 
         var scripts = new List<Script>();
-        foreach (string resourceName in resourceNames)
+        foreach (var resourceName in resourceNames)
         {
-            string sql = await EmbeddedResource.Read(assembly, resourceName, cancellationToken);
+            var sql = await EmbeddedResource.Read(assembly, resourceName, cancellationToken);
             scripts.Add(new Script(EmbeddedResource.DeriveName(resourceName), sql));
         }
         return scripts;

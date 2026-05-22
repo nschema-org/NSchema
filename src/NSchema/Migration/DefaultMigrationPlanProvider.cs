@@ -38,7 +38,7 @@ internal sealed class DefaultMigrationPlanProvider(
             throw new PolicyViolationException(schemaErrors);
         }
 
-        string[] schemasInScope = desiredSchema.Schemas.Select(s => s.Name)
+        var schemasInScope = desiredSchema.Schemas.Select(s => s.Name)
             .Concat(desiredSchema.DroppedSchemas)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();

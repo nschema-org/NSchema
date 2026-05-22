@@ -1,4 +1,4 @@
-namespace NSchema.Migration.Sql;
+namespace NSchema.Migration;
 
 /// <summary>
 /// Represents a plan for executing a series of SQL statements as part of a database migration.

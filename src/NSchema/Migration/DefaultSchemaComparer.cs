@@ -161,7 +161,10 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
                 LogColumnNew(schemaName, tableName, desiredCol.Name);
                 actions.Add(new AddColumn(schemaName, tableName, desiredCol));
                 if (desiredCol.Comment is not null)
+                {
                     actions.Add(new SetColumnComment(schemaName, tableName, desiredCol.Name, null, desiredCol.Comment));
+                }
+
                 continue;
             }
 
@@ -308,7 +311,9 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
                 LogIndexNewOrChanged(desiredIdx.Name, schemaName, tableName);
                 actions.Add(new CreateIndex(schemaName, tableName, desiredIdx));
                 if (desiredIdx.Comment is not null)
+                {
                     actions.Add(new SetIndexComment(schemaName, tableName, desiredIdx.Name, null, desiredIdx.Comment));
+                }
             }
             else
             {

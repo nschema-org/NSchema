@@ -27,7 +27,7 @@ internal sealed class DefaultSchemaAggregator : ISchemaAggregator
         var tables = new List<Table>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        string schemaName = schemas[0].Name;
+        var schemaName = schemas[0].Name;
         foreach (var schema in schemas)
         {
             foreach (var table in schema.Tables)
@@ -46,14 +46,14 @@ internal sealed class DefaultSchemaAggregator : ISchemaAggregator
         {
             throw new InvalidOperationException($"Conflicting comments specified for schema '{schemaName}' across multiple providers.");
         }
-        string? comment = comments.FirstOrDefault();
+        var comment = comments.FirstOrDefault();
 
-        bool isPartial = schemas.Any(s => s.IsPartial);
+        var isPartial = schemas.Any(s => s.IsPartial);
         var droppedTables = schemas
             .SelectMany(s => s.DroppedTables)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        string? oldName = schemas.Select(s => s.OldName).FirstOrDefault(n => n is not null);
+        var oldName = schemas.Select(s => s.OldName).FirstOrDefault(n => n is not null);
 
         var grants = schemas
             .SelectMany(s => s.Grants)

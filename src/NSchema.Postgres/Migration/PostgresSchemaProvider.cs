@@ -47,7 +47,9 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             rows.Add(new TableRow(reader.GetString(0), reader.GetString(1)));
+        }
 
         return rows;
     }
@@ -259,7 +261,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             result[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+        }
+
         return result;
     }
 
@@ -282,7 +287,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             result[(reader.GetString(0), reader.GetString(1))] = reader.IsDBNull(2) ? null : reader.GetString(2);
+        }
+
         return result;
     }
 
@@ -306,7 +314,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             result[(reader.GetString(0), reader.GetString(1), reader.GetString(2))] = reader.IsDBNull(3) ? null : reader.GetString(3);
+        }
+
         return result;
     }
 
@@ -331,7 +342,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             result[(reader.GetString(0), reader.GetString(1))] = reader.IsDBNull(2) ? null : reader.GetString(2);
+        }
+
         return result;
     }
 
@@ -351,7 +365,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             rows.Add(new SchemaGrantRow(reader.GetString(0), reader.GetString(1)));
+        }
+
         return rows;
     }
 
@@ -370,7 +387,10 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
         cmd.Parameters.AddWithValue("schemas", schemas);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
+        {
             rows.Add(new TableGrantRow(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+        }
+
         return rows;
     }
 
@@ -452,7 +472,7 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
                 i.Predicate))
             .ToList();
 
-        tableComments.TryGetValue((tableRow.Schema, tableRow.Name), out string? tableComment);
+        tableComments.TryGetValue((tableRow.Schema, tableRow.Name), out var tableComment);
 
         var grants = allTableGrants
             .Where(g => g.SchemaName == tableRow.Schema && g.TableName == tableRow.Name)
@@ -468,7 +488,7 @@ internal sealed class PostgresSchemaProvider(NpgsqlDataSource dataSource) : ICur
     private static Column MapColumn(ColumnRow row, Dictionary<(string, string, string), string?> columnComments)
     {
         var type = MapSqlType(row.DataType, row.UdtName, row.MaxLength, row.NumericPrecision, row.NumericScale);
-        columnComments.TryGetValue((row.TableSchema, row.TableName, row.ColumnName), out string? comment);
+        columnComments.TryGetValue((row.TableSchema, row.TableName, row.ColumnName), out var comment);
         IdentityOptions? identityOptions = row.IsIdentity
             ? new IdentityOptions(row.IdentityStart, row.IdentityMinValue, row.IdentityIncrement)
             : null;

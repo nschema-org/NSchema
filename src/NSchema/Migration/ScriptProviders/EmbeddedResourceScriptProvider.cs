@@ -22,7 +22,7 @@ internal sealed class EmbeddedResourceScriptProvider(DeploymentPhase phase, Asse
 
     private async Task<IReadOnlyList<Script>> Load(CancellationToken cancellationToken)
     {
-        string sql = await EmbeddedResource.Read(assembly, resourceName, cancellationToken);
+        var sql = await EmbeddedResource.Read(assembly, resourceName, cancellationToken);
         return [new Script(name ?? EmbeddedResource.DeriveName(resourceName), sql)];
     }
 }

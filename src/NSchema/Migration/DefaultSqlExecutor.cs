@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.Extensions.Options;
 
-namespace NSchema.Migration.Sql;
+namespace NSchema.Migration;
 
 /// <summary>
 /// A default implementation of the ISqlExecutor interface that executes SQL statements using a provided DbDataSource.
@@ -76,7 +76,10 @@ public sealed class DefaultSqlExecutor(DbDataSource dataSource, IOptions<Migrati
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         if (transaction is not null)
+        {
             cmd.Transaction = transaction;
+        }
+
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 }

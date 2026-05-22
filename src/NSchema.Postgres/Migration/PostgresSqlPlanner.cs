@@ -1,5 +1,5 @@
+using NSchema.Migration;
 using NSchema.Migration.Plan;
-using NSchema.Migration.Sql;
 using NSchema.Schema;
 
 namespace NSchema.Postgres.Migration;
@@ -70,7 +70,9 @@ internal sealed class PostgresSqlPlanner : ISqlPlanner
         var parts = x.Table.Columns.Select(BuildColumnDef).ToList();
 
         if (x.Table.PrimaryKey is { } pk)
+        {
             parts.Add($"""CONSTRAINT "{pk.Name}" PRIMARY KEY ({ColList(pk.ColumnNames)})""");
+        }
 
         return $"""
             CREATE TABLE "{x.SchemaName}"."{x.Table.Name}" (
@@ -82,34 +84,49 @@ internal sealed class PostgresSqlPlanner : ISqlPlanner
     private static string BuildAddForeignKey(AddForeignKey x)
     {
         var fk = x.ForeignKey;
-        string onDelete = ToReferentialAction(fk.OnDelete);
-        string onUpdate = ToReferentialAction(fk.OnUpdate);
+        var onDelete = ToReferentialAction(fk.OnDelete);
+        var onUpdate = ToReferentialAction(fk.OnUpdate);
         return $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ADD CONSTRAINT "{fk.Name}" FOREIGN KEY ({ColList(fk.ColumnNames)}) REFERENCES "{fk.ReferencedSchema}"."{fk.ReferencedTable}" ({ColList(fk.ReferencedColumnNames)}) ON DELETE {onDelete} ON UPDATE {onUpdate}""";
     }
 
     private static string BuildCreateIndex(CreateIndex x)
     {
-        string sql = $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
+        var sql = $"""CREATE {(x.Index.IsUnique ? "UNIQUE " : "")}INDEX "{x.Index.Name}" ON "{x.SchemaName}"."{x.TableName}" ({ColList(x.Index.ColumnNames)})""";
         return x.Index.Predicate is { } pred ? $"{sql} WHERE {pred}" : sql;
     }
 
     private static string BuildColumnDef(Column col)
     {
-        string type = ToPostgresType(col.Type);
-        string nullable = col.IsNullable ? "" : " NOT NULL";
-        string identity = col.IsIdentity ? BuildIdentityClause(col.IdentityOptions) : "";
-        string def = col is { DefaultExpression: { } d, IsIdentity: false } ? $" DEFAULT {d}" : "";
+        var type = ToPostgresType(col.Type);
+        var nullable = col.IsNullable ? "" : " NOT NULL";
+        var identity = col.IsIdentity ? BuildIdentityClause(col.IdentityOptions) : "";
+        var def = col is { DefaultExpression: { } d, IsIdentity: false } ? $" DEFAULT {d}" : "";
         return $"\"{col.Name}\" {type}{nullable}{identity}{def}";
     }
 
     private static string BuildIdentityClause(IdentityOptions? options)
     {
         if (options is null)
+        {
             return " GENERATED ALWAYS AS IDENTITY";
+        }
+
         var parts = new List<string>();
-        if (options.MinValue.HasValue) parts.Add($"MINVALUE {options.MinValue}");
-        if (options.StartWith.HasValue) parts.Add($"START WITH {options.StartWith}");
-        if (options.IncrementBy.HasValue) parts.Add($"INCREMENT BY {options.IncrementBy}");
+        if (options.MinValue.HasValue)
+        {
+            parts.Add($"MINVALUE {options.MinValue}");
+        }
+
+        if (options.StartWith.HasValue)
+        {
+            parts.Add($"START WITH {options.StartWith}");
+        }
+
+        if (options.IncrementBy.HasValue)
+        {
+            parts.Add($"INCREMENT BY {options.IncrementBy}");
+        }
+
         return parts.Count > 0
             ? $" GENERATED ALWAYS AS IDENTITY ({string.Join(" ", parts)})"
             : " GENERATED ALWAYS AS IDENTITY";
@@ -119,9 +136,21 @@ internal sealed class PostgresSqlPlanner : ISqlPlanner
     {
         var opts = x.NewOptions;
         var parts = new List<string>();
-        if (opts?.MinValue.HasValue == true) parts.Add($"SET MINVALUE {opts.MinValue}");
-        if (opts?.StartWith.HasValue == true) parts.Add($"SET START {opts.StartWith}");
-        if (opts?.IncrementBy.HasValue == true) parts.Add($"SET INCREMENT BY {opts.IncrementBy}");
+        if (opts?.MinValue.HasValue == true)
+        {
+            parts.Add($"SET MINVALUE {opts.MinValue}");
+        }
+
+        if (opts?.StartWith.HasValue == true)
+        {
+            parts.Add($"SET START {opts.StartWith}");
+        }
+
+        if (opts?.IncrementBy.HasValue == true)
+        {
+            parts.Add($"SET INCREMENT BY {opts.IncrementBy}");
+        }
+
         parts.Add("RESTART");
         return $"""ALTER TABLE "{x.SchemaName}"."{x.TableName}" ALTER COLUMN "{x.ColumnName}" {string.Join(" ", parts)}""";
     }
@@ -132,10 +161,26 @@ internal sealed class PostgresSqlPlanner : ISqlPlanner
     private static string PrivilegeList(TablePrivilege privileges)
     {
         var parts = new List<string>();
-        if (privileges.HasFlag(TablePrivilege.Select)) parts.Add("SELECT");
-        if (privileges.HasFlag(TablePrivilege.Insert)) parts.Add("INSERT");
-        if (privileges.HasFlag(TablePrivilege.Update)) parts.Add("UPDATE");
-        if (privileges.HasFlag(TablePrivilege.Delete)) parts.Add("DELETE");
+        if (privileges.HasFlag(TablePrivilege.Select))
+        {
+            parts.Add("SELECT");
+        }
+
+        if (privileges.HasFlag(TablePrivilege.Insert))
+        {
+            parts.Add("INSERT");
+        }
+
+        if (privileges.HasFlag(TablePrivilege.Update))
+        {
+            parts.Add("UPDATE");
+        }
+
+        if (privileges.HasFlag(TablePrivilege.Delete))
+        {
+            parts.Add("DELETE");
+        }
+
         return parts.Count > 0 ? string.Join(", ", parts) : "ALL PRIVILEGES";
     }
 

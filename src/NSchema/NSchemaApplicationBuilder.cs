@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.ScriptProviders;
-using NSchema.Migration.Sql;
 using NSchema.Policies;
 
 namespace NSchema;
@@ -30,7 +29,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
         // When left empty, the content root usually defaults to the current working directory.
         // Since NSchema will usually be run from a project/repository directory, it won't be able to
         // find things like appsettings.json.
-        string contentRoot = options.ContentRootPath ?? AppContext.BaseDirectory;
+        var contentRoot = options.ContentRootPath ?? AppContext.BaseDirectory;
 
         _innerBuilder = new HostApplicationBuilder(new HostApplicationBuilderSettings
         {
@@ -190,7 +189,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// </summary>
     /// <typeparam name="TProvider">The type of the provider to add.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder AddScriptProvider<TProvider>() where  TProvider : class, IDeploymentScriptProvider
+    public NSchemaApplicationBuilder AddScriptProvider<TProvider>() where TProvider : class, IDeploymentScriptProvider
     {
         Services.AddSingleton<IDeploymentScriptProvider, TProvider>();
         return this;

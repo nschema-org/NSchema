@@ -29,8 +29,8 @@ internal static class EmbeddedResource
     /// <returns>A simplified name for the embedded resource, extracted from the full resource name.</returns>
     public static string DeriveName(string resourceName)
     {
-        int lastDot = resourceName.LastIndexOf('.');
-        int secondLastDot = resourceName.LastIndexOf('.', lastDot - 1);
+        var lastDot = resourceName.LastIndexOf('.');
+        var secondLastDot = resourceName.LastIndexOf('.', lastDot - 1);
         return secondLastDot >= 0
             ? resourceName[(secondLastDot + 1)..lastDot]
             : resourceName[..lastDot];
