@@ -9,8 +9,7 @@ public sealed class DefaultSchemaAggregatorTests
 
     private static DatabaseSchema Db(params SchemaDefinition[] schemas) => new(schemas);
 
-    private static SchemaDefinition Schema(string name, params Table[] tables) =>
-        new(name, Tables: tables);
+    private static SchemaDefinition Schema(string name, params Table[] tables) => new(name, Tables: tables);
 
     private static Table Table(string name) => new(name);
 
@@ -133,4 +132,82 @@ public sealed class DefaultSchemaAggregatorTests
         result.DroppedSchemas.ShouldBeEmpty();
     }
 
+    // ── Comments ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Merge_Comment_FromSingleProvider_IsPreserved()
+    {
+        var db = Db(new SchemaDefinition("public", Comment: "App schema"));
+
+        var result = s_aggregator.Aggregate([db]);
+
+        result.Schemas[0].Comment.ShouldBe("App schema");
+    }
+
+    [Fact]
+    public void Merge_Comment_FromOneOfMultipleProviders_IsPreserved()
+    {
+        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db2 = Db(Schema("public", Table("posts")));
+
+        var result = s_aggregator.Aggregate([db1, db2]);
+
+        result.Schemas[0].Comment.ShouldBe("App schema");
+        result.Schemas[0].Tables.Select(t => t.Name).ShouldBe(["posts"]);
+    }
+
+    [Fact]
+    public void Merge_SameCommentFromMultipleProviders_IsPreserved()
+    {
+        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db2 = Db(new SchemaDefinition("public", Comment: "App schema"));
+
+        var result = s_aggregator.Aggregate([db1, db2]);
+
+        result.Schemas[0].Comment.ShouldBe("App schema");
+    }
+
+    [Fact]
+    public void Merge_ConflictingComments_Throws()
+    {
+        var db1 = Db(new SchemaDefinition("public", Comment: "App schema"));
+        var db2 = Db(new SchemaDefinition("public", Comment: "Different comment"));
+
+        var ex = Should.Throw<InvalidOperationException>(() => s_aggregator.Aggregate([db1, db2]));
+        ex.Message.ShouldContain("public");
+    }
+
+    // ── Grants ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Merge_Grants_FromSingleProvider_ArePreserved()
+    {
+        var db = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+
+        var result = s_aggregator.Aggregate([db]);
+
+        result.Schemas[0].Grants.Select(g => g.Role).ShouldBe(["app_user"]);
+    }
+
+    [Fact]
+    public void Merge_Grants_AreCombinedAcrossProviders()
+    {
+        var db1 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+        var db2 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("reporting")]));
+
+        var result = s_aggregator.Aggregate([db1, db2]);
+
+        result.Schemas[0].Grants.Select(g => g.Role).ShouldBe(["app_user", "reporting"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Merge_DuplicateGrants_AreDeduplicated()
+    {
+        var db1 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+        var db2 = Db(new SchemaDefinition("public", Grants: [new SchemaGrant("app_user")]));
+
+        var result = s_aggregator.Aggregate([db1, db2]);
+
+        result.Schemas[0].Grants.Select(g => g.Role).ShouldBe(["app_user"]);
+    }
 }

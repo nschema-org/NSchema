@@ -48,8 +48,19 @@ public sealed class DefaultSchemaAggregator : ISchemaAggregator
             .ToList();
         string? previousName = group.Select(s => s.PreviousName).FirstOrDefault(n => n is not null);
 
-        return new SchemaDefinition(group.Key, previousName, isPartial, null,
-            comments, tables, droppedTables.Count > 0 ? droppedTables : null
-            );
+        var comments = group.Select(s => s.Comment).Where(c => c is not null).Distinct().ToList();
+        if (comments.Count > 1)
+        {
+            throw new InvalidOperationException(
+                $"Conflicting comments specified for schema '{group.Key}' across multiple providers.");
+        }
+        string? comment = comments.FirstOrDefault();
+
+        var grants = group
+            .SelectMany(s => s.Grants)
+            .Distinct()
+            .ToList();
+
+        return new SchemaDefinition(group.Key, previousName, isPartial, comment, tables, droppedTables, grants);
     }
 }
