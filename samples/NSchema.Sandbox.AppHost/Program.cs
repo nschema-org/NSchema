@@ -7,7 +7,7 @@ var postgres = builder.AddPostgres("sandbox-postgres", password: pgPassword)
     .WithDataVolume("nschema-sandbox-data")
     .WithLifetime(ContainerLifetime.Persistent);
 
-var db = postgres.AddDatabase("sandbox");
+var db = postgres.AddDatabase("abodio");
 
 builder.AddProject<Projects.NSchema_Sandbox>("migrator")
     .WithEnvironment("CONNECTION_STRING", db)
