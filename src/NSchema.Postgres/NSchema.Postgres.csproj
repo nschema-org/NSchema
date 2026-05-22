@@ -6,7 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Copyright>2026</Copyright>
     <PackageId>NSchema.Postgres</PackageId>
     <PackageProjectUrl>https://github.com/tom-wolfe/NSchema</PackageProjectUrl>
