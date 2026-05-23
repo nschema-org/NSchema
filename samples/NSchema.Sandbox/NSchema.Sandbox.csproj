@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\NSchema\NSchema.csproj" />
-    <ProjectReference Include="..\..\src\NSchema.Postgres\NSchema.Postgres.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,12 +8,4 @@
     <Project Path="src/NSchema/NSchema.csproj" />
     <Project Path="tests/NSchema.Tests/NSchema.Tests.csproj" />
   </Folder>
-  <Folder Name="/postgres/">
-    <Project Path="src/NSchema.Postgres/NSchema.Postgres.csproj" />
-    <Project Path="tests/NSchema.Postgres.Tests/NSchema.Postgres.Tests.csproj" />
-  </Folder>
-  <Folder Name="/sandbox/">
-    <Project Path="samples/NSchema.Sandbox.AppHost/NSchema.Sandbox.AppHost.csproj" />
-    <Project Path="samples/NSchema.Sandbox/NSchema.Sandbox.csproj" />
-  </Folder>
 </Solution>
