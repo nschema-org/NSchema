@@ -1,3 +1,6 @@
+using NSchema.Schema;
+using NSchema.Schema.Fluent;
+
 namespace NSchema;
 
 /// <summary>

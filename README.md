@@ -4,7 +4,7 @@ A declarative database schema migration library for .NET.
 
 You describe the schema you want in C#. NSchema reads the current state of the database, diffs it against your desired state, then generates and applies a migration plan to close the gap.
 
-## Quick start
+## Getting started
 
 Install the core package and a provider for your database:
 
@@ -13,7 +13,7 @@ dotnet add package NSchema
 dotnet add package NSchema.Postgres
 ```
 
-Declare a schema by subclassing `AbstractSchemaProvider`:
+Declare a schema by subclassing `AbstractSchemaProvider` using your preferred style:
 
 ```csharp
 using NSchema.Schema;
@@ -23,11 +23,22 @@ public class AppSchema : AbstractSchemaProvider
 {
     public AppSchema()
     {
+        // Return style
         var users = Schema("app").Table("users");
         users.Column("id", SqlType.Text).PrimaryKey("users_pkey");
-        users.Column("email", SqlType.Citext).NotNull();
+        users.Column("email", SqlType.Text).NotNull();
         users.Column("name", SqlType.Text).NotNull();
         users.Index("uc_users_email", ["email"]).Unique();
+
+        // Delegate style
+        Schema("app", s => s
+            .Table("users", t => t
+                .Column("id", SqlType.Text, c => c.PrimaryKey("users_pkey"))
+                .Column("email", SqlType.Text, c => c.NotNull())
+                .Column("name", SqlType.Text, c => c.NotNull())
+                .Index("uc_users_email", ["email"], i => i.Unique())
+            )
+        );
     }
 }
 ```
@@ -91,17 +102,6 @@ Renames are explicit. Call `RenamedFrom(...)` on a schema, table, or column so t
 var accounts = Schema("app").Table("accounts").RenamedFrom("users");
 accounts.Column("display_name", SqlType.Text).RenamedFrom("name");
 ```
-
-## Project layout
-
-| Project                           | Purpose                                                               |
-|-----------------------------------|-----------------------------------------------------------------------|
-| `src/NSchema`                     | Core abstractions, fluent schema builder, default pipeline.           |
-| `src/NSchema.Postgres`            | Postgres `ICurrentSchemaProvider` and `ISchemaMigrator`.              |
-| `tests/NSchema.Tests`             | Unit tests (xUnit, Shouldly, NSubstitute).                            |
-| `tests/NSchema.Postgres.Tests`    | Integration tests against a real Postgres container (Testcontainers). |
-| `samples/NSchema.Sandbox`         | Example console app showing schema declarations and script providers. |
-| `samples/NSchema.Sandbox.AppHost` | .NET Aspire host for the sandbox.                                     |
 
 ## Building and testing
 

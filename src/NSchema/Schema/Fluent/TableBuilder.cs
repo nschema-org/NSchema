@@ -14,19 +14,44 @@ public sealed class TableBuilder
     private string? _oldName;
     private string? _comment;
 
+    internal string Name => _name;
+    internal bool IsDropped { get; private set; }
+
     internal TableBuilder(string name) => _name = name;
+
+    /// <summary>
+    /// Marks the table for dropping. This indicates that the table should be removed from the database when the migration is applied.
+    /// </summary>
+    /// <returns>The current <see cref="TableBuilder"/> instance, allowing for method chaining.</returns>
+    /// <remarks>Explicit drops are applied even for partial schemas.</remarks>
+    public TableBuilder Dropped() { IsDropped = true; return this; }
 
     /// <summary>
     /// Adds a new column to the table with the specified name and SQL data type.
     /// </summary>
     /// <param name="name">The name of the column to add to the table.</param>
     /// <param name="type">The SQL data type of the column being added to the table.</param>
-    /// <returns>A <see cref="ColumnBuilder"/> instance that can be used to configure the column's properties and constraints.</returns>
+    /// <returns>A <see cref="ColumnBuilder"/> instance that can be used to configure the column.</returns>
     public ColumnBuilder Column(string name, SqlType type)
     {
         var builder = new ColumnBuilder(this, name, type);
         _columns.Add(builder);
         return builder;
+    }
+
+    /// <summary>
+    /// Adds a new column to the table with the specified name and SQL data type.
+    /// </summary>
+    /// <param name="name">The name of the column to add to the table.</param>
+    /// <param name="type">The SQL data type of the column being added to the table.</param>
+    /// <param name="configure">A delegate that can be used to configure the column.</param>
+    /// <returns>The current <see cref="TableBuilder"/> instance, allowing for method chaining.</returns>
+    public TableBuilder Column(string name, SqlType type, Action<ColumnBuilder> configure)
+    {
+        var builder = new ColumnBuilder(this, name, type);
+        _columns.Add(builder);
+        configure.Invoke(builder);
+        return this;
     }
 
     /// <summary>
@@ -48,8 +73,8 @@ public sealed class TableBuilder
     /// <param name="columnNames">A list of column names in the current table that make up the foreign key constraint.</param>
     /// <param name="referencedSchema">The name of the schema that contains the referenced table for the foreign key constraint.</param>
     /// <param name="referencedTable">The name of the table that is referenced by the foreign key constraint.</param>
-    /// <param name="referencedColumnNames">A list of column names in the referenced table that correspond to the columns in the current table that make up the foreign key constraint.</param>
-    /// <returns>A <see cref="ForeignKeyBuilder"/> instance that can be used to configure the foreign key constraint's properties and referential actions.</returns>
+    /// <param name="referencedColumnNames">A list of column names in the referenced table that make up the foreign key constraint.</param>
+    /// <returns>A <see cref="ForeignKeyBuilder"/> instance that can be used to configure the foreign key.</returns>
     public ForeignKeyBuilder ForeignKey(string name, IReadOnlyList<string> columnNames, string referencedSchema, string referencedTable, IReadOnlyList<string> referencedColumnNames)
     {
         var builder = new ForeignKeyBuilder(name, columnNames, referencedSchema, referencedTable, referencedColumnNames);
@@ -58,16 +83,49 @@ public sealed class TableBuilder
     }
 
     /// <summary>
+    /// Defines a foreign key constraint.
+    /// </summary>
+    /// <param name="name">The name of the foreign key constraint to define for the table.</param>
+    /// <param name="columnNames">A list of column names in the current table that make up the foreign key constraint.</param>
+    /// <param name="referencedSchema">The name of the schema that contains the referenced table for the foreign key constraint.</param>
+    /// <param name="referencedTable">The name of the table that is referenced by the foreign key constraint.</param>
+    /// <param name="referencedColumnNames">A list of column names in the referenced table that make up the foreign key constraint.</param>
+    /// <param name="configure">A delegate that can be used to configure the foreign key.</param>
+    /// <returns>A <see cref="ForeignKeyBuilder"/> instance that can be used to configure the foreign key.</returns>
+    public TableBuilder ForeignKey(string name, IReadOnlyList<string> columnNames, string referencedSchema, string referencedTable, IReadOnlyList<string> referencedColumnNames, Action<ForeignKeyBuilder> configure)
+    {
+        var builder = new ForeignKeyBuilder(name, columnNames, referencedSchema, referencedTable, referencedColumnNames);
+        _foreignKeys.Add(builder);
+        configure.Invoke(builder);
+        return this;
+    }
+
+    /// <summary>
     /// Defines an index on the table.
     /// </summary>
     /// <param name="name">The name of the index to define.</param>
     /// <param name="columnNames">A list of column names that make up the index .</param>
-    /// <returns>A <see cref="IndexBuilder"/> instance that can be used to configure the index's properties, such as uniqueness and comments.</returns>
+    /// <returns>A <see cref="IndexBuilder"/> instance that can be used to configure the index's properties.</returns>
     public IndexBuilder Index(string name, IReadOnlyList<string> columnNames)
     {
         var builder = new IndexBuilder(name, columnNames);
         _indexes.Add(builder);
         return builder;
+    }
+
+    /// <summary>
+    /// Defines an index on the table.
+    /// </summary>
+    /// <param name="name">The name of the index to define.</param>
+    /// <param name="columnNames">A list of column names that make up the index .</param>
+    /// <param name="configure">A delegate that can be used to configure the index.</param>
+    /// <returns>A <see cref="IndexBuilder"/> instance that can be used to configure the index's properties.</returns>
+    public TableBuilder Index(string name, IReadOnlyList<string> columnNames, Action<IndexBuilder> configure)
+    {
+        var builder = new IndexBuilder(name, columnNames);
+        _indexes.Add(builder);
+        configure.Invoke(builder);
+        return this;
     }
 
     /// <summary>
