@@ -14,7 +14,17 @@ public sealed class TableBuilder
     private string? _oldName;
     private string? _comment;
 
+    internal string Name => _name;
+    internal bool IsDropped { get; private set; }
+
     internal TableBuilder(string name) => _name = name;
+
+    /// <summary>
+    /// Marks the table for dropping. This indicates that the table should be removed from the database when the migration is applied.
+    /// </summary>
+    /// <returns>The current <see cref="TableBuilder"/> instance, allowing for method chaining.</returns>
+    /// <remarks>Explicit drops are applied even for partial schemas.</remarks>
+    public TableBuilder Dropped() { IsDropped = true; return this; }
 
     /// <summary>
     /// Adds a new column to the table with the specified name and SQL data type.

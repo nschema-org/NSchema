@@ -103,17 +103,6 @@ var accounts = Schema("app").Table("accounts").RenamedFrom("users");
 accounts.Column("display_name", SqlType.Text).RenamedFrom("name");
 ```
 
-## Project layout
-
-| Project                           | Purpose                                                               |
-|-----------------------------------|-----------------------------------------------------------------------|
-| `src/NSchema`                     | Core abstractions, fluent schema builder, default pipeline.           |
-| `src/NSchema.Postgres`            | Postgres `ICurrentSchemaProvider` and `ISchemaMigrator`.              |
-| `tests/NSchema.Tests`             | Unit tests (xUnit, Shouldly, NSubstitute).                            |
-| `tests/NSchema.Postgres.Tests`    | Integration tests against a real Postgres container (Testcontainers). |
-| `samples/NSchema.Sandbox`         | Example console app showing schema declarations and script providers. |
-| `samples/NSchema.Sandbox.AppHost` | .NET Aspire host for the sandbox.                                     |
-
 ## Building and testing
 
 ```bash

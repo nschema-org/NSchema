@@ -7,11 +7,13 @@ public sealed class SchemaBuilder
 {
     private readonly string _name;
     private readonly List<TableBuilder> _tables = [];
-    private readonly List<string> _droppedTables = [];
     private readonly List<SchemaGrant> _grants = [];
     private string? _oldName;
     private bool _isPartial;
     private string? _comment;
+
+    internal string Name => _name;
+    internal bool IsDropped { get; private set; }
 
     internal SchemaBuilder(string name) => _name = name;
 
@@ -72,6 +74,12 @@ public sealed class SchemaBuilder
     public SchemaBuilder Grant(string role) { _grants.Add(new SchemaGrant(role)); return this; }
 
     /// <summary>
+    /// Marks the schema for dropping. This indicates that the schema should be removed from the database when the migration is applied.
+    /// </summary>
+    /// <returns>The current <see cref="SchemaBuilder"/> instance, allowing for method chaining.</returns>
+    public SchemaBuilder Dropped() { IsDropped = true; return this; }
+
+    /// <summary>
     /// Marks the schema as partial, indicating that any tables in the target database that aren't in the desired schema definition should be left unchanged rather than being dropped.
     /// </summary>
     /// <returns>The current <see cref="SchemaBuilder"/> instance, allowing for method chaining.</returns>
@@ -80,16 +88,10 @@ public sealed class SchemaBuilder
     /// </remarks>
     public SchemaBuilder AsPartial() { _isPartial = true; return this; }
 
-    /// <summary>
-    /// Marks the table with the specified name for dropping. This indicates that the table should be removed from the database when the migration is applied.
-    /// </summary>
-    /// <param name="name">The name of the table to drop from the schema.</param>
-    /// <returns>The current <see cref="SchemaBuilder"/> instance, allowing for method chaining.</returns>
-    /// <remarks>
-    /// This is used to indicate that a table should be dropped from the database when the migration is applied, even for partial schemas.
-    /// </remarks>
-    public SchemaBuilder DropTable(string name) { _droppedTables.Add(name); return this; }
-
-    internal SchemaDefinition Build() =>
-        new(_name, _oldName, _isPartial, _comment, _tables.Select(t => t.Build()).ToList(), _droppedTables, _grants);
+    internal SchemaDefinition Build()
+    {
+        var tables = _tables.Where(t => !t.IsDropped).Select(t => t.Build()).ToList();
+        var droppedTables = _tables.Where(t => t.IsDropped).Select(t => t.Name).ToList();
+        return new(_name, _oldName, _isPartial, _comment, tables, droppedTables, _grants);
+    }
 }
