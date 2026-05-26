@@ -75,17 +75,17 @@ Providers are registered with `builder.AddSchema<T>()` or `builder.AddSchemasFro
 
 ### Extension points
 
-| Interface | Registered via |
-|---|---|
-| `ISchemaProvider` (desired) | `AddSchema<T>()` / `AddSchemasFromAssembly[Containing]<T>()` |
-| `ISchemaProvider` (current) | `UseSchemaSource<T>()` — keyed by `ISchemaProvider.CurrentSchemaProviderKey`; typically called from a database-provider extension (e.g. `UsePostgres(...)`) |
-| `ISchemaPolicy` | `AddSchemaPolicy<T>()` |
-| `IMigrationPlanTransformer` | `AddPlanTransformer<T>()` |
-| `IMigrationPolicy` | `AddMigrationPolicy<T>()` |
-| `IScriptProvider` | `AddScriptProvider<T>()` / `AddScriptFromFile(...)` / `AddScriptsFromEmbeddedResources(...)` |
-| `ISqlExecutor` | `UseSqlExecutor<T>()` (replaces default) |
-| `ISchemaComparer`, `ISchemaAggregator`, `IMigrationPlanProvider` | Override via `Services.AddSingleton<...>()` before `Build()` (defaults registered with `TryAdd`) |
-| `ISqlPlanner` | Supplied by a database-provider extension |
+| Interface                                                        | Registered via                                                                                                                                              |
+|------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ISchemaProvider` (desired)                                      | `AddSchema<T>()` / `AddSchemasFromAssembly[Containing]<T>()`                                                                                                |
+| `ISchemaProvider` (current)                                      | `UseSchemaSource<T>()` — keyed by `ISchemaProvider.CurrentSchemaProviderKey`; typically called from a database-provider extension (e.g. `UsePostgres(...)`) |
+| `ISchemaPolicy`                                                  | `AddSchemaPolicy<T>()`                                                                                                                                      |
+| `IMigrationPlanTransformer`                                      | `AddPlanTransformer<T>()`                                                                                                                                   |
+| `IMigrationPolicy`                                               | `AddMigrationPolicy<T>()`                                                                                                                                   |
+| `IScriptProvider`                                                | `AddScriptProvider<T>()` / `AddScriptFromFile(...)` / `AddScriptsFromEmbeddedResources(...)`                                                                |
+| `ISqlExecutor`                                                   | `UseSqlExecutor<T>()` (replaces default)                                                                                                                    |
+| `ISchemaComparer`, `ISchemaAggregator`, `IMigrationPlanProvider` | Override via `Services.AddSingleton<...>()` before `Build()` (defaults registered with `TryAdd`)                                                            |
+| `ISqlPlanner`                                                    | Supplied by a database-provider extension                                                                                                                   |
 
 ### Renaming
 
