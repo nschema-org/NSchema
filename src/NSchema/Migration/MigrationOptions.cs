@@ -24,4 +24,13 @@ public class MigrationOptions
     /// Controls whether the executor wraps the migration in a transaction.
     /// </summary>
     public TransactionMode TransactionMode { get; set; } = TransactionMode.Single;
+
+    /// <summary>
+    /// The set of schema names the migration is scoped to.
+    /// </summary>
+    /// <remarks>
+    /// When non-empty, only these schemas are read from the database, validated, and diffed;
+    /// declared or dropped schemas outside this set are ignored.
+    /// </remarks>
+    public string[]? SchemaNames { get; set; }
 }

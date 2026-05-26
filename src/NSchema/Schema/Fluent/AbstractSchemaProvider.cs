@@ -5,7 +5,7 @@ namespace NSchema.Schema.Fluent;
 /// <summary>
 /// Provides an abstract base class for defining a desired database schema using a fluent interface.
 /// </summary>
-public abstract class AbstractSchemaProvider : IDesiredSchemaProvider
+public abstract class AbstractSchemaProvider : ISchemaProvider
 {
     private readonly List<SchemaBuilder> _schemas = [];
 
@@ -36,10 +36,18 @@ public abstract class AbstractSchemaProvider : IDesiredSchemaProvider
     }
 
     /// <inheritdoc/>
-    public Task<DatabaseSchema> GetSchema(CancellationToken cancellationToken = default)
+    public Task<DatabaseSchema> GetSchema(string[]? schemaNames = null, CancellationToken cancellationToken = default)
     {
-        var schemas = _schemas.Where(s => !s.IsDropped).Select(s => s.Build()).ToList();
-        var droppedSchemas = _schemas.Where(s => s.IsDropped).Select(s => s.Name).ToList();
+        var includedBuilders = _schemas.AsEnumerable();
+        if (schemaNames is { Length: > 0 })
+        {
+            var scope = new HashSet<string>(schemaNames, StringComparer.OrdinalIgnoreCase);
+            includedBuilders = includedBuilders.Where(s => scope.Contains(s.Name));
+        }
+
+        var materialized = includedBuilders.ToList();
+        var schemas = materialized.Where(s => !s.IsDropped).Select(s => s.Build()).ToList();
+        var droppedSchemas = materialized.Where(s => s.IsDropped).Select(s => s.Name).ToList();
         return Task.FromResult(new DatabaseSchema(schemas, droppedSchemas));
     }
 }

@@ -11,7 +11,7 @@ public sealed class AbstractSchemaProviderTests
     {
         var provider = new TestSchemaProvider();
         configure(provider);
-        return await provider.GetSchema();
+        return await provider.GetSchema([]);
     }
 
     private static TestSchemaProvider BuildProvider(Action<TestSchemaProvider> configure)

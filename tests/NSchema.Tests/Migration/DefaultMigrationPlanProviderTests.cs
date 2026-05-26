@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
@@ -8,14 +9,19 @@ namespace NSchema.Tests.Migration;
 
 public sealed class DefaultMigrationPlanProviderTests
 {
-    private static IDesiredSchemaProvider DesiredProvider(DatabaseSchema schema)
+    private static ISchemaProvider DesiredProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
     {
-        var p = Substitute.For<IDesiredSchemaProvider>();
-        p.GetSchema(Arg.Any<CancellationToken>()).Returns(Task.FromResult(schema));
+        var p = Substitute.For<ISchemaProvider>();
+        p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captureScope?.Invoke(call.Arg<string[]>());
+                return Task.FromResult(schema);
+            });
         return p;
     }
 
-    private static ICurrentSchemaProvider CurrentProvider(DatabaseSchema schema, Action<string[]>? captureScope = null)
+    private static ICurrentSchemaProvider CurrentProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
     {
         var p = Substitute.For<ICurrentSchemaProvider>();
         p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
@@ -44,13 +50,14 @@ public sealed class DefaultMigrationPlanProviderTests
 
     private static DefaultMigrationPlanProvider Build(
         ICurrentSchemaProvider? current = null,
-        IEnumerable<IDesiredSchemaProvider>? desired = null,
+        IEnumerable<ISchemaProvider>? desired = null,
         IEnumerable<IScriptProvider>? scripts = null,
         ISchemaAggregator? aggregator = null,
         ISchemaComparer? comparer = null,
         IEnumerable<ISchemaPolicy>? schemaPolicies = null,
         IEnumerable<IMigrationPlanTransformer>? transformers = null,
-        IEnumerable<IMigrationPolicy>? migrationPolicies = null
+        IEnumerable<IMigrationPolicy>? migrationPolicies = null,
+        MigrationOptions? options = null
     ) => new(
         Substitute.For<IMigrationReporter>(),
         current ?? CurrentProvider(DatabaseSchema.Create([])),
@@ -60,7 +67,8 @@ public sealed class DefaultMigrationPlanProviderTests
         comparer ?? Comparer(),
         schemaPolicies ?? [],
         transformers ?? [],
-        migrationPolicies ?? []
+        migrationPolicies ?? [],
+        Options.Create(options ?? new MigrationOptions())
     );
 
     [Fact]
@@ -216,6 +224,38 @@ public sealed class DefaultMigrationPlanProviderTests
         var ex = await Should.ThrowAsync<PolicyViolationException>(() => sut.ComputeMigrationPlan());
         ex.Errors[0].Message.ShouldBe("destructive");
         policy.Received(1).Validate(transformed);
+    }
+
+    [Fact]
+    public async Task GetMigrationPlan_WhenScopeConfigured_PassesScopeToProvidersAndCurrent()
+    {
+        string[]? desiredScope = null;
+        string[]? currentScope = null;
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")], droppedSchemas: ["legacy"]);
+        var current = CurrentProvider(DatabaseSchema.Create([]), s => currentScope = s);
+
+        var sut = Build(
+            current: current,
+            desired: [DesiredProvider(desired, s => desiredScope = s)],
+            options: new MigrationOptions { SchemaNames = ["app", "legacy"] });
+
+        await sut.ComputeMigrationPlan();
+
+        desiredScope.ShouldBe(["app", "legacy"]);
+        currentScope.ShouldBe(["app", "legacy"]);
+    }
+
+    [Fact]
+    public async Task GetMigrationPlan_WhenNoScopeConfigured_PassesNullScopeToDesiredProviders()
+    {
+        string[]? desiredScope = [];
+        var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
+
+        var sut = Build(desired: [DesiredProvider(desired, s => desiredScope = s)]);
+
+        await sut.ComputeMigrationPlan();
+
+        desiredScope.ShouldBeNull();
     }
 
     [Fact]

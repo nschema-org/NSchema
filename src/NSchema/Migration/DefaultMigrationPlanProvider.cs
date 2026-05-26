@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Hosting;
 using NSchema.Migration.Plan;
 using NSchema.Policies;
@@ -17,22 +18,26 @@ namespace NSchema.Migration;
 /// <param name="schemaPolicies">The collection of policies to validate the desired schema.</param>
 /// <param name="planTransformers">The collection of transformers to modify the generated migration plan.</param>
 /// <param name="migrationPolicies">The collection of policies to validate the final migration plan.</param>
+/// <param name="options">Migration options, including the optional schema-name scope filter.</param>
 internal sealed class DefaultMigrationPlanProvider(
     IMigrationReporter reporter,
     ICurrentSchemaProvider currentProvider,
-    IEnumerable<IDesiredSchemaProvider> desiredProviders,
+    IEnumerable<ISchemaProvider> desiredProviders,
     IEnumerable<IScriptProvider> scriptProviders,
     ISchemaAggregator schemaAggregator,
     ISchemaComparer comparer,
     IEnumerable<ISchemaPolicy> schemaPolicies,
     IEnumerable<IMigrationPlanTransformer> planTransformers,
-    IEnumerable<IMigrationPolicy> migrationPolicies
+    IEnumerable<IMigrationPolicy> migrationPolicies,
+    IOptions<MigrationOptions> options
 ) : IMigrationPlanProvider
 {
     public async Task<MigrationPlan> ComputeMigrationPlan(CancellationToken cancellationToken = default)
     {
+        var scope = options.Value.SchemaNames;
+
         // Get desired schema state from all registered providers and merge.
-        var schemas = await Task.WhenAll(desiredProviders.Select(p => p.GetSchema(cancellationToken)));
+        var schemas = await Task.WhenAll(desiredProviders.Select(p => p.GetSchema(scope, cancellationToken)));
         var desiredSchema = schemaAggregator.Aggregate(schemas);
 
         // Run all registered schema validation policies.
@@ -48,11 +53,14 @@ internal sealed class DefaultMigrationPlanProvider(
             throw new PolicyViolationException(schemaErrors);
         }
 
-        // Get current schema state.
-        var schemasInScope = desiredSchema.Schemas.Select(s => s.Name)
-            .Concat(desiredSchema.DroppedSchemas)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        // Get current schema state. When no explicit scope is set, derive it from the aggregated
+        // declared (and dropped) schemas so we never touch unmanaged schemas in the database.
+        var schemasInScope = scope is { Length: > 0 }
+            ? scope
+            : desiredSchema.Schemas.Select(s => s.Name)
+                .Concat(desiredSchema.DroppedSchemas)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         var currentSchema = await currentProvider.GetSchema(schemasInScope, cancellationToken);
 
         // Diff the two schemas.

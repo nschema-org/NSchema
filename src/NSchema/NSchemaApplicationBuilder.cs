@@ -66,30 +66,30 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// </summary>
     /// <typeparam name="T">The type of the provider to add.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder AddSchema<T>() where T : IDesiredSchemaProvider
+    public NSchemaApplicationBuilder AddSchema<T>() where T : ISchemaProvider
     {
-        Services.TryAddEnumerable(new ServiceDescriptor(typeof(IDesiredSchemaProvider), typeof(T), ServiceLifetime.Singleton));
+        Services.TryAddEnumerable(new ServiceDescriptor(typeof(ISchemaProvider), typeof(T), ServiceLifetime.Singleton));
         return this;
     }
 
     /// <summary>
-    /// Adds all concrete types that implement <see cref="IDesiredSchemaProvider"/> to the application from the specified assembly.
+    /// Adds all concrete types that implement <see cref="ISchemaProvider"/> to the application from the specified assembly.
     /// </summary>
     /// <param name="assembly">The assembly to scan for schema providers.</param>
     /// <returns>The application builder, for chaining.</returns>
     public NSchemaApplicationBuilder AddSchemasFromAssembly(Assembly assembly)
     {
         var types = assembly.GetTypes()
-            .Where(t => t is { IsAbstract: false, IsInterface: false } && typeof(IDesiredSchemaProvider).IsAssignableFrom(t));
+            .Where(t => t is { IsAbstract: false, IsInterface: false } && typeof(ISchemaProvider).IsAssignableFrom(t));
         foreach (var type in types)
         {
-            Services.TryAddEnumerable(new ServiceDescriptor(typeof(IDesiredSchemaProvider), type, ServiceLifetime.Singleton));
+            Services.TryAddEnumerable(new ServiceDescriptor(typeof(ISchemaProvider), type, ServiceLifetime.Singleton));
         }
         return this;
     }
 
     /// <summary>
-    /// Adds all concrete types that implement <see cref="IDesiredSchemaProvider"/> to the application from the assembly containing the specified type.
+    /// Adds all concrete types that implement <see cref="ISchemaProvider"/> to the application from the assembly containing the specified type.
     /// </summary>
     /// <typeparam name="T">The type whose containing assembly will be scanned for schema providers.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
@@ -111,9 +111,20 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// </summary>
     /// <param name="dryRun">Whether to enable dry run mode. Defaults to true.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder WithDryRun(bool dryRun = true)
+    public NSchemaApplicationBuilder DryRunOnly(bool dryRun = true)
     {
         Services.Configure<MigrationOptions>(o => o.DryRun = dryRun);
+        return this;
+    }
+
+    /// <summary>
+    /// Scopes the migration to a specific set of schema names.
+    /// </summary>
+    /// <param name="schemaNames">The schema names to include in the migration.</param>
+    /// <returns>The application builder, for chaining.</returns>
+    public NSchemaApplicationBuilder ForSchemas(params string[] schemaNames)
+    {
+        Services.Configure<MigrationOptions>(o => o.SchemaNames = schemaNames);
         return this;
     }
 
@@ -204,7 +215,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     /// <param name="resourceName">The name of the embedded resource containing the SQL script.</param>
     /// <param name="name">An optional name for the script, used for logging and in migration plans. If not provided, the resource name will be used.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder AddPostDeploymentScriptFromEmbeddedResource(ScriptType type, Assembly assembly, string resourceName, string? name = null)
+    public NSchemaApplicationBuilder AddScriptFromEmbeddedResource(ScriptType type, Assembly assembly, string resourceName, string? name = null)
         => AddScriptProvider(new EmbeddedResourceScriptProvider(type, assembly, resourceName, name));
 
     /// <summary>
