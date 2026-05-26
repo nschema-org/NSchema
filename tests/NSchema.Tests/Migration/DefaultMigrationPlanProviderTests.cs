@@ -21,9 +21,9 @@ public sealed class DefaultMigrationPlanProviderTests
         return p;
     }
 
-    private static ICurrentSchemaProvider CurrentProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
+    private static ISchemaProvider CurrentProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
     {
-        var p = Substitute.For<ICurrentSchemaProvider>();
+        var p = Substitute.For<ISchemaProvider>();
         p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -49,7 +49,7 @@ public sealed class DefaultMigrationPlanProviderTests
     }
 
     private static DefaultMigrationPlanProvider Build(
-        ICurrentSchemaProvider? current = null,
+        ISchemaProvider? current = null,
         IEnumerable<ISchemaProvider>? desired = null,
         IEnumerable<IScriptProvider>? scripts = null,
         ISchemaAggregator? aggregator = null,

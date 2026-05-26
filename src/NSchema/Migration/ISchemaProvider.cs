@@ -7,12 +7,15 @@ namespace NSchema.Migration;
 /// </summary>
 /// <remarks>
 /// A single shape is used for both desired-state and current-state providers, so the same implementation
-/// (for example a live Postgres reader) can be plugged into either role. The role is determined at
-/// registration time — desired providers are aggregated, while the current provider is a single slot
-/// distinguished by the <see cref="ICurrentSchemaProvider"/> marker.
+/// (for example a live Postgres reader) can be plugged into either role, determined at registration time.
 /// </remarks>
 public interface ISchemaProvider
 {
+    /// <summary>
+    /// DI key used to register the single current-state schema provider.
+    /// </summary>
+    internal const string CurrentSchemaProviderKey = "NSchema.Current";
+
     /// <summary>
     /// Gets the schema for the specified schema names.
     /// </summary>

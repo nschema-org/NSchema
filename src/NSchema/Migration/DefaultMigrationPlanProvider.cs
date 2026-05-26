@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Hosting;
 using NSchema.Migration.Plan;
@@ -21,7 +22,7 @@ namespace NSchema.Migration;
 /// <param name="options">Migration options, including the optional schema-name scope filter.</param>
 internal sealed class DefaultMigrationPlanProvider(
     IMigrationReporter reporter,
-    ICurrentSchemaProvider currentProvider,
+    [FromKeyedServices(ISchemaProvider.CurrentSchemaProviderKey)] ISchemaProvider currentProvider,
     IEnumerable<ISchemaProvider> desiredProviders,
     IEnumerable<IScriptProvider> scriptProviders,
     ISchemaAggregator schemaAggregator,
