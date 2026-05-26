@@ -14,7 +14,7 @@ public sealed class NSchemaHostTests
         ISqlExecutor executor,
         IHostApplicationLifetime lifetime,
         MigrationOptions? options = null
-    ) => new(Substitute.For<IMigrationReporter>(), Options.Create(options ?? new MigrationOptions()), lifetime, planProvider, planner, executor);
+    ) => new(Substitute.For<IMigrationReporter>(), Substitute.For<IMigrationPlanRenderer>(), Options.Create(options ?? new MigrationOptions()), lifetime, planProvider, planner, executor);
 
     private static IMigrationPlanProvider PlanProviderReturning(MigrationPlan plan)
     {

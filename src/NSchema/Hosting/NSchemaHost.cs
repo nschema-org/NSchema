@@ -8,14 +8,16 @@ namespace NSchema.Hosting;
 /// The hosted service that runs the database migration.
 /// </summary>
 /// <param name="reporter">The reporter for user-facing migration progress.</param>
+/// <param name="planRenderer">Renders the migration plan as a human-readable diff.</param>
 /// <param name="lifetime">The application lifetime.</param>
 /// <param name="migrator">The schema migrator.</param>
 /// <param name="sqlPlanner">The SQL planner, used to generate the SQL that will be executed.</param>
 /// <param name="sqlExecutor">The SQL executor, used to run the generated SQL against the database.</param>
 /// <param name="options">The migration options.</param>
 internal class NSchemaHost(
-    IMigrationReporter reporter,
     IOptions<MigrationOptions> options,
+    IMigrationReporter reporter,
+    IMigrationPlanRenderer planRenderer,
     IHostApplicationLifetime lifetime,
     IMigrationPlanProvider migrator,
     ISqlPlanner sqlPlanner,
@@ -27,19 +29,18 @@ internal class NSchemaHost(
     {
         try
         {
-            var schemaPlan = await migrator.ComputeMigrationPlan(cancellationToken);
-            var sqlPlan = sqlPlanner.Plan(schemaPlan);
-            if (sqlPlan.IsEmpty)
-            {
-                reporter.Info("No changes detected.");
-            }
-
             if (options.Value.DryRun)
             {
                 reporter.Info("Dry run enabled. No changes will be applied to the database.");
             }
 
-            reporter.Info("The following migration plan has been created:");
+            reporter.Info("Computing migration plan...");
+            var schemaPlan = await migrator.ComputeMigrationPlan(cancellationToken);
+
+            reporter.Info(planRenderer.Render(schemaPlan) + Environment.NewLine);
+
+            reporter.Info("Generating SQL statements...");
+            var sqlPlan = sqlPlanner.Plan(schemaPlan);
             foreach (var statement in sqlPlan.Statements)
             {
                 reporter.Info(statement.Sql);

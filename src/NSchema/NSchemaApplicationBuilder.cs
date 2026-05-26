@@ -237,6 +237,7 @@ public class NSchemaApplicationBuilder : IHostApplicationBuilder
     private static void ApplyServices(IServiceCollection services)
     {
         services.TryAddSingleton<IMigrationReporter, DefaultMigrationReporter>();
+        services.TryAddSingleton<IMigrationPlanRenderer, DefaultMigrationPlanRenderer>();
         services.TryAddSingleton<ISchemaComparer, DefaultSchemaComparer>();
         services.TryAddSingleton<ISchemaAggregator, DefaultSchemaAggregator>();
         services.TryAddSingleton<IMigrationPlanProvider, DefaultMigrationPlanProvider>();
