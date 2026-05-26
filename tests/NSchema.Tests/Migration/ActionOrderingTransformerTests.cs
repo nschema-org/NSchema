@@ -50,13 +50,13 @@ public class ActionOrderingTransformerTests
         // Arrange
         var plan = PlanWith(
             new CreateTable("app", Table.Create("items", columns: [Column.Create("id", SqlType.Int, isNullable: false)])),
-            new RunPreDeploymentScript(new Script("pre", "SELECT 1", ScriptType.PreDeployment)));
+            new RunScript(new Script("pre", "SELECT 1", ScriptType.PreDeployment)));
 
         // Act
         var result = _sut.Transform(plan).Actions.ToList();
 
         // Assert
-        result[0].ShouldBeOfType<RunPreDeploymentScript>();
+        result[0].ShouldBeOfType<RunScript>();
     }
 
     [Fact]
@@ -64,14 +64,14 @@ public class ActionOrderingTransformerTests
     {
         // Arrange
         var plan = PlanWith(
-            new RunPostDeploymentScript(new Script("post", "SELECT 1", ScriptType.PostDeployment)),
+            new RunScript(new Script("post", "SELECT 1", ScriptType.PostDeployment)),
             new CreateTable("app", Table.Create("items", columns: [Column.Create("id", SqlType.Int, isNullable: false)])));
 
         // Act
         var result = _sut.Transform(plan).Actions.ToList();
 
         // Assert
-        result[^1].ShouldBeOfType<RunPostDeploymentScript>();
+        result[^1].ShouldBeOfType<RunScript>().Script.Type.ShouldBe(ScriptType.PostDeployment);
     }
 
     [Fact]

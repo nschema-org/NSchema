@@ -159,9 +159,9 @@ public sealed class DefaultMigrationPlanProviderTests
         var plan = await sut.ComputeMigrationPlan();
 
         plan.Actions.Count.ShouldBe(3);
-        plan.Actions[0].ShouldBeOfType<RunPreDeploymentScript>().Script.Name.ShouldBe("pre");
+        plan.Actions[0].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("pre");
         plan.Actions[1].ShouldBe(coreAction);
-        plan.Actions[2].ShouldBeOfType<RunPostDeploymentScript>().Script.Name.ShouldBe("post");
+        plan.Actions[2].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("post");
     }
 
     [Fact]

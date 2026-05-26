@@ -56,8 +56,8 @@ internal sealed class DefaultMigrationPlanProvider(
         {
             var scriptLists = await Task.WhenAll(providerList.Select(p => p.GetScripts(cancellationToken)));
             var scripts = scriptLists.SelectMany(s => s).ToList();
-            var preActions = scripts.Where(s => s.Type == ScriptType.PreDeployment).Select(MigrationAction (s) => new RunPreDeploymentScript(s));
-            var postActions = scripts.Where(s => s.Type == ScriptType.PostDeployment).Select(MigrationAction (s) => new RunPostDeploymentScript(s));
+            var preActions = scripts.Where(s => s.Type == ScriptType.PreDeployment).Select(MigrationAction (s) => new RunScript(s));
+            var postActions = scripts.Where(s => s.Type == ScriptType.PostDeployment).Select(MigrationAction (s) => new RunScript(s));
             migrationPlan = new MigrationPlan([.. preActions, .. migrationPlan.Actions, .. postActions]);
         }
 
