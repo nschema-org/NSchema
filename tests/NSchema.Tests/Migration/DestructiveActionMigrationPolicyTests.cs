@@ -62,12 +62,12 @@ public class DestructiveActionMigrationPolicyTests
     }
 
     [Fact]
-    public void Validate_WhenPolicyIsError_ReturnsOneErrorPerDestructiveAction()
+    public void Validate_WhenPolicyIsError_ReturnsOneErrorPerDestructiveActionType()
     {
         var enforcer = Create(DestructiveActionPolicy.Error);
 
         var errors = enforcer.Validate(PlanWith(DestructiveAction, DestructiveAction)).ToList();
 
-        errors.Count.ShouldBe(2);
+        errors.Count.ShouldBe(1);
     }
 }
