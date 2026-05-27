@@ -219,7 +219,7 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
 
     private static string FormatComment(string? comment) => comment is null ? "<none>" : $"\"{comment}\"";
 
-    private static string FormatDefault(string? value) => value is null ? "<none>" : value;
+    private static string FormatDefault(string? value) => value ?? "<none>";
 
     private static string FormatIdentity(IdentityOptions? options) => options is null ? "<none>" : options.ToString() ?? "<set>";
 
