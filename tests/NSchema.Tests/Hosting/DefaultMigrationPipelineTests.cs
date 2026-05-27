@@ -25,7 +25,6 @@ public sealed class DefaultMigrationPipelineTests
             .Returns(new MigrationPlan([], DatabaseSchema.Create([])));
 
         _sut = new DefaultMigrationPipeline(_options, _planner, _renderer, _reporter, _executor);
-
     }
 
     [Fact]

@@ -10,7 +10,7 @@ namespace NSchema.Migration;
 /// </summary>
 /// <param name="reporter">The reporter used to surface warnings about destructive actions when the policy is set to warn.</param>
 /// <param name="options">The migration options that contain the configured policy for handling destructive actions.</param>
-internal sealed class DestructiveActionMigrationPolicy(IMigrationReporter reporter, IOptions<MigrationOptions> options) : IMigrationPolicy
+internal sealed class DestructiveActionMigrationPolicy(IOptions<MigrationOptions> options, IMigrationReporter reporter) : IMigrationPolicy
 {
     public IEnumerable<PolicyError> Validate(MigrationPlan plan)
     {

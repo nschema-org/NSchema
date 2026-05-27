@@ -5,10 +5,13 @@ namespace NSchema.Tests.Hosting;
 
 public sealed class DefaultMigrationReporterTests
 {
-    private static (DefaultMigrationReporter Reporter, ILogger<DefaultMigrationReporter> Logger) Build()
+    private readonly ILogger<DefaultMigrationReporter> _logger = Substitute.For<ILogger<DefaultMigrationReporter>>();
+
+    private readonly DefaultMigrationReporter _sut;
+
+    public DefaultMigrationReporterTests()
     {
-        var logger = Substitute.For<ILogger<DefaultMigrationReporter>>();
-        return (new DefaultMigrationReporter(logger), logger);
+        _sut = new DefaultMigrationReporter(_logger);
     }
 
     private static (string Out, string Err) CaptureConsole(Action action)
@@ -32,15 +35,17 @@ public sealed class DefaultMigrationReporterTests
     }
 
     [Fact]
-    public void Info_writes_to_stdout_and_logs_at_information()
+    public void Info_WritesToStdoutAndLogsAtInformation()
     {
-        var (reporter, logger) = Build();
+        // Arrange
 
-        var (stdout, stderr) = CaptureConsole(() => reporter.Info("hello"));
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.Info("hello"));
 
+        // Assert
         stdout.ShouldBe("hello" + Environment.NewLine);
         stderr.ShouldBeEmpty();
-        logger.Received(1).Log(
+        _logger.Received(1).Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(state => state.ToString()!.Contains("hello")),
@@ -50,15 +55,17 @@ public sealed class DefaultMigrationReporterTests
     }
 
     [Fact]
-    public void Warn_writes_to_stderr_and_logs_at_warning()
+    public void Warn_WritesToStderrAndLogsAtWarning()
     {
-        var (reporter, logger) = Build();
+        // Arrange
 
-        var (stdout, stderr) = CaptureConsole(() => reporter.Warn("careful"));
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.Warn("careful"));
 
+        // Assert
         stderr.ShouldBe("careful" + Environment.NewLine);
         stdout.ShouldBeEmpty();
-        logger.Received(1).Log(
+        _logger.Received(1).Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Is<object>(state => state.ToString()!.Contains("careful")),
@@ -68,15 +75,17 @@ public sealed class DefaultMigrationReporterTests
     }
 
     [Fact]
-    public void Error_writes_to_stderr_and_logs_at_error()
+    public void Error_WritesToStderrAndLogsAtError()
     {
-        var (reporter, logger) = Build();
+        // Arrange
 
-        var (stdout, stderr) = CaptureConsole(() => reporter.Error("boom"));
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.Error("boom"));
 
+        // Assert
         stderr.ShouldBe("boom" + Environment.NewLine);
         stdout.ShouldBeEmpty();
-        logger.Received(1).Log(
+        _logger.Received(1).Log(
             LogLevel.Error,
             Arg.Any<EventId>(),
             Arg.Is<object>(state => state.ToString()!.Contains("boom")),

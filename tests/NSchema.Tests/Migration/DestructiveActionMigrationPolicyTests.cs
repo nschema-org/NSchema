@@ -3,29 +3,32 @@ using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
 using NSchema.Schema;
+using NSchema.Tests.Helpers;
 
 namespace NSchema.Tests.Migration;
 
 public class DestructiveActionMigrationPolicyTests
 {
-    private static DestructiveActionMigrationPolicy Create(DestructiveActionPolicy policy) => new(
-        Substitute.For<IMigrationReporter>(),
-        Options.Create(new MigrationOptions { DestructiveActionPolicy = policy })
-    );
+    private readonly IOptions<MigrationOptions> _options = Options.Create(new MigrationOptions());
+    private readonly IMigrationReporter _reporter = Substitute.For<IMigrationReporter>();
 
-    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions, DatabaseSchema.Create([]));
+    private readonly DestructiveActionMigrationPolicy _sut;
 
-    private static readonly MigrationAction DestructiveAction = new DropTable("public", "users");
-    private static readonly MigrationAction NonDestructiveAction = new CreateTable("public",
-        Table.Create("users", columns: [Column.Create("id", SqlType.BigInt, isNullable: false)]));
+    public DestructiveActionMigrationPolicyTests()
+    {
+        _sut = new DestructiveActionMigrationPolicy(_options, _reporter);
+    }
 
     [Fact]
     public void Validate_WhenPolicyIsError_ReturnsErrorForDestructiveAction()
     {
-        var enforcer = Create(DestructiveActionPolicy.Error);
+        // Arrange
+        _options.Value.DestructiveActionPolicy = DestructiveActionPolicy.Error;
 
-        var errors = enforcer.Validate(PlanWith(DestructiveAction)).ToList();
+        // Act
+        var errors = _sut.Validate(TestData.DestructivePlan).ToList();
 
+        // Assert
         errors.ShouldHaveSingleItem();
         errors[0].PolicyName.ShouldBe(nameof(DestructiveActionMigrationPolicy));
         errors[0].Message.ShouldContain(nameof(DropTable));
@@ -34,40 +37,53 @@ public class DestructiveActionMigrationPolicyTests
     [Fact]
     public void Validate_WhenPolicyIsAllow_ReturnsNoErrors()
     {
-        var enforcer = Create(DestructiveActionPolicy.Allow);
+        // Arrange
+        _options.Value.DestructiveActionPolicy = DestructiveActionPolicy.Allow;
 
-        var errors = enforcer.Validate(PlanWith(DestructiveAction)).ToList();
+        // Act
+        var errors = _sut.Validate(TestData.DestructivePlan).ToList();
 
+        // Assert
         errors.ShouldBeEmpty();
     }
 
     [Fact]
     public void Validate_WhenPolicyIsWarn_ReturnsNoErrors()
     {
-        var enforcer = Create(DestructiveActionPolicy.Warn);
+        // Arrange
+        _options.Value.DestructiveActionPolicy = DestructiveActionPolicy.Warn;
 
-        var errors = enforcer.Validate(PlanWith(DestructiveAction)).ToList();
+        // Act
+        var errors = _sut.Validate(TestData.DestructivePlan).ToList();
 
+        // Assert
         errors.ShouldBeEmpty();
     }
 
     [Fact]
     public void Validate_NonDestructiveAction_ReturnsNoErrorsRegardlessOfPolicy()
     {
-        var enforcer = Create(DestructiveActionPolicy.Error);
+        // Arrange
+        _options.Value.DestructiveActionPolicy = DestructiveActionPolicy.Error;
 
-        var errors = enforcer.Validate(PlanWith(NonDestructiveAction)).ToList();
+        // Act
+        var errors = _sut.Validate(TestData.NonDestructivePlan).ToList();
 
+        // Assert
         errors.ShouldBeEmpty();
     }
 
     [Fact]
     public void Validate_WhenPolicyIsError_ReturnsOneErrorPerDestructiveActionType()
     {
-        var enforcer = Create(DestructiveActionPolicy.Error);
+        // Arrange
+        var plan = new MigrationPlan([TestData.DestructiveAction, TestData.DestructiveAction], DatabaseSchema.Create([]));
+        _options.Value.DestructiveActionPolicy = DestructiveActionPolicy.Error;
 
-        var errors = enforcer.Validate(PlanWith(DestructiveAction, DestructiveAction)).ToList();
+        // Act
+        var errors = _sut.Validate(plan).ToList();
 
+        // Assert
         errors.Count.ShouldBe(1);
     }
 }

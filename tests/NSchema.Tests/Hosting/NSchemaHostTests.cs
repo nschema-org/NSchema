@@ -1,36 +1,47 @@
 using Microsoft.Extensions.Hosting;
 using NSchema.Hosting;
+using NSubstitute.ExceptionExtensions;
 
 namespace NSchema.Tests.Hosting;
 
 public sealed class NSchemaHostTests
 {
+    private readonly IMigrationPipeline _pipeline = Substitute.For<IMigrationPipeline>();
+    private readonly IHostApplicationLifetime _lifetime = Substitute.For<IHostApplicationLifetime>();
+
+    private readonly NSchemaHost _sut;
+
+    public NSchemaHostTests()
+    {
+        _sut = new NSchemaHost(_lifetime, _pipeline);
+    }
+
     [Fact]
     public async Task Execute_StopsApplication_OnSuccess()
     {
-        var pipeline = Substitute.For<IMigrationPipeline>();
-        var lifetime = Substitute.For<IHostApplicationLifetime>();
-        var sut = new NSchemaHost(lifetime, pipeline);
+        // Arrange
 
-        await sut.StartAsync(CancellationToken.None);
-        await sut.ExecuteTask!;
+        // Act
+        await _sut.StartAsync(CancellationToken.None);
+        await _sut.ExecuteTask!;
 
-        await pipeline.Received(1).Run(Arg.Any<CancellationToken>());
-        lifetime.Received(1).StopApplication();
+        // Assert
+        await _pipeline.Received(1).Run(Arg.Any<CancellationToken>());
+        _lifetime.Received(1).StopApplication();
     }
 
     [Fact]
     public async Task Execute_StopsApplication_WhenPipelineThrows()
     {
-        var pipeline = Substitute.For<IMigrationPipeline>();
-        pipeline.Run(Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("boom"));
-        var lifetime = Substitute.For<IHostApplicationLifetime>();
-        var sut = new NSchemaHost(lifetime, pipeline);
+        // Arrange
+        _pipeline.Run(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
+        await _sut.StartAsync(CancellationToken.None);
 
-        await sut.StartAsync(CancellationToken.None);
-        await Should.ThrowAsync<InvalidOperationException>(async () => await sut.ExecuteTask!);
+        // Act
+        var act = async () => await _sut.ExecuteTask!;
 
-        lifetime.Received(1).StopApplication();
+        // Assert
+        await Should.ThrowAsync<InvalidOperationException>(act);
+        _lifetime.Received(1).StopApplication();
     }
 }

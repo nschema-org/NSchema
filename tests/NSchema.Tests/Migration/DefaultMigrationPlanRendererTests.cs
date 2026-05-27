@@ -1,15 +1,19 @@
+using System.Collections.Frozen;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
 using NSchema.Schema;
+using NSchema.Tests.Helpers;
 
 namespace NSchema.Tests.Migration;
 
 public class DefaultMigrationPlanRendererTests
 {
+    private readonly DefaultMigrationPlanRenderer _sut = new();
+
     // One sample per concrete MigrationAction subtype. Passing each through Render() exercises
     // the renderer's switches; any missing case hits the `_ => throw NotSupportedException`
     // default and fails the coverage test below.
-    private static readonly IReadOnlyDictionary<Type, MigrationAction> SamplesByType =
+    private static readonly IReadOnlyDictionary<Type, MigrationAction> _samplesByType =
         new MigrationAction[]
         {
             new CreateSchema("s"),
@@ -45,7 +49,7 @@ public class DefaultMigrationPlanRendererTests
             new DropForeignKey("s", "t", "fk"),
 
             new RunScript(new Script("script.sql", "SELECT 1", ScriptType.PreDeployment)),
-        }.ToDictionary(a => a.GetType());
+        }.ToFrozenDictionary(a => a.GetType());
 
     public static TheoryData<Type> AllConcreteActionTypes()
     {
@@ -63,6 +67,7 @@ public class DefaultMigrationPlanRendererTests
     [Fact]
     public void Samples_CoverEveryConcreteActionType()
     {
+        // Arrange
         // Catches "added a new MigrationAction subtype but forgot to add a sample below" before
         // the per-type render test runs.
         var allActionTypes = typeof(MigrationAction).Assembly
@@ -70,10 +75,13 @@ public class DefaultMigrationPlanRendererTests
             .Where(t => t is { IsSealed: true, IsAbstract: false } && t.IsAssignableTo(typeof(MigrationAction)))
             .ToList();
 
+        // Act
+
+        // Assert
         allActionTypes.ShouldNotBeEmpty();
         foreach (var type in allActionTypes)
         {
-            SamplesByType.ShouldContainKey(type, $"Missing renderer test sample for {type.Name}");
+            _samplesByType.ShouldContainKey(type, $"Missing renderer test sample for {type.Name}");
         }
     }
 
@@ -81,37 +89,46 @@ public class DefaultMigrationPlanRendererTests
     [MemberData(nameof(AllConcreteActionTypes))]
     public void Render_HandlesEveryConcreteActionType(Type actionType)
     {
-        var sample = SamplesByType[actionType];
+        // Arrange
+        var sample = _samplesByType[actionType];
+        var plan = new MigrationPlan([sample], DatabaseSchema.Create([]));
 
+        // Act
         // Should not throw — the switches in the renderer have `_ => throw` defaults, so a
         // missing case for any new action type will fail here.
-        var output = Should.NotThrow(() => new DefaultMigrationPlanRenderer().Render(new MigrationPlan([sample], DatabaseSchema.Create([]))));
+        var act = () => _sut.Render(plan);
 
+        // Assert
+        var output = Should.NotThrow(act);
         output.ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]
     public void Render_EmptyPlan_ReturnsNoChangesMessage()
     {
-        var renderer = new DefaultMigrationPlanRenderer();
+        // Arrange
 
-        var output = renderer.Render(new MigrationPlan([], DatabaseSchema.Create([])));
+        // Act
+        var output = _sut.Render(TestData.EmptyPlan);
 
+        // Assert
         output.ShouldBe("No changes detected.");
     }
 
     [Fact]
     public void Render_GroupsActionsByTable_AndIncludesSummaryHeader()
     {
-        var renderer = new DefaultMigrationPlanRenderer();
+        // Arrange
         var plan = new MigrationPlan([
             new CreateSchema("app"),
             new AddColumn("app", "orders", Column.Create("shipped_at", SqlType.DateTimeOffset)),
             new DropTable("app", "audit_log"),
         ], DatabaseSchema.Create([]));
 
-        var output = renderer.Render(plan);
+        // Act
+        var output = _sut.Render(plan);
 
+        // Assert
         output.ShouldContain("Plan: 1 to add, 1 to change, 1 to destroy.");
         output.ShouldContain("schema app");
         output.ShouldContain("table app.orders");

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
 using NSchema.Policies;
@@ -9,98 +8,88 @@ namespace NSchema.Tests.Migration;
 
 public sealed class DefaultMigrationPlannerTests
 {
-    private static ISchemaProvider DesiredProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
-    {
-        var p = Substitute.For<ISchemaProvider>();
-        p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                captureScope?.Invoke(call.Arg<string[]>());
-                return Task.FromResult(schema);
-            });
-        return p;
-    }
+    private readonly ISchemaProvider _current = Substitute.For<ISchemaProvider>();
+    private readonly ISchemaProvider _desired = Substitute.For<ISchemaProvider>();
+    private readonly List<ISchemaProvider> _desiredProviders;
+    private readonly List<IScriptProvider> _scripts = [];
+    private readonly ISchemaAggregator _aggregator = Substitute.For<ISchemaAggregator>();
+    private readonly ISchemaComparer _comparer = Substitute.For<ISchemaComparer>();
+    private readonly List<ISchemaPolicy> _schemaPolicies = [];
+    private readonly List<IMigrationPlanTransformer> _transformers = [];
+    private readonly List<IMigrationPolicy> _migrationPolicies = [];
+    private readonly IOptions<MigrationOptions> _options = Options.Create(new MigrationOptions());
 
-    private static ISchemaProvider CurrentProvider(DatabaseSchema schema, Action<string[]?>? captureScope = null)
-    {
-        var p = Substitute.For<ISchemaProvider>();
-        p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                captureScope?.Invoke(call.Arg<string[]>());
-                return Task.FromResult(schema);
-            });
-        return p;
-    }
-
-    private static ISchemaAggregator PassThroughAggregator()
-    {
-        var a = Substitute.For<ISchemaAggregator>();
-        a.Aggregate(Arg.Any<IReadOnlyList<DatabaseSchema>>())
-            .Returns(call => call.Arg<IReadOnlyList<DatabaseSchema>>()[0]);
-        return a;
-    }
-
-    private static ISchemaComparer Comparer(params MigrationAction[] actions)
-    {
-        var c = Substitute.For<ISchemaComparer>();
-        c.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>())
-            .Returns(call => new MigrationPlan(actions, call.ArgAt<DatabaseSchema>(1)));
-        return c;
-    }
-
-    private static DefaultMigrationPlanner Build(
-        ISchemaProvider? current = null,
-        IEnumerable<ISchemaProvider>? desired = null,
-        IEnumerable<IScriptProvider>? scripts = null,
-        ISchemaAggregator? aggregator = null,
-        ISchemaComparer? comparer = null,
-        IEnumerable<ISchemaPolicy>? schemaPolicies = null,
-        IEnumerable<IMigrationPlanTransformer>? transformers = null,
-        IEnumerable<IMigrationPolicy>? migrationPolicies = null,
-        MigrationOptions? options = null
-    ) => new(
-        current ?? CurrentProvider(DatabaseSchema.Create([])),
-        desired ?? [DesiredProvider(DatabaseSchema.Create([]))],
-        scripts ?? [],
-        aggregator ?? PassThroughAggregator(),
-        comparer ?? Comparer(),
-        schemaPolicies ?? [],
-        transformers ?? [],
-        migrationPolicies ?? [],
-        Options.Create(options ?? new MigrationOptions())
+    private DefaultMigrationPlanner _sut => new(
+        _current,
+        _desiredProviders,
+        _scripts,
+        _aggregator,
+        _comparer,
+        _schemaPolicies,
+        _transformers,
+        _migrationPolicies,
+        _options
     );
+
+    public DefaultMigrationPlannerTests()
+    {
+        _desiredProviders = [_desired];
+
+        _current.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(DatabaseSchema.Create([]));
+        _desired.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(DatabaseSchema.Create([]));
+        _aggregator.Aggregate(Arg.Any<IReadOnlyList<DatabaseSchema>>())
+            .Returns(call => call.Arg<IReadOnlyList<DatabaseSchema>>()[0]);
+        _comparer.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>())
+            .Returns(call => new MigrationPlan([], call.ArgAt<DatabaseSchema>(1)));
+    }
+
+    private static ISchemaProvider ProviderReturning(DatabaseSchema schema, Action<string[]?>? captureScope = null)
+    {
+        var p = Substitute.For<ISchemaProvider>();
+        p.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captureScope?.Invoke(call.Arg<string[]>());
+                return Task.FromResult(schema);
+            });
+        return p;
+    }
 
     [Fact]
     public async Task GetMigrationPlan_AggregatesDesiredSchemasBeforeComparing()
     {
+        // Arrange
         var s1 = DatabaseSchema.Create([SchemaDefinition.Create("a")]);
         var s2 = DatabaseSchema.Create([SchemaDefinition.Create("b")]);
-        var aggregator = Substitute.For<ISchemaAggregator>();
         var merged = DatabaseSchema.Create([SchemaDefinition.Create("a"), SchemaDefinition.Create("b")]);
-        aggregator.Aggregate(Arg.Any<IReadOnlyList<DatabaseSchema>>()).Returns(merged);
-        var comparer = Comparer();
+        _desiredProviders.Clear();
+        _desiredProviders.Add(ProviderReturning(s1));
+        _desiredProviders.Add(ProviderReturning(s2));
+        _aggregator.Aggregate(Arg.Any<IReadOnlyList<DatabaseSchema>>()).Returns(merged);
 
-        var sut = Build(
-            desired: [DesiredProvider(s1), DesiredProvider(s2)],
-            aggregator: aggregator,
-            comparer: comparer);
+        // Act
+        await _sut.Plan();
 
-        await sut.Plan();
-
-        aggregator.Received(1).Aggregate(Arg.Is<IReadOnlyList<DatabaseSchema>>(l => l.Count == 2));
-        comparer.Received(1).Compare(Arg.Any<DatabaseSchema>(), merged);
+        // Assert
+        _aggregator.Received(1).Aggregate(Arg.Is<IReadOnlyList<DatabaseSchema>>(l => l.Count == 2));
+        _comparer.Received(1).Compare(Arg.Any<DatabaseSchema>(), merged);
     }
 
     [Fact]
     public async Task GetMigrationPlan_RunsSchemaPoliciesAndThrowsOnError()
     {
+        // Arrange
         var policy = Substitute.For<ISchemaPolicy>();
         policy.Validate(Arg.Any<DatabaseSchema>()).Returns([new PolicyError("Test", "broken")]);
+        _schemaPolicies.Add(policy);
 
-        var sut = Build(schemaPolicies: [policy]);
+        // Act
+        var act = () => _sut.Plan();
 
-        var ex = await Should.ThrowAsync<PolicyViolationException>(() => sut.Plan());
+        // Assert
+        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
         ex.Errors.ShouldHaveSingleItem();
         ex.Errors[0].Message.ShouldBe("broken");
     }
@@ -108,31 +97,41 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_SchemaPolicyFailure_SkipsCurrentSchemaLookupAndComparison()
     {
+        // Arrange
         var policy = Substitute.For<ISchemaPolicy>();
         policy.Validate(Arg.Any<DatabaseSchema>()).Returns([new PolicyError("Test", "fail")]);
-        var current = CurrentProvider(DatabaseSchema.Create([]));
-        var comparer = Comparer();
+        _schemaPolicies.Add(policy);
 
-        var sut = Build(current: current, comparer: comparer, schemaPolicies: [policy]);
+        // Act
+        var act = () => _sut.Plan();
 
-        await Should.ThrowAsync<PolicyViolationException>(() => sut.Plan());
-        await current.DidNotReceive().GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
-        comparer.DidNotReceive().Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>());
+        // Assert
+        await Should.ThrowAsync<PolicyViolationException>(act);
+        await _current.DidNotReceive().GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
+        _comparer.DidNotReceive().Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>());
     }
 
     [Fact]
     public async Task GetMigrationPlan_PassesDeclaredAndDroppedSchemaNamesToCurrentProvider()
     {
+        // Arrange
         string[]? captured = null;
-        var current = CurrentProvider(DatabaseSchema.Create([]), s => captured = s);
+        _current.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captured = call.Arg<string[]>();
+                return Task.FromResult(DatabaseSchema.Create([]));
+            });
         var desired = DatabaseSchema.Create(
             [SchemaDefinition.Create("app"), SchemaDefinition.Create("admin")],
             droppedSchemas: ["legacy"]);
+        _desiredProviders.Clear();
+        _desiredProviders.Add(ProviderReturning(desired));
 
-        var sut = Build(current: current, desired: [DesiredProvider(desired)]);
+        // Act
+        await _sut.Plan();
 
-        await sut.Plan();
-
+        // Assert
         captured.ShouldNotBeNull();
         captured!.ShouldBe(["app", "admin", "legacy"], ignoreOrder: true);
     }
@@ -140,16 +139,24 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_DeduplicatesSchemaNamesInScope()
     {
+        // Arrange
         string[]? captured = null;
-        var current = CurrentProvider(DatabaseSchema.Create([]), s => captured = s);
+        _current.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captured = call.Arg<string[]>();
+                return Task.FromResult(DatabaseSchema.Create([]));
+            });
         var desired = DatabaseSchema.Create(
             [SchemaDefinition.Create("app")],
             droppedSchemas: ["app"]);
+        _desiredProviders.Clear();
+        _desiredProviders.Add(ProviderReturning(desired));
 
-        var sut = Build(current: current, desired: [DesiredProvider(desired)]);
+        // Act
+        await _sut.Plan();
 
-        await sut.Plan();
-
+        // Assert
         captured!.Length.ShouldBe(1);
         captured[0].ShouldBe("app");
     }
@@ -157,18 +164,22 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_InjectsPreAndPostDeploymentScriptsAroundActions()
     {
+        // Arrange
         var coreAction = new CreateSchema("app");
+        _comparer.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>())
+            .Returns(call => new MigrationPlan([coreAction], call.ArgAt<DatabaseSchema>(1)));
         var scripts = Substitute.For<IScriptProvider>();
         scripts.GetScripts(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Script>>([
                 new Script("pre", "SELECT 1", ScriptType.PreDeployment),
                 new Script("post", "SELECT 2", ScriptType.PostDeployment),
             ]));
+        _scripts.Add(scripts);
 
-        var sut = Build(scripts: [scripts], comparer: Comparer(coreAction));
+        // Act
+        var plan = await _sut.Plan();
 
-        var plan = await sut.Plan();
-
+        // Assert
         plan.Actions.Count.ShouldBe(3);
         plan.Actions[0].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("pre");
         plan.Actions[1].ShouldBe(coreAction);
@@ -178,11 +189,15 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_NoScriptProviders_DoesNotAlterPlan()
     {
+        // Arrange
         var coreAction = new CreateSchema("app");
-        var sut = Build(comparer: Comparer(coreAction));
+        _comparer.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>())
+            .Returns(call => new MigrationPlan([coreAction], call.ArgAt<DatabaseSchema>(1)));
 
-        var plan = await sut.Plan();
+        // Act
+        var plan = await _sut.Plan();
 
+        // Assert
         plan.Actions.ShouldHaveSingleItem();
         plan.Actions[0].ShouldBe(coreAction);
     }
@@ -190,17 +205,20 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_AppliesTransformersInRegistrationOrder()
     {
+        // Arrange
         var t1 = Substitute.For<IMigrationPlanTransformer>();
         var t2 = Substitute.For<IMigrationPlanTransformer>();
         var after1 = new MigrationPlan([new CreateSchema("after1")], DatabaseSchema.Create([]));
         var after2 = new MigrationPlan([new CreateSchema("after2")], DatabaseSchema.Create([]));
         t1.Transform(Arg.Any<MigrationPlan>()).Returns(after1);
         t2.Transform(after1).Returns(after2);
+        _transformers.Add(t1);
+        _transformers.Add(t2);
 
-        var sut = Build(transformers: [t1, t2]);
+        // Act
+        var plan = await _sut.Plan();
 
-        var plan = await sut.Plan();
-
+        // Assert
         plan.ShouldBe(after2);
         Received.InOrder(() =>
         {
@@ -212,16 +230,20 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_RunsMigrationPoliciesAgainstTransformedPlanAndThrowsOnError()
     {
+        // Arrange
         var transformer = Substitute.For<IMigrationPlanTransformer>();
         var transformed = new MigrationPlan([new DropTable("app", "users")], DatabaseSchema.Create([]));
         transformer.Transform(Arg.Any<MigrationPlan>()).Returns(transformed);
-
+        _transformers.Add(transformer);
         var policy = Substitute.For<IMigrationPolicy>();
         policy.Validate(transformed).Returns([new PolicyError("Test", "destructive")]);
+        _migrationPolicies.Add(policy);
 
-        var sut = Build(transformers: [transformer], migrationPolicies: [policy]);
+        // Act
+        var act = () => _sut.Plan();
 
-        var ex = await Should.ThrowAsync<PolicyViolationException>(() => sut.Plan());
+        // Assert
+        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
         ex.Errors[0].Message.ShouldBe("destructive");
         policy.Received(1).Validate(transformed);
     }
@@ -229,18 +251,24 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_WhenScopeConfigured_PassesScopeToProvidersAndCurrent()
     {
+        // Arrange
         string[]? desiredScope = null;
         string[]? currentScope = null;
+        _current.GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                currentScope = call.Arg<string[]>();
+                return Task.FromResult(DatabaseSchema.Create([]));
+            });
         var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")], droppedSchemas: ["legacy"]);
-        var current = CurrentProvider(DatabaseSchema.Create([]), s => currentScope = s);
+        _desiredProviders.Clear();
+        _desiredProviders.Add(ProviderReturning(desired, s => desiredScope = s));
+        _options.Value.SchemaNames = ["app", "legacy"];
 
-        var sut = Build(
-            current: current,
-            desired: [DesiredProvider(desired, s => desiredScope = s)],
-            options: new MigrationOptions { SchemaNames = ["app", "legacy"] });
+        // Act
+        await _sut.Plan();
 
-        await sut.Plan();
-
+        // Assert
         desiredScope.ShouldBe(["app", "legacy"]);
         currentScope.ShouldBe(["app", "legacy"]);
     }
@@ -248,27 +276,35 @@ public sealed class DefaultMigrationPlannerTests
     [Fact]
     public async Task GetMigrationPlan_WhenNoScopeConfigured_PassesNullScopeToDesiredProviders()
     {
+        // Arrange
         string[]? desiredScope = [];
         var desired = DatabaseSchema.Create([SchemaDefinition.Create("app")]);
+        _desiredProviders.Clear();
+        _desiredProviders.Add(ProviderReturning(desired, s => desiredScope = s));
 
-        var sut = Build(desired: [DesiredProvider(desired, s => desiredScope = s)]);
+        // Act
+        await _sut.Plan();
 
-        await sut.Plan();
-
+        // Assert
         desiredScope.ShouldBeNull();
     }
 
     [Fact]
     public async Task GetMigrationPlan_AggregatesErrorsFromMultiplePolicies()
     {
+        // Arrange
         var p1 = Substitute.For<ISchemaPolicy>();
         var p2 = Substitute.For<ISchemaPolicy>();
         p1.Validate(Arg.Any<DatabaseSchema>()).Returns([new PolicyError("P1", "a")]);
         p2.Validate(Arg.Any<DatabaseSchema>()).Returns([new PolicyError("P2", "b"), new PolicyError("P2", "c")]);
+        _schemaPolicies.Add(p1);
+        _schemaPolicies.Add(p2);
 
-        var sut = Build(schemaPolicies: [p1, p2]);
+        // Act
+        var act = () => _sut.Plan();
 
-        var ex = await Should.ThrowAsync<PolicyViolationException>(() => sut.Plan());
+        // Assert
+        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
         ex.Errors.Count.ShouldBe(3);
     }
 }
