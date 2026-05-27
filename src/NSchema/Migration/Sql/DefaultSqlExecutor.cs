@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.Extensions.Options;
 
-namespace NSchema.Migration;
+namespace NSchema.Migration.Sql;
 
 /// <summary>
 /// A default implementation of the ISqlExecutor interface that executes SQL statements using a provided DbDataSource.

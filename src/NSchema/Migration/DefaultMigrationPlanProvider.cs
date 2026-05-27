@@ -76,7 +76,7 @@ internal sealed class DefaultMigrationPlanProvider(
             var scripts = scriptLists.SelectMany(s => s).ToList();
             var preActions = scripts.Where(s => s.Type == ScriptType.PreDeployment).Select(MigrationAction (s) => new RunScript(s));
             var postActions = scripts.Where(s => s.Type == ScriptType.PostDeployment).Select(MigrationAction (s) => new RunScript(s));
-            migrationPlan = new MigrationPlan([.. preActions, .. migrationPlan.Actions, .. postActions]);
+            migrationPlan = migrationPlan with { Actions = [.. preActions, .. migrationPlan.Actions, .. postActions] };
         }
 
         // Apply all registered plan transformers in order.

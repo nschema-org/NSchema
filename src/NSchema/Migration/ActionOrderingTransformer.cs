@@ -50,7 +50,7 @@ internal sealed class ActionOrderingTransformer : IMigrationPlanTransformer
     public MigrationPlan Transform(MigrationPlan plan)
     {
         var actions = plan.Actions.OrderBy(GetPriority).ToList();
-        return new MigrationPlan(actions);
+        return plan with { Actions = actions };
     }
 
     private static int GetPriority(MigrationAction action) => action switch

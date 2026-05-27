@@ -13,7 +13,7 @@ public class DestructiveActionMigrationPolicyTests
         Options.Create(new MigrationOptions { DestructiveActionPolicy = policy })
     );
 
-    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions);
+    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions, DatabaseSchema.Create([]));
 
     private static readonly MigrationAction DestructiveAction = new DropTable("public", "users");
     private static readonly MigrationAction NonDestructiveAction = new CreateTable("public",

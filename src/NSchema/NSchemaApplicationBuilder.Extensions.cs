@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Migration;
+using NSchema.Migration.Sql;
 
 namespace NSchema;
 
@@ -24,6 +25,19 @@ public partial class NSchemaApplicationBuilder
     public NSchemaApplicationBuilder UseSqlPlanner<T>() where T : class, ISqlPlanner
     {
         Services.AddSingleton<ISqlPlanner, T>();
+        return this;
+    }
+
+    /// <summary>
+    /// Replaces the default <see cref="IMigrationExecutor"/> with a custom one. Use this to target
+    /// non-SQL destinations (JSON, YAML, in-memory) that do not fit the <see cref="ISqlPlanner"/> +
+    /// <see cref="ISqlExecutor"/> pair.
+    /// </summary>
+    /// <typeparam name="T">The type of the migration executor to register.</typeparam>
+    /// <returns>The application builder, for chaining.</returns>
+    public NSchemaApplicationBuilder UseMigrationExecutor<T>() where T : class, IMigrationExecutor
+    {
+        Services.AddSingleton<IMigrationExecutor, T>();
         return this;
     }
 }

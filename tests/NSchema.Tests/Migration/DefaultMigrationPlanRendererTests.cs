@@ -85,7 +85,7 @@ public class DefaultMigrationPlanRendererTests
 
         // Should not throw — the switches in the renderer have `_ => throw` defaults, so a
         // missing case for any new action type will fail here.
-        var output = Should.NotThrow(() => new DefaultMigrationPlanRenderer().Render(new MigrationPlan([sample])));
+        var output = Should.NotThrow(() => new DefaultMigrationPlanRenderer().Render(new MigrationPlan([sample], DatabaseSchema.Create([]))));
 
         output.ShouldNotBeNullOrWhiteSpace();
     }
@@ -95,7 +95,7 @@ public class DefaultMigrationPlanRendererTests
     {
         var renderer = new DefaultMigrationPlanRenderer();
 
-        var output = renderer.Render(new MigrationPlan([]));
+        var output = renderer.Render(new MigrationPlan([], DatabaseSchema.Create([])));
 
         output.ShouldBe("No changes detected.");
     }
@@ -108,7 +108,7 @@ public class DefaultMigrationPlanRendererTests
             new CreateSchema("app"),
             new AddColumn("app", "orders", Column.Create("shipped_at", SqlType.DateTimeOffset)),
             new DropTable("app", "audit_log"),
-        ]);
+        ], DatabaseSchema.Create([]));
 
         var output = renderer.Render(plan);
 

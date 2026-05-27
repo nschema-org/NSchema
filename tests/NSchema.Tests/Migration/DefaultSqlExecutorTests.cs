@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Npgsql;
 using NSchema.Migration;
+using NSchema.Migration.Sql;
 using NSchema.Tests.Fixtures;
 
 namespace NSchema.Tests.Migration;

@@ -44,7 +44,8 @@ public sealed class DefaultMigrationPlanProviderTests
     private static ISchemaComparer Comparer(params MigrationAction[] actions)
     {
         var c = Substitute.For<ISchemaComparer>();
-        c.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>()).Returns(new MigrationPlan(actions));
+        c.Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>())
+            .Returns(call => new MigrationPlan(actions, call.ArgAt<DatabaseSchema>(1)));
         return c;
     }
 
@@ -192,8 +193,8 @@ public sealed class DefaultMigrationPlanProviderTests
     {
         var t1 = Substitute.For<IMigrationPlanTransformer>();
         var t2 = Substitute.For<IMigrationPlanTransformer>();
-        var after1 = new MigrationPlan([new CreateSchema("after1")]);
-        var after2 = new MigrationPlan([new CreateSchema("after2")]);
+        var after1 = new MigrationPlan([new CreateSchema("after1")], DatabaseSchema.Create([]));
+        var after2 = new MigrationPlan([new CreateSchema("after2")], DatabaseSchema.Create([]));
         t1.Transform(Arg.Any<MigrationPlan>()).Returns(after1);
         t2.Transform(after1).Returns(after2);
 
@@ -213,7 +214,7 @@ public sealed class DefaultMigrationPlanProviderTests
     public async Task GetMigrationPlan_RunsMigrationPoliciesAgainstTransformedPlanAndThrowsOnError()
     {
         var transformer = Substitute.For<IMigrationPlanTransformer>();
-        var transformed = new MigrationPlan([new DropTable("app", "users")]);
+        var transformed = new MigrationPlan([new DropTable("app", "users")], DatabaseSchema.Create([]));
         transformer.Transform(Arg.Any<MigrationPlan>()).Returns(transformed);
 
         var policy = Substitute.For<IMigrationPolicy>();

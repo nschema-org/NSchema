@@ -8,7 +8,7 @@ public class ActionOrderingTransformerTests
 {
     private readonly ActionOrderingTransformer _sut = new();
 
-    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions);
+    private static MigrationPlan PlanWith(params MigrationAction[] actions) => new(actions, DatabaseSchema.Create([]));
 
     [Fact]
     public void Transform_OrdersForeignKeyDropBeforeColumnDrop()

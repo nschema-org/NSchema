@@ -1,3 +1,5 @@
+using NSchema.Migration.Sql;
+
 namespace NSchema.Migration;
 
 /// <summary>

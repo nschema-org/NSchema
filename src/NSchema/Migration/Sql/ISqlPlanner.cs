@@ -1,6 +1,6 @@
 using NSchema.Migration.Plan;
 
-namespace NSchema.Migration;
+namespace NSchema.Migration.Sql;
 
 /// <summary>
 /// Defines an interface for planning SQL commands based on a migration plan.

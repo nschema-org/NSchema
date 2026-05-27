@@ -15,7 +15,7 @@ internal sealed partial class DefaultSchemaComparer(ILogger<DefaultSchemaCompare
 
         LogComparisonComplete(actions.Count);
 
-        return new MigrationPlan(actions);
+        return new MigrationPlan(actions, desired);
     }
 
     private void CompareSchemas(IReadOnlyList<SchemaDefinition> current, IReadOnlyList<SchemaDefinition> desired, List<MigrationAction> actions)
