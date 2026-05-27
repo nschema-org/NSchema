@@ -33,7 +33,7 @@ internal sealed class DefaultMigrationPlanProvider(
     IOptions<MigrationOptions> options
 ) : IMigrationPlanProvider
 {
-    public async Task<MigrationPlan> ComputeMigrationPlan(CancellationToken cancellationToken = default)
+    public async Task<MigrationPlan> Plan(CancellationToken cancellationToken = default)
     {
         var scope = options.Value.SchemaNames;
 

@@ -19,7 +19,7 @@ public sealed class NSchemaHostTests
     private static IMigrationPlanProvider PlanProviderReturning(MigrationPlan plan)
     {
         var p = Substitute.For<IMigrationPlanProvider>();
-        p.ComputeMigrationPlan(Arg.Any<CancellationToken>()).Returns(Task.FromResult(plan));
+        p.Plan(Arg.Any<CancellationToken>()).Returns(Task.FromResult(plan));
         return p;
     }
 
@@ -39,7 +39,7 @@ public sealed class NSchemaHostTests
         await sut.StartAsync(CancellationToken.None);
         await sut.ExecuteTask!;
 
-        await executor.Received(1).Execute(Arg.Any<MigrationPlan>(), true, Arg.Any<CancellationToken>());
+        await executor.Received(1).Apply(Arg.Any<MigrationPlan>(), true, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class NSchemaHostTests
         await sut.StartAsync(CancellationToken.None);
         await sut.ExecuteTask!;
 
-        await executor.Received(1).Execute(plan, false, Arg.Any<CancellationToken>());
+        await executor.Received(1).Apply(plan, false, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class NSchemaHostTests
     public async Task Execute_AlwaysStopsApplication_WhenPipelineThrows()
     {
         var planProvider = Substitute.For<IMigrationPlanProvider>();
-        planProvider.ComputeMigrationPlan(Arg.Any<CancellationToken>())
+        planProvider.Plan(Arg.Any<CancellationToken>())
             .Returns<Task<MigrationPlan>>(_ => throw new InvalidOperationException("boom"));
         var lifetime = Substitute.For<IHostApplicationLifetime>();
         var sut = Build(
@@ -106,6 +106,6 @@ public sealed class NSchemaHostTests
         await sut.StartAsync(CancellationToken.None);
         await sut.ExecuteTask!;
 
-        await executor.Received(1).Execute(Arg.Any<MigrationPlan>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await executor.Received(1).Apply(Arg.Any<MigrationPlan>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 }

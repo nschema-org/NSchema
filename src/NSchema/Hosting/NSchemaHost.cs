@@ -33,13 +33,13 @@ internal class NSchemaHost(
             }
 
             reporter.Info("Computing migration plan...");
-            var schemaPlan = await migrator.ComputeMigrationPlan(cancellationToken);
+            var plan = await migrator.Plan(cancellationToken);
 
-            reporter.Info(planRenderer.Render(schemaPlan) + Environment.NewLine);
+            reporter.Info(planRenderer.Render(plan) + Environment.NewLine);
 
             try
             {
-                await executor.Execute(schemaPlan, options.Value.DryRun, cancellationToken);
+                await executor.Apply(plan, options.Value.DryRun, cancellationToken);
                 if (!options.Value.DryRun)
                 {
                     reporter.Info("Migration completed successfully.");
