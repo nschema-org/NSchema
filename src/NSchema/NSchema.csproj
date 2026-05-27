@@ -12,7 +12,7 @@
     <PackageId>NSchema</PackageId>
     <PackageProjectUrl>https://github.com/tom-wolfe/NSchema</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
+    <PackageIcon>nschema-mark-128.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/tom-wolfe/NSchema.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
