@@ -4,6 +4,10 @@ NSchema is a declarative database schema migration library for .NET.
 
 You describe the schema you want in C#. NSchema reads the current state of the database, diffs it against your desired state, then generates and applies a migration plan to close the gap.
 
+## Quickstart
+
+Check out the [samples](samples/) for more complete sample applications and reference implementations.
+
 ## Getting started
 
 Install the core package and a database provider:
