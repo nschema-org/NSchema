@@ -27,14 +27,23 @@ public class Changelog(
             throw new FileNotFoundException("Could not find changelog file", changelog.AbsolutePath);
         }
 
-        var heading = $"## [{projectInfo.Version}]";
         var lines = await File.ReadAllLinesAsync(changelog.AbsolutePath, cancellationToken);
 
-        var headingIndex = Array.FindIndex(lines, l => l.StartsWith(heading, StringComparison.Ordinal));
+        string[] candidateHeadings = projectInfo.Version.IsPrerelease
+            ? [$"## [{projectInfo.Version}]", "## [Unreleased]"]
+            : [$"## [{projectInfo.Version}]"];
+
+        var headingIndex = -1;
+        foreach (var candidate in candidateHeadings)
+        {
+            headingIndex = Array.FindIndex(lines, l => l.StartsWith(candidate, StringComparison.Ordinal));
+            if (headingIndex >= 0) break;
+        }
+
         if (headingIndex < 0)
         {
             throw new Exception(
-                $"No changelog entry found for version {projectInfo.Version} in {options.Value.ChangelogFile}. Expected a heading starting with '{heading}'.");
+                $"No changelog entry found for version {projectInfo.Version} in {options.Value.ChangelogFile}. Expected a heading starting with one of: {string.Join(", ", candidateHeadings.Select(h => $"'{h}'"))}.");
         }
 
         var nextHeadingIndex = Array.FindIndex(lines, headingIndex + 1, l => l.StartsWith("## [", StringComparison.Ordinal));
