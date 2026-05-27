@@ -1,4 +1,4 @@
-<img src="assets/nschema-logo-horizontal.svg" width="500" alt="NSchema">
+<img src="https://raw.githubusercontent.com/tom-wolfe/NSchema/main/assets/nschema-logo-horizontal.svg" width="500" alt="NSchema">
 
 A declarative database schema migration library for .NET.
 
