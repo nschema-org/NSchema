@@ -35,8 +35,11 @@ return args switch
         .RunWithExitCode(),
     ["deploy"] => pipeline
         .UseStep<Clean>()
+        .UseStep<ExtractProject>()
+        .UseStep<Version>()
         .UseStep<Restore>()
         .UseStep<Build>()
+        .UseStep<Test>()
         .UseStep<Pack>()
         .UseStep<Publish>()
         .RunWithExitCode(),

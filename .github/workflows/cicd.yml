@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ main ]
   release:
-    types: [ released ]
+    types: [ published ]
 
 jobs:
   build:
@@ -34,3 +34,4 @@ jobs:
         shell: bash
         env:
           Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
+          Build__IsPreRelease: ${{ github.event.release.prerelease }}

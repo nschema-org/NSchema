@@ -8,4 +8,5 @@ public class BuildOptions
     public required string ProjectFile { get; set; }
     public required string NuGetFeed { get; set; }
     public required string NuGetApiKey { get; set; }
+    public bool? IsPreRelease { get; set; }
 }
