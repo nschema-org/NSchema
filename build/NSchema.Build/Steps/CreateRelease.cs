@@ -18,6 +18,13 @@ public class CreateRelease(
     public async Task Run(CancellationToken cancellationToken = default)
     {
         var projectInfo = context.State.Get<ProjectInfo>() ?? throw new Exception("Project info not found in state.");
+
+        if (projectInfo.Version.IsPrerelease)
+        {
+            logger.LogInformation("Skipping GitHub Release for prerelease version {Version}; tag has still been pushed.", projectInfo.Version);
+            return;
+        }
+
         var changelog = context.State.Get<ChangelogEntry>() ?? throw new Exception("Changelog entry not found in state.");
 
         var tag = $"v{projectInfo.Version}";
@@ -27,23 +34,11 @@ public class CreateRelease(
         Directory.CreateDirectory(Path.GetDirectoryName(notesFile.AbsolutePath)!);
         await File.WriteAllTextAsync(notesFile.AbsolutePath, changelog.Body, cancellationToken);
 
-        List<string> arguments = [
-            "release", "create", tag,
-            "--title", tag,
-            "--notes-file", notesFile.AbsolutePath
-        ];
-
-        if (!string.IsNullOrEmpty(options.Value.CommitSha))
-        {
-            arguments.AddRange(["--target", options.Value.CommitSha]);
-        }
-
-        if (projectInfo.Version.IsPrerelease)
-        {
-            arguments.Add("--prerelease");
-        }
-
-        logger.LogInformation("Creating GitHub Release {Tag} (prerelease={IsPrerelease}).", tag, projectInfo.Version.IsPrerelease);
-        await commands.Run("gh", arguments.ToArray(), cancellationToken);
+        logger.LogInformation("Creating GitHub Release {Tag}.", tag);
+        await commands.Run(
+            "gh",
+            ["release", "create", tag, "--title", tag, "--notes-file", notesFile.AbsolutePath],
+            cancellationToken
+        );
     }
 }

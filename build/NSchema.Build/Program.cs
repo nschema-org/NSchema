@@ -44,6 +44,7 @@ return args switch
         .UseStep<Build>()
         .UseStep<Test>()
         .UseStep<Pack>()
+        .UseStep<CreateTag>()
         .UseStep<CreateRelease>()
         .UseStep<Publish>()
         .RunWithExitCode(),
