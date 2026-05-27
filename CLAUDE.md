@@ -21,7 +21,7 @@ Note: `src/NSchema.Postgres` and `tests/NSchema.Postgres.Tests` are empty placeh
 
 NSchema is a declarative database schema migration library for .NET. The user describes the schema they want via `AbstractSchemaProvider`; NSchema introspects the database, diffs, and applies the difference.
 
-The application is a hosted .NET app. `NSchemaApplication.CreateBuilder()` returns an `NSchemaApplicationBuilder` (wraps `HostApplicationBuilder`). `Build()` produces an `NSchemaApplication` (`IHost`). The migration itself runs as a `BackgroundService` — `NSchemaHost` (`src/NSchema/Hosting/NSchemaHost.cs`) — which calls the migration plan provider, the SQL planner, and the SQL executor, then signals `IHostApplicationLifetime` to stop.
+The application is a hosted .NET app. `NSchemaApplication.CreateBuilder()` returns an `NSchemaApplicationBuilder` (wraps `HostApplicationBuilder`). `Build()` produces an `NSchemaApplication` (`IHost`). The migration itself runs as a `BackgroundService` — `NSchemaHost` (`src/NSchema/Hosting/NSchemaHost.cs`) — which delegates to `IMigrationPipeline` and then signals `IHostApplicationLifetime` to stop. The host itself contains no migration logic; orchestration lives in `DefaultMigrationPipeline` (`src/NSchema/Hosting/DefaultMigrationPipeline.cs`), which owns all user-facing reporting and calls `IMigrationPlanner` (to build the plan) then `IMigrationExecutor` (to apply it).
 
 ### Schema providers
 
@@ -34,7 +34,7 @@ Task<DatabaseSchema> GetSchema(string[]? schemaNames = null, CancellationToken c
 The role distinction lives at DI registration time, not on the type:
 
 - **Desired** providers are registered as an enumerable `ISchemaProvider` (via `AddSchema<T>()` or assembly scanning).
-- The **current** provider fills a single keyed slot under `ISchemaProvider.CurrentSchemaProviderKey` (`"NSchema.Current"`), registered via `UseSchemaSource<T>()`. `DefaultMigrationPlanProvider` resolves it with `[FromKeyedServices(...)]`.
+- The **current** provider fills a single keyed slot under `ISchemaProvider.CurrentSchemaProviderKey` (`"NSchema.Current"`), registered via `UseSchemaSource<T>()`. `DefaultMigrationPlanner` resolves it with `[FromKeyedServices(...)]`.
 
 Keyed and unkeyed registrations are separate stores in MS DI, so the same implementation can be registered on both sides without bleeding.
 
@@ -42,18 +42,23 @@ The `schemaNames` parameter is a scope filter: `null` / empty means "return ever
 
 ### Pipeline
 
-Orchestrated by `DefaultMigrationPlanProvider` (`src/NSchema/Migration/DefaultMigrationPlanProvider.cs`) followed by `NSchemaHost`:
+`DefaultMigrationPipeline` (`src/NSchema/Hosting/DefaultMigrationPipeline.cs`) runs the planner (steps 1–8) and then the executor (steps 9–10). It is the only component that writes to `IMigrationReporter`; the planner is pure and signals policy failures via `PolicyViolationException`, which the pipeline catches to surface to the user.
+
+Steps 1–8 run inside `DefaultMigrationPlanner` (`src/NSchema/Migration/DefaultMigrationPlanner.cs`):
 
 1. **Resolve scope** — `MigrationOptions.SchemaNames` (set via `ForSchemas(...)`) is the authoritative scope. When unset, scope is derived after step 2 from the aggregated declared (and dropped) schemas.
-2. **Collect desired state** — every desired `ISchemaProvider` is invoked with the scope; results merged by `ISchemaAggregator` into a single `DatabaseSchema`. Providers are expected to honor the scope filter themselves; the plan provider does not re-filter post-aggregation.
+2. **Collect desired state** — every desired `ISchemaProvider` is invoked with the scope; results merged by `ISchemaAggregator` into a single `DatabaseSchema`. Providers are expected to honor the scope filter themselves; the planner does not re-filter post-aggregation.
 3. **Validate desired schema** — every `ISchemaPolicy` runs against the merged schema. Failures throw `PolicyViolationException`.
 4. **Read current state** — the keyed `ISchemaProvider` queries the live database for the schemas in scope (explicit `SchemaNames`, or — when unset — declared schemas + `DropSchema` names from the aggregate).
 5. **Diff** — `ISchemaComparer` (default `DefaultSchemaComparer`) produces a `MigrationPlan` of `MigrationAction` records (subclasses in `src/NSchema/Migration/Plan/`).
 6. **Inject deployment scripts** — pre/post scripts from `IScriptProvider`s are inserted as `RunScript` actions at the ends of the plan.
 7. **Transform plan** — `IMigrationPlanTransformer`s run in registration order. The built-in `ActionOrderingTransformer` sorts actions into a safe dependency order.
 8. **Validate plan** — every `IMigrationPolicy` runs against the transformed plan. The built-in `DestructiveActionMigrationPolicy` enforces `MigrationOptions.DestructiveActionPolicy`.
+
+Steps 9–10 run inside the registered `IMigrationExecutor`. The default `SqlMigrationExecutor`:
+
 9. **Plan SQL** — `ISqlPlanner` (provider-specific, supplied by a database-provider extension) converts the `MigrationPlan` into a `SqlPlan` of `SqlStatement`s.
-10. **Execute** — `ISqlExecutor` (default `DefaultSqlExecutor`) runs the statements. If `MigrationOptions.DryRun` is true, the plan is logged instead.
+10. **Execute** — `ISqlExecutor` (default `DefaultSqlExecutor`) runs the statements. If `MigrationOptions.DryRun` is true, the SQL is logged instead.
 
 ### Defining a schema
 
@@ -84,7 +89,8 @@ Providers are registered with `builder.AddSchema<T>()` or `builder.AddSchemasFro
 | `IMigrationPolicy`                                               | `AddMigrationPolicy<T>()`                                                                                                                                   |
 | `IScriptProvider`                                                | `AddScriptProvider<T>()` / `AddScriptFromFile(...)` / `AddScriptsFromEmbeddedResources(...)`                                                                |
 | `ISqlExecutor`                                                   | `UseSqlExecutor<T>()` (replaces default)                                                                                                                    |
-| `ISchemaComparer`, `ISchemaAggregator`, `IMigrationPlanProvider` | Override via `Services.AddSingleton<...>()` before `Build()` (defaults registered with `TryAdd`)                                                            |
+| `IMigrationExecutor`                                             | `UseMigrationExecutor<T>()` (replaces default `SqlMigrationExecutor`)                                                                                       |
+| `ISchemaComparer`, `ISchemaAggregator`, `IMigrationPlanner`, `IMigrationPipeline` | Override via `Services.AddSingleton<...>()` before `Build()` (defaults registered with `TryAdd`)                                           |
 | `ISqlPlanner`                                                    | Supplied by a database-provider extension                                                                                                                   |
 
 ### Renaming
