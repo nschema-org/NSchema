@@ -150,6 +150,7 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
             ? new Dictionary<string, SetColumnComment>()
             : actions.OfType<SetColumnComment>().ToDictionary(c => c.ColumnName, c => c);
 
+        var renderedColumns = false;
         if (key.TableName is not null && kind == ChangeKind.Add && actions.OfType<CreateTable>().FirstOrDefault() is { } createdTable)
         {
             foreach (var column in createdTable.Table.Columns)
@@ -161,9 +162,11 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
                     absorbed.Add(columnComment);
                 }
                 sb.Append("    ").Append(palette.For(ChangeKind.Add)).Append(' ').AppendLine(line);
+                renderedColumns = true;
             }
         }
 
+        var separatorPending = renderedColumns;
         foreach (var action in actions)
         {
             if (absorbed.Contains(action))
@@ -179,6 +182,12 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
             if (kind == ChangeKind.Remove && action is DropSchema or DropTable)
             {
                 continue;
+            }
+
+            if (separatorPending)
+            {
+                sb.AppendLine();
+                separatorPending = false;
             }
 
             if (action is AddColumn add && columnComments.TryGetValue(add.Column.Name, out var addColumnComment))

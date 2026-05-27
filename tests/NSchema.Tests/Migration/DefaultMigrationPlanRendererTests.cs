@@ -191,6 +191,28 @@ public class DefaultMigrationPlanRendererTests
     }
 
     [Fact]
+    public void Render_CreateTable_SeparatesColumnsFromConstraintsWithBlankLine()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new CreateTable("app", Table.Create("orders", columns:
+            [
+                Column.Create("id", SqlType.Int, isNullable: false),
+                Column.Create("user_id", SqlType.Int, isNullable: false),
+            ])),
+            new AddPrimaryKey("app", "orders", new PrimaryKey("orders_pkey", ["id"])),
+            new CreateIndex("app", "orders", TableIndex.Create("orders_user_ix", ["user_id"])),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        // A blank line should separate the column block from the constraint/index block.
+        output.ShouldContain("+ user_id Int not null\n\n    + primary key orders_pkey");
+    }
+
+    [Fact]
     public void Render_DropTable_OmitsChildColumnLines()
     {
         // Arrange
