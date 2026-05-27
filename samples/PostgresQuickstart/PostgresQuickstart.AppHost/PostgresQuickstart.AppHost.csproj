@@ -9,11 +9,12 @@
     <LangVersion>latest</LangVersion>
     <IsAspireHost>true</IsAspireHost>
     <UserSecretsId>c4b1ce59-56ce-4916-8beb-c0417c51c6fa</UserSecretsId>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" />
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.3.5" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.3.5" />
   </ItemGroup>
 
   <ItemGroup>
