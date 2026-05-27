@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PostgresQuickstart.AppHost\PostgresQuickstart.AppHost.csproj" />
+  <Project Path="PostgresQuickstart\PostgresQuickstart.csproj" />
+</Solution>

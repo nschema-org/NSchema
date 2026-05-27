@@ -4,6 +4,10 @@ All notable changes to NSchema will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- Just adding a Postgres Quickstart sample for now. More to come.
+
 ## [1.0.0] - 2026-05-27
 
 First stable release. The public API is now covered by semantic versioning — breaking changes will only ship in a new major version.
