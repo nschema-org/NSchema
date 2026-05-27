@@ -106,17 +106,17 @@ Declarations or drops for schemas outside the scope are ignored, so unmanaged sc
 
 Everything in the pipeline is registered through DI. You can replace defaults or add to the enumerable extension points.
 
-| Interface                                   | Purpose                                                                        | Registered via                                                                                                          |
-|---------------------------------------------|--------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `ISchemaProvider` (desired)                 | Contribute schemas to the desired state. Usually via `AbstractSchemaProvider`. | `AddSchema<T>()` / `AddSchemasFromAssembly[Containing]<T>()`                                                            |
-| `ISchemaProvider` (current)                 | Read the live database schema. One per application.                            | `UseSchemaSource<T>()` (or via a provider package, e.g. `UsePostgres(...)`)                                             |
-| `ISchemaPolicy`                             | Validate the merged desired schema.                                            | `AddSchemaPolicy<T>()`                                                                                                  |
-| `IMigrationPlanTransformer`                 | Rewrite or reorder the generated plan.                                         | `AddPlanTransformer<T>()`                                                                                               |
-| `IMigrationPolicy`                          | Validate the final plan before execution.                                      | `AddMigrationPolicy<T>()`                                                                                               |
-| `IScriptProvider`                           | Supply raw SQL to run pre- or post-deployment.                                 | `AddScriptProvider<T>()`, `AddScriptFromFile(...)`, `AddScriptsFromEmbeddedResources(...)`                              |
-| `ISqlExecutor`                              | Override how SQL is sent to the database (e.g. logging, custom transactions).  | `UseSqlExecutor<T>()`                                                                                                   |
-| `ISchemaComparer`                           | Replace the diff algorithm.                                                    | `Services.AddSingleton<ISchemaComparer, T>()`                                                                           |
-| `ISqlPlanner`                               | Add support for another database.                                              | Provider package (e.g. `UsePostgres(...)`)                                                                              |
+| Interface                                   | Purpose                                                                        | Registered via                                                                             |
+|---------------------------------------------|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| `ISchemaProvider` (desired)                 | Contribute schemas to the desired state. Usually via `AbstractSchemaProvider`. | `AddSchema<T>()` / `AddSchemasFromAssembly[Containing]<T>()`                               |
+| `ISchemaProvider` (current)                 | Read the live database schema. One per application.                            | `UseSchemaSource<T>()` (or via a provider package, e.g. `UsePostgres(...)`)                |
+| `ISchemaPolicy`                             | Validate the merged desired schema.                                            | `AddSchemaPolicy<T>()`                                                                     |
+| `IMigrationPlanTransformer`                 | Rewrite or reorder the generated plan.                                         | `AddPlanTransformer<T>()`                                                                  |
+| `IMigrationPolicy`                          | Validate the final plan before execution.                                      | `AddMigrationPolicy<T>()`                                                                  |
+| `IScriptProvider`                           | Supply raw SQL to run pre- or post-deployment.                                 | `AddScriptProvider<T>()`, `AddScriptFromFile(...)`, `AddScriptsFromEmbeddedResources(...)` |
+| `ISqlExecutor`                              | Override how SQL is sent to the database (e.g. logging, custom transactions).  | `UseSqlExecutor<T>()`                                                                      |
+| `IMigrationExecutor`                        | Replace the executor entirely (e.g. emit SQL to a file instead of running it). | `UseMigrationExecutor<T>()`                                                                |
+| `ISqlPlanner`                               | Add support for another database.                                              | `UseSqlPlanner<T>()`  (or via a provider package, e.g. `UsePostgres(...)`)                 |
 
 ## Renaming
 

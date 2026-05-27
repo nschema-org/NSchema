@@ -7,15 +7,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Copyright>2026</Copyright>
+    <Authors>Tom Wolfe</Authors>
+    <Copyright>Copyright © 2026 Tom Wolfe</Copyright>
     <PackageId>NSchema</PackageId>
     <PackageProjectUrl>https://github.com/tom-wolfe/NSchema</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LicenseExpression>MIT</LicenseExpression>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/tom-wolfe/NSchema.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <Version>0.0.7</Version>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>1.0.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <FileVersion>$(Version)</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -28,7 +32,7 @@
     <None Include="..\..\README.md" Pack="true" PackagePath="/">
       <Link>README.md</Link>
     </None>
-    <None Include="..\..\CHANGELOG.md">
+    <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="/">
       <Link>CHANGELOG.md</Link>
     </None>
   </ItemGroup>
@@ -39,6 +43,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
