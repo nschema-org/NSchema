@@ -46,7 +46,7 @@ public partial class NSchemaApplicationBuilder
     /// </summary>
     /// <typeparam name="T">The type of the provider to register as the current-state source.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseSchemaSource<T>() where T : class, ISchemaProvider
+    public NSchemaApplicationBuilder UseCurrentSchema<T>() where T : class, ISchemaProvider
     {
         Services.AddKeyedSingleton<ISchemaProvider, T>(ISchemaProvider.CurrentSchemaProviderKey);
         return this;
