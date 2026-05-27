@@ -135,4 +135,187 @@ public class DefaultMigrationPlanRendererTests
         output.ShouldContain("shipped_at");
         output.ShouldContain("table app.audit_log");
     }
+
+    [Fact]
+    public void Render_CreateTable_ListsEveryColumnUnderTheHeader()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new CreateTable("app", Table.Create("users", columns:
+            [
+                Column.Create("id", SqlType.Int, isNullable: false),
+                Column.Create("email", SqlType.Text, isNullable: false),
+                Column.Create("created_at", SqlType.DateTimeOffset, isNullable: true),
+            ])),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("+ table app.users");
+        output.ShouldContain("+ id Int not null");
+        output.ShouldContain("+ email Text not null");
+        output.ShouldContain("+ created_at DateTimeOffset null");
+    }
+
+    [Fact]
+    public void Render_CreateTable_AlsoRendersPrimaryKeyForeignKeyAndIndexLines()
+    {
+        // Arrange
+        // Regression: previously the renderer emitted columns only for new tables and silently
+        // dropped PK/FK/index/grant actions sharing the same group key.
+        var plan = new MigrationPlan([
+            new CreateTable("app", Table.Create("orders", columns:
+            [
+                Column.Create("id", SqlType.Int, isNullable: false),
+                Column.Create("user_id", SqlType.Int, isNullable: false),
+            ])),
+            new AddPrimaryKey("app", "orders", new PrimaryKey("orders_pkey", ["id"])),
+            new AddForeignKey("app", "orders", ForeignKey.Create("orders_user_fk", ["user_id"], "app", "users", ["id"])),
+            new CreateIndex("app", "orders", TableIndex.Create("orders_user_ix", ["user_id"])),
+            new GrantTablePrivileges("app", "orders", "reader", TablePrivilege.Insert),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("+ table app.orders");
+        output.ShouldContain("+ id Int not null");
+        output.ShouldContain("+ user_id Int not null");
+        output.ShouldContain("+ primary key orders_pkey");
+        output.ShouldContain("+ foreign key orders_user_fk");
+        output.ShouldContain("+ index orders_user_ix");
+        output.ShouldContain("+ grant Insert to reader");
+    }
+
+    [Fact]
+    public void Render_DropTable_OmitsChildColumnLines()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new DropTable("app", "audit_log"),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        // The DropTable line itself is suppressed; the group header is the only signal.
+        output.ShouldContain("- table app.audit_log");
+        output.ShouldNotContain("- table audit_log\n");
+    }
+
+    [Fact]
+    public void Render_SchemaModifications_AreGroupedUnderSchemaHeader()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new RenameSchema("app_old", "app"),
+            new SetSchemaComment("app", null, "new comment"),
+            new GrantSchemaUsage("app", "reader"),
+            new RevokeSchemaUsage("app", "writer"),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("~ schema app");
+        output.ShouldContain("rename: app_old → app");
+        output.ShouldContain("comment: <none> → \"new comment\"");
+        output.ShouldContain("+ grant usage to reader");
+        output.ShouldContain("- revoke usage from writer");
+    }
+
+    [Fact]
+    public void Render_ColumnModifications_DescribeOldAndNewValues()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new AlterColumnType("app", "users", "id", SqlType.Int, SqlType.BigInt),
+            new AlterColumnNullability("app", "users", "email", false, true),
+            new SetColumnDefault("app", "users", "status", null, "'active'"),
+            new SetColumnComment("app", "users", "email", "old", "new"),
+            new RenameColumn("app", "users", "uname", "username"),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("~ table app.users");
+        output.ShouldContain("id type: Int → BigInt");
+        output.ShouldContain("email nullable: false → true");
+        output.ShouldContain("status default: <none> → 'active'");
+        output.ShouldContain("email comment: \"old\" → \"new\"");
+        output.ShouldContain("rename column: uname → username");
+    }
+
+    [Fact]
+    public void Render_IndexAndKeyChangesOnExistingTable_AppearAsModifyGroup()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new DropPrimaryKey("app", "orders", "orders_pkey_old"),
+            new AddPrimaryKey("app", "orders", new PrimaryKey("orders_pkey", ["id"])),
+            new DropForeignKey("app", "orders", "orders_user_fk_old"),
+            new AddForeignKey("app", "orders", ForeignKey.Create("orders_user_fk", ["user_id"], "app", "users", ["id"])),
+            new DropIndex("app", "orders", "orders_old_ix"),
+            new CreateIndex("app", "orders", TableIndex.Create("orders_user_ix", ["user_id"])),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("~ table app.orders");
+        output.ShouldContain("- primary key orders_pkey_old");
+        output.ShouldContain("+ primary key orders_pkey");
+        output.ShouldContain("- foreign key orders_user_fk_old");
+        output.ShouldContain("+ foreign key orders_user_fk");
+        output.ShouldContain("- index orders_old_ix");
+        output.ShouldContain("+ index orders_user_ix");
+    }
+
+    [Fact]
+    public void Render_DeploymentScripts_AreListedInSeparateSections()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new CreateSchema("app"),
+            new RunScript(new Script("before.sql", "SELECT 1", ScriptType.PreDeployment)),
+            new RunScript(new Script("after.sql", "SELECT 2", ScriptType.PostDeployment)),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        output.ShouldContain("Pre-deployment scripts:");
+        output.ShouldContain("• before.sql");
+        output.ShouldContain("Post-deployment scripts:");
+        output.ShouldContain("• after.sql");
+    }
+
+    [Fact]
+    public void Render_SortsSchemaGroupsBeforeTableGroups()
+    {
+        // Arrange
+        var plan = new MigrationPlan([
+            new AddColumn("app", "users", Column.Create("email", SqlType.Text)),
+            new CreateSchema("app"),
+        ], DatabaseSchema.Create([]));
+
+        // Act
+        var output = _sut.Render(plan);
+
+        // Assert
+        var schemaIndex = output.IndexOf("schema app", StringComparison.Ordinal);
+        var tableIndex = output.IndexOf("table app.users", StringComparison.Ordinal);
+        schemaIndex.ShouldBeGreaterThanOrEqualTo(0);
+        tableIndex.ShouldBeGreaterThanOrEqualTo(0);
+        schemaIndex.ShouldBeLessThan(tableIndex);
+    }
 }

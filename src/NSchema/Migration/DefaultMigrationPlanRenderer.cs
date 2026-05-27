@@ -29,6 +29,7 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
                 scripted.Add(script);
                 continue;
             }
+
             var key = GroupKeyFor(action);
             if (!grouped.TryGetValue(key, out var list))
             {
@@ -124,34 +125,31 @@ internal sealed class DefaultMigrationPlanRenderer : IMigrationPlanRenderer
         var sb = new StringBuilder();
         sb.Append(marker).Append(' ').Append(headerLabel).Append(' ').AppendLine(headerTarget);
 
-        // For Add/Remove of a brand-new table, show the columns the create defined.
-        if (key.TableName is not null && kind == ChangeKind.Add &&
-            actions.OfType<CreateTable>().FirstOrDefault() is { } createdTable)
+        // For a brand-new table, expand the CreateTable into per-column lines so the
+        // reader can see the table's shape, not just its name.
+        if (key.TableName is not null && kind == ChangeKind.Add && actions.OfType<CreateTable>().FirstOrDefault() is { } createdTable)
         {
             foreach (var column in createdTable.Table.Columns)
             {
-                sb.Append("    ").Append(palette.For(ChangeKind.Add)).Append(' ')
-                  .AppendLine(FormatColumn(column));
+                sb.Append("    ").Append(palette.For(ChangeKind.Add)).Append(' ').AppendLine(FormatColumn(column));
             }
         }
-        else
-        {
-            foreach (var action in actions)
-            {
-                // The create/drop that drives a group's headline is implicit; nested CreateTable
-                // already had its columns enumerated above.
-                if (kind == ChangeKind.Add && action is CreateSchema or CreateTable)
-                {
-                    continue;
-                }
-                if (kind == ChangeKind.Remove && action is DropSchema or DropTable)
-                {
-                    continue;
-                }
 
-                var (lineKind, detail) = DescribeAction(action);
-                sb.Append("    ").Append(palette.For(lineKind)).Append(' ').AppendLine(detail);
+        foreach (var action in actions)
+        {
+            // The create/drop that drives a group's headline is implicit; CreateTable's
+            // columns were already enumerated above when applicable.
+            if (kind == ChangeKind.Add && action is CreateSchema or CreateTable)
+            {
+                continue;
             }
+            if (kind == ChangeKind.Remove && action is DropSchema or DropTable)
+            {
+                continue;
+            }
+
+            var (lineKind, detail) = DescribeAction(action);
+            sb.Append("    ").Append(palette.For(lineKind)).Append(' ').AppendLine(detail);
         }
 
         var sortKey = key.TableName is null ? $"0:{key.SchemaName}" : $"1:{key.SchemaName}.{key.TableName}";
