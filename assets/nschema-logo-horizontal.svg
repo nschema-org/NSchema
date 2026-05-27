@@ -1,31 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" role="img" aria-label="NSchema - declarative database schema">
-  <title>NSchema</title>
-  <desc>NSchema - declarative database schema for .NET</desc>
-  <!-- Icon -->
-  <rect x="0" y="0" width="120" height="120" rx="20" fill="#15171c"/>
-  <g transform="translate(0, 0) scale(1.2)">
-    <!-- Left brace -->
-    <path d="M 28 22 Q 22 22 22 28 L 22 44 Q 22 50 18 50 Q 22 50 22 56 L 22 72 Q 22 78 28 78"
-          fill="none" stroke="#6b8fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Right brace -->
-    <path d="M 72 22 Q 78 22 78 28 L 78 44 Q 78 50 82 50 Q 78 50 78 56 L 78 72 Q 78 78 72 78"
-          fill="none" stroke="#6b8fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Schema rows: top group -->
-    <rect x="30" y="26" width="26" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="58" y="26" width="12" height="4" rx="2" fill="#3a3d4a"/>
-    <rect x="30" y="34" width="20" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="52" y="34" width="18" height="4" rx="2" fill="#3a3d4a"/>
-    <rect x="30" y="42" width="24" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="56" y="42" width="14" height="4" rx="2" fill="#3a3d4a"/>
-    <!-- Schema rows: bottom group -->
-    <rect x="30" y="54" width="22" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="54" y="54" width="16" height="4" rx="2" fill="#3a3d4a"/>
-    <rect x="30" y="62" width="26" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="58" y="62" width="12" height="4" rx="2" fill="#3a3d4a"/>
-    <rect x="30" y="70" width="20" height="4" rx="2" fill="#6b8fff"/>
-    <rect x="52" y="70" width="18" height="4" rx="2" fill="#3a3d4a"/>
-  </g>
-  <!-- Wordmark -->
-  <text x="140" y="70" font-family="'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace" font-size="32" font-weight="500" fill="#e2e6f0">NSchema</text>
-  <text x="141" y="90" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="400" letter-spacing="1.2" fill="#7a8090">DECLARATIVE DATABASE SCHEMA</text>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 480 120" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;">
+    <path d="M120,20L120,100C120,111.038 111.038,120 100,120L20,120C8.962,120 0,111.038 0,100L0,20C0,8.962 8.962,0 20,0L100,0C111.038,0 120,8.962 120,20Z" style="fill:rgb(21,23,28);"/>
+    <g transform="matrix(1.2,0,0,1.2,0,0)">
+        <path d="M28,22C24,22 22,24 22,28L22,44C22,48 20.667,50 18,50C20.667,50 22,52 22,56L22,72C22,76 24,78 28,78" style="fill:none;fill-rule:nonzero;stroke:rgb(107,143,255);stroke-width:3px;"/>
+        <path d="M72,22C76,22 78,24 78,28L78,44C78,48 79.333,50 82,50C79.333,50 78,52 78,56L78,72C78,76 76,78 72,78" style="fill:none;fill-rule:nonzero;stroke:rgb(107,143,255);stroke-width:3px;"/>
+        <path d="M56,27.667L56,28.333C56,29.253 55.253,30 54.333,30L31.667,30C30.747,30 30,29.253 30,28.333L30,27.667C30,26.747 30.747,26 31.667,26L54.333,26C55.253,26 56,26.747 56,27.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,27.667L70,28.333C70,29.253 69.253,30 68.333,30L59.667,30C58.747,30 58,29.253 58,28.333L58,27.667C58,26.747 58.747,26 59.667,26L68.333,26C69.253,26 70,26.747 70,27.667Z" style="fill:rgb(58,61,74);"/>
+        <path d="M50,35.667L50,36.333C50,37.253 49.253,38 48.333,38L31.667,38C30.747,38 30,37.253 30,36.333L30,35.667C30,34.747 30.747,34 31.667,34L48.333,34C49.253,34 50,34.747 50,35.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,35.667L70,36.333C70,37.253 69.253,38 68.333,38L53.667,38C52.747,38 52,37.253 52,36.333L52,35.667C52,34.747 52.747,34 53.667,34L68.333,34C69.253,34 70,34.747 70,35.667Z" style="fill:rgb(58,61,74);"/>
+        <path d="M54,43.667L54,44.333C54,45.253 53.253,46 52.333,46L31.667,46C30.747,46 30,45.253 30,44.333L30,43.667C30,42.747 30.747,42 31.667,42L52.333,42C53.253,42 54,42.747 54,43.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,43.667L70,44.333C70,45.253 69.253,46 68.333,46L57.667,46C56.747,46 56,45.253 56,44.333L56,43.667C56,42.747 56.747,42 57.667,42L68.333,42C69.253,42 70,42.747 70,43.667Z" style="fill:rgb(58,61,74);"/>
+        <path d="M52,55.667L52,56.333C52,57.253 51.253,58 50.333,58L31.667,58C30.747,58 30,57.253 30,56.333L30,55.667C30,54.747 30.747,54 31.667,54L50.333,54C51.253,54 52,54.747 52,55.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,55.667L70,56.333C70,57.253 69.253,58 68.333,58L55.667,58C54.747,58 54,57.253 54,56.333L54,55.667C54,54.747 54.747,54 55.667,54L68.333,54C69.253,54 70,54.747 70,55.667Z" style="fill:rgb(58,61,74);"/>
+        <path d="M56,63.667L56,64.333C56,65.253 55.253,66 54.333,66L31.667,66C30.747,66 30,65.253 30,64.333L30,63.667C30,62.747 30.747,62 31.667,62L54.333,62C55.253,62 56,62.747 56,63.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,63.667L70,64.333C70,65.253 69.253,66 68.333,66L59.667,66C58.747,66 58,65.253 58,64.333L58,63.667C58,62.747 58.747,62 59.667,62L68.333,62C69.253,62 70,62.747 70,63.667Z" style="fill:rgb(58,61,74);"/>
+        <path d="M50,71.667L50,72.333C50,73.253 49.253,74 48.333,74L31.667,74C30.747,74 30,73.253 30,72.333L30,71.667C30,70.747 30.747,70 31.667,70L48.333,70C49.253,70 50,70.747 50,71.667Z" style="fill:rgb(107,143,255);"/>
+        <path d="M70,71.667L70,72.333C70,73.253 69.253,74 68.333,74L53.667,74C52.747,74 52,73.253 52,72.333L52,71.667C52,70.747 52.747,70 53.667,70L68.333,70C69.253,70 70,70.747 70,71.667Z" style="fill:rgb(58,61,74);"/>
+    </g>
+    <g transform="matrix(1,0,0,1,140,72)">
+        <text x="0px" y="0px" style="font-family:'Menlo-Regular', 'Menlo', monospace;font-size:32px;fill:rgb(226,230,240);">NSchema</text>
+    </g>
 </svg>
