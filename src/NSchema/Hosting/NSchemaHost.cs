@@ -10,12 +10,10 @@ namespace NSchema.Hosting;
 /// <param name="lifetime">The application lifetime.</param>
 /// <param name="pipeline">The migration pipeline to run.</param>
 /// <param name="options">The migration options, which select the operation to run.</param>
-/// <param name="runContext">Carries an optional per-run operation override that takes precedence over the configured operation.</param>
 internal sealed class NSchemaHost(
     IOptions<MigrationOptions> options,
     IHostApplicationLifetime lifetime,
-    IMigrationPipeline pipeline,
-    MigrationRunContext runContext
+    IMigrationPipeline pipeline
 ) : BackgroundService
 {
     /// <inheritdoc />
@@ -23,7 +21,7 @@ internal sealed class NSchemaHost(
     {
         try
         {
-            var operation = runContext.Override ?? options.Value.Operation;
+            var operation = options.Value.Operation;
             var run = operation switch
             {
                 MigrationOperation.Plan => pipeline.Plan(cancellationToken),

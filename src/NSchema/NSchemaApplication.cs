@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NSchema.Hosting;
+using Microsoft.Extensions.Options;
 using NSchema.Migration;
 
 namespace NSchema;
@@ -49,7 +49,7 @@ public sealed class NSchemaApplication : IHost
 
     private Task RunOperation(MigrationOperation operation, CancellationToken cancellationToken)
     {
-        _host.Services.GetRequiredService<MigrationRunContext>().Override = operation;
+        _host.Services.GetRequiredService<IOptions<MigrationOptions>>().Value.Operation = operation;
         return this.RunAsync(cancellationToken);
     }
 

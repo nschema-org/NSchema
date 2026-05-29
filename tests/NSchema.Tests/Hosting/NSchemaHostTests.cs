@@ -11,13 +11,12 @@ public sealed class NSchemaHostTests
     private readonly MigrationOptions _options = new();
     private readonly IMigrationPipeline _pipeline = Substitute.For<IMigrationPipeline>();
     private readonly IHostApplicationLifetime _lifetime = Substitute.For<IHostApplicationLifetime>();
-    private readonly MigrationRunContext _runContext = new();
 
     private readonly NSchemaHost _sut;
 
     public NSchemaHostTests()
     {
-        _sut = new NSchemaHost(Options.Create(_options), _lifetime, _pipeline, _runContext);
+        _sut = new NSchemaHost(Options.Create(_options), _lifetime, _pipeline);
     }
 
     [Fact]
@@ -50,22 +49,6 @@ public sealed class NSchemaHostTests
         await _pipeline.Received(1).Plan(Arg.Any<CancellationToken>());
         await _pipeline.DidNotReceive().Apply(Arg.Any<CancellationToken>());
         _lifetime.Received(1).StopApplication();
-    }
-
-    [Fact]
-    public async Task Execute_Override_TakesPrecedenceOverConfiguredOperation()
-    {
-        // Arrange
-        _options.Operation = MigrationOperation.Apply;
-        _runContext.Override = MigrationOperation.Plan;
-
-        // Act
-        await _sut.StartAsync(CancellationToken.None);
-        await _sut.ExecuteTask!;
-
-        // Assert
-        await _pipeline.Received(1).Plan(Arg.Any<CancellationToken>());
-        await _pipeline.DidNotReceive().Apply(Arg.Any<CancellationToken>());
     }
 
     [Fact]
