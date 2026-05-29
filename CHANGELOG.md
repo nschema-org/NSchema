@@ -6,25 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [2.0.0-alpha.1] - 2026-05-29
 
-While version 1.0.0 was useful, the pipeline model wasn't quite flexible enough. I've taken the opportunity to rethink the abstractions around applying migrations.
+Version 2 is focusing on improving the developer experience around applying migrations, with a more explicit and flexible model for planning and executing changes.
 
-Additionally, I've expanded the concept of a "DryRun" into a more explicit Plan/Apply model, which can be accessed both through by configuration and explicit methods. This should reduce the chance of running the wrong operation.
+The public API has been restructured to support this, and some breaking changes have been made to remove ambiguity and reduce the risk of accidentally applying changes.
+
+Additionally, we're looking at introducing an optional "backend state store" so that plans can be made against the last applied state rather than the current live state similar to Terraform.
 
 ### Added
 
-- Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`. It defaults to `Plan` if not set, so changes cannot be applied unintentionally.
-- Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` continues to use the configured operation.)
-- `IMigrationCompiler` and `ICompiledMigration`: a migration plan is compiled into an inspectable, executable unit of work — `Preview` (what would happen) plus `Execute` (perform it). Register a custom compiler via `UseMigrationCompiler<T>()`.
+- Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`.
+- Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` still uses the configured operation.)
+- Added `IMigrationCompiler` and `ICompiledMigration`. Replaces `IMigrationExecutor` by compiling a migration plan into an executable unit of work. Register a custom compiler via `UseMigrationCompiler<T>()`.
 
 ### Changed
 
-- The pipeline now compiles the plan into an `ICompiledMigration` and previews it separately from execution. The same compiled unit is both previewed and executed, so the preview always matches what runs, and the plan/apply distinction no longer leaks into executor implementations. Compiled migration reporting moved into the pipeline.
+- The pipeline now compiles the plan into an `ICompiledMigration` and previews it separately from execution.
+- **Breaking:** NSchema applications now default to `Plan` mode, so they won't apply changes unless explicitly configured or invoked with `Apply()`.
 - **Breaking:** `IMigrationReporter` is now a presenter responsible for displaying the plan and execution results, so it can be more easily customized.
 
 ### Removed
 
-- **Breaking:** `MigrationOptions.DryRun` and `DryRunOnly()` — use `Operation` / `RunOperation(MigrationOperation.Plan)` instead.
-- **Breaking:** `IMigrationExecutor` and `UseMigrationExecutor<T>()` — implement `IMigrationCompiler` (returning an `ICompiledMigration`) and register it with `UseMigrationCompiler<T>()`.
+- **Breaking:** `MigrationOptions.DryRun` and `DryRunOnly()` are gone. Use `Operation` / `RunOperation(MigrationOperation.Plan)` instead.
+- **Breaking:** `IMigrationExecutor` and `UseMigrationExecutor<T>()` are gone. Implement `IMigrationCompiler` (returning an `ICompiledMigration`) and register it with `UseMigrationCompiler<T>()`.
 
 ## [1.0.1] - 2026-05-28
 
