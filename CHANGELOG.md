@@ -33,7 +33,7 @@ Additionally, we're looking at introducing an optional "backend state store" so 
 
 ### Fixed
 
-- Fixed a bug where primary keys, foreign keys, and indexes weren't being displayed in the plan UI for new tables.
+- Fixed a bug where primary keys, foreign keys, and indexes weren't being displayed in the reported plan for new tables.
 
 ## [1.0.0] - 2026-05-27
 
