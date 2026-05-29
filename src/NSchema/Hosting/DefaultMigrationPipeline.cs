@@ -23,9 +23,10 @@ internal sealed class DefaultMigrationPipeline(
 {
     public async Task Run(CancellationToken cancellationToken = default)
     {
-        if (options.Value.DryRun)
+        var planOnly = options.Value.Operation == MigrationOperation.Plan;
+        if (planOnly)
         {
-            reporter.Info("Dry run enabled. No changes will be applied to the database.");
+            reporter.Info("Running in Plan mode. No changes will be applied to the database.");
         }
 
         reporter.Info("Computing migration plan...");
@@ -48,8 +49,8 @@ internal sealed class DefaultMigrationPipeline(
 
         try
         {
-            await executor.Apply(plan, options.Value.DryRun, cancellationToken);
-            if (!options.Value.DryRun)
+            await executor.Apply(plan, planOnly, cancellationToken);
+            if (!planOnly)
             {
                 reporter.Info("Migration completed successfully.");
             }

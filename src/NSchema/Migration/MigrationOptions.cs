@@ -29,6 +29,7 @@ public class MigrationOptions
     /// operation is <see cref="MigrationOperation.Plan"/>, and setting it maps to
     /// <see cref="MigrationOperation.Plan"/> / <see cref="MigrationOperation.Apply"/>.
     /// </remarks>
+    [Obsolete("Use Operation instead. DryRun will be removed in a future major version.")]
     public bool DryRun
     {
         get => Operation == MigrationOperation.Plan;

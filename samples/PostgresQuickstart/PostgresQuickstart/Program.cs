@@ -16,8 +16,8 @@ builder
     .AddSchemasFromAssemblyContaining<Program>()
     .AddScriptsFromEmbeddedResources(ScriptType.PreDeployment, assembly, "PostgresQuickstart.Scripts.PreDeployment.")
     .UsePostgres(connectionString)
-    .DryRunOnly()
-    .WithDestructiveActionPolicy(DestructiveActionPolicy.Warn);
+    .WithDestructiveActionPolicy(DestructiveActionPolicy.Warn)
+    .RunOperation(MigrationOperation.Plan);
 
 var migration = builder.Build();
 

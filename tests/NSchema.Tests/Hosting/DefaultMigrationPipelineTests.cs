@@ -28,10 +28,10 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Run_DryRun_InvokesExecutorWithDryRunFlag()
+    public async Task Run_PlanOperation_InvokesExecutorWithDryRunFlag()
     {
         // Arrange
-        _options.Value.DryRun = true;
+        _options.Value.Operation = MigrationOperation.Plan;
 
         // Act
         await _sut.Run();
@@ -41,7 +41,7 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Run_NotDryRun_PassesPlanToExecutor()
+    public async Task Run_ApplyOperation_PassesPlanToExecutor()
     {
         // Arrange
         var plan = new MigrationPlan([new CreateSchema("app")], DatabaseSchema.Create([]));
