@@ -14,16 +14,16 @@ Additionally, I've expanded the concept of a "DryRun" into a more explicit Plan/
 
 - Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`.
 - Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` continues to use the configured operation.)
-- `IMigrationCompiler` and `IMigrationExecution`: a migration plan is compiled into an inspectable, executable unit of work — `Preview` (what would happen) plus `Execute` (perform it). Register a custom compiler via `UseMigrationCompiler<T>()`.
+- `IMigrationCompiler` and `ICompiledMigration`: a migration plan is compiled into an inspectable, executable unit of work — `Preview` (what would happen) plus `Execute` (perform it). Register a custom compiler via `UseMigrationCompiler<T>()`.
 
 ### Changed
 
-- The pipeline now compiles the plan into an `IMigrationExecution` and previews it separately from execution. The same compiled unit is both previewed and executed, so the preview always matches what runs, and the plan/apply distinction no longer leaks into executor implementations. Compiled migration reporting moved into the pipeline.
+- The pipeline now compiles the plan into an `ICompiledMigration` and previews it separately from execution. The same compiled unit is both previewed and executed, so the preview always matches what runs, and the plan/apply distinction no longer leaks into executor implementations. Compiled migration reporting moved into the pipeline.
 
 ### Removed
 
-- [BREAKING] `MigrationOptions.DryRun` and `DryRunOnly()` — use `Operation` / `RunOperation(MigrationOperation.Plan)` instead.
-- [BREAKING] `IMigrationExecutor` and `UseMigrationExecutor<T>()` — implement `IMigrationCompiler` and register it with `UseMigrationCompiler<T>()`. Existing executors keep working through an internal adapter, though a wrapped legacy executor surfaces nothing in plan mode beyond the rendered diff.
+- **Breaking:** `MigrationOptions.DryRun` and `DryRunOnly()` — use `Operation` / `RunOperation(MigrationOperation.Plan)` instead.
+- **Breaking:** `IMigrationExecutor` and `UseMigrationExecutor<T>()` — implement `IMigrationCompiler` (returning an `ICompiledMigration`) and register it with `UseMigrationCompiler<T>()`.
 
 ## [1.0.1] - 2026-05-28
 

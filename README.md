@@ -88,10 +88,29 @@ Every run flows through the same pipeline. Each stage has an interface you can s
 6. **Inject deployment scripts** — any pre-/post-deployment scripts contributed by `IScriptProvider` implementations are prepended/appended to the plan as `RunScript` actions.
 7. **Transform the plan** — every `IMigrationPlanTransformer` runs in sequence. The built-in `ActionOrderingTransformer` topologically sorts actions so dependencies are respected (e.g. foreign keys dropped before their tables).
 8. **Validate the plan** — each `IMigrationPolicy` inspects the final plan. The built-in `DestructiveActionMigrationPolicy` enforces `MigrationOptions.DestructiveActionPolicy` (`Error` | `Warn` | `Allow`).
-9. **Plan SQL** — `ISqlPlanner` (supplied by the database provider) translates the `MigrationPlan` into a `SqlPlan` of database-specific statements.
-10. **Execute** — `ISqlExecutor` runs the SQL plan against the database. By default, the whole plan runs in a single transaction; this is configurable via `MigrationOptions.TransactionMode`.
+9. **Compile** — `IMigrationCompiler` compiles the `MigrationPlan` into an `ICompiledMigration`: an inspectable unit of work exposing a `Preview` (what would run) and an `Execute` step. The default SQL compiler uses `ISqlPlanner` (supplied by the database provider) to translate the plan into database-specific statements.
+10. **Execute** — for an `Apply`, the compiled migration runs against the database (the default SQL implementation uses `ISqlExecutor`); for a `Plan`, the preview is rendered and nothing is executed. By default the whole plan runs in a single transaction, configurable via `MigrationOptions.TransactionMode`.
 
-`DryRunOnly()` runs the full pipeline up to execution and logs the plan without applying it.
+## Operations: plan and apply
+
+Each run performs one operation, selected by `MigrationOptions.Operation`:
+
+- **`Apply`** (default) — compute the plan and apply it to the database.
+- **`Plan`** — compute and render the plan, including the SQL that would run, without touching the database.
+
+Configure it on the builder, or trigger it explicitly:
+
+```csharp
+// Configured
+builder.RunOperation(MigrationOperation.Plan);
+await builder.Build().RunAsync();
+
+// Explicit — overrides the configured operation for this run
+var app = builder.Build();
+await app.Plan();   // or app.Apply()
+```
+
+Both paths run the full host lifecycle. `RunAsync()` uses the configured operation; `Plan()` / `Apply()` override it for that run.
 
 ## Scoping to specific schemas
 
@@ -119,7 +138,7 @@ Everything in the pipeline is registered through DI. You can replace defaults or
 | `IMigrationPolicy`                          | Validate the final plan before execution.                                      | `AddMigrationPolicy<T>()`                                                                  |
 | `IScriptProvider`                           | Supply raw SQL to run pre- or post-deployment.                                 | `AddScriptProvider<T>()`, `AddScriptFromFile(...)`, `AddScriptsFromEmbeddedResources(...)` |
 | `ISqlExecutor`                              | Override how SQL is sent to the database (e.g. logging, custom transactions).  | `UseSqlExecutor<T>()`                                                                      |
-| `IMigrationExecutor`                        | Replace the executor entirely (e.g. emit SQL to a file instead of running it). | `UseMigrationExecutor<T>()`                                                                |
+| `IMigrationCompiler`                        | Replace how a plan is compiled into an executable unit (e.g. emit SQL to a file instead of running it). | `UseMigrationCompiler<T>()`                                                       |
 | `ISqlPlanner`                               | Add support for another database.                                              | `UseSqlPlanner<T>()`  (or via a provider package, e.g. `UsePostgres(...)`)                 |
 
 ## Renaming
