@@ -20,17 +20,6 @@ public class MigrationOptions
     public MigrationOperation Operation { get; set; } = MigrationOperation.Apply;
 
     /// <summary>
-    /// Indicates whether the migration should be executed in "dry run" mode, where the generated SQL commands are not
-    /// actually executed against the database, but instead are logged or returned for review.
-    /// </summary>
-    [Obsolete("Use Operation instead. DryRun will be removed in a future major version.")]
-    public bool DryRun
-    {
-        get => Operation == MigrationOperation.Plan;
-        set => Operation = value ? MigrationOperation.Plan : MigrationOperation.Apply;
-    }
-
-    /// <summary>
     /// Controls whether the executor wraps the migration in a transaction.
     /// </summary>
     public TransactionMode TransactionMode { get; set; } = TransactionMode.Single;

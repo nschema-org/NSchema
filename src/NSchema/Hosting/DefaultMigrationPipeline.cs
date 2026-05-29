@@ -42,7 +42,6 @@ internal sealed class DefaultMigrationPipeline(
 
     /// <summary>
     /// Computes the plan, renders the diff, compiles it into an execution, and reports the preview.
-    /// Shared by <see cref="Plan"/> and <see cref="Apply"/>.
     /// </summary>
     private async Task<ICompiledMigration> Prepare(CancellationToken cancellationToken)
     {

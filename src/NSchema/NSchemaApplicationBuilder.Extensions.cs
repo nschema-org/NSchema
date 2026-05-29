@@ -29,29 +29,13 @@ public partial class NSchemaApplicationBuilder
     }
 
     /// <summary>
-    /// Replaces the default <see cref="IMigrationCompiler"/> with a custom one. Use this to target
-    /// non-SQL destinations (JSON, YAML, in-memory) that do not fit the <see cref="ISqlPlanner"/> +
-    /// <see cref="ISqlExecutor"/> pair.
+    /// Replaces the default <see cref="IMigrationCompiler"/> with a custom one.
     /// </summary>
     /// <typeparam name="T">The type of the migration compiler to register.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
     public NSchemaApplicationBuilder UseMigrationCompiler<T>() where T : class, IMigrationCompiler
     {
         Services.AddSingleton<IMigrationCompiler, T>();
-        return this;
-    }
-
-    /// <summary>
-    /// Replaces the default migration executor with a custom one. The executor is adapted to the
-    /// <see cref="IMigrationCompiler"/> pipeline via <see cref="ExecutorBackedCompiler"/>.
-    /// </summary>
-    /// <typeparam name="T">The type of the migration executor to register.</typeparam>
-    /// <returns>The application builder, for chaining.</returns>
-    [Obsolete("Implement IMigrationCompiler and use UseMigrationCompiler instead. UseMigrationExecutor will be removed in a future major version.")]
-    public NSchemaApplicationBuilder UseMigrationExecutor<T>() where T : class, IMigrationExecutor
-    {
-        Services.AddSingleton<IMigrationExecutor, T>();
-        Services.AddSingleton<IMigrationCompiler, ExecutorBackedCompiler>();
         return this;
     }
 }
