@@ -1,4 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using NSchema.Migration;
 
 namespace NSchema;
 
@@ -31,6 +34,24 @@ public sealed class NSchemaApplication : IHost
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => _host.StopAsync(cancellationToken);
+
+    /// <summary>
+    /// Computes and renders the plan without applying it to the target.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    public Task Plan(CancellationToken cancellationToken = default) => RunOperation(MigrationOperation.Plan, cancellationToken);
+
+    /// <summary>
+    /// Computes the plan and applies it to the target.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    public Task Apply(CancellationToken cancellationToken = default) => RunOperation(MigrationOperation.Apply, cancellationToken);
+
+    private Task RunOperation(MigrationOperation operation, CancellationToken cancellationToken)
+    {
+        _host.Services.GetRequiredService<IOptions<MigrationOptions>>().Value.Operation = operation;
+        return this.RunAsync(cancellationToken);
+    }
 
     /// <inheritdoc />
     public void Dispose()

@@ -1,17 +1,21 @@
 using Microsoft.Extensions.Logging;
 using NSchema.Hosting;
+using NSchema.Migration;
+using NSchema.Migration.Plan;
+using NSchema.Schema;
 
 namespace NSchema.Tests.Hosting;
 
 public sealed class DefaultMigrationReporterTests
 {
     private readonly ILogger<DefaultMigrationReporter> _logger = Substitute.For<ILogger<DefaultMigrationReporter>>();
+    private readonly IMigrationPlanRenderer _planRenderer = Substitute.For<IMigrationPlanRenderer>();
 
     private readonly DefaultMigrationReporter _sut;
 
     public DefaultMigrationReporterTests()
     {
-        _sut = new DefaultMigrationReporter(_logger);
+        _sut = new DefaultMigrationReporter(_logger, _planRenderer);
     }
 
     private static (string Out, string Err) CaptureConsole(Action action)
@@ -35,7 +39,7 @@ public sealed class DefaultMigrationReporterTests
     }
 
     [Fact]
-    public void Info_WritesToStdoutAndLogsAtInformation()
+    public void Status_WritesToStdoutAndLogsAtInformation()
     {
         // Arrange
 
@@ -92,5 +96,35 @@ public sealed class DefaultMigrationReporterTests
             null,
             Arg.Any<Func<object, Exception?, string>>()
         );
+    }
+
+    [Fact]
+    public void ReportPlan_RendersPlanToStdout()
+    {
+        // Arrange
+        var plan = new MigrationPlan([], DatabaseSchema.Create([]));
+        _planRenderer.Render(plan).Returns("rendered diff");
+
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.ReportPlan(plan));
+
+        // Assert: the rendered diff followed by a blank separator line.
+        stdout.ShouldBe("rendered diff" + Environment.NewLine + Environment.NewLine);
+        stderr.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportPreview_WritesEachStatementToStdout()
+    {
+        // Arrange
+
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.ReportPreview(["CREATE SCHEMA app", "CREATE TABLE app.users (id int)"]));
+
+        // Assert
+        stdout.ShouldBe(
+            "CREATE SCHEMA app" + Environment.NewLine +
+            "CREATE TABLE app.users (id int)" + Environment.NewLine);
+        stderr.ShouldBeEmpty();
     }
 }

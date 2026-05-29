@@ -1,33 +1,48 @@
-using Microsoft.Extensions.Options;
 using NSchema.Migration;
 using NSchema.Policies;
 
 namespace NSchema.Hosting;
 
 /// <summary>
-/// Default <see cref="IMigrationPipeline"/>. Owns all user-facing reporting and the
-/// plan-then-execute orchestration. The planner and executor remain free of reporter concerns.
+/// Default <see cref="IMigrationPipeline"/>.
 /// </summary>
-/// <param name="options">The migration options.</param>
-/// <param name="reporter">The reporter for user-facing migration progress.</param>
-/// <param name="planRenderer">Renders the migration plan as a human-readable diff.</param>
 /// <param name="planner">Builds the migration plan.</param>
-/// <param name="executor">Applies the plan to the target.</param>
+/// <param name="reporter">Presents user-facing migration progress and artifacts.</param>
+/// <param name="compiler">Compiles the plan into an executable unit of work.</param>
 internal sealed class DefaultMigrationPipeline(
-    IOptions<MigrationOptions> options,
     IMigrationPlanner planner,
-    IMigrationPlanRenderer planRenderer,
     IMigrationReporter reporter,
-    IMigrationExecutor executor
+    IMigrationCompiler compiler
 ) : IMigrationPipeline
 {
-    public async Task Run(CancellationToken cancellationToken = default)
+    public async Task Plan(CancellationToken cancellationToken = default)
     {
-        if (options.Value.DryRun)
-        {
-            reporter.Info("Dry run enabled. No changes will be applied to the database.");
-        }
+        reporter.Info("Running in Plan mode. No changes will be applied to the database.");
+        await Prepare(cancellationToken);
+    }
 
+    public async Task Apply(CancellationToken cancellationToken = default)
+    {
+        var execution = await Prepare(cancellationToken);
+
+        try
+        {
+            reporter.Info("Running database migration...");
+            await execution.Execute(cancellationToken);
+            reporter.Info("Migration completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            reporter.Error($"Migration failed: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Computes the plan, presents the diff, compiles it into an execution, and presents the preview.
+    /// </summary>
+    private async Task<ICompiledMigration> Prepare(CancellationToken cancellationToken)
+    {
         reporter.Info("Computing migration plan...");
         Migration.Plan.MigrationPlan plan;
         try
@@ -44,20 +59,12 @@ internal sealed class DefaultMigrationPipeline(
             throw;
         }
 
-        reporter.Info(planRenderer.Render(plan) + Environment.NewLine);
+        reporter.ReportPlan(plan);
 
-        try
-        {
-            await executor.Apply(plan, options.Value.DryRun, cancellationToken);
-            if (!options.Value.DryRun)
-            {
-                reporter.Info("Migration completed successfully.");
-            }
-        }
-        catch (Exception ex)
-        {
-            reporter.Error($"Migration failed: {ex.Message}");
-            throw;
-        }
+        reporter.Info("Compiling migration plan...");
+        var execution = await compiler.Compile(plan, cancellationToken);
+        reporter.ReportPreview(execution.Preview);
+
+        return execution;
     }
 }

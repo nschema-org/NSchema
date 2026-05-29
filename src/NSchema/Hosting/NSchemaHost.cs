@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using NSchema.Migration;
 
 namespace NSchema.Hosting;
 
@@ -7,14 +9,26 @@ namespace NSchema.Hosting;
 /// </summary>
 /// <param name="lifetime">The application lifetime.</param>
 /// <param name="pipeline">The migration pipeline to run.</param>
-internal sealed class NSchemaHost(IHostApplicationLifetime lifetime, IMigrationPipeline pipeline) : BackgroundService
+/// <param name="options">The migration options, which select the operation to run.</param>
+internal sealed class NSchemaHost(
+    IOptions<MigrationOptions> options,
+    IHostApplicationLifetime lifetime,
+    IMigrationPipeline pipeline
+) : BackgroundService
 {
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {
-            await pipeline.Run(cancellationToken);
+            var operation = options.Value.Operation;
+            var run = operation switch
+            {
+                MigrationOperation.Plan => pipeline.Plan(cancellationToken),
+                MigrationOperation.Apply => pipeline.Apply(cancellationToken),
+                _ => throw new ArgumentOutOfRangeException(nameof(options), operation, "Unknown migration operation."),
+            };
+            await run;
         }
         finally
         {

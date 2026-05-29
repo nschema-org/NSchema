@@ -17,13 +17,13 @@ public partial class NSchemaApplicationBuilder
     }
 
     /// <summary>
-    /// Configures the application to perform a dry run, where the migration plan will be generated and logged but not executed against the database.
+    /// Configures the operation the migration run performs.
     /// </summary>
-    /// <param name="dryRun">Whether to enable dry run mode. Defaults to true.</param>
+    /// <param name="operation">The operation to perform.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder DryRunOnly(bool dryRun = true)
+    public NSchemaApplicationBuilder RunOperation(MigrationOperation operation)
     {
-        Services.Configure<MigrationOptions>(o => o.DryRun = dryRun);
+        Services.Configure<MigrationOptions>(o => o.Operation = operation);
         return this;
     }
 

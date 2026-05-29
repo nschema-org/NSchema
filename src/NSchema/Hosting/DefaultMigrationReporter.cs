@@ -1,19 +1,44 @@
 using Microsoft.Extensions.Logging;
+using NSchema.Migration;
+using NSchema.Migration.Plan;
 
 namespace NSchema.Hosting;
 
 /// <summary>
-/// Default <see cref="IMigrationReporter"/> that writes user-facing output directly to the console
-/// and also fans out to <see cref="ILogger"/> so structured sinks (Datadog, OpenTelemetry, etc.)
+/// Default <see cref="IMigrationReporter"/> that presents output to the terminal: it renders the plan as a
+/// Terraform-style diff via <see cref="IMigrationPlanRenderer"/>, writes user-facing output directly to the
+/// console, and fans out to <see cref="ILogger"/> so structured sinks (Datadog, OpenTelemetry, etc.)
 /// continue to receive the migration narrative.
 /// </summary>
-internal sealed class DefaultMigrationReporter(ILogger<DefaultMigrationReporter> logger) : IMigrationReporter
+/// <param name="logger">The logger to fan structured output out to.</param>
+/// <param name="planRenderer">Renders the migration plan as a human-readable diff.</param>
+internal sealed class DefaultMigrationReporter(
+    ILogger<DefaultMigrationReporter> logger,
+    IMigrationPlanRenderer planRenderer
+) : IMigrationReporter
 {
     public void Info(string message) => Write(LogLevel.Information, message);
 
     public void Warn(string message) => Write(LogLevel.Warning, message);
 
     public void Error(string message) => Write(LogLevel.Error, message);
+
+    public void ReportPlan(MigrationPlan plan)
+    {
+        Write(LogLevel.Information, planRenderer.Render(plan));
+
+        // A blank line separates the diff from following output. This is terminal layout only, so it
+        // doesn't go through the logger.
+        Console.Out.WriteLine();
+    }
+
+    public void ReportPreview(IReadOnlyList<string> statements)
+    {
+        foreach (var statement in statements)
+        {
+            Write(LogLevel.Information, statement);
+        }
+    }
 
     private void Write(LogLevel level, string message)
     {
