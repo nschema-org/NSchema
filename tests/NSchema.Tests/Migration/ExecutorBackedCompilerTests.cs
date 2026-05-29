@@ -4,8 +4,7 @@ using NSchema.Schema;
 
 namespace NSchema.Tests.Migration;
 
-#pragma warning disable CS0618 // Exercising the obsolete IMigrationExecutor bridge is the point of these tests.
-
+[Obsolete("Tests will be removed in future versions")]
 public sealed class ExecutorBackedCompilerTests
 {
     private readonly IMigrationExecutor _executor = Substitute.For<IMigrationExecutor>();
@@ -53,5 +52,3 @@ public sealed class ExecutorBackedCompilerTests
         await _executor.Received(1).Apply(plan, false, Arg.Any<CancellationToken>());
     }
 }
-
-#pragma warning restore CS0618

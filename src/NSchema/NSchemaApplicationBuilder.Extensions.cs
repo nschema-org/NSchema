@@ -48,12 +48,10 @@ public partial class NSchemaApplicationBuilder
     /// <typeparam name="T">The type of the migration executor to register.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
     [Obsolete("Implement IMigrationCompiler and use UseMigrationCompiler instead. UseMigrationExecutor will be removed in a future major version.")]
-#pragma warning disable CS0618 // Type or member is obsolete
     public NSchemaApplicationBuilder UseMigrationExecutor<T>() where T : class, IMigrationExecutor
     {
         Services.AddSingleton<IMigrationExecutor, T>();
         Services.AddSingleton<IMigrationCompiler, ExecutorBackedCompiler>();
         return this;
     }
-#pragma warning restore CS0618 // Type or member is obsolete
 }

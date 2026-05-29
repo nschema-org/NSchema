@@ -2,10 +2,6 @@ using NSchema.Migration.Plan;
 
 namespace NSchema.Migration;
 
-// This adapter exists solely to bridge the obsolete IMigrationExecutor to IMigrationCompiler, so
-// disabling the obsolete-usage warning here is intentional.
-#pragma warning disable CS0618 // Type or member is obsolete
-
 /// <summary>
 /// Adapts a legacy <see cref="IMigrationExecutor"/> to <see cref="IMigrationCompiler"/>, so executors
 /// registered via the obsolete <c>UseMigrationExecutor</c> extension point keep working.
@@ -17,6 +13,7 @@ namespace NSchema.Migration;
 /// preserved.
 /// </remarks>
 /// <param name="executor">The legacy executor to wrap.</param>
+[Obsolete("Implement IMigrationCompiler directly instead. This adapter will be removed in a future major version.")]
 internal sealed class ExecutorBackedCompiler(IMigrationExecutor executor) : IMigrationCompiler
 {
     public Task<IMigrationExecution> Compile(MigrationPlan plan, CancellationToken cancellationToken = default)
@@ -31,4 +28,3 @@ internal sealed class ExecutorBackedCompiler(IMigrationExecutor executor) : IMig
     }
 }
 
-#pragma warning restore CS0618 // Type or member is obsolete

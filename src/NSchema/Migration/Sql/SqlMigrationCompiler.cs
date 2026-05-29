@@ -3,8 +3,7 @@ using NSchema.Migration.Plan;
 namespace NSchema.Migration.Sql;
 
 /// <summary>
-/// Default <see cref="IMigrationCompiler"/> for SQL targets. Compiles the migration plan into a
-/// <see cref="SqlPlan"/> wrapped as an executable unit; reporting is left to the pipeline.
+/// Default <see cref="IMigrationCompiler"/> for SQL targets.
 /// </summary>
 internal sealed class SqlMigrationCompiler(ISqlPlanner sqlPlanner, ISqlExecutor sqlExecutor) : IMigrationCompiler
 {
