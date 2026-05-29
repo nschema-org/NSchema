@@ -15,9 +15,9 @@ public class MigrationOptions
     public DestructiveActionPolicy DestructiveActionPolicy { get; set; } = DestructiveActionPolicy.Error;
 
     /// <summary>
-    /// The operation the migration run performs. Defaults to <see cref="MigrationOperation.Apply"/>.
+    /// The operation the migration run performs. Defaults to <see cref="MigrationOperation.Plan"/>.
     /// </summary>
-    public MigrationOperation Operation { get; set; } = MigrationOperation.Apply;
+    public MigrationOperation Operation { get; set; } = MigrationOperation.Plan;
 
     /// <summary>
     /// Controls whether the executor wraps the migration in a transaction.

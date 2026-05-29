@@ -12,7 +12,7 @@ Additionally, I've expanded the concept of a "DryRun" into a more explicit Plan/
 
 ### Added
 
-- Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`.
+- Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`. It defaults to `Plan` if not set, so changes cannot be applied unintentionally.
 - Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` continues to use the configured operation.)
 - `IMigrationCompiler` and `ICompiledMigration`: a migration plan is compiled into an inspectable, executable unit of work — `Preview` (what would happen) plus `Execute` (perform it). Register a custom compiler via `UseMigrationCompiler<T>()`.
 
