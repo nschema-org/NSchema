@@ -12,7 +12,7 @@ internal sealed class SqlMigrationExecutor(
     ISqlExecutor sqlExecutor
 ) : IMigrationExecutor
 {
-    public async Task Apply(MigrationPlan plan, bool dryRun, CancellationToken cancellationToken = default)
+    public async Task Apply(MigrationPlan plan, bool planOnly, CancellationToken cancellationToken = default)
     {
         reporter.Info("Generating SQL statements...");
         var sqlPlan = sqlPlanner.Plan(plan);
@@ -21,7 +21,7 @@ internal sealed class SqlMigrationExecutor(
             reporter.Info(statement.Sql);
         }
 
-        if (dryRun)
+        if (planOnly)
         {
             return;
         }

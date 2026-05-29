@@ -30,7 +30,7 @@ public sealed class SqlMigrationExecutorTests
         var plan = EmptyMigrationPlan();
 
         // Act
-        await _sut.Apply(plan, dryRun: false);
+        await _sut.Apply(plan, planOnly: false);
 
         // Assert
         _sqlPlanner.Received(1).Plan(plan);
@@ -44,7 +44,7 @@ public sealed class SqlMigrationExecutorTests
         _sqlPlanner.Plan(Arg.Any<MigrationPlan>()).Returns(sqlPlan);
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: false);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: false);
 
         // Assert
         await _sqlExecutor.Received(1).Execute(sqlPlan, Arg.Any<CancellationToken>());
@@ -56,7 +56,7 @@ public sealed class SqlMigrationExecutorTests
         // Arrange
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: true);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: true);
 
         // Assert
         await _sqlExecutor.DidNotReceive().Execute(Arg.Any<SqlPlan>(), Arg.Any<CancellationToken>());
@@ -73,7 +73,7 @@ public sealed class SqlMigrationExecutorTests
         _sqlPlanner.Plan(Arg.Any<MigrationPlan>()).Returns(sqlPlan);
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: false);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: false);
 
         // Assert
         _reporter.Received(1).Info("CREATE SCHEMA app");
@@ -88,7 +88,7 @@ public sealed class SqlMigrationExecutorTests
         _sqlPlanner.Plan(Arg.Any<MigrationPlan>()).Returns(sqlPlan);
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: true);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: true);
 
         // Assert
         _reporter.Received(1).Info("CREATE SCHEMA app");
@@ -102,7 +102,7 @@ public sealed class SqlMigrationExecutorTests
         var token = cts.Token;
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: false, token);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: false, token);
 
         // Assert
         await _sqlExecutor.Received(1).Execute(Arg.Any<SqlPlan>(), token);
@@ -116,7 +116,7 @@ public sealed class SqlMigrationExecutorTests
         _sqlPlanner.Plan(Arg.Any<MigrationPlan>()).Returns(sqlPlan);
 
         // Act
-        await _sut.Apply(EmptyMigrationPlan(), dryRun: false);
+        await _sut.Apply(EmptyMigrationPlan(), planOnly: false);
 
         // Assert
         Received.InOrder(() =>
@@ -134,7 +134,7 @@ public sealed class SqlMigrationExecutorTests
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
-        var act = () => _sut.Apply(EmptyMigrationPlan(), dryRun: false);
+        var act = () => _sut.Apply(EmptyMigrationPlan(), planOnly: false);
 
         // Assert
         await Should.ThrowAsync<InvalidOperationException>(act);
