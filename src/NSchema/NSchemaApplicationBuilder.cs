@@ -86,6 +86,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<IMigrationPipeline, DefaultMigrationPipeline>();
         services.TryAddSingleton<ISqlExecutor, DefaultSqlExecutor>();
         services.TryAddSingleton<IMigrationCompiler, SqlMigrationCompiler>();
+        services.TryAddSingleton<MigrationRunContext>();
 
         services.TryAddEnumerable(new ServiceDescriptor(typeof(IMigrationPlanTransformer), typeof(ActionOrderingTransformer), ServiceLifetime.Singleton));
         services.TryAddEnumerable(new ServiceDescriptor(typeof(IMigrationPolicy), typeof(DestructiveActionMigrationPolicy), ServiceLifetime.Singleton));
