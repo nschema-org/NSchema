@@ -17,8 +17,7 @@ public partial class NSchemaApplicationBuilder
     }
 
     /// <summary>
-    /// Configures the operation the migration run performs (<see cref="MigrationOperation.Plan"/> or
-    /// <see cref="MigrationOperation.Apply"/>).
+    /// Configures the operation the migration run performs.
     /// </summary>
     /// <param name="operation">The operation to perform.</param>
     /// <returns>The application builder, for chaining.</returns>

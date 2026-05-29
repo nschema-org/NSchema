@@ -8,8 +8,7 @@ namespace NSchema.Migration;
 public interface IMigrationCompiler
 {
     /// <summary>
-    /// Compiles the given migration plan into an <see cref="ICompiledMigration"/> that can be previewed
-    /// and executed. Compiling has no side effects on the target.
+    /// Compiles the given migration plan into a unit that can be previewed and executed.
     /// </summary>
     /// <param name="plan">The migration plan to compile.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>

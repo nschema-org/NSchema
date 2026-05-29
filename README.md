@@ -135,7 +135,7 @@ public class AppSchema : AbstractSchemaProvider
     }
 }
 ```
-
+- `Name` declares the name of the schema in the database.
 - `Table(...)` declares a table within the schema.
 - `Grant(...)` grants a role usage on the schema.
 - `Comment(...)` adds a comment to the schema.
@@ -168,7 +168,7 @@ public class AppSchema : AbstractSchemaProvider
     }
 }
 ```
-
+- `Name` declares the name of the table in the database.
 - `Column(...)` declares a column with the table.
 - `PrimaryKey(...)` declares a primary key constraint on the table.
 - `ForeignKey(...)` declares a foreign key constraint on the table.
@@ -177,6 +177,87 @@ public class AppSchema : AbstractSchemaProvider
 - `Comment(...)` adds a comment to the table.
 - `RenamedFrom(...)` marks the table as renamed from an existing one, so the comparer can match it instead of dropping and recreating.
 - `Dropped()` marks the table as dropped, meaning it will be dropped if it exists. Only necessary when dropping a table from a partial schema, otherwise the comparer will detect it as missing and drop it automatically.
+
+#### Column declaration
+
+```csharp
+public class AppSchema : AbstractSchemaProvider
+{
+    public AppSchema()
+    {
+        Schema("app", s =>
+        {
+            s.Table("users", t => {
+                t.Column("id", SqlType.Text, c => {
+                    c.NotNull();
+                    c.PrimaryKey("users_pkey");
+                });
+            });
+        });
+    }
+}
+```
+
+- `Name` declares the name of the column in the database.
+- `SqlType` declares the SQL type of the column. This is an abstract type that the database provider will map to a concrete type.
+- `NotNull()` marks the column as not nullable.
+- `Nullable()` marks the column as nullable.
+- `Default(...)` declares a default value for the column.
+- `Comment(...)` adds a comment to the column.
+- `RenamedFrom(...)` marks the column as renamed from an existing one, so the comparer can match it instead of dropping and recreating.
+- `Identity(...)` marks the column as an identity/auto-increment column, with optional configuration for seed and increment values.
+- `PrimaryKey(...)` declares a primary key constraint on the column.
+
+#### Foreign key declaration
+
+```csharp
+public class AppSchema : AbstractSchemaProvider
+{
+    public AppSchema()
+    {
+        Schema("app", s =>
+        {
+            s.Table("users", t => {
+                t.ForeignKey("FK_users_role_id", ["role_id"], "app", "roles", ["id"], fk =>
+                {
+                    fk.OnUpdate(ReferentialAction.SetDefault);
+                    fk.OnDelete(ReferentialAction.Cascade);
+                });
+            });
+        });
+    }
+}
+````
+
+- `Name` declares the name of the foreign key constraint in the database.
+- `ColumnNames` declares the columns in the source table that are part of the foreign key.
+- `ReferencedSchema` declares the schema of the referenced table.
+- `ReferencedTable` declares the name of the referenced table.
+- `ReferencedColumns` declares the columns in the referenced table that are part of the foreign key.
+- `OnUpdate(...)` declares the referential action to take on updates (e.g. `Cascade`, `SetNull`, `SetDefault`, `Restrict`, `NoAction`).
+- `OnDelete(...)` declares the referential action to take on deletes.
+- `Comment(...)` adds a comment to the foreign key.
+
+#### Index declaration
+
+```csharp
+public class AppSchema : AbstractSchemaProvider
+{
+    public AppSchema()
+    {
+        Schema("app", s =>
+        {
+            s.Table("users", t => {
+                t.Index("idx_users_email", ["email"], i => i.Unique());
+            });
+        });
+    }
+}
+```
+
+- `Name` declares the name of the index in the database.
+- `ColumnNames` declares the columns that are part of the index.
+- `Unique()` marks the index as unique.
 
 ## Concepts
 

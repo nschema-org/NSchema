@@ -1,7 +1,7 @@
 namespace NSchema.Migration.Sql;
 
 /// <summary>
-/// An <see cref="ICompiledMigration"/> over a compiled <see cref="SqlPlan"/>.
+/// A compiled migration that executes a SQL plan.
 /// </summary>
 /// <param name="sqlPlan">The compiled SQL plan.</param>
 /// <param name="sqlExecutor">The executor that runs the SQL plan.</param>

@@ -6,25 +6,26 @@ namespace NSchema.Schema.Fluent;
 public sealed class ForeignKeyBuilder
 {
     private readonly string _name;
-    private readonly IReadOnlyList<string> _columnNames;
+    private readonly IReadOnlyList<string> _columns;
     private readonly string _referencedSchema;
     private readonly string _referencedTable;
-    private readonly IReadOnlyList<string> _referencedColumnNames;
+    private readonly IReadOnlyList<string> _referencedColumns;
     private ReferentialAction _onDelete = ReferentialAction.NoAction;
     private ReferentialAction _onUpdate = ReferentialAction.NoAction;
 
     internal ForeignKeyBuilder(
         string name,
-        IReadOnlyList<string> columnNames,
+        IReadOnlyList<string> columns,
         string referencedSchema,
         string referencedTable,
-        IReadOnlyList<string> referencedColumnNames)
+        IReadOnlyList<string> referencedColumns
+    )
     {
         _name = name;
-        _columnNames = columnNames;
+        _columns = columns;
         _referencedSchema = referencedSchema;
         _referencedTable = referencedTable;
-        _referencedColumnNames = referencedColumnNames;
+        _referencedColumns = referencedColumns;
     }
 
     /// <summary>
@@ -41,5 +42,5 @@ public sealed class ForeignKeyBuilder
     /// <returns>The current <see cref="ForeignKeyBuilder"/> instance, allowing for method chaining.</returns>
     public ForeignKeyBuilder OnUpdate(ReferentialAction action) { _onUpdate = action; return this; }
 
-    internal ForeignKey Build() => new(_name, _columnNames, _referencedSchema, _referencedTable, _referencedColumnNames, _onDelete, _onUpdate);
+    internal ForeignKey Build() => new(_name, _columns, _referencedSchema, _referencedTable, _referencedColumns, _onDelete, _onUpdate);
 }
