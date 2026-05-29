@@ -6,8 +6,14 @@ namespace NSchema.Hosting;
 internal interface IMigrationPipeline
 {
     /// <summary>
-    /// Executes the pipeline.
+    /// Computes and renders the migration plan without applying it to the target.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    Task Run(CancellationToken cancellationToken = default);
+    Task Plan(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Computes the migration plan and applies it to the target.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    Task Apply(CancellationToken cancellationToken = default);
 }

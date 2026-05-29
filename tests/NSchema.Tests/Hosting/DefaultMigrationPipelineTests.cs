@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
@@ -10,7 +9,6 @@ namespace NSchema.Tests.Hosting;
 
 public sealed class DefaultMigrationPipelineTests
 {
-    private readonly IOptions<MigrationOptions> _options = Options.Create(new MigrationOptions());
     private readonly IMigrationPlanner _planner = Substitute.For<IMigrationPlanner>();
     private readonly IMigrationReporter _reporter = Substitute.For<IMigrationReporter>();
     private readonly IMigrationPlanRenderer _renderer = Substitute.For<IMigrationPlanRenderer>();
@@ -28,17 +26,16 @@ public sealed class DefaultMigrationPipelineTests
         _execution.Preview.Returns([]);
         _compiler.Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>()).Returns(_execution);
 
-        _sut = new DefaultMigrationPipeline(_options, _planner, _renderer, _reporter, _compiler);
+        _sut = new DefaultMigrationPipeline(_planner, _renderer, _reporter, _compiler);
     }
 
     [Fact]
-    public async Task Run_PlanOperation_CompilesButDoesNotExecute()
+    public async Task Plan_CompilesButDoesNotExecute()
     {
         // Arrange
-        _options.Value.Operation = MigrationOperation.Plan;
 
         // Act
-        await _sut.Run();
+        await _sut.Plan();
 
         // Assert
         await _compiler.Received(1).Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>());
@@ -46,14 +43,14 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Run_ApplyOperation_CompilesAndExecutes()
+    public async Task Apply_CompilesAndExecutes()
     {
         // Arrange
         var plan = new MigrationPlan([new CreateSchema("app")], DatabaseSchema.Create([]));
         _planner.Plan(Arg.Any<CancellationToken>()).Returns(plan);
 
         // Act
-        await _sut.Run();
+        await _sut.Apply();
 
         // Assert
         await _compiler.Received(1).Compile(plan, Arg.Any<CancellationToken>());
@@ -61,25 +58,25 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Run_EmptyPlan_StillExecutes()
+    public async Task Apply_EmptyPlan_StillExecutes()
     {
         // Arrange
 
         // Act
-        await _sut.Run();
+        await _sut.Apply();
 
         // Assert
         await _execution.Received(1).Execute(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Run_PreviewLines_AreReported()
+    public async Task Plan_PreviewLines_AreReported()
     {
         // Arrange
         _execution.Preview.Returns(["CREATE SCHEMA app", "CREATE TABLE app.users (id int)"]);
 
         // Act
-        await _sut.Run();
+        await _sut.Plan();
 
         // Assert
         _reporter.Received(1).Info("CREATE SCHEMA app");
@@ -87,7 +84,7 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Run_PolicyViolation_ReportsErrorsAndRethrows()
+    public async Task Apply_PolicyViolation_ReportsErrorsAndRethrows()
     {
         // Arrange
         var errors = new[] { new PolicyError("P1", "msg1"), new PolicyError("P2", "msg2") };
@@ -96,7 +93,7 @@ public sealed class DefaultMigrationPipelineTests
             .Throws(new PolicyViolationException(errors));
 
         // Act
-        var act = () => _sut.Run();
+        var act = () => _sut.Apply();
 
         // Assert
         act.ShouldThrow<PolicyViolationException>();
@@ -106,7 +103,7 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public void Run_ExecutionThrows_ReportsErrorAndRethrows()
+    public void Apply_ExecutionThrows_ReportsErrorAndRethrows()
     {
         // Arrange
         _execution
@@ -114,7 +111,7 @@ public sealed class DefaultMigrationPipelineTests
             .Throws(new InvalidOperationException("boom"));
 
         // Act
-        var act = async () => await _sut.Run();
+        var act = async () => await _sut.Apply();
 
         // Assert
         act.ShouldThrow<InvalidOperationException>();
