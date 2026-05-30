@@ -29,6 +29,18 @@ await app.Apply(); // Will run the apply, even if the configured operation is Pl
 
 Both paths run the full .NET host lifecycle, so background services, logging, metrics, etc. are all available regardless of how you choose to run.
 
+## Backend state store
+
+By default, NSchema generates plans against the current live state of the database. This is simple and works well for many scenarios, but you can't always guarantee that you'll have access to the database at plan time, and sometimes it's desirable to generate a plan against the last applied state rather than the current live state (e.g. for generating migration scripts in a CI pipeline).
+
+NSchema supports an optional backend state store for tracking the last applied schema. When configured, NSchema will read the last applied schema from the store and generate plans against that instead of the current live state. After a successful apply, NSchema will update the store with the new last applied schema.
+
+To use a backend state store, implement the `ISchemaStateStore` interface and register it with `UseSchemaStateStore<T>()`. NSchema includes a simple `LocalFileSchemaStateStore` that saves the last applied schema to a local file, which can be used for simple scenarios or as a reference implementation for custom stores.
+
+```csharp
+builder.UseLocalFileSchemaStateStore("schema_state.json");
+```
+
 ## Destructive action policy
 
 By default, NSchema will error on any destructive actions (e.g. dropping tables or columns) to prevent accidental data loss. You can change this behavior by configuring the `DestructiveActionPolicy`:
@@ -94,6 +106,17 @@ builder.AddScriptsFromEmbeddedResources(ScriptType.PreDeployment, typeof(Program
 
 // Add a custom script provider:
 builder.AddScriptProvider<CustomScriptProvider>();
+```
+
+## Transaction mode
+
+By default, NSchema runs the entire migration inside a single transaction to ensure that either all changes are applied successfully or none at all. However, some databases don't support DDL statements inside transactions, or you may have specific statements that need to run outside of a transaction.
+
+You can configure the transaction mode with `MigrationOptions.TransactionMode`:
+
+```csharp
+builder.WithTransactionMode(TransactionMode.Single); // run the entire migration in a single transaction (default)
+builder.WithTransactionMode(TransactionMode.None); // run all statements outside of transactions
 ```
 
 ## Schema policies

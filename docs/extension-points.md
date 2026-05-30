@@ -13,6 +13,7 @@ Everything in the pipeline is registered through DI. You can replace defaults or
 | `ISqlExecutor`              | Override how SQL is sent to the database (e.g. logging, custom transactions).                           | `UseSqlExecutor<T>()`                                                                      |
 | `IMigrationCompiler`        | Replace how a plan is compiled into an executable unit (e.g. emit SQL to a file instead of running it). | `UseMigrationCompiler<T>()`                                                                |
 | `ISqlPlanner`               | Add support for another database.                                                                       | `UseSqlPlanner<T>()`  (or via a provider package, e.g. `UsePostgres(...)`)                 |
+| `ISchemaStateStore`         | Optional backend state store for tracking the last applied schema.                                      | `UseSchemaStateStore<T>()`                                                                 |
 
 ## Less commonly used extension points
 
