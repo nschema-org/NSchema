@@ -4,7 +4,7 @@ All notable changes to NSchema will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-alpha.2]
+## [2.0.0-alpha.3]
 
 Version 2 is focusing on improving the developer experience, with a more explicit but flexible model for planning and applying changes. The public API has been restructured to support this, and some breaking changes have been made to increase clarity and make operations more explicit.
 

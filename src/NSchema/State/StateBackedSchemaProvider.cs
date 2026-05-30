@@ -9,8 +9,6 @@ namespace NSchema.State;
 /// <remarks>
 /// When no state exists yet (bootstrap), an empty <see cref="DatabaseSchema"/> is returned
 /// so the first plan shows a full create.
-/// The snapshot is returned as stored: state is written scoped to the managed schemas,
-/// so reading it back already reflects exactly that scope.
 /// </remarks>
 /// <param name="store">The state store to read the snapshot from.</param>
 internal sealed class StateBackedSchemaProvider(ISchemaStateStore store) : ISchemaProvider
@@ -19,6 +17,18 @@ internal sealed class StateBackedSchemaProvider(ISchemaStateStore store) : ISche
     public async Task<DatabaseSchema> GetSchema(string[]? schemaNames = null, CancellationToken cancellationToken = default)
     {
         var schema = await store.Read(cancellationToken);
-        return schema ?? DatabaseSchema.Create([]);
+        if (schema == null)
+        {
+            return DatabaseSchema.Create([]);
+        }
+
+        // Honor the ISchemaProvider contract: null/empty scope means "return everything".
+        if (schemaNames is not { Length: > 0 })
+        {
+            return schema;
+        }
+
+        var set = new HashSet<string>(schemaNames, StringComparer.OrdinalIgnoreCase);
+        return schema with { Schemas = schema.Schemas.Where(s => set.Contains(s.Name)).ToList() };
     }
 }
