@@ -74,6 +74,34 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
+    public async Task Refresh_CapturesStateWithoutPlanningOrCompiling()
+    {
+        // Arrange
+        _stateCapturer.Capture(Arg.Any<CancellationToken>()).Returns(true);
+
+        // Act
+        await _sut.Refresh();
+
+        // Assert
+        await _stateCapturer.Received(1).Capture(Arg.Any<CancellationToken>());
+        await _planner.DidNotReceive().Plan(Arg.Any<CancellationToken>());
+        await _compiler.DidNotReceive().Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Refresh_NoStateStore_Throws()
+    {
+        // Arrange: a missing store surfaces as Capture returning false.
+        _stateCapturer.Capture(Arg.Any<CancellationToken>()).Returns(false);
+
+        // Act
+        var act = () => _sut.Refresh();
+
+        // Assert
+        await Should.ThrowAsync<InvalidOperationException>(act);
+    }
+
+    [Fact]
     public async Task Apply_EmptyPlan_StillExecutes()
     {
         // Arrange

@@ -52,6 +52,23 @@ public sealed class NSchemaHostTests
     }
 
     [Fact]
+    public async Task Execute_RefreshOperation_RunsRefreshAndStops()
+    {
+        // Arrange
+        _options.Operation = MigrationOperation.Refresh;
+
+        // Act
+        await _sut.StartAsync(CancellationToken.None);
+        await _sut.ExecuteTask!;
+
+        // Assert
+        await _pipeline.Received(1).Refresh(Arg.Any<CancellationToken>());
+        await _pipeline.DidNotReceive().Apply(Arg.Any<CancellationToken>());
+        await _pipeline.DidNotReceive().Plan(Arg.Any<CancellationToken>());
+        _lifetime.Received(1).StopApplication();
+    }
+
+    [Fact]
     public async Task Execute_StopsApplication_WhenPipelineThrows()
     {
         // Arrange

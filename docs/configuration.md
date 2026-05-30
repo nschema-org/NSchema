@@ -8,14 +8,15 @@ NSchema should be familiar to any developer who's used ASP.NET. It runs as a hos
 
 Call `builder.Build()` to get an `NSchemaApplication`, from which you can then run a `Plan()` or `Apply()` operation. You can also use the standard `RunAsync()` extension method, which will use the configured `MigrationOptions.Operation` for that run, defaulting to `Plan` if none has been specified.
 
-## Operations: plan and apply
+## Operations
 
 Each run performs one of the following operations:
 
-- **`Plan`** (default) computes and render the plan, without touching the database.
-- **`Apply`** computes the plan and apply it to the database.
+- **`Plan`** (default) computes and renders the plan, without touching the database.
+- **`Apply`** computes the plan and applies it to the database. After a successful apply, the resulting schema is captured to the [state store](#backend-state-store) if one is configured.
+- **`Refresh`** reads the current schema from the live database and writes it to the state store, without planning or applying anything. Requires a state store.
 
-The operation can be decided in one of two ways: either by setting `MigrationOptions.Operation`, or by explicitly calling `Plan()` or `Apply()` on the built application:
+The operation can be decided in one of two ways: either by setting `MigrationOptions.Operation`, or by explicitly calling `Plan()`, `Apply()`, or `Refresh()` on the built application:
 
 ```csharp
 // Configured
@@ -33,7 +34,7 @@ Both paths run the full .NET host lifecycle, so background services, logging, me
 
 By default, NSchema generates plans against the current live state of the database. This is simple and works well for many scenarios, but you can't always guarantee that you'll have access to the database at plan time, and sometimes it's desirable to generate a plan against the last applied state rather than the current live state (e.g. for generating migration scripts in a CI pipeline with no database connection).
 
-NSchema supports an optional backend state store that persists a snapshot of the schema. After a successful apply, NSchema captures the resulting schema to the store, so a later plan can be generated against that snapshot instead of a live database.
+NSchema supports an optional backend state store that persists a snapshot of the schema. After a successful apply, NSchema captures the resulting schema to the store, so a later plan can be generated against that snapshot instead of a live database. You can also capture the current schema without applying by running a [`Refresh`](#operations) operation — handy for recording drift that happened between applies.
 
 Implement the `ISchemaStateStore` interface and register it with `UseSchemaStateStore<T>()` (or register a ready-made instance with `UseSchemaStateStore(...)`). NSchema includes a `FileSchemaStateStore` that saves the snapshot to a local file — useful for simple scenarios, or as a reference for custom stores (S3, blob storage, etc.):
 
