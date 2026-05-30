@@ -47,6 +47,12 @@ public sealed class NSchemaApplication : IHost
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     public Task Apply(CancellationToken cancellationToken = default) => RunOperation(MigrationOperation.Apply, cancellationToken);
 
+    /// <summary>
+    /// Reads the live current schema and writes it to the state store, without planning or applying anything.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    public Task Refresh(CancellationToken cancellationToken = default) => RunOperation(MigrationOperation.Refresh, cancellationToken);
+
     private Task RunOperation(MigrationOperation operation, CancellationToken cancellationToken)
     {
         _host.Services.GetRequiredService<IOptions<MigrationOptions>>().Value.Operation = operation;

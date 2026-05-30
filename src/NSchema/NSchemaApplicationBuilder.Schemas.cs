@@ -48,7 +48,7 @@ public partial class NSchemaApplicationBuilder
     /// <returns>The application builder, for chaining.</returns>
     public NSchemaApplicationBuilder UseCurrentSchema<T>() where T : class, ISchemaProvider
     {
-        Services.AddKeyedSingleton<ISchemaProvider, T>(ISchemaProvider.CurrentSchemaProviderKey);
+        Services.AddKeyedSingleton<ISchemaProvider, T>(ISchemaProvider.LiveCurrentSchemaProviderKey);
         return this;
     }
 }

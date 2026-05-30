@@ -47,6 +47,21 @@ public sealed class NSchemaApplicationTests
     }
 
     [Fact]
+    public async Task Refresh_RunsRefreshOperation()
+    {
+        // Arrange
+        using var app = BuildApp();
+
+        // Act
+        await app.Refresh();
+
+        // Assert
+        await _pipeline.Received(1).Refresh(Arg.Any<CancellationToken>());
+        await _pipeline.DidNotReceive().Apply(Arg.Any<CancellationToken>());
+        await _pipeline.DidNotReceive().Plan(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExplicitOperation_OverridesConfiguredOperation()
     {
         // Arrange: configured to Apply, but Plan() is invoked explicitly.

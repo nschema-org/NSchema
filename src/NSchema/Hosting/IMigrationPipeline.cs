@@ -16,4 +16,10 @@ internal interface IMigrationPipeline
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     Task Apply(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the live current schema and writes it to the state store, without planning or applying anything.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    Task Refresh(CancellationToken cancellationToken = default);
 }

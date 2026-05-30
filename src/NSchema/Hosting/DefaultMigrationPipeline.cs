@@ -9,10 +9,12 @@ namespace NSchema.Hosting;
 /// <param name="planner">Builds the migration plan.</param>
 /// <param name="reporter">Presents user-facing migration progress and artifacts.</param>
 /// <param name="compiler">Compiles the plan into an executable unit of work.</param>
+/// <param name="stateCapturer">Captures the resulting schema into the state store after an apply.</param>
 internal sealed class DefaultMigrationPipeline(
     IMigrationPlanner planner,
     IMigrationReporter reporter,
-    IMigrationCompiler compiler
+    IMigrationCompiler compiler,
+    IStateCapturer stateCapturer
 ) : IMigrationPipeline
 {
     public async Task Plan(CancellationToken cancellationToken = default)
@@ -35,6 +37,18 @@ internal sealed class DefaultMigrationPipeline(
         {
             reporter.Error($"Migration failed: {ex.Message}");
             throw;
+        }
+
+        // Capture the resulting schema so a later offline plan can diff against it. A no-op when no store
+        // is configured; runs even for an empty diff to keep the state fresh.
+        await stateCapturer.Capture(cancellationToken);
+    }
+
+    public async Task Refresh(CancellationToken cancellationToken = default)
+    {
+        if (!await stateCapturer.Capture(cancellationToken))
+        {
+            throw new InvalidOperationException("Refresh requires a state store. Register one via UseSchemaStateStore(...) or UseFileStateStore(...).");
         }
     }
 

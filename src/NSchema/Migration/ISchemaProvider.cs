@@ -12,9 +12,14 @@ namespace NSchema.Migration;
 public interface ISchemaProvider
 {
     /// <summary>
-    /// DI key used to register the single current-state schema provider.
+    /// DI key for the effective current-state provider the planner reads.
     /// </summary>
     internal const string CurrentSchemaProviderKey = "NSchema.Current";
+
+    /// <summary>
+    /// DI key for the live current-state provider (the one that reads the real database).
+    /// </summary>
+    internal const string LiveCurrentSchemaProviderKey = "NSchema.Current.Live";
 
     /// <summary>
     /// Gets the schema for the specified schema names.

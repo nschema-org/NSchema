@@ -57,7 +57,7 @@ await app.Apply();
 
 On startup, NSchema introspects the database, compares it with your desired schema, and applies the resulting plan.
 
-A run performs one of two operations: **`Plan`** (the default) computes and renders the plan without touching the database or **`Apply`** computes the plan and apply it. Call `migration.Plan()` / `migration.Apply()` explicitly, or configure the builder with `RunOperation(...)` and use `RunAsync()`. See [Configuration](docs/configuration.md#operations-plan-and-apply) for details.
+A run performs one of two operations: **`Plan`** (the default) computes and renders the plan without touching the database or **`Apply`** computes the plan and apply it. Call `migration.Plan()` / `migration.Apply()` explicitly, or configure the builder with `RunOperation(...)` and use `RunAsync()`. See [Configuration](docs/configuration.md#operations) for details.
 
 ## Documentation
 

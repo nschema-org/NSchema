@@ -26,6 +26,7 @@ internal sealed class NSchemaHost(
             {
                 MigrationOperation.Plan => pipeline.Plan(cancellationToken),
                 MigrationOperation.Apply => pipeline.Apply(cancellationToken),
+                MigrationOperation.Refresh => pipeline.Refresh(cancellationToken),
                 _ => throw new ArgumentOutOfRangeException(nameof(options), operation, "Unknown migration operation."),
             };
             await run;
