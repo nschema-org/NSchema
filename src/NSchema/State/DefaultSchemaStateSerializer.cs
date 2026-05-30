@@ -7,7 +7,7 @@ namespace NSchema.State;
 /// <summary>
 /// Serializes and deserializes <see cref="DatabaseSchema"/> snapshots to the versioned state envelope.
 /// </summary>
-internal static class SchemaStateSerializer
+internal sealed class DefaultSchemaStateSerializer : ISchemaStateSerializer
 {
     private static readonly JsonSerializerOptions _options = new()
     {
@@ -18,21 +18,15 @@ internal static class SchemaStateSerializer
         Converters = { new SqlTypeJsonConverter(), new JsonStringEnumConverter() },
     };
 
-    /// <summary>
-    /// Serializes a schema snapshot to its JSON envelope representation.
-    /// </summary>
-    public static string Serialize(DatabaseSchema schema)
+    /// <inheritdoc />
+    public string Serialize(DatabaseSchema schema)
     {
         var envelope = new SchemaStateEnvelope(SchemaStateEnvelope.CurrentVersion, schema);
         return JsonSerializer.Serialize(envelope, _options);
     }
 
-    /// <summary>
-    /// Deserializes a schema snapshot from its JSON envelope representation.
-    /// </summary>
-    /// <exception cref="JsonException">The payload is missing or malformed.</exception>
-    /// <exception cref="NotSupportedException">The envelope was written by an incompatible newer format version.</exception>
-    public static DatabaseSchema Deserialize(string json)
+    /// <inheritdoc />
+    public DatabaseSchema Deserialize(string json)
     {
         var envelope = JsonSerializer.Deserialize<SchemaStateEnvelope>(json, _options)
             ?? throw new JsonException("State payload deserialized to null.");

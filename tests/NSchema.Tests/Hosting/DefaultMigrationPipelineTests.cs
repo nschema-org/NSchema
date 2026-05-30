@@ -21,7 +21,7 @@ public sealed class DefaultMigrationPipelineTests
     {
         _planner
             .Plan(Arg.Any<CancellationToken>())
-            .Returns(new MigrationPlan([], DatabaseSchema.Create([])));
+            .Returns(new MigrationPlanResult(new MigrationPlan([], DatabaseSchema.Create([])), []));
 
         _execution.Preview.Returns([]);
         _compiler.Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>()).Returns(_execution);
@@ -48,7 +48,7 @@ public sealed class DefaultMigrationPipelineTests
     {
         // Arrange
         var plan = new MigrationPlan([new CreateSchema("app")], DatabaseSchema.Create([]));
-        _planner.Plan(Arg.Any<CancellationToken>()).Returns(plan);
+        _planner.Plan(Arg.Any<CancellationToken>()).Returns(new MigrationPlanResult(plan, []));
 
         // Act
         await _sut.Apply();
@@ -118,7 +118,7 @@ public sealed class DefaultMigrationPipelineTests
     {
         // Arrange
         var plan = new MigrationPlan([new CreateSchema("app")], DatabaseSchema.Create([]));
-        _planner.Plan(Arg.Any<CancellationToken>()).Returns(plan);
+        _planner.Plan(Arg.Any<CancellationToken>()).Returns(new MigrationPlanResult(plan, []));
         _execution.Preview.Returns(["CREATE SCHEMA app", "CREATE TABLE app.users (id int)"]);
 
         // Act
@@ -131,21 +131,25 @@ public sealed class DefaultMigrationPipelineTests
     }
 
     [Fact]
-    public async Task Apply_PolicyViolation_ReportsErrorsAndRethrows()
+    public async Task Apply_PolicyViolation_ReportsDiagnosticsAndThrows()
     {
         // Arrange
-        var errors = new[] { new PolicyError("P1", "msg1"), new PolicyError("P2", "msg2") };
+        var errors = new[]
+        {
+            new PolicyError("P1", "msg1", PolicySeverity.Error),
+            new PolicyError("P2", "msg2", PolicySeverity.Error),
+        };
         _planner
             .Plan(Arg.Any<CancellationToken>())
-            .Throws(new PolicyViolationException(errors));
+            .Returns(new MigrationPlanResult(null, errors));
 
         // Act
         var act = () => _sut.Apply();
 
         // Assert
-        act.ShouldThrow<PolicyViolationException>();
-        _reporter.Received().Error(Arg.Is<string>(s => s.Contains("msg1")));
-        _reporter.Received().Error(Arg.Is<string>(s => s.Contains("msg2")));
+        await Should.ThrowAsync<PolicyViolationException>(act);
+        _reporter.Received(1).ReportDiagnostics(Arg.Is<IReadOnlyList<PolicyError>>(d =>
+            d.Any(e => e.Message == "msg1") && d.Any(e => e.Message == "msg2")));
         await _compiler.DidNotReceive().Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>());
     }
 
@@ -163,5 +167,24 @@ public sealed class DefaultMigrationPipelineTests
         // Assert
         act.ShouldThrow<InvalidOperationException>();
         _reporter.Received().Error(Arg.Is<string>(s => s.Contains("boom")));
+    }
+
+    [Fact]
+    public async Task Plan_ForwardsDiagnosticsToReporter()
+    {
+        // Arrange
+        var diagnostics = new[]
+        {
+            new PolicyError("P1", "info message", PolicySeverity.Info),
+            new PolicyError("P2", "warning message", PolicySeverity.Warning),
+        };
+        _planner.Plan(Arg.Any<CancellationToken>())
+            .Returns(new MigrationPlanResult(new MigrationPlan([], DatabaseSchema.Create([])), diagnostics));
+
+        // Act
+        await _sut.Plan();
+
+        // Assert
+        _reporter.Received(1).ReportDiagnostics(Arg.Is<IReadOnlyList<PolicyError>>(d => d.SequenceEqual(diagnostics)));
     }
 }

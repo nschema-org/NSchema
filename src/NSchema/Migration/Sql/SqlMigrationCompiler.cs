@@ -10,6 +10,6 @@ internal sealed class SqlMigrationCompiler(ISqlPlanner sqlPlanner, ISqlExecutor 
     public Task<ICompiledMigration> Compile(MigrationPlan plan, CancellationToken cancellationToken = default)
     {
         var sqlPlan = sqlPlanner.Plan(plan);
-        return Task.FromResult<ICompiledMigration>(new CompiledSqlMigration(sqlPlan, sqlExecutor));
+        return Task.FromResult<ICompiledMigration>(new CompiledSqlMigration(plan, sqlPlan, sqlExecutor));
     }
 }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
+using NSchema.Policies;
 using NSchema.Schema;
 
 namespace NSchema.Tests.Hosting;
@@ -59,26 +60,6 @@ public sealed class DefaultMigrationReporterTests
     }
 
     [Fact]
-    public void Warn_WritesToStderrAndLogsAtWarning()
-    {
-        // Arrange
-
-        // Act
-        var (stdout, stderr) = CaptureConsole(() => _sut.Warn("careful"));
-
-        // Assert
-        stderr.ShouldBe("careful" + Environment.NewLine);
-        stdout.ShouldBeEmpty();
-        _logger.Received(1).Log(
-            LogLevel.Warning,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(state => state.ToString()!.Contains("careful")),
-            null,
-            Arg.Any<Func<object, Exception?, string>>()
-        );
-    }
-
-    [Fact]
     public void Error_WritesToStderrAndLogsAtError()
     {
         // Arrange
@@ -126,5 +107,25 @@ public sealed class DefaultMigrationReporterTests
             "CREATE SCHEMA app" + Environment.NewLine +
             "CREATE TABLE app.users (id int)" + Environment.NewLine);
         stderr.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportDiagnostics_RoutesEachSeverityToCorrectStream()
+    {
+        // Arrange
+        var diagnostics = new[]
+        {
+            new PolicyError("P1", "all good", PolicySeverity.Info),
+            new PolicyError("P2", "be careful", PolicySeverity.Warning),
+            new PolicyError("P3", "blocked", PolicySeverity.Error),
+        };
+
+        // Act
+        var (stdout, stderr) = CaptureConsole(() => _sut.ReportDiagnostics(diagnostics));
+
+        // Assert
+        stdout.ShouldContain("P1: all good");
+        stderr.ShouldContain("P2: be careful");
+        stderr.ShouldContain("P3: blocked");
     }
 }

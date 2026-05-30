@@ -13,7 +13,7 @@ namespace NSchema.Hosting;
 /// <param name="reporter">Presents capture progress.</param>
 /// <param name="store">The state store to write the snapshot to, if any.</param>
 /// <param name="live">The live provider to read the resulting schema from, if any.</param>
-internal sealed class StateCapture(
+internal sealed class DefaultStateCapturer(
     IOptions<MigrationOptions> options,
     IMigrationReporter reporter,
     // Default values make these genuinely optional: MS DI only treats a parameter as optional when it has a

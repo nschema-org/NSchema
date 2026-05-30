@@ -40,11 +40,11 @@ public sealed class StateBackedSchemaProviderTests
     }
 
     [Fact]
-    public void UseStateBackedCurrentSchema_RegistersAsCurrentProvider()
+    public void UseCurrentSchemaState_RegistersAsCurrentProvider()
     {
         // Arrange
         var builder = NSchemaApplication.CreateBuilder();
-        builder.UseSchemaStateStore(_store).UseStateBackedCurrentSchema();
+        builder.UseStateStore(_store).UseCurrentSchemaState();
         using var app = builder.Build();
 
         // Act

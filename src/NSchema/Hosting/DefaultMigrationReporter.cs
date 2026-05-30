@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NSchema.Migration;
 using NSchema.Migration.Plan;
+using NSchema.Policies;
 
 namespace NSchema.Hosting;
 
@@ -12,14 +13,9 @@ namespace NSchema.Hosting;
 /// </summary>
 /// <param name="logger">The logger to fan structured output out to.</param>
 /// <param name="planRenderer">Renders the migration plan as a human-readable diff.</param>
-internal sealed class DefaultMigrationReporter(
-    ILogger<DefaultMigrationReporter> logger,
-    IMigrationPlanRenderer planRenderer
-) : IMigrationReporter
+internal sealed class DefaultMigrationReporter(ILogger<DefaultMigrationReporter> logger, IMigrationPlanRenderer planRenderer) : IMigrationReporter
 {
     public void Info(string message) => Write(LogLevel.Information, message);
-
-    public void Warn(string message) => Write(LogLevel.Warning, message);
 
     public void Error(string message) => Write(LogLevel.Error, message);
 
@@ -37,6 +33,20 @@ internal sealed class DefaultMigrationReporter(
         foreach (var statement in statements)
         {
             Write(LogLevel.Information, statement);
+        }
+    }
+
+    public void ReportDiagnostics(IReadOnlyList<PolicyError> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            var level = diagnostic.Severity switch
+            {
+                PolicySeverity.Error => LogLevel.Error,
+                PolicySeverity.Warning => LogLevel.Warning,
+                _ => LogLevel.Information,
+            };
+            Write(level, $"{diagnostic.PolicyName}: {diagnostic.Message}");
         }
     }
 

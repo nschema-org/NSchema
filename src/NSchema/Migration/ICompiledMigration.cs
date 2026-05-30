@@ -1,3 +1,5 @@
+using NSchema.Migration.Plan;
+
 namespace NSchema.Migration;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace NSchema.Migration;
 /// </summary>
 public interface ICompiledMigration
 {
+    /// <summary>
+    /// The migration plan this unit was compiled from.
+    /// </summary>
+    MigrationPlan Plan { get; }
+
     /// <summary>
     /// A human-readable representation of what executing this unit would do.
     /// </summary>

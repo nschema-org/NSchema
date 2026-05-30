@@ -1,8 +1,9 @@
 namespace NSchema.Policies;
 
 /// <summary>
-/// Represents an error that occurs when a database schema violates a specific policy.
+/// Represents a finding from a policy check against a schema or migration plan.
 /// </summary>
-/// <param name="PolicyName">The name of the policy that was violated.</param>
-/// <param name="Message">A descriptive message providing details about the violation of the policy.</param>
-public record PolicyError(string PolicyName, string Message);
+/// <param name="PolicyName">The name of the policy that produced this finding.</param>
+/// <param name="Message">A descriptive message about the finding.</param>
+/// <param name="Severity">The severity of the finding. Defaults to <see cref="PolicySeverity.Error"/>.</param>
+public record PolicyError(string PolicyName, string Message, PolicySeverity Severity = PolicySeverity.Error);

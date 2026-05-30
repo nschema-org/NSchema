@@ -48,7 +48,7 @@ internal sealed class DefaultMigrationPipeline(
     {
         if (!await stateCapturer.Capture(cancellationToken))
         {
-            throw new InvalidOperationException("Refresh requires a state store. Register one via UseSchemaStateStore(...) or UseFileStateStore(...).");
+            throw new InvalidOperationException("Refresh requires a state store. Register one via UseStateStore(...) or UseStateStoreFile(...).");
         }
     }
 
@@ -58,25 +58,19 @@ internal sealed class DefaultMigrationPipeline(
     private async Task<ICompiledMigration> Prepare(CancellationToken cancellationToken)
     {
         reporter.Info("Computing migration plan...");
-        Migration.Plan.MigrationPlan plan;
-        try
+        var result = await planner.Plan(cancellationToken);
+
+        reporter.ReportDiagnostics(result.Diagnostics);
+
+        if (result.HasErrors)
         {
-            plan = await planner.Plan(cancellationToken);
-        }
-        catch (PolicyViolationException ex)
-        {
-            reporter.Error("Validation failed:");
-            foreach (var error in ex.Errors)
-            {
-                reporter.Error($"- {error.PolicyName}: {error.Message}");
-            }
-            throw;
+            throw new PolicyViolationException(result.Errors.ToList());
         }
 
-        reporter.ReportPlan(plan);
+        reporter.ReportPlan(result.Plan);
 
         reporter.Info("Compiling migration plan...");
-        var execution = await compiler.Compile(plan, cancellationToken);
+        var execution = await compiler.Compile(result.Plan, cancellationToken);
         reporter.ReportPreview(execution.Preview);
 
         return execution;

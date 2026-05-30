@@ -21,7 +21,7 @@ This section of the pipeline is where the migration plan is generated. It runs o
 1. **Resolve desired schemas.** Load the target schema(s) from one or more registered sources.
 2. **Combine desired schemas.** Combine the desired schemas into a single database schema.
 3. **Validate the desired schema.** Run any registered schema policies to validate things like naming, required columns, banned types, etc.
-4. **Read current state.** Load the current schema from your target database, or another source.
+4. **Read current state.** Load the current schema from your target database, or the state store.
 5. **Compare schemas.** The current and desired schemas are compared to produce a `MigrationPlan`.
 6. **Transform the plan.** Any custom transformations are applied to the plan. This is where actions are reordered to respect dependencies, or where custom actions are injected.
 7. **Validate the plan.** Validate the plan using any registered policies. If configured, the built-in `DestructiveActionMigrationPolicy` will error on any destructive actions.
@@ -32,6 +32,11 @@ This section of the pipeline is where the migration plan is generated. It runs o
 This section runs only for an `Apply` operation. It takes the compiled plan and executes it against the database.
 
 1. **Execute the migration.** Takes the compiled migration from the Planning phase, and executes it against the target.
+2. **State capture.** After a successful apply, the resulting schema is captured to the state store (if configured) so that future plans can be generated against it.
+
+### Refresh
+
+The `Refresh` operation captures the current live schema to the state store without doing any planning or applying. This is useful for recording drift that happened between applies, or for initializing the state store with the current schema.
 
 ## Schema providers
 

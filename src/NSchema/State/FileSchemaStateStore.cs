@@ -7,10 +7,11 @@ namespace NSchema.State;
 /// An <see cref="ISchemaStateStore"/> that persists the schema snapshot to a JSON file on the local filesystem.
 /// </summary>
 /// <param name="options">The absolute or relative path of the state file.</param>
+/// <param name="serializer">The serializer used to convert schema snapshots to and from their stored representation.</param>
 /// <remarks>
 /// Useful for local development and for backends that surface state as a mounted file.
 /// </remarks>
-internal sealed class FileSchemaStateStore(IOptions<FileSchemaStateStoreOptions> options) : ISchemaStateStore
+internal sealed class FileSchemaStateStore(IOptions<FileSchemaStateStoreOptions> options, ISchemaStateSerializer serializer) : ISchemaStateStore
 {
     /// <inheritdoc />
     public async Task<DatabaseSchema?> Read(CancellationToken cancellationToken = default)
@@ -21,7 +22,7 @@ internal sealed class FileSchemaStateStore(IOptions<FileSchemaStateStoreOptions>
         }
 
         var json = await File.ReadAllTextAsync(options.Value.Path, cancellationToken);
-        return SchemaStateSerializer.Deserialize(json);
+        return serializer.Deserialize(json);
     }
 
     /// <inheritdoc />
@@ -33,7 +34,7 @@ internal sealed class FileSchemaStateStore(IOptions<FileSchemaStateStoreOptions>
             Directory.CreateDirectory(directory);
         }
 
-        var json = SchemaStateSerializer.Serialize(schema);
+        var json = serializer.Serialize(schema);
         await File.WriteAllTextAsync(options.Value.Path, json, cancellationToken);
     }
 }

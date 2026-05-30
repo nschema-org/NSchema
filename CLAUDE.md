@@ -42,7 +42,7 @@ The `schemaNames` parameter is a scope filter: `null` / empty means "return ever
 
 ### Pipeline
 
-`DefaultMigrationPipeline` (`src/NSchema/Hosting/DefaultMigrationPipeline.cs`) runs the planner (steps 1–8) and then compiles and (for an apply) runs the result (steps 9–10). It orchestrates user-facing reporting via `IMigrationReporter`; the planner is pure and signals policy failures via `PolicyViolationException`, which the pipeline catches to surface to the user. `Plan` and `Apply` share a private `Prepare` step (plan → report diff → compile → report preview); `Apply` then executes the compiled migration.
+`DefaultMigrationPipeline` (`src/NSchema/Hosting/DefaultMigrationPipeline.cs`) runs the planner (steps 1–8) and then compiles and (for an apply) runs the result (steps 9–10). It orchestrates user-facing reporting via `IMigrationReporter`; the planner is pure and returns a `MigrationPlanResult` containing the plan and all policy diagnostics — the pipeline checks for error-severity diagnostics, reports them via `ReportDiagnostics`, and throws `PolicyViolationException` itself if any are found. `Plan` and `Apply` share a private `Prepare` step (plan → report diff → compile → report preview); `Apply` then executes the compiled migration.
 
 Steps 1–8 run inside `DefaultMigrationPlanner` (`src/NSchema/Migration/DefaultMigrationPlanner.cs`):
 

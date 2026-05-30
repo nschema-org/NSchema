@@ -5,8 +5,10 @@ using NSchema.State;
 
 namespace NSchema.Tests.State;
 
-public sealed class SchemaStateSerializerTests
+public sealed class DefaultSchemaStateSerializerTests
 {
+    private static readonly ISchemaStateSerializer _sut = new DefaultSchemaStateSerializer();
+
     /// <summary>
     /// A schema exercising every domain feature, for round-trip coverage.
     /// </summary>
@@ -78,11 +80,11 @@ public sealed class SchemaStateSerializerTests
         var original = RichSchema();
 
         // Act: a read + write cycle must reproduce the exact same document.
-        var json = SchemaStateSerializer.Serialize(original);
-        var roundTripped = SchemaStateSerializer.Deserialize(json);
+        var json = _sut.Serialize(original);
+        var roundTripped = _sut.Deserialize(json);
 
         // Assert
-        SchemaStateSerializer.Serialize(roundTripped).ShouldBe(json);
+        _sut.Serialize(roundTripped).ShouldBe(json);
     }
 
     [Theory]
@@ -94,7 +96,7 @@ public sealed class SchemaStateSerializerTests
             [SchemaDefinition.Create("app", tables: [Table.Create("t", columns: [Column.Create("c", type)])])]);
 
         // Act
-        var roundTripped = SchemaStateSerializer.Deserialize(SchemaStateSerializer.Serialize(schema));
+        var roundTripped = _sut.Deserialize(_sut.Serialize(schema));
 
         // Assert
         roundTripped.Schemas[0].Tables[0].Columns[0].Type.ShouldBe(type);
@@ -125,7 +127,7 @@ public sealed class SchemaStateSerializerTests
         var path = SnapshotPath();
         File.Exists(path).ShouldBeTrue($"Snapshot not found at '{path}'. Run the RefreshSnapshot test to generate it.");
 
-        var actual = SchemaStateSerializer.Serialize(RichSchema());
+        var actual = _sut.Serialize(RichSchema());
         var expected = File.ReadAllText(path);
 
         JsonNode.DeepEquals(JsonNode.Parse(actual), JsonNode.Parse(expected)).ShouldBeTrue(
@@ -138,7 +140,7 @@ public sealed class SchemaStateSerializerTests
     {
         var path = SnapshotPath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, SchemaStateSerializer.Serialize(RichSchema()));
+        File.WriteAllText(path, _sut.Serialize(RichSchema()));
     }
 
     // Resolves the snapshot next to this source file, so RefreshSnapshot writes back to the
@@ -162,7 +164,7 @@ public sealed class SchemaStateSerializerTests
         ]);
 
         // Act
-        var json = SchemaStateSerializer.Serialize(schema);
+        var json = _sut.Serialize(schema);
 
         // Assert: enums serialize as readable names, not integers.
         json.ShouldContain("\"Cascade\"");
@@ -179,7 +181,7 @@ public sealed class SchemaStateSerializerTests
             """;
 
         // Act
-        var act = () => SchemaStateSerializer.Deserialize(json);
+        var act = () => _sut.Deserialize(json);
 
         // Assert
         act.ShouldThrow<NotSupportedException>();

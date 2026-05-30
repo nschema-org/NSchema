@@ -4,6 +4,7 @@ using NSchema.Migration.Plan;
 using NSchema.Policies;
 using NSchema.Schema;
 
+
 namespace NSchema.Tests.Migration;
 
 public sealed class DefaultMigrationPlannerTests
@@ -78,7 +79,7 @@ public sealed class DefaultMigrationPlannerTests
     }
 
     [Fact]
-    public async Task GetMigrationPlan_RunsSchemaPoliciesAndThrowsOnError()
+    public async Task GetMigrationPlan_RunsSchemaPoliciesAndReturnsErrorDiagnostics()
     {
         // Arrange
         var policy = Substitute.For<ISchemaPolicy>();
@@ -86,12 +87,13 @@ public sealed class DefaultMigrationPlannerTests
         _schemaPolicies.Add(policy);
 
         // Act
-        var act = () => _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
-        ex.Errors.ShouldHaveSingleItem();
-        ex.Errors[0].Message.ShouldBe("broken");
+        result.Plan.ShouldBeNull();
+        result.Diagnostics.ShouldHaveSingleItem();
+        result.Diagnostics[0].Message.ShouldBe("broken");
+        result.Diagnostics[0].Severity.ShouldBe(PolicySeverity.Error);
     }
 
     [Fact]
@@ -103,10 +105,9 @@ public sealed class DefaultMigrationPlannerTests
         _schemaPolicies.Add(policy);
 
         // Act
-        var act = () => _sut.Plan();
+        await _sut.Plan();
 
         // Assert
-        await Should.ThrowAsync<PolicyViolationException>(act);
         await _current.DidNotReceive().GetSchema(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
         _comparer.DidNotReceive().Compare(Arg.Any<DatabaseSchema>(), Arg.Any<DatabaseSchema>());
     }
@@ -177,13 +178,14 @@ public sealed class DefaultMigrationPlannerTests
         _scripts.Add(scripts);
 
         // Act
-        var plan = await _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        plan.Actions.Count.ShouldBe(3);
-        plan.Actions[0].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("pre");
-        plan.Actions[1].ShouldBe(coreAction);
-        plan.Actions[2].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("post");
+        result.Plan.ShouldNotBeNull();
+        result.Plan.Actions.Count.ShouldBe(3);
+        result.Plan.Actions[0].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("pre");
+        result.Plan.Actions[1].ShouldBe(coreAction);
+        result.Plan.Actions[2].ShouldBeOfType<RunScript>().Script.Name.ShouldBe("post");
     }
 
     [Fact]
@@ -195,11 +197,12 @@ public sealed class DefaultMigrationPlannerTests
             .Returns(call => new MigrationPlan([coreAction], call.ArgAt<DatabaseSchema>(1)));
 
         // Act
-        var plan = await _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        plan.Actions.ShouldHaveSingleItem();
-        plan.Actions[0].ShouldBe(coreAction);
+        result.Plan.ShouldNotBeNull();
+        result.Plan.Actions.ShouldHaveSingleItem();
+        result.Plan.Actions[0].ShouldBe(coreAction);
     }
 
     [Fact]
@@ -216,10 +219,10 @@ public sealed class DefaultMigrationPlannerTests
         _transformers.Add(t2);
 
         // Act
-        var plan = await _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        plan.ShouldBe(after2);
+        result.Plan.ShouldBe(after2);
         Received.InOrder(() =>
         {
             t1.Transform(Arg.Any<MigrationPlan>());
@@ -228,7 +231,7 @@ public sealed class DefaultMigrationPlannerTests
     }
 
     [Fact]
-    public async Task GetMigrationPlan_RunsMigrationPoliciesAgainstTransformedPlanAndThrowsOnError()
+    public async Task GetMigrationPlan_RunsMigrationPoliciesAgainstTransformedPlanAndReturnsErrorDiagnostics()
     {
         // Arrange
         var transformer = Substitute.For<IMigrationPlanTransformer>();
@@ -240,11 +243,11 @@ public sealed class DefaultMigrationPlannerTests
         _migrationPolicies.Add(policy);
 
         // Act
-        var act = () => _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
-        ex.Errors[0].Message.ShouldBe("destructive");
+        result.Diagnostics.ShouldHaveSingleItem();
+        result.Diagnostics[0].Message.ShouldBe("destructive");
         policy.Received(1).Validate(transformed);
     }
 
@@ -290,7 +293,7 @@ public sealed class DefaultMigrationPlannerTests
     }
 
     [Fact]
-    public async Task GetMigrationPlan_AggregatesErrorsFromMultiplePolicies()
+    public async Task GetMigrationPlan_AggregatesDiagnosticsFromMultiplePolicies()
     {
         // Arrange
         var p1 = Substitute.For<ISchemaPolicy>();
@@ -301,10 +304,9 @@ public sealed class DefaultMigrationPlannerTests
         _schemaPolicies.Add(p2);
 
         // Act
-        var act = () => _sut.Plan();
+        var result = await _sut.Plan();
 
         // Assert
-        var ex = await Should.ThrowAsync<PolicyViolationException>(act);
-        ex.Errors.Count.ShouldBe(3);
+        result.Diagnostics.Count.ShouldBe(3);
     }
 }

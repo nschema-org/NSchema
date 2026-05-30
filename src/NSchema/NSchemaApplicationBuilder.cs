@@ -8,6 +8,7 @@ using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Migration.Sql;
 using NSchema.Policies;
+using NSchema.State;
 
 namespace NSchema;
 
@@ -78,6 +79,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
 
     private static void ApplyServices(IServiceCollection services)
     {
+        services.TryAddSingleton<ISchemaStateSerializer, DefaultSchemaStateSerializer>();
         services.TryAddSingleton<IMigrationReporter, DefaultMigrationReporter>();
         services.TryAddSingleton<IMigrationPlanRenderer, DefaultMigrationPlanRenderer>();
         services.TryAddSingleton<ISchemaComparer, DefaultSchemaComparer>();
@@ -86,10 +88,10 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<IMigrationPipeline, DefaultMigrationPipeline>();
         services.TryAddSingleton<ISqlExecutor, DefaultSqlExecutor>();
         services.TryAddSingleton<IMigrationCompiler, SqlMigrationCompiler>();
-        services.TryAddSingleton<IStateCapturer, StateCapture>();
+        services.TryAddSingleton<IStateCapturer, DefaultStateCapturer>();
 
         // The planner reads the effective current provider. By default that's the live provider; calling
-        // UseStateBackedCurrentSchema / UseAutoCurrentSchema registers an override that wins over this.
+        // UseCurrentSchemaState / UseCurrentSchemaAuto registers an override that wins over this.
         services.TryAddKeyedSingleton<ISchemaProvider>(
             ISchemaProvider.CurrentSchemaProviderKey,
             (sp, _) => sp.GetRequiredKeyedService<ISchemaProvider>(ISchemaProvider.LiveCurrentSchemaProviderKey));

@@ -60,13 +60,13 @@ public sealed class AutoCurrentSchemaProviderTests
     }
 
     [Fact]
-    public async Task UseAutoCurrentSchema_WiresRoutingThroughDependencyInjection()
+    public async Task UseCurrentSchemaAuto_WiresRoutingThroughDependencyInjection()
     {
         // Arrange
         var builder = NSchemaApplication.CreateBuilder();
         builder
             .UseCurrentSchema<LiveProvider>()
-            .UseSchemaStateStore(new StateStore())
+            .UseStateStore(new StateStore())
             .UseCurrentSchemaAuto();
         using var app = builder.Build();
 

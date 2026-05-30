@@ -6,6 +6,7 @@ namespace NSchema.Tests.State;
 
 public sealed class FileSchemaStateStoreTests : IDisposable
 {
+    private static readonly ISchemaStateSerializer _serializer = new DefaultSchemaStateSerializer();
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"nschema-state-{Guid.NewGuid():N}");
     private readonly string _path;
     private readonly IOptions<FileSchemaStateStoreOptions> _options;
@@ -31,7 +32,7 @@ public sealed class FileSchemaStateStoreTests : IDisposable
     public async Task Read_MissingFile_ReturnsNull()
     {
         // Arrange
-        var sut = new FileSchemaStateStore(_options);
+        var sut = new FileSchemaStateStore(_options, _serializer);
 
         // Act
         var result = await sut.Read();
@@ -44,7 +45,7 @@ public sealed class FileSchemaStateStoreTests : IDisposable
     public async Task Write_CreatesFileAndMissingDirectories()
     {
         // Arrange
-        var sut = new FileSchemaStateStore(_options);
+        var sut = new FileSchemaStateStore(_options, _serializer);
 
         // Act
         await sut.Write(SampleSchema());
@@ -57,7 +58,7 @@ public sealed class FileSchemaStateStoreTests : IDisposable
     public async Task Write_ThenRead_RoundTripsTheSchema()
     {
         // Arrange
-        var sut = new FileSchemaStateStore(_options);
+        var sut = new FileSchemaStateStore(_options, _serializer);
         var original = SampleSchema();
 
         // Act
@@ -66,6 +67,6 @@ public sealed class FileSchemaStateStoreTests : IDisposable
 
         // Assert: compare via the serializer, since the domain records don't all define structural equality.
         result.ShouldNotBeNull();
-        SchemaStateSerializer.Serialize(result).ShouldBe(SchemaStateSerializer.Serialize(original));
+        _serializer.Serialize(result).ShouldBe(_serializer.Serialize(original));
     }
 }

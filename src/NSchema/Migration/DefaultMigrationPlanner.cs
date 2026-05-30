@@ -7,7 +7,7 @@ using NSchema.Schema;
 namespace NSchema.Migration;
 
 /// <summary>
-/// Default <see cref="IMigrationPlanner"/>. Pure: produces a plan or throws; does not write to any reporter.
+/// Default <see cref="IMigrationPlanner"/>.
 /// </summary>
 /// <param name="currentProvider">The provider for retrieving the current schema state.</param>
 /// <param name="desiredProviders">The collection of providers for retrieving the desired schema state.</param>
@@ -30,7 +30,7 @@ internal sealed class DefaultMigrationPlanner(
     IOptions<MigrationOptions> options
 ) : IMigrationPlanner
 {
-    public async Task<MigrationPlan> Plan(CancellationToken cancellationToken = default)
+    public async Task<MigrationPlanResult> Plan(CancellationToken cancellationToken = default)
     {
         var scope = options.Value.SchemaNames;
 
@@ -42,7 +42,7 @@ internal sealed class DefaultMigrationPlanner(
         var schemaErrors = schemaPolicies.SelectMany(p => p.Validate(desiredSchema)).ToList();
         if (schemaErrors.Count > 0)
         {
-            throw new PolicyViolationException(schemaErrors);
+            return new MigrationPlanResult(null, schemaErrors);
         }
 
         // Get current schema state. When no explicit scope is set, derive it from the aggregated
@@ -73,12 +73,7 @@ internal sealed class DefaultMigrationPlanner(
         migrationPlan = planTransformers.Aggregate(migrationPlan, (p, t) => t.Transform(p));
 
         // Run all registered action policies against the transformed plan.
-        var migrationErrors = migrationPolicies.SelectMany(p => p.Validate(migrationPlan)).ToList();
-        if (migrationErrors.Count > 0)
-        {
-            throw new PolicyViolationException(migrationErrors);
-        }
-
-        return migrationPlan;
+        var diagnostics = migrationPolicies.SelectMany(p => p.Validate(migrationPlan)).ToList();
+        return new MigrationPlanResult(migrationPlan, diagnostics);
     }
 }
