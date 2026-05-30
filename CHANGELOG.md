@@ -4,20 +4,18 @@ All notable changes to NSchema will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-alpha.1] - 2026-05-29
+## [2.0.0-unreleased]
 
-Version 2 is focusing on improving the developer experience around applying migrations, with a more explicit and flexible model for planning and executing changes.
+Version 2 is focusing on improving the developer experience, with a more explicit but flexible model for planning and applying changes. The public API has been restructured to support this, and some breaking changes have been made to increase clarity and make operations more explicit.
 
-The public API has been restructured to support this, and some breaking changes have been made to remove ambiguity and reduce the risk of accidentally applying changes.
-
-Additionally, we're looking at introducing an optional "backend state store" so that plans can be made against the last applied state rather than the current live state similar to Terraform.
+V2 also introduces an optional Terraform-style "backend state store" so that plans can be made against state snapshots rather than the current live state.
 
 ### Added
 
 - Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`.
 - Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` still uses the configured operation.)
 - Added `IMigrationCompiler` and `ICompiledMigration`. Replaces `IMigrationExecutor` by compiling a migration plan into an executable unit of work. Register a custom compiler via `UseMigrationCompiler<T>()`.
-- Added `ISchemaStateSerializer` for versioned serialization of schema state, with a built-in `SchemaStateSerializer`.
+- Added `ISchemaStateSerializer` for versioned serialization of schema state, with a built-in `DefaultSchemaStateSerializer`.
 - Added `ISchemaStateStore` for optional backend state storage, and `UseStateStore<T>()` for registration. This allows plans to be generated against the last applied state rather than the current live state.
 - Added `FileSchemaStateStore` implementation of `ISchemaStateStore` that saves the last applied schema to a local file. This is useful for simple scenarios or as a reference implementation for custom stores.
 - Added control over where the current schema is read from: `UseCurrentSchemaState()` reads it from the state store, while `UseCurrentSchemaAuto()` reads from the store when planning and from the live database when applying.

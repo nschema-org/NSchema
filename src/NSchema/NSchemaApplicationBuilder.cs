@@ -88,7 +88,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<IMigrationPipeline, DefaultMigrationPipeline>();
         services.TryAddSingleton<ISqlExecutor, DefaultSqlExecutor>();
         services.TryAddSingleton<IMigrationCompiler, SqlMigrationCompiler>();
-        services.TryAddSingleton<IStateCapturer, StateCapture>();
+        services.TryAddSingleton<IStateCapturer, DefaultStateCapturer>();
 
         // The planner reads the effective current provider. By default that's the live provider; calling
         // UseCurrentSchemaState / UseCurrentSchemaAuto registers an override that wins over this.

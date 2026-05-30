@@ -7,11 +7,11 @@ using NSchema.State;
 
 namespace NSchema.Tests.Hosting;
 
-public sealed class StateCaptureTests
+public sealed class DefaultStateCapturerTests
 {
     private readonly IMigrationReporter _reporter = Substitute.For<IMigrationReporter>();
 
-    private StateCapture CreateSut(ISchemaStateStore? store, ISchemaProvider? live, MigrationOptions? options = null) =>
+    private DefaultStateCapturer CreateSut(ISchemaStateStore? store, ISchemaProvider? live, MigrationOptions? options = null) =>
         new(Options.Create(options ?? new MigrationOptions()), _reporter, store, live);
 
     [Fact]
@@ -87,6 +87,6 @@ public sealed class StateCaptureTests
 
         var capturer = app.Services.GetRequiredService<IStateCapturer>();
 
-        capturer.ShouldBeOfType<StateCapture>();
+        capturer.ShouldBeOfType<DefaultStateCapturer>();
     }
 }
