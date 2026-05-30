@@ -48,7 +48,7 @@ internal sealed class DefaultMigrationPipeline(
     {
         if (!await stateCapturer.Capture(cancellationToken))
         {
-            throw new InvalidOperationException("Refresh requires a state store. Register one via UseSchemaStateStore(...) or UseFileStateStore(...).");
+            throw new InvalidOperationException("Refresh requires a state store. Register one via UseStateStore(...) or UseStateStoreFile(...).");
         }
     }
 

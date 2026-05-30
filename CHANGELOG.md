@@ -17,9 +17,9 @@ Additionally, we're looking at introducing an optional "backend state store" so 
 - Replaced the `MigrationOptions.DryRun` flag with a `MigrationOperation` enum and `MigrationOptions.Operation` option to select what a run does (`Plan` or `Apply`), configurable via `RunOperation(...)`.
 - Explicit `NSchemaApplication.Plan(...)` and `Apply(...)` entry points that run a specific operation. This overrides any pre-configured `Operation` for that run. (`RunAsync()` still uses the configured operation.)
 - Added `IMigrationCompiler` and `ICompiledMigration`. Replaces `IMigrationExecutor` by compiling a migration plan into an executable unit of work. Register a custom compiler via `UseMigrationCompiler<T>()`.
-- Added `ISchemaStateStore` for optional backend state storage, and `UseSchemaStateStore<T>()` for registration. This allows plans to be generated against the last applied state rather than the current live state.
+- Added `ISchemaStateStore` for optional backend state storage, and `UseStateStore<T>()` for registration. This allows plans to be generated against the last applied state rather than the current live state.
 - Added `FileSchemaStateStore` implementation of `ISchemaStateStore` that saves the last applied schema to a local file. This is useful for simple scenarios or as a reference implementation for custom stores.
-- Added control over where the current schema is read from: `UseStateBackedCurrentSchema()` reads it from the state store, while `UseCurrentSchemaAuto()` reads from the store when planning and from the live database when applying.
+- Added control over where the current schema is read from: `UseCurrentSchemaState()` reads it from the state store, while `UseCurrentSchemaAuto()` reads from the store when planning and from the live database when applying.
 - After a successful apply, NSchema now captures the resulting schema to the state store (when one is configured). The new `Refresh` operation (`MigrationOperation.Refresh` / `NSchemaApplication.Refresh()`) captures it without planning or applying.
 
 ### Changed

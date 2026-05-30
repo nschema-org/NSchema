@@ -11,7 +11,7 @@ public partial class NSchemaApplicationBuilder
     /// </summary>
     /// <typeparam name="T">The state store implementation to register.</typeparam>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseSchemaStateStore<T>() where T : class, ISchemaStateStore
+    public NSchemaApplicationBuilder UseStateStore<T>() where T : class, ISchemaStateStore
     {
         Services.AddSingleton<ISchemaStateStore, T>();
         return this;
@@ -22,7 +22,7 @@ public partial class NSchemaApplicationBuilder
     /// </summary>
     /// <param name="store">The state store instance.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseSchemaStateStore(ISchemaStateStore store)
+    public NSchemaApplicationBuilder UseStateStore(ISchemaStateStore store)
     {
         Services.AddSingleton(store);
         return this;
@@ -33,7 +33,7 @@ public partial class NSchemaApplicationBuilder
     /// </summary>
     /// <param name="path">The absolute or relative path of the state file.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseFileStateStore(string path)
+    public NSchemaApplicationBuilder UseStateStoreFile(string path)
     {
         Services.Configure<FileSchemaStateStoreOptions>(o => o.Path = path);
         Services.AddSingleton<ISchemaStateStore, FileSchemaStateStore>();
@@ -44,7 +44,7 @@ public partial class NSchemaApplicationBuilder
     /// Registers the state store as the current-state schema source. Requires a state store to be registered.
     /// </summary>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseStateBackedCurrentSchema()
+    public NSchemaApplicationBuilder UseCurrentSchemaState()
     {
         Services.AddKeyedSingleton<ISchemaProvider, StateBackedSchemaProvider>(ISchemaProvider.CurrentSchemaProviderKey);
         return this;

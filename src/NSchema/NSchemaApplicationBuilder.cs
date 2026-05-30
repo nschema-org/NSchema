@@ -89,7 +89,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         services.TryAddSingleton<IStateCapturer, StateCapture>();
 
         // The planner reads the effective current provider. By default that's the live provider; calling
-        // UseStateBackedCurrentSchema / UseAutoCurrentSchema registers an override that wins over this.
+        // UseCurrentSchemaState / UseCurrentSchemaAuto registers an override that wins over this.
         services.TryAddKeyedSingleton<ISchemaProvider>(
             ISchemaProvider.CurrentSchemaProviderKey,
             (sp, _) => sp.GetRequiredKeyedService<ISchemaProvider>(ISchemaProvider.LiveCurrentSchemaProviderKey));

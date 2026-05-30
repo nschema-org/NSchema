@@ -24,33 +24,33 @@ public sealed class StateStoreRegistrationTests
     }
 
     [Fact]
-    public void UseFileStateStore_RegistersFileStore()
+    public void UseStateStoreFile_RegistersFileStore()
     {
         // Act
-        var store = ResolveStore(b => b.UseFileStateStore("state.json"));
+        var store = ResolveStore(b => b.UseStateStoreFile("state.json"));
 
         // Assert
         store.ShouldBeOfType<FileSchemaStateStore>();
     }
 
     [Fact]
-    public void UseSchemaStateStore_Generic_RegistersStore()
+    public void UseStateStore_Generic_RegistersStore()
     {
         // Act
-        var store = ResolveStore(b => b.UseSchemaStateStore<FakeStateStore>());
+        var store = ResolveStore(b => b.UseStateStore<FakeStateStore>());
 
         // Assert
         store.ShouldBeOfType<FakeStateStore>();
     }
 
     [Fact]
-    public void UseSchemaStateStore_Instance_RegistersThatInstance()
+    public void UseStateStore_Instance_RegistersThatInstance()
     {
         // Arrange
         var instance = new FakeStateStore();
 
         // Act
-        var store = ResolveStore(b => b.UseSchemaStateStore(instance));
+        var store = ResolveStore(b => b.UseStateStore(instance));
 
         // Assert
         store.ShouldBeSameAs(instance);
