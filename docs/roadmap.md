@@ -80,6 +80,26 @@ Each would follow the same pattern as `NSchema.Aws`: an `ISchemaStateStore` impl
 
 ---
 
+## Multiple database providers
+
+Currently: PostgreSQL. SQL Server is the obvious next step, but MySQL, Oracle, and SQLite are also on the radar.
+
+* `NSchema.SqlServer` — SQL Server provider with `UseCurrentSchemaSqlServer()` and SQL Server-specific type helpers.
+* `NSchema.MySql` — MySQL provider with `UseCurrentSchemaMySql()` and MySQL-specific type helpers.
+* `NSchema.Oracle` — Oracle provider with `UseCurrentSchemaOracle()` and Oracle-specific type helpers.
+* `NSchema.Sqlite` — SQLite provider with `UseCurrentSchemaSqlite()` and SQLite-specific type helpers.
+
+---
+
+### Multiple schema providers
+
+Declaring schemas in C# code is the primary use case for non-CLI use, but some teams might want to source schemas from elsewhere:
+
+- **YAML/JSON files** — `FileSchemaProvider` that reads schema definitions from a directory of YAML or JSON files. Could be a good fit for teams with strong DevOps culture who want to manage everything as code, but don't want to write C#.
+- **DSL** — a custom domain-specific language for schema definitions, with a parser that emits `DatabaseSchema` instances. Could be more concise than C# for complex schemas, but adds the overhead of designing and maintaining a DSL.
+
+---
+
 ## Workspaces / environment scoping
 
 First-class concept for managing state per environment (dev, staging, production). Terraform workspaces isolate state under a namespace.
