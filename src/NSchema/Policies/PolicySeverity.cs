@@ -9,12 +9,12 @@ public enum PolicySeverity
     /// Informational; no action required.
     /// </summary>
     Info,
-    
+
     /// <summary>
     /// The finding warrants attention but does not block the migration.
     /// </summary>
     Warning,
-    
+
     /// <summary>
     /// The finding blocks the migration.
     /// </summary>

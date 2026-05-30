@@ -42,7 +42,7 @@ internal sealed class DefaultMigrationReporter(ILogger<DefaultMigrationReporter>
         {
             var level = diagnostic.Severity switch
             {
-                PolicySeverity.Error   => LogLevel.Error,
+                PolicySeverity.Error => LogLevel.Error,
                 PolicySeverity.Warning => LogLevel.Warning,
                 _ => LogLevel.Information,
             };
