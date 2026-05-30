@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using NSchema.Schema;
 using NSchema.State;
@@ -115,65 +116,35 @@ public sealed class SchemaStateSerializerTests
     }
 
     [Fact]
-    public void Serialize_ProducesExpectedFormat()
+    public void Serialize_MatchesSnapshot()
     {
-        // Arrange: a golden snapshot. Compared structurally (DeepEquals), so whitespace and property
-        // order don't matter — but a domain refactor that changes the on-disk shape will fail here,
-        // which is the signal to bump SchemaStateEnvelope.CurrentVersion deliberately.
-        var schema = DatabaseSchema.Create(
-        [
-            SchemaDefinition.Create("app", tables:
-            [
-                Table.Create("users",
-                    primaryKey: new PrimaryKey("users_pkey", ["id"]),
-                    columns:
-                    [
-                        Column.Create("id", SqlType.Int, isIdentity: true),
-                        Column.Create("balance", SqlType.Decimal(18, 2), isNullable: true),
-                    ],
-                    indexes: [TableIndex.Create("ix_users_balance", ["balance"])]),
-            ]),
-        ]);
+        // The snapshot file pins the on-disk format. It's compared structurally (DeepEquals), so
+        // whitespace and property order don't matter — but a domain change that alters the serialized
+        // shape fails here. When that's intentional, regenerate it via RefreshSnapshot and bump
+        // SchemaStateEnvelope.CurrentVersion if the on-disk format itself changed.
+        var path = SnapshotPath();
+        File.Exists(path).ShouldBeTrue($"Snapshot not found at '{path}'. Run the RefreshSnapshot test to generate it.");
 
-        const string expected =
-            """
-            {
-              "version": 1,
-              "schema": {
-                "schemas": [
-                  {
-                    "name": "app",
-                    "isPartial": false,
-                    "tables": [
-                      {
-                        "name": "users",
-                        "primaryKey": { "name": "users_pkey", "columnNames": ["id"] },
-                        "columns": [
-                          { "name": "id", "type": { "kind": "int" }, "isNullable": false, "isIdentity": true },
-                          { "name": "balance", "type": { "kind": "decimal", "precision": 18, "scale": 2 }, "isNullable": true, "isIdentity": false }
-                        ],
-                        "foreignKeys": [],
-                        "indexes": [
-                          { "name": "ix_users_balance", "columnNames": ["balance"], "isUnique": false }
-                        ],
-                        "grants": []
-                      }
-                    ],
-                    "droppedTables": [],
-                    "grants": []
-                  }
-                ],
-                "droppedSchemas": []
-              }
-            }
-            """;
+        var actual = SchemaStateSerializer.Serialize(RichSchema());
+        var expected = File.ReadAllText(path);
 
-        // Act
-        var actual = SchemaStateSerializer.Serialize(schema);
-
-        // Assert
-        JsonNode.DeepEquals(JsonNode.Parse(actual), JsonNode.Parse(expected)).ShouldBeTrue();
+        JsonNode.DeepEquals(JsonNode.Parse(actual), JsonNode.Parse(expected)).ShouldBeTrue(
+            "Serialized output no longer matches the snapshot. If this change is intentional, regenerate it with " +
+            "the RefreshSnapshot test (and bump SchemaStateEnvelope.CurrentVersion if the on-disk format changed).");
     }
+
+    [Fact(Skip = "Enable locally to regenerate the serialization snapshot, then commit the updated file.")]
+    public void RefreshSnapshot()
+    {
+        var path = SnapshotPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, SchemaStateSerializer.Serialize(RichSchema()));
+    }
+
+    // Resolves the snapshot next to this source file, so RefreshSnapshot writes back to the
+    // source-controlled copy. Reads from the source tree, which assumes tests run on the build machine.
+    private static string SnapshotPath([CallerFilePath] string thisFilePath = "")
+        => Path.Combine(Path.GetDirectoryName(thisFilePath)!, "Snapshots", "rich-schema.json");
 
     [Fact]
     public void Serialize_WritesEnumsAsNames()

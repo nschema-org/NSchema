@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "schema": {
+    "schemas": [
+      {
+        "name": "app",
+        "oldName": "legacy_app",
+        "isPartial": true,
+        "comment": "application schema",
+        "tables": [
+          {
+            "name": "users",
+            "oldName": "members",
+            "primaryKey": {
+              "name": "users_pkey",
+              "columnNames": [
+                "id"
+              ]
+            },
+            "comment": "all users",
+            "columns": [
+              {
+                "name": "id",
+                "type": {
+                  "kind": "bigint"
+                },
+                "isNullable": false,
+                "isIdentity": true,
+                "identityOptions": {
+                  "startWith": 1,
+                  "minValue": 1,
+                  "incrementBy": 1
+                }
+              },
+              {
+                "name": "name",
+                "type": {
+                  "kind": "varchar",
+                  "maxLength": 255
+                },
+                "isNullable": false,
+                "isIdentity": false,
+                "comment": "display name"
+              },
+              {
+                "name": "balance",
+                "type": {
+                  "kind": "decimal",
+                  "precision": 18,
+                  "scale": 2
+                },
+                "isNullable": true,
+                "isIdentity": false,
+                "defaultExpression": "0"
+              },
+              {
+                "name": "code",
+                "type": {
+                  "kind": "char",
+                  "length": 8
+                },
+                "isNullable": false,
+                "isIdentity": false,
+                "oldName": "short_code"
+              },
+              {
+                "name": "metadata",
+                "type": {
+                  "kind": "custom",
+                  "typeName": "jsonb"
+                },
+                "isNullable": true,
+                "isIdentity": false
+              }
+            ],
+            "foreignKeys": [
+              {
+                "name": "users_org_fk",
+                "columnNames": [
+                  "org_id"
+                ],
+                "referencedSchema": "app",
+                "referencedTable": "orgs",
+                "referencedColumnNames": [
+                  "id"
+                ],
+                "onDelete": "Cascade",
+                "onUpdate": "SetNull"
+              }
+            ],
+            "indexes": [
+              {
+                "name": "users_name_ix",
+                "columnNames": [
+                  "name"
+                ],
+                "isUnique": true,
+                "comment": "unique names",
+                "predicate": "name IS NOT NULL"
+              }
+            ],
+            "grants": [
+              {
+                "role": "readers",
+                "privileges": "All"
+              }
+            ]
+          }
+        ],
+        "droppedTables": [
+          "old_table"
+        ],
+        "grants": [
+          {
+            "role": "app_role"
+          }
+        ]
+      }
+    ],
+    "droppedSchemas": [
+      "scratch"
+    ]
+  }
+}
