@@ -20,6 +20,7 @@ Additionally, we're looking at introducing an optional "backend state store" so 
 - Added `ISchemaStateStore` for optional backend state storage, and `UseSchemaStateStore<T>()` for registration. This allows plans to be generated against the last applied state rather than the current live state.
 - Added `FileSchemaStateStore` implementation of `ISchemaStateStore` that saves the last applied schema to a local file. This is useful for simple scenarios or as a reference implementation for custom stores.
 - Added control over where the current schema is read from: `UseStateBackedCurrentSchema()` reads it from the state store, while `UseCurrentSchemaAuto()` reads from the store when planning and from the live database when applying.
+- After a successful apply, NSchema now captures the resulting schema to the state store (when one is configured). The new `Refresh` operation (`MigrationOperation.Refresh` / `NSchemaApplication.Refresh()`) captures it without planning or applying.
 
 ### Changed
 
