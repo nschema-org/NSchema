@@ -50,7 +50,7 @@ public sealed class SchemaStateSerializerTests
         ],
         droppedSchemas: ["scratch"]);
 
-    public static TheoryData<SqlType> AllSqlTypes() =>
+    private static readonly SqlType[] _sqlTypes =
     [
         SqlType.Boolean, SqlType.TinyInt, SqlType.SmallInt, SqlType.Int, SqlType.BigInt,
         SqlType.Float, SqlType.Double, SqlType.Text, SqlType.Date, SqlType.Time,
@@ -59,6 +59,16 @@ public sealed class SchemaStateSerializerTests
         SqlType.VarChar(255), SqlType.VarChar(), SqlType.NVarChar(64), SqlType.NVarChar(),
         SqlType.VarBinary(32), SqlType.VarBinary(), SqlType.Custom("jsonb"),
     ];
+
+    public static TheoryData<SqlType> AllSqlTypes()
+    {
+        var data = new TheoryData<SqlType>();
+        foreach (var type in _sqlTypes)
+        {
+            data.Add(type);
+        }
+        return data;
+    }
 
     [Fact]
     public void Serialize_ThenDeserialize_RoundTripsAllFeatures()
@@ -90,6 +100,21 @@ public sealed class SchemaStateSerializerTests
     }
 
     [Fact]
+    public void AllSqlTypes_CoversEveryConcreteSqlType()
+    {
+        // Every concrete SqlType in the domain must appear in AllSqlTypes, so RoundTrip_PreservesSqlType
+        // exercises it. Declaring a new SqlType without adding it here will fail this test.
+        var declared = typeof(SqlType).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && t.IsSubclassOf(typeof(SqlType)))
+            .ToHashSet();
+
+        var covered = _sqlTypes.Select(type => type.GetType()).ToHashSet();
+
+        var missing = declared.Except(covered).Select(type => type.Name).Order().ToList();
+        missing.ShouldBeEmpty($"AllSqlTypes is missing: {string.Join(", ", missing)}");
+    }
+
+    [Fact]
     public void Serialize_ProducesExpectedFormat()
     {
         // Arrange: a golden snapshot. Compared structurally (DeepEquals), so whitespace and property
@@ -113,7 +138,7 @@ public sealed class SchemaStateSerializerTests
         const string expected =
             """
             {
-              "stateFormatVersion": 1,
+              "version": 1,
               "schema": {
                 "schemas": [
                   {
@@ -179,7 +204,7 @@ public sealed class SchemaStateSerializerTests
         // Arrange
         const string json =
             """
-            { "stateFormatVersion": 9999, "schema": { "schemas": [], "droppedSchemas": [] } }
+            { "version": 9999, "schema": { "schemas": [], "droppedSchemas": [] } }
             """;
 
         // Act
