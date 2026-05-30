@@ -62,16 +62,15 @@ internal sealed class DefaultMigrationPipeline(
 
         reporter.ReportDiagnostics(result.Diagnostics);
 
-        var errors = result.Diagnostics.Where(d => d.Severity == PolicySeverity.Error).ToList();
-        if (errors.Count > 0)
+        if (result.HasErrors)
         {
-            throw new PolicyViolationException(errors);
+            throw new PolicyViolationException(result.Errors.ToList());
         }
 
-        reporter.ReportPlan(result.Plan!);
+        reporter.ReportPlan(result.Plan);
 
         reporter.Info("Compiling migration plan...");
-        var execution = await compiler.Compile(result.Plan!, cancellationToken);
+        var execution = await compiler.Compile(result.Plan, cancellationToken);
         reporter.ReportPreview(execution.Preview);
 
         return execution;
