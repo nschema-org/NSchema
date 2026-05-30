@@ -13,6 +13,7 @@ public sealed class DefaultMigrationPipelineTests
     private readonly IMigrationReporter _reporter = Substitute.For<IMigrationReporter>();
     private readonly IMigrationCompiler _compiler = Substitute.For<IMigrationCompiler>();
     private readonly ICompiledMigration _execution = Substitute.For<ICompiledMigration>();
+    private readonly IStateCapturer _stateCapturer = Substitute.For<IStateCapturer>();
 
     private readonly DefaultMigrationPipeline _sut;
 
@@ -25,7 +26,7 @@ public sealed class DefaultMigrationPipelineTests
         _execution.Preview.Returns([]);
         _compiler.Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>()).Returns(_execution);
 
-        _sut = new DefaultMigrationPipeline(_planner, _reporter, _compiler);
+        _sut = new DefaultMigrationPipeline(_planner, _reporter, _compiler, _stateCapturer);
     }
 
     [Fact]
@@ -39,10 +40,11 @@ public sealed class DefaultMigrationPipelineTests
         // Assert
         await _compiler.Received(1).Compile(Arg.Any<MigrationPlan>(), Arg.Any<CancellationToken>());
         await _execution.DidNotReceive().Execute(Arg.Any<CancellationToken>());
+        await _stateCapturer.DidNotReceive().Capture(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Apply_CompilesAndExecutes()
+    public async Task Apply_CompilesExecutesAndCapturesState()
     {
         // Arrange
         var plan = new MigrationPlan([new CreateSchema("app")], DatabaseSchema.Create([]));
@@ -54,6 +56,21 @@ public sealed class DefaultMigrationPipelineTests
         // Assert
         await _compiler.Received(1).Compile(plan, Arg.Any<CancellationToken>());
         await _execution.Received(1).Execute(Arg.Any<CancellationToken>());
+        await _stateCapturer.Received(1).Capture(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Apply_DoesNotCaptureState_WhenExecutionFails()
+    {
+        // Arrange
+        _execution.Execute(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
+
+        // Act
+        var act = () => _sut.Apply();
+
+        // Assert
+        await Should.ThrowAsync<InvalidOperationException>(act);
+        await _stateCapturer.DidNotReceive().Capture(Arg.Any<CancellationToken>());
     }
 
     [Fact]
