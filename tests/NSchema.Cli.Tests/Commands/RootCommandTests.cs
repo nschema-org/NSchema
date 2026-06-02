@@ -8,6 +8,13 @@ public sealed class RootCommandTests
     private readonly RootCommand _sut = CliCommands.RootCommand.Create();
 
     [Fact]
+    public void HasTheNschemaCommandName()
+    {
+        // Guards the reflection in RootCommand.Create that overrides the executable-derived name.
+        _sut.Name.ShouldBe("nschema");
+    }
+
+    [Fact]
     public void RegistersTheExpectedCommands()
     {
         // Act
