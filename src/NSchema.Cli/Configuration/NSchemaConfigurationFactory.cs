@@ -1,5 +1,7 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
 
@@ -7,18 +9,28 @@ internal static class NSchemaConfigurationFactory
 {
     private const string DefaultConfigurationFile = "nschema.json";
 
-    // Allow CLI args to override default settings.
-    private static readonly CliOverride[] _overrides =
+    /// <summary>
+    /// The serializer options used to read and write <c>nschema.json</c>.
+    /// </summary>
+    public static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
+    // Apply an explicitly-specified command-line option over the loaded configuration.
+    private static readonly CliOverride[] _cliOverrides =
     [
         CliOverride.For(CliOptions.Database.Provider, (c, v) => c.Provider.Type = v),
         CliOverride.For(CliOptions.Database.ConnectionString, (c, v) => c.Provider.ConnectionString = v),
         CliOverride.For(CliOptions.State.Type, (c, v) => c.State.Type = v),
         CliOverride.For(CliOptions.State.ConnectionString, (c, v) => c.State.ConnectionString = v),
-        CliOverride.For(CliOptions.State.File, (c, v) =>
-        {
-            c.State.Type = StateType.File;
-            c.State.ConnectionString = v;
-        }),
+        CliOverride.For(CliOptions.State.File, (c, v) => { c.State.Type = StateType.File; c.State.ConnectionString = v; }),
         CliOverride.For(CliOptions.Migration.Destructive, (c, v) => c.DestructiveActionPolicy = v),
         CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
         CliOverride.For(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
@@ -27,28 +39,32 @@ internal static class NSchemaConfigurationFactory
         CliOverride.For(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
     ];
 
-    // The environment variables recognized by the CLI, mapped to configuration keys.
-    private static readonly (string Variable, string Key)[] _environmentVariables =
+    // Apply a recognized environment variable over the loaded configuration.
+    private static readonly (string Variable, Action<NSchemaConfiguration, string> Apply)[] _environmentOverrides =
     [
-        ("NSCHEMA_PROVIDER", $"{nameof(NSchemaConfiguration.Provider)}:{nameof(ProviderConfig.Type)}"),
-        ("NSCHEMA_CONNECTION_STRING", $"{nameof(NSchemaConfiguration.Provider)}:{nameof(ProviderConfig.ConnectionString)}"),
-        ("NSCHEMA_STATE_TYPE", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.Type)}"),
-        ("NSCHEMA_STATE_CONNECTION_STRING", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.ConnectionString)}"),
-        ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", nameof(NSchemaConfiguration.DestructiveActionPolicy)),
+        ("NSCHEMA_PROVIDER", (c, v) => c.Provider.Type = Enum.Parse<ProviderType>(v, ignoreCase: true)),
+        ("NSCHEMA_CONNECTION_STRING", (c, v) => c.Provider.ConnectionString = v),
+        ("NSCHEMA_STATE_TYPE", (c, v) => c.State.Type = Enum.Parse<StateType>(v, ignoreCase: true)),
+        ("NSCHEMA_STATE_CONNECTION_STRING", (c, v) => c.State.ConnectionString = v),
+        ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", (c, v) => c.DestructiveActionPolicy = Enum.Parse<DestructiveActionPolicy>(v, ignoreCase: true)),
     ];
 
     public static NSchemaConfiguration Create(ParseResult parseResult)
     {
-        // Precedence, lowest to highest: config file, then environment variables, then command-line flags
-        // applied over the top of the bound result.
-        var builder = new ConfigurationBuilder();
-        AddConfigurationFile(builder, parseResult);
-        AddEnvironmentVariables(builder);
+        // Load base file.
+        var config = LoadFromFile(parseResult) ?? new NSchemaConfiguration();
 
-        var config = new NSchemaConfiguration();
-        builder.Build().Bind(config);
+        // Apply environment variable overrides
+        foreach (var (variable, apply) in _environmentOverrides)
+        {
+            if (Environment.GetEnvironmentVariable(variable) is { } value)
+            {
+                apply(config, value);
+            }
+        }
 
-        foreach (var cliOverride in _overrides)
+        // Apply CLI argument overrides
+        foreach (var cliOverride in _cliOverrides)
         {
             cliOverride.Apply(config, parseResult);
         }
@@ -56,33 +72,21 @@ internal static class NSchemaConfigurationFactory
         return config;
     }
 
-    private static void AddEnvironmentVariables(IConfigurationBuilder builder)
+    private static NSchemaConfiguration? LoadFromFile(ParseResult parseResult)
     {
-        var values = new Dictionary<string, string?>();
-        foreach (var (variable, key) in _environmentVariables)
+        // Relative paths must resolve against the working directory the tool was invoked from.
+        var cliPath = parseResult.GetValue(CliOptions.Global.Config);
+        var configFile = Path.GetFullPath(cliPath ?? DefaultConfigurationFile, Directory.GetCurrentDirectory());
+
+        if (!File.Exists(configFile))
         {
-            if (Environment.GetEnvironmentVariable(variable) is { } value)
-            {
-                values[key] = value;
-            }
+            // An explicit --config must exist; the default file is optional.
+            return cliPath is null ? null : throw new FileNotFoundException($"Config file not found: \"{configFile}\".", configFile);
         }
 
-        if (values.Count > 0)
-        {
-            builder.AddInMemoryCollection(values);
-        }
-    }
-
-    private static void AddConfigurationFile(IConfigurationBuilder builder, ParseResult parseResult)
-    {
-        var path = parseResult.GetValue(CliOptions.Global.Config);
-
-        // Relative paths must resolve against the working directory the tool was invoked from (the user's
-        // project), not AppContext.BaseDirectory, which for a packaged dotnet tool is its install location.
-        builder.AddJsonFile(
-            Path.GetFullPath(path ?? DefaultConfigurationFile, Directory.GetCurrentDirectory()),
-            optional: path is null
-        );
+        using var stream = File.OpenRead(configFile);
+        return JsonSerializer.Deserialize<NSchemaConfiguration>(stream, JsonOptions)
+               ?? throw new InvalidOperationException($"Failed to parse config file \"{configFile}\".");
     }
 
     /// <summary>

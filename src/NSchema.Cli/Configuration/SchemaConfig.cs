@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+using System.Text.Json.Serialization;
 
 namespace NSchema.Cli.Configuration;
 
@@ -10,7 +10,7 @@ internal sealed class SchemaConfig
     /// <summary>
     /// The directory the desired-schema files are discovered under.
     /// </summary>
-    [ConfigurationKeyName("dir")]
+    [JsonPropertyName("dir")]
     public string? Directory { get; set; }
 
     /// <summary>

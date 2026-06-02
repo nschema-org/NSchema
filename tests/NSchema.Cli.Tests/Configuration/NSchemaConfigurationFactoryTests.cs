@@ -127,7 +127,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
     public void Scope_CommandLineReplacesConfigList()
     {
         // Arrange
-        // The configuration binder merges lists by index across providers; the override must replace, not merge.
+        // A command-line list must replace the config file's, not append to it.
         var config = ConfigFile("""{ "scope": ["a", "b", "c"] }""");
 
         // Act
