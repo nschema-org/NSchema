@@ -13,6 +13,7 @@ internal static class ApplicationFactory
     public static NSchemaApplication Create(NSchemaOptions options)
     {
         var builder = NSchemaApplication.CreateBuilder();
+        builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<IMigrationConfirmation, ConsoleMigrationConfirmation>();
 
         ConfigurePolicies(builder, options);
