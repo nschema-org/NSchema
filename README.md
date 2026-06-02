@@ -1,2 +1,7 @@
 # NSchema.Cli
-The CLI wrapper for NSchema core
+
+[TODO]
+
+## License
+
+See [LICENSE](LICENSE).

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/build/">
+    <File Path=".editorconfig" />
+    <File Path=".github\workflows\cicd.yml" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/cli/">
+    <Project Path="src/NSchema.Cli/NSchema.Cli.csproj" />
+    <Project Path="tests\NSchema.Cli.Tests\NSchema.Cli.Tests.csproj" />
+  </Folder>
+</Solution>

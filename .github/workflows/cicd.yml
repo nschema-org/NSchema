@@ -1,0 +1,53 @@
+name: NSchema.Cli
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check out build pipeline
+        uses: actions/checkout@v6
+        with:
+          repository: 'nschema-org/NSchema'
+          path: 'build'
+
+      - name: Run Build Pipeline
+        run: dotnet run --project build/build/NSchema.Build/NSchema.Build.csproj -- build
+        shell: bash
+        env:
+          Build__ProjectFile: 'src/NSchema.Cli/NSchema.Cli.csproj'
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: Development
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check out build pipeline
+        uses: actions/checkout@v6
+        with:
+          repository: 'nschema-org/NSchema'
+          path: 'build'
+
+      - name: Run Deploy Pipeline
+        run: dotnet run --project build/build/NSchema.Build/NSchema.Build.csproj -- deploy
+        shell: bash
+        env:
+          Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
+          Build__ProjectFile: 'src/NSchema.Cli/NSchema.Cli.csproj'
+          Build__CommitSha: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
