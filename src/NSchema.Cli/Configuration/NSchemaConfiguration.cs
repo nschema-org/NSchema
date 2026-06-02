@@ -1,4 +1,3 @@
-using System.CommandLine;
 using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
@@ -14,14 +13,9 @@ internal sealed class NSchemaConfiguration
     public bool AutoApprove { get; set; }
 
     /// <summary>
-    /// The name of the bundled database provider to use (e.g. <c>postgres</c>). Selects the current-state source.
+    /// The database provider supplying the current (live) schema.
     /// </summary>
-    public string? Provider { get; set; }
-
-    /// <summary>
-    /// The connection string the selected database provider connects with.
-    /// </summary>
-    public string? ConnectionString { get; set; }
+    public ProviderConfig Provider { get; set; } = new();
 
     /// <summary>
     /// How the desired schema is located and read. Required for the plan and apply commands.
@@ -39,7 +33,7 @@ internal sealed class NSchemaConfiguration
     public DestructiveActionPolicy? DestructiveActionPolicy { get; set; }
 
     /// <summary>
-    /// Optional state-store configuration enabling offline planning and post-apply state capture.
+    /// The state store enabling offline planning and post-apply state capture.
     /// </summary>
     public StateConfig State { get; set; } = new();
 }

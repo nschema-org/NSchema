@@ -3,9 +3,6 @@ using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
 
-/// <summary>
-/// The shared set of command-line options.
-/// </summary>
 internal static class CliOptions
 {
     public static class Global
@@ -15,22 +12,40 @@ internal static class CliOptions
             Description = "Path to the NSchema config file. Defaults to ./nschema.json if present.",
             Recursive = true,
         };
+    }
+
+    public static class Database
+    {
+        public static readonly Option<ProviderType?> Provider = new("--provider")
+        {
+            Description = "Database provider supplying the live schema (e.g. postgres).",
+            Recursive = true,
+        };
 
         public static readonly Option<string?> ConnectionString = new("--connection-string")
         {
-            Description = "Connection string for the target database. Overrides the config file.",
+            Description = "Connection string for the database provider.",
+            Recursive = true,
+        };
+    }
+
+    public static class State
+    {
+        public static readonly Option<StateType?> Type = new("--state-type")
+        {
+            Description = "State store type: file (default) or s3.",
             Recursive = true,
         };
 
-        public static readonly Option<string?> Provider = new("--provider")
+        public static readonly Option<string?> ConnectionString = new("--state-connection-string")
         {
-            Description = "Name of the bundled database provider to use (e.g. postgres).",
+            Description = "Connection string for the state store (a path for file, an s3://bucket/key URI for s3).",
             Recursive = true,
         };
 
-        public static readonly Option<string?> StateFile = new("--state-file")
+        public static readonly Option<string?> File = new("--state-file")
         {
-            Description = "Path to a local state file enabling offline planning and post-apply state capture.",
+            Description = "Shorthand for a file state store's path (equivalent to --state-type file --state-connection-string <path>).",
             Recursive = true,
         };
     }

@@ -9,9 +9,11 @@ internal static class RootCommand
         var root = new System.CommandLine.RootCommand("A declarative database schema migration tool.");
 
         root.Options.Add(CliOptions.Global.Config);
-        root.Options.Add(CliOptions.Global.ConnectionString);
-        root.Options.Add(CliOptions.Global.Provider);
-        root.Options.Add(CliOptions.Global.StateFile);
+        root.Options.Add(CliOptions.Database.Provider);
+        root.Options.Add(CliOptions.Database.ConnectionString);
+        root.Options.Add(CliOptions.State.Type);
+        root.Options.Add(CliOptions.State.ConnectionString);
+        root.Options.Add(CliOptions.State.File);
 
         root.Subcommands.Add(PlanCommand.Create());
         root.Subcommands.Add(ApplyCommand.Create());

@@ -10,9 +10,15 @@ internal static class NSchemaConfigurationFactory
     // Allow CLI args to override default settings.
     private static readonly CliOverride[] _overrides =
     [
-        CliOverride.For(CliOptions.Global.ConnectionString, (c, v) => c.ConnectionString = v),
-        CliOverride.For(CliOptions.Global.Provider, (c, v) => c.Provider = v),
-        CliOverride.For(CliOptions.Global.StateFile, (c, v) => c.State.File = v),
+        CliOverride.For(CliOptions.Database.Provider, (c, v) => c.Provider.Type = v),
+        CliOverride.For(CliOptions.Database.ConnectionString, (c, v) => c.Provider.ConnectionString = v),
+        CliOverride.For(CliOptions.State.Type, (c, v) => c.State.Type = v),
+        CliOverride.For(CliOptions.State.ConnectionString, (c, v) => c.State.ConnectionString = v),
+        CliOverride.For(CliOptions.State.File, (c, v) =>
+        {
+            c.State.Type = StateType.File;
+            c.State.ConnectionString = v;
+        }),
         CliOverride.For(CliOptions.Migration.Destructive, (c, v) => c.DestructiveActionPolicy = v),
         CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
         CliOverride.For(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
@@ -24,9 +30,10 @@ internal static class NSchemaConfigurationFactory
     // The environment variables recognized by the CLI, mapped to configuration keys.
     private static readonly (string Variable, string Key)[] _environmentVariables =
     [
-        ("NSCHEMA_CONNECTION_STRING", nameof(NSchemaConfiguration.ConnectionString)),
-        ("NSCHEMA_PROVIDER", nameof(NSchemaConfiguration.Provider)),
-        ("NSCHEMA_STATE_FILE", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.File)}"),
+        ("NSCHEMA_PROVIDER", $"{nameof(NSchemaConfiguration.Provider)}:{nameof(ProviderConfig.Type)}"),
+        ("NSCHEMA_CONNECTION_STRING", $"{nameof(NSchemaConfiguration.Provider)}:{nameof(ProviderConfig.ConnectionString)}"),
+        ("NSCHEMA_STATE_TYPE", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.Type)}"),
+        ("NSCHEMA_STATE_CONNECTION_STRING", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.ConnectionString)}"),
         ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", nameof(NSchemaConfiguration.DestructiveActionPolicy)),
     ];
 
