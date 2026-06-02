@@ -9,7 +9,7 @@ namespace NSchema.Cli;
 /// <summary>
 /// Translates resolved <see cref="NSchemaConfiguration"/> into a configured <see cref="NSchemaApplication"/>.
 /// </summary>
-internal class CliApplicationBuilder
+internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaConfiguration _configuration;
 
@@ -20,7 +20,6 @@ internal class CliApplicationBuilder
         _configuration = configuration;
         _builder.WithExceptionBehavior(ExceptionBehavior.Throw);
         _builder.Services.AddSingleton(configuration);
-        _builder.Services.AddSingleton<IMigrationConfirmation, ConsoleMigrationConfirmation>();
     }
 
     public CliApplicationBuilder ConfigurePolicies()
@@ -83,6 +82,12 @@ internal class CliApplicationBuilder
                 $"Database provider '{provider}' is not available in this build. No database providers are bundled yet, " +
                 "so only offline operations (plan/refresh against a state file) are supported.");
         }
+        return this;
+    }
+
+    public CliApplicationBuilder ConfigureConfirmation()
+    {
+        _builder.Services.AddSingleton<IMigrationConfirmation, ConsoleMigrationConfirmation>();
         return this;
     }
 

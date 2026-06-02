@@ -25,6 +25,7 @@ internal static class ApplyCommand
             .ConfigurePolicies()
             .ConfigureDatabaseProvider()
             .ConfigureBackendState()
+            .ConfigureConfirmation()
             .Build();
         await app.Apply(cancellationToken);
     }
