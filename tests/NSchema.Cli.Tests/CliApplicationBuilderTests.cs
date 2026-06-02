@@ -1,5 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NSchema.Cli;
 using NSchema.Cli.Configuration;
+using NSchema.Migration;
+using NSchema.State;
 
 namespace NSchema.Cli.Tests;
 
@@ -111,5 +115,71 @@ public sealed class CliApplicationBuilderTests
 
         // Assert
         Should.NotThrow(act);
+    }
+
+    [Fact]
+    public void ConfigureScope_SetsSchemaNamesOnMigrationOptions()
+    {
+        // Arrange
+        _configuration.Scope = ["public", "sales"];
+
+        // Act
+        using var app = _sut.ConfigureScope().Build();
+
+        // Assert
+        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
+        options.SchemaNames.ShouldBe(["public", "sales"]);
+    }
+
+    [Fact]
+    public void ConfigureScope_LeavesSchemaNamesUnset_WhenScopeEmpty()
+    {
+        // Arrange
+        // Scope is empty by default.
+
+        // Act
+        using var app = _sut.ConfigureScope().Build();
+
+        // Assert
+        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
+        options.SchemaNames.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ConfigurePolicies_AppliesDestructiveActionPolicy()
+    {
+        // Arrange
+        _configuration.DestructiveActionPolicy = DestructiveActionPolicy.Warn;
+
+        // Act
+        using var app = _sut.ConfigurePolicies().Build();
+
+        // Assert
+        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
+        options.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Warn);
+    }
+
+    [Fact]
+    public void ConfigureBackendState_RegistersStateStore_ForFile()
+    {
+        // Arrange
+        _configuration.State.Type = StateType.File;
+        _configuration.State.ConnectionString = "./state.json";
+
+        // Act
+        using var app = _sut.ConfigureBackendState().Build();
+
+        // Assert
+        app.Services.GetService<ISchemaStateStore>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void ConfigureBackendState_RegistersNoStateStore_WhenNoConnectionString()
+    {
+        // Act
+        using var app = _sut.ConfigureBackendState().Build();
+
+        // Assert
+        app.Services.GetService<ISchemaStateStore>().ShouldBeNull();
     }
 }
