@@ -51,23 +51,24 @@ internal static class CliOptions
         {
             Description = "Glob matched within the schema directory. Defaults to a per-format pattern (e.g. **/*.yaml).",
         };
+    }
 
+    public static class Migration
+    {
         public static readonly Option<string[]> Scope = new("--scope")
         {
             Description = "Limit the migration to specific database schemas (namespaces). May be specified multiple times.",
-            Recursive = true,
             AllowMultipleArgumentsPerToken = true,
+        };
+
+        public static readonly Option<DestructiveActionPolicy?> Destructive = new("--destructive-actions")
+        {
+            Description = "Policy for destructive actions: Error (default), Warn, or Allow.",
         };
     }
 
     public static class Apply
     {
-        public static readonly Option<DestructiveActionPolicy?> Destructive = new("--destructive-actions")
-        {
-            Description = "Policy for destructive actions: Error (default), Warn, or Allow.",
-            Recursive = true,
-        };
-
         public static readonly Option<bool> AutoApprove = new("--auto-approve")
         {
             Description = "Skip the interactive confirmation prompt and apply the plan immediately.",

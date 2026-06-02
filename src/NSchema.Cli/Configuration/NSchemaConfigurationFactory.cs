@@ -13,21 +13,30 @@ internal static class NSchemaConfigurationFactory
         CliOverride.For(CliOptions.Global.ConnectionString, (c, v) => c.ConnectionString = v),
         CliOverride.For(CliOptions.Global.Provider, (c, v) => c.Provider = v),
         CliOverride.For(CliOptions.Global.StateFile, (c, v) => c.State.File = v),
-        CliOverride.For(CliOptions.Apply.Destructive, (c, v) => c.DestructiveActionPolicy = v),
+        CliOverride.For(CliOptions.Migration.Destructive, (c, v) => c.DestructiveActionPolicy = v),
         CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
-        CliOverride.For(CliOptions.Desired.Scope, (c, v) => c.Scope = [.. v]),
+        CliOverride.For(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
         CliOverride.For(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
         CliOverride.For(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
         CliOverride.For(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
     ];
 
+    // The environment variables recognized by the CLI, mapped to configuration keys.
+    private static readonly (string Variable, string Key)[] _environmentVariables =
+    [
+        ("NSCHEMA_CONNECTION_STRING", nameof(NSchemaConfiguration.ConnectionString)),
+        ("NSCHEMA_PROVIDER", nameof(NSchemaConfiguration.Provider)),
+        ("NSCHEMA_STATE_FILE", $"{nameof(NSchemaConfiguration.State)}:{nameof(StateConfig.File)}"),
+        ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", nameof(NSchemaConfiguration.DestructiveActionPolicy)),
+    ];
+
     public static NSchemaConfiguration Create(ParseResult parseResult)
     {
-        // Precedence, lowest to highest: config file, then NSCHEMA_ environment variables, then command-line
-        // flags applied over the top of the bound result.
+        // Precedence, lowest to highest: config file, then environment variables, then command-line flags
+        // applied over the top of the bound result.
         var builder = new ConfigurationBuilder();
         AddConfigurationFile(builder, parseResult);
-        builder.AddEnvironmentVariables("NSCHEMA_");
+        AddEnvironmentVariables(builder);
 
         var config = new NSchemaConfiguration();
         builder.Build().Bind(config);
@@ -38,6 +47,23 @@ internal static class NSchemaConfigurationFactory
         }
 
         return config;
+    }
+
+    private static void AddEnvironmentVariables(IConfigurationBuilder builder)
+    {
+        var values = new Dictionary<string, string?>();
+        foreach (var (variable, key) in _environmentVariables)
+        {
+            if (Environment.GetEnvironmentVariable(variable) is { } value)
+            {
+                values[key] = value;
+            }
+        }
+
+        if (values.Count > 0)
+        {
+            builder.AddInMemoryCollection(values);
+        }
     }
 
     private static void AddConfigurationFile(IConfigurationBuilder builder, ParseResult parseResult)

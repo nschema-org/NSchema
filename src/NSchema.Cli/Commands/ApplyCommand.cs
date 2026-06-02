@@ -11,8 +11,8 @@ internal static class ApplyCommand
         command.Options.Add(CliOptions.Desired.Format);
         command.Options.Add(CliOptions.Desired.SchemaDir);
         command.Options.Add(CliOptions.Desired.SchemaGlob);
-        command.Options.Add(CliOptions.Desired.Scope);
-        command.Options.Add(CliOptions.Apply.Destructive);
+        command.Options.Add(CliOptions.Migration.Scope);
+        command.Options.Add(CliOptions.Migration.Destructive);
         command.Options.Add(CliOptions.Apply.AutoApprove);
         command.SetAction(Apply);
         return command;
