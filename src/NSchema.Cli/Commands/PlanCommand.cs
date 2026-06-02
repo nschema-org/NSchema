@@ -18,7 +18,13 @@ internal static class PlanCommand
     private static async Task Plan(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var configuration = NSchemaConfigurationFactory.Create(parseResult);
-        using var app = ApplicationFactory.Create(configuration);
+        using var app = CliApplicationBuilder.Create(configuration)
+            .ConfigureDesiredSchema()
+            .ConfigureScope()
+            .ConfigurePolicies()
+            .ConfigureDatabaseProvider()
+            .ConfigureBackendState()
+            .Build();
         await app.Plan(cancellationToken);
     }
 }

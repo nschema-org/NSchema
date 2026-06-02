@@ -19,7 +19,13 @@ internal static class ApplyCommand
     private static async Task Apply(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var configuration = NSchemaConfigurationFactory.Create(parseResult);
-        using var app = ApplicationFactory.Create(configuration);
+        using var app = CliApplicationBuilder.Create(configuration)
+            .ConfigureDesiredSchema()
+            .ConfigureScope()
+            .ConfigurePolicies()
+            .ConfigureDatabaseProvider()
+            .ConfigureBackendState()
+            .Build();
         await app.Apply(cancellationToken);
     }
 }

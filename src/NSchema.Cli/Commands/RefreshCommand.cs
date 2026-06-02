@@ -15,7 +15,10 @@ internal static class RefreshCommand
     private static async Task Refresh(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var configuration = NSchemaConfigurationFactory.Create(parseResult);
-        using var app = ApplicationFactory.Create(configuration, requireDesiredSchema: false);
+        using var app = CliApplicationBuilder.Create(configuration)
+            .ConfigureBackendState()
+            .ConfigureDatabaseProvider()
+            .Build();
         await app.Refresh(cancellationToken);
     }
 }
