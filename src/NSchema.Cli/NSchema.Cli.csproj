@@ -50,6 +50,9 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="NSchema" />
+    <PackageReference Include="NSchema.Aws" />
+    <PackageReference Include="NSchema.Postgres" />
+    <PackageReference Include="NSchema.Yaml" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
