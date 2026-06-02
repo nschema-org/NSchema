@@ -8,6 +8,9 @@ internal static class ApplyCommand
     public static Command Create()
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
+        command.Options.Add(CliOptions.Format);
+        command.Options.Add(CliOptions.SchemaDir);
+        command.Options.Add(CliOptions.SchemaGlob);
         command.Options.Add(CliOptions.AutoApprove);
         command.SetAction(Apply);
         return command;

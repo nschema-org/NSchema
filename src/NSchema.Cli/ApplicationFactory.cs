@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Cli.Configuration;
 using NSchema.Cli.Services;
 using NSchema.Hosting;
+using NSchema.Yaml;
 
 namespace NSchema.Cli;
 
@@ -10,7 +11,7 @@ namespace NSchema.Cli;
 /// </summary>
 internal static class ApplicationFactory
 {
-    public static NSchemaApplication Create(NSchemaConfiguration configuration)
+    public static NSchemaApplication Create(NSchemaConfiguration configuration, bool requireDesiredSchema = true)
     {
         var builder = NSchemaApplication.CreateBuilder()
             .WithExceptionBehavior(ExceptionBehavior.Throw);
@@ -19,7 +20,12 @@ internal static class ApplicationFactory
         builder.Services.AddSingleton<IMigrationConfirmation, ConsoleMigrationConfirmation>();
 
         ConfigurePolicies(builder, configuration);
-        ConfigureDesiredSchema(builder, configuration);
+        if (requireDesiredSchema)
+        {
+            ConfigureDesiredSchema(builder, configuration);
+        }
+
+        ConfigureScope(builder, configuration);
         ConfigureBackendState(builder, configuration);
         ConfigureDatabaseProvider(builder, configuration);
 
@@ -36,15 +42,30 @@ internal static class ApplicationFactory
 
     private static void ConfigureDesiredSchema(NSchemaApplicationBuilder builder, NSchemaConfiguration configuration)
     {
-        // TODO: Add YAML support.
-        foreach (var schema in configuration.Schemas)
+        var schema = configuration.Schema;
+        if (string.IsNullOrWhiteSpace(schema?.Directory))
         {
-            builder.AddJsonSchemasFromGlob(schema);
+            throw new InvalidOperationException("No schema directory configured. Set \"schema.dir\" in nschema.json or pass --schema-dir.");
         }
 
-        if (configuration.SchemaNames.Count > 0)
+        // Resolve the directory to an absolute root.
+        var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
+        var pattern = string.IsNullOrWhiteSpace(schema.Glob) ? schema.Format.DefaultGlob() : schema.Glob;
+        var glob = $"{root}/{pattern}";
+
+        switch (schema.Format)
         {
-            builder.ForSchemas([.. configuration.SchemaNames]);
+            case SchemaFormat.Yaml: builder.AddYamlSchemasFromGlob(glob); break;
+            case SchemaFormat.Json: builder.AddJsonSchemasFromGlob(glob); break;
+            default: throw new ArgumentOutOfRangeException(nameof(configuration), schema.Format, "Unknown schema format.");
+        }
+    }
+
+    private static void ConfigureScope(NSchemaApplicationBuilder builder, NSchemaConfiguration configuration)
+    {
+        if (configuration.Scope.Count > 0)
+        {
+            builder.ForSchemas([.. configuration.Scope]);
         }
     }
 

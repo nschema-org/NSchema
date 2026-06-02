@@ -26,18 +26,26 @@ internal static class CliOptions
         Recursive = true,
     };
 
-    public static readonly Option<string[]> Schema = new("--schema")
+    public static readonly Option<string[]> Scope = new("--scope")
     {
-        Description = "A desired-schema file path or glob pattern. May be specified multiple times.",
+        Description = "Limit the migration to specific database schemas (namespaces). May be specified multiple times.",
         Recursive = true,
         AllowMultipleArgumentsPerToken = true,
     };
 
-    public static readonly Option<string[]> SchemaName = new("--schema-name")
+    public static readonly Option<SchemaFormat> Format = new("--format")
     {
-        Description = "Limit the migration to specific schema names. May be specified multiple times.",
-        Recursive = true,
-        AllowMultipleArgumentsPerToken = true,
+        Description = "The format the desired schema is expressed in: yaml (default) or json.",
+    };
+
+    public static readonly Option<string?> SchemaDir = new("--schema-dir")
+    {
+        Description = "Directory containing the desired-schema files. Required for plan and apply unless set in config.",
+    };
+
+    public static readonly Option<string?> SchemaGlob = new("--schema-glob")
+    {
+        Description = "Glob matched within the schema directory. Defaults to a per-format pattern (e.g. **/*.yaml).",
     };
 
     public static readonly Option<DestructiveActionPolicy?> Destructive = new("--destructive-actions")
@@ -56,9 +64,4 @@ internal static class CliOptions
     {
         Description = "Skip the interactive confirmation prompt and apply the plan immediately.",
     };
-
-    /// <summary>
-    /// The recursive (global) options shared by every command.
-    /// </summary>
-    public static IReadOnlyList<Option> Global => [Config, ConnectionString, Provider, Schema, SchemaName, Destructive, StateFile];
 }

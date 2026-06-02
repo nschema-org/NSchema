@@ -24,14 +24,14 @@ internal sealed class NSchemaConfiguration
     public string? ConnectionString { get; set; }
 
     /// <summary>
-    /// Paths or glob patterns identifying the desired-schema files (currently JSON).
+    /// How the desired schema is located and read. Required for the plan and apply commands.
     /// </summary>
-    public List<string> Schemas { get; set; } = [];
+    public SchemaConfig Schema { get; set; } = new();
 
     /// <summary>
-    /// Optional scope filter limiting the migration to a specific set of schema names.
+    /// Optional scope filter limiting the migration to a specific set of database schemas (namespaces).
     /// </summary>
-    public List<string> SchemaNames { get; set; } = [];
+    public List<string> Scope { get; set; } = [];
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions. Defaults to <see cref="DestructiveActionPolicy.Error"/>.
@@ -41,5 +41,5 @@ internal sealed class NSchemaConfiguration
     /// <summary>
     /// Optional state-store configuration enabling offline planning and post-apply state capture.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfig State { get; set; } = new();
 }

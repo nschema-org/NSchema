@@ -8,6 +8,9 @@ internal static class PlanCommand
     public static Command Create()
     {
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
+        command.Options.Add(CliOptions.Format);
+        command.Options.Add(CliOptions.SchemaDir);
+        command.Options.Add(CliOptions.SchemaGlob);
         command.SetAction(Plan);
         return command;
     }

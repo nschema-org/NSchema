@@ -7,18 +7,18 @@ internal static class NSchemaConfigurationFactory
 {
     private const string DefaultConfigurationFile = "nschema.json";
 
-    // Each entry applies one command-line option onto the bound configuration, but only when the option was
-    // explicitly specified. Keeping every option here means all command-line handling lives in one place and uses
-    // one mechanism, and lists replace rather than merge (which a configuration provider cannot express).
+    // Allow CLI args to override default settings.
     private static readonly CliOverride[] _overrides =
     [
         CliOverride.For(CliOptions.ConnectionString, (c, v) => c.ConnectionString = v),
         CliOverride.For(CliOptions.Provider, (c, v) => c.Provider = v),
         CliOverride.For(CliOptions.Destructive, (c, v) => c.DestructiveActionPolicy = v),
-        CliOverride.For(CliOptions.StateFile, (c, v) => (c.State ??= new StateConfig()).File = v),
+        CliOverride.For(CliOptions.StateFile, (c, v) => c.State.File = v),
         CliOverride.For(CliOptions.AutoApprove, (c, v) => c.AutoApprove = v),
-        CliOverride.For(CliOptions.Schema, (c, v) => c.Schemas = [.. v]),
-        CliOverride.For(CliOptions.SchemaName, (c, v) => c.SchemaNames = [.. v]),
+        CliOverride.For(CliOptions.Scope, (c, v) => c.Scope = [.. v]),
+        CliOverride.For(CliOptions.Format, (c, v) => c.Schema.Format = v),
+        CliOverride.For(CliOptions.SchemaDir, (c, v) => c.Schema.Directory = v),
+        CliOverride.For(CliOptions.SchemaGlob, (c, v) => c.Schema.Glob = v),
     ];
 
     public static NSchemaConfiguration Create(ParseResult parseResult)
