@@ -12,24 +12,10 @@ internal static class RefreshCommand
         return command;
     }
 
-    private static async Task<int> Refresh(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task Refresh(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        try
-        {
-            var options = NSchemaOptionsFactory.Create(parseResult);
-            using var app = ApplicationFactory.Create(options);
-            await app.Refresh(cancellationToken);
-            return 0;
-        }
-        catch (OperationCanceledException)
-        {
-            await Console.Error.WriteLineAsync("Operation cancelled.");
-            return 130;
-        }
-        catch (Exception ex)
-        {
-            await Console.Error.WriteLineAsync($"Error: {ex.Message}");
-            return 1;
-        }
+        var options = NSchemaOptionsFactory.Create(parseResult);
+        using var app = ApplicationFactory.Create(options);
+        await app.Refresh(cancellationToken);
     }
 }

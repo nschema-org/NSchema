@@ -13,24 +13,10 @@ internal static class ApplyCommand
         return command;
     }
 
-    private static async Task<int> Apply(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task Apply(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        try
-        {
-            var options = NSchemaOptionsFactory.Create(parseResult);
-            using var app = ApplicationFactory.Create(options);
-            await app.Apply(cancellationToken);
-            return 0;
-        }
-        catch (OperationCanceledException)
-        {
-            await Console.Error.WriteLineAsync("Operation cancelled.");
-            return 130;
-        }
-        catch (Exception ex)
-        {
-            await Console.Error.WriteLineAsync($"Error: {ex.Message}");
-            return 1;
-        }
+        var options = NSchemaOptionsFactory.Create(parseResult);
+        using var app = ApplicationFactory.Create(options);
+        await app.Apply(cancellationToken);
     }
 }
