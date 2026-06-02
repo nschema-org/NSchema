@@ -1,32 +1,32 @@
 using System.CommandLine;
 using NSchema.Migration;
 
-namespace NSchema.Cli;
+namespace NSchema.Cli.Configuration;
 
 /// <summary>
 /// The shared set of command-line options.
 /// </summary>
 internal static class CliOptions
 {
-    public static readonly Option<string?> Config = new("--config", "-f")
+    public static readonly Option<string?> Config = new("--config")
     {
         Description = "Path to the NSchema config file. Defaults to ./nschema.json if present.",
         Recursive = true,
     };
 
-    public static readonly Option<string?> ConnectionString = new("--connection-string", "-c")
+    public static readonly Option<string?> ConnectionString = new("--connection-string")
     {
         Description = "Connection string for the target database. Overrides the config file.",
         Recursive = true,
     };
 
-    public static readonly Option<string?> Provider = new("--provider", "-p")
+    public static readonly Option<string?> Provider = new("--provider")
     {
         Description = "Name of the bundled database provider to use (e.g. postgres).",
         Recursive = true,
     };
 
-    public static readonly Option<string[]> Schema = new("--schema", "-s")
+    public static readonly Option<string[]> Schema = new("--schema")
     {
         Description = "A desired-schema file path or glob pattern. May be specified multiple times.",
         Recursive = true,
@@ -40,7 +40,7 @@ internal static class CliOptions
         AllowMultipleArgumentsPerToken = true,
     };
 
-    public static readonly Option<DestructiveActionPolicy?> Destructive = new("--destructive")
+    public static readonly Option<DestructiveActionPolicy?> Destructive = new("--destructive-actions")
     {
         Description = "Policy for destructive actions: Error (default), Warn, or Allow.",
         Recursive = true,

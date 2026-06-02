@@ -1,3 +1,5 @@
+using NSchema.Cli.Configuration;
+
 namespace NSchema.Cli.Commands;
 
 internal static class RootCommand
