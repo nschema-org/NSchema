@@ -28,4 +28,8 @@
     <Using Include="NSubstitute" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NSchema.Cli\NSchema.Cli.csproj" />
+  </ItemGroup>
+
 </Project>
