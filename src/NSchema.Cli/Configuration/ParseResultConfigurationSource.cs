@@ -49,7 +49,9 @@ internal sealed class ParseResultConfigurationProvider(ParseResult parseResult) 
         Data = data;
     }
 
-    /// <summary>Pairs a strongly-typed option with the configuration key it populates.</summary>
+    /// <summary>
+    /// Pairs a strongly-typed option with the configuration key it populates.
+    /// </summary>
     private sealed record Binding(Option Option, Func<ParseResult, string?> ReadValue, string Key)
     {
         public static Binding For<T>(Option<T> option, string key) =>
