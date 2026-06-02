@@ -10,15 +10,15 @@ internal static class NSchemaConfigurationFactory
     // Allow CLI args to override default settings.
     private static readonly CliOverride[] _overrides =
     [
-        CliOverride.For(CliOptions.ConnectionString, (c, v) => c.ConnectionString = v),
-        CliOverride.For(CliOptions.Provider, (c, v) => c.Provider = v),
-        CliOverride.For(CliOptions.Destructive, (c, v) => c.DestructiveActionPolicy = v),
-        CliOverride.For(CliOptions.StateFile, (c, v) => c.State.File = v),
-        CliOverride.For(CliOptions.AutoApprove, (c, v) => c.AutoApprove = v),
-        CliOverride.For(CliOptions.Scope, (c, v) => c.Scope = [.. v]),
-        CliOverride.For(CliOptions.Format, (c, v) => c.Schema.Format = v),
-        CliOverride.For(CliOptions.SchemaDir, (c, v) => c.Schema.Directory = v),
-        CliOverride.For(CliOptions.SchemaGlob, (c, v) => c.Schema.Glob = v),
+        CliOverride.For(CliOptions.Global.ConnectionString, (c, v) => c.ConnectionString = v),
+        CliOverride.For(CliOptions.Global.Provider, (c, v) => c.Provider = v),
+        CliOverride.For(CliOptions.Global.StateFile, (c, v) => c.State.File = v),
+        CliOverride.For(CliOptions.Apply.Destructive, (c, v) => c.DestructiveActionPolicy = v),
+        CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
+        CliOverride.For(CliOptions.Desired.Scope, (c, v) => c.Scope = [.. v]),
+        CliOverride.For(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
+        CliOverride.For(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
+        CliOverride.For(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
     ];
 
     public static NSchemaConfiguration Create(ParseResult parseResult)
@@ -42,7 +42,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void AddConfigurationFile(IConfigurationBuilder builder, ParseResult parseResult)
     {
-        var path = parseResult.GetValue(CliOptions.Config);
+        var path = parseResult.GetValue(CliOptions.Global.Config);
 
         // Relative paths must resolve against the working directory the tool was invoked from (the user's
         // project), not AppContext.BaseDirectory, which for a packaged dotnet tool is its install location.
