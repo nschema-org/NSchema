@@ -135,7 +135,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureScope_LeavesSchemaNamesUnset_WhenScopeEmpty()
     {
         // Arrange
-        // Scope is empty by default.
+        // Scope is unset (null) by default.
 
         // Act
         using var app = _sut.ConfigureScope().Build();

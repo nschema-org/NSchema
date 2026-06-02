@@ -89,4 +89,17 @@ internal static class CliOptions
             Description = "Skip the interactive confirmation prompt and apply the plan immediately.",
         };
     }
+
+    public static class Init
+    {
+        public static readonly Option<SchemaFormat> Format = new("--format")
+        {
+            Description = "Format for the generated config and sample schema: yaml (default) or json.",
+        };
+
+        public static readonly Option<bool> Force = new("--force")
+        {
+            Description = "Overwrite an existing nschema.json.",
+        };
+    }
 }

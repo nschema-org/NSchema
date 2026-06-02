@@ -8,13 +8,13 @@ public sealed class RootCommandTests
     private readonly RootCommand _sut = CliCommands.RootCommand.Create();
 
     [Fact]
-    public void RegistersThePlanApplyAndRefreshCommands()
+    public void RegistersTheExpectedCommands()
     {
         // Act
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["plan", "apply", "refresh"], ignoreOrder: true);
+        names.ShouldBe(["init", "plan", "apply", "refresh"], ignoreOrder: true);
     }
 
     [Theory]

@@ -12,10 +12,16 @@ This installs the `nschema` command.
 
 ## Quickstart
 
-1. Describe your desired schema in one or more YAML/JSON files:
+1. Scaffold a config and a sample schema:
+
+   ```sh
+   nschema init
+   ```
+
+   This writes `nschema.json` and `schemas/example.yaml`. Edit the sample to describe your desired schema:
 
    ```yaml
-   # schemas/app.yaml
+   # schemas/example.yaml
    schemas:
      - name: app
        tables:
@@ -38,18 +44,29 @@ This installs the `nschema` command.
    export NSCHEMA_CONNECTION_STRING="Host=localhost;Database=app;Username=postgres;Password=postgres"
    ```
 
-3. Preview the migration, then apply it:
+3. Preview the migration, then apply it (`nschema.json` already has the provider and schema directory, so no flags are needed):
 
    ```sh
-   nschema plan  --provider postgres --schema-dir ./schemas
-   nschema apply --provider postgres --schema-dir ./schemas
+   nschema plan
+   nschema apply
    ```
 
-Most settings can live in an `nschema.json` file so the commands stay short — see [Configuration](#configuration).
+`nschema init` is the easiest way to get a valid `nschema.json` — see [Configuration](#configuration) for everything it can hold.
 
 ## Commands
 
-Every command also accepts the [common options](#common-options) below. Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)).
+The `plan`, `apply`, and `refresh` commands accept the [common options](#common-options) below. Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` is standalone — it only writes files.
+
+### `nschema init`
+
+Scaffold an `nschema.json` and a sample schema in the current directory, to get a new project going. It connects to nothing.
+
+- `--format <yaml|json>` — format for the generated config and sample schema. Defaults to `yaml`.
+- `--force` — overwrite an existing `nschema.json`.
+
+```sh
+nschema init
+```
 
 ### Common options
 

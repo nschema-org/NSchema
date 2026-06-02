@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
@@ -8,14 +9,14 @@ namespace NSchema.Cli.Configuration;
 internal sealed class NSchemaConfiguration
 {
     /// <summary>
-    /// Whether to skip the confirmation prompt before applying a migration plan.
-    /// </summary>
-    public bool AutoApprove { get; set; }
-
-    /// <summary>
     /// The database provider supplying the current (live) schema.
     /// </summary>
     public ProviderConfig Provider { get; set; } = new();
+
+    /// <summary>
+    /// The state store enabling offline planning and post-apply state capture.
+    /// </summary>
+    public StateConfig State { get; set; } = new();
 
     /// <summary>
     /// How the desired schema is located and read. Required for the plan and apply commands.
@@ -25,7 +26,7 @@ internal sealed class NSchemaConfiguration
     /// <summary>
     /// Optional scope filter limiting the migration to a specific set of database schemas (namespaces).
     /// </summary>
-    public List<string> Scope { get; set; } = [];
+    public List<string>? Scope { get; set; }
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions. Defaults to <see cref="DestructiveActionPolicy.Error"/>.
@@ -33,7 +34,8 @@ internal sealed class NSchemaConfiguration
     public DestructiveActionPolicy? DestructiveActionPolicy { get; set; }
 
     /// <summary>
-    /// The state store enabling offline planning and post-apply state capture.
+    /// Whether to skip the confirmation prompt before applying a migration plan.
     /// </summary>
-    public StateConfig State { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AutoApprove { get; set; }
 }

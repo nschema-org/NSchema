@@ -58,9 +58,9 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureScope()
     {
-        if (_configuration.Scope.Count > 0)
+        if (_configuration.Scope is { Count: > 0 } scope)
         {
-            _builder.ForSchemas([.. _configuration.Scope]);
+            _builder.ForSchemas([.. scope]);
         }
         return this;
     }
