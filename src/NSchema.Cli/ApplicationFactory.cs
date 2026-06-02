@@ -12,7 +12,9 @@ internal static class ApplicationFactory
 {
     public static NSchemaApplication Create(NSchemaConfiguration configuration)
     {
-        var builder = NSchemaApplication.CreateBuilder();
+        var builder = NSchemaApplication.CreateBuilder()
+            .WithExceptionBehavior(ExceptionBehavior.Throw);
+
         builder.Services.AddSingleton(configuration);
         builder.Services.AddSingleton<IMigrationConfirmation, ConsoleMigrationConfirmation>();
 
