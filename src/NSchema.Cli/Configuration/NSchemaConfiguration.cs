@@ -6,7 +6,7 @@ namespace NSchema.Cli.Configuration;
 /// <summary>
 /// The project configuration for a CLI run.
 /// </summary>
-internal sealed class NSchemaOptions
+internal sealed class NSchemaConfiguration
 {
     /// <summary>
     /// Whether to skip the confirmation prompt before applying a migration plan.
@@ -42,13 +42,4 @@ internal sealed class NSchemaOptions
     /// Optional state-store configuration enabling offline planning and post-apply state capture.
     /// </summary>
     public StateConfig? State { get; set; }
-
-    /// <summary>
-    /// State-store configuration.
-    /// </summary>
-    internal sealed class StateConfig
-    {
-        /// <summary>Path to the local file the schema state is persisted to and read from.</summary>
-        public string? File { get; set; }
-    }
 }

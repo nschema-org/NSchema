@@ -15,8 +15,8 @@ internal static class ApplyCommand
 
     private static async Task Apply(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var options = NSchemaOptionsFactory.Create(parseResult);
-        using var app = ApplicationFactory.Create(options);
+        var configuration = NSchemaConfigurationFactory.Create(parseResult);
+        using var app = ApplicationFactory.Create(configuration);
         await app.Apply(cancellationToken);
     }
 }

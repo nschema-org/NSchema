@@ -14,8 +14,8 @@ internal static class PlanCommand
 
     private static async Task Plan(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var options = NSchemaOptionsFactory.Create(parseResult);
-        using var app = ApplicationFactory.Create(options);
+        var configuration = NSchemaConfigurationFactory.Create(parseResult);
+        using var app = ApplicationFactory.Create(configuration);
         await app.Plan(cancellationToken);
     }
 }
