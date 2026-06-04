@@ -67,24 +67,22 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureBackendState()
     {
-        // No connection string means no state store: plan/apply run online-only and refresh has nowhere to write.
-        if (string.IsNullOrWhiteSpace(_configuration.State.ConnectionString))
+        // No store configured: plan/apply run online-only and refresh has nowhere to write.
+        if (_configuration.State.SelectedType is null)
         {
             return this;
         }
 
-        var connectionString = _configuration.State.ConnectionString;
-        switch (_configuration.State.Type ?? StateType.File)
+        ThrowIfInvalid(_configuration.State.Validate());
+
+        switch (_configuration.State)
         {
-            case StateType.File:
-                _builder.UseFileStateStore(connectionString);
+            case { File: { } file }:
+                _builder.UseFileStateStore(file.Path!);
                 break;
-            case StateType.S3:
-                var (bucket, key) = ParseS3ConnectionString(connectionString);
-                _builder.UseStateStoreS3(bucket, key);
+            case { S3: { } s3 }:
+                _builder.UseStateStoreS3(s3.Bucket!, s3.Key!);
                 break;
-            default:
-                throw new NotSupportedException($"Unknown state store type '{_configuration.State.Type}'.");
         }
 
         return this;
@@ -92,48 +90,39 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabaseProvider()
     {
-        switch (_configuration.Provider.Type)
+        // No provider configured: only offline operations (plan/refresh against the state store) are available.
+        if (_configuration.Provider.SelectedType is null)
         {
-            // No provider configured: only offline operations (plan/refresh against the state store) are available.
-            case null:
+            return this;
+        }
+
+        ThrowIfInvalid(_configuration.Provider.Validate());
+
+        switch (_configuration.Provider)
+        {
+            case { Postgres: { } postgres }:
+                _builder.UseCurrentSchemaPostgres(dataSource =>
+                {
+                    dataSource.ConnectionStringBuilder.ConnectionString = postgres.ConnectionString!;
+                    if (postgres.CommandTimeout is { } commandTimeout)
+                    {
+                        dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;
+                    }
+                });
                 break;
-            case ProviderType.Postgres:
-                _builder.UseCurrentSchemaPostgres(RequireConnectionString("postgres"));
-                break;
-            default:
-                throw new NotSupportedException($"Unknown database provider '{_configuration.Provider.Type}'.");
         }
 
         return this;
     }
 
-    private string RequireConnectionString(string provider)
+    // Surfaces configuration validation failures as a single error before the run begins.
+    private static void ThrowIfInvalid(IEnumerable<string> errors)
     {
-        if (string.IsNullOrWhiteSpace(_configuration.Provider.ConnectionString))
+        var messages = errors.ToList();
+        if (messages.Count > 0)
         {
-            throw new InvalidOperationException(
-                $"The '{provider}' provider requires a connection string. Set it via --connection-string, " +
-                "NSCHEMA_CONNECTION_STRING, or nschema.json.");
+            throw new InvalidOperationException(string.Join(Environment.NewLine, messages));
         }
-
-        return _configuration.Provider.ConnectionString;
-    }
-
-    // A state store of type s3 is addressed by an s3://bucket/key connection string.
-    private static (string Bucket, string Key) ParseS3ConnectionString(string connectionString)
-    {
-        const string scheme = "s3://";
-        if (connectionString.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
-        {
-            var path = connectionString[scheme.Length..];
-            var separator = path.IndexOf('/');
-            if (separator > 0 && separator < path.Length - 1)
-            {
-                return (path[..separator], path[(separator + 1)..]);
-            }
-        }
-
-        throw new InvalidOperationException($"Invalid s3 state store connection string '{connectionString}'. Expected the form 's3://bucket/key'.");
     }
 
     public CliApplicationBuilder ConfigureConfirmation()

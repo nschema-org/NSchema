@@ -13,9 +13,9 @@ internal static class RootCommand
         root.Options.Add(CliOptions.Global.Config);
         root.Options.Add(CliOptions.Database.Provider);
         root.Options.Add(CliOptions.Database.ConnectionString);
-        root.Options.Add(CliOptions.State.Type);
-        root.Options.Add(CliOptions.State.ConnectionString);
         root.Options.Add(CliOptions.State.File);
+        root.Options.Add(CliOptions.State.S3Bucket);
+        root.Options.Add(CliOptions.State.S3Key);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NSchema.Cli;
 using NSchema.Cli.Configuration;
 using NSchema.Migration;
 using NSchema.State;
@@ -35,20 +34,20 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureDatabaseProvider_Throws_WhenPostgresHasNoConnectionString()
     {
         // Arrange
-        _configuration.Provider.Type = ProviderType.Postgres;
+        _configuration.Provider.Postgres = new PostgresProviderConfig();
 
         // Act
         var act = () => _sut.ConfigureDatabaseProvider();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("connection string");
+        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("connectionString");
     }
 
     [Fact]
     public void ConfigureDatabaseProvider_DoesNotThrow_WhenNoProviderConfigured()
     {
         // Arrange
-        // Provider.Type is null: offline operations must remain available.
+        // No provider section is set: offline operations must remain available.
 
         // Act
         var act = () => _sut.ConfigureDatabaseProvider();
@@ -61,8 +60,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureDatabaseProvider_DoesNotThrow_ForPostgresWithConnectionString()
     {
         // Arrange
-        _configuration.Provider.Type = ProviderType.Postgres;
-        _configuration.Provider.ConnectionString = "Host=localhost;Database=db";
+        _configuration.Provider.Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost;Database=db" };
 
         // Act
         var act = () => _sut.ConfigureDatabaseProvider();
@@ -71,31 +69,38 @@ public sealed class CliApplicationBuilderTests
         Should.NotThrow(act);
     }
 
-    [Theory]
-    [InlineData("not-a-uri")]
-    [InlineData("s3://")]
-    [InlineData("s3://bucket-only")]
-    [InlineData("s3://bucket/")]
-    [InlineData("s3:///key")]
-    public void ConfigureBackendState_Throws_WhenS3ConnectionStringMalformed(string connectionString)
+    [Fact]
+    public void ConfigureBackendState_Throws_WhenS3SectionIncomplete()
     {
         // Arrange
-        _configuration.State.Type = StateType.S3;
-        _configuration.State.ConnectionString = connectionString;
+        _configuration.State.S3 = new S3StateConfig { Bucket = "bucket" };
 
         // Act
         var act = () => _sut.ConfigureBackendState();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("s3://bucket/key");
+        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("state.s3.key");
     }
 
     [Fact]
-    public void ConfigureBackendState_DoesNotThrow_ForValidS3ConnectionString()
+    public void ConfigureBackendState_Throws_WhenMoreThanOneStoreConfigured()
     {
         // Arrange
-        _configuration.State.Type = StateType.S3;
-        _configuration.State.ConnectionString = "s3://bucket/path/to/state.json";
+        _configuration.State.File = new FileStateConfig { Path = "./state.json" };
+        _configuration.State.S3 = new S3StateConfig { Bucket = "bucket", Key = "key" };
+
+        // Act
+        var act = () => _sut.ConfigureBackendState();
+
+        // Assert
+        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("exactly one");
+    }
+
+    [Fact]
+    public void ConfigureBackendState_DoesNotThrow_ForValidS3Store()
+    {
+        // Arrange
+        _configuration.State.S3 = new S3StateConfig { Bucket = "bucket", Key = "path/to/state.json" };
 
         // Act
         var act = () => _sut.ConfigureBackendState();
@@ -105,10 +110,10 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void ConfigureBackendState_DoesNotThrow_WhenNoConnectionString()
+    public void ConfigureBackendState_DoesNotThrow_WhenNoStoreConfigured()
     {
         // Arrange
-        // No connection string means online-only: nothing to configure, and no error.
+        // No store section means online-only: nothing to configure, and no error.
 
         // Act
         var act = () => _sut.ConfigureBackendState();
@@ -163,8 +168,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureBackendState_RegistersStateStore_ForFile()
     {
         // Arrange
-        _configuration.State.Type = StateType.File;
-        _configuration.State.ConnectionString = "./state.json";
+        _configuration.State.File = new FileStateConfig { Path = "./state.json" };
 
         // Act
         using var app = _sut.ConfigureBackendState().Build();
@@ -174,7 +178,7 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void ConfigureBackendState_RegistersNoStateStore_WhenNoConnectionString()
+    public void ConfigureBackendState_RegistersNoStateStore_WhenNoStoreConfigured()
     {
         // Act
         using var app = _sut.ConfigureBackendState().Build();

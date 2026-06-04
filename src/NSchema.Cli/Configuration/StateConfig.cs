@@ -6,12 +6,50 @@ namespace NSchema.Cli.Configuration;
 internal sealed class StateConfig
 {
     /// <summary>
-    /// The type of store being used.
+    /// Local-file state store settings.
     /// </summary>
-    public StateType? Type { get; set; }
+    public FileStateConfig? File { get; set; }
 
     /// <summary>
-    /// The connection string the selected type connects with.
+    /// Amazon S3 state store settings.
     /// </summary>
-    public string? ConnectionString { get; set; }
+    public S3StateConfig? S3 { get; set; }
+
+    /// <summary>
+    /// The store selected by the populated section, or null when none is configured.
+    /// </summary>
+    public StateType? SelectedType => File is not null ? StateType.File
+        : S3 is not null ? StateType.S3
+        : null;
+
+    // The store sections that have been populated. Used to enforce the "exactly one" rule.
+    private IEnumerable<object> ConfiguredSections => new object?[] { File, S3 }.OfType<object>();
+
+    /// <summary>
+    /// Validates the configuration, yielding one message per problem found. An unconfigured store
+    /// (online-only) is valid and yields nothing.
+    /// </summary>
+    public IEnumerable<string> Validate()
+    {
+        if (ConfiguredSections.Count() > 1)
+        {
+            yield return "More than one state store is configured; specify exactly one.";
+        }
+
+        if (File is { } file)
+        {
+            foreach (var error in file.Validate())
+            {
+                yield return error;
+            }
+        }
+
+        if (S3 is { } s3)
+        {
+            foreach (var error in s3.Validate())
+            {
+                yield return error;
+            }
+        }
+    }
 }

@@ -72,12 +72,11 @@ nschema init
 
 Available to all commands. These select the database and state store that hold the current schema.
 
-- `--provider <postgres>` — the database supplying the live schema. Supported: `postgres`. With no provider, only offline operations (plan/refresh against a state store) are available. _(config `provider.type`, env `NSCHEMA_PROVIDER`)_
-- `--connection-string <value>` — connection string for the provider. _(config `provider.connectionString`, env `NSCHEMA_CONNECTION_STRING`)_
-- `--state-type <file|s3>` — where state snapshots are kept: `file` (default; connection string is a path) or `s3`
-  (connection string is an `s3://bucket/key` URI). _(config `state.type`, env `NSCHEMA_STATE_TYPE`)_
-- `--state-connection-string <value>` — connection string for the state store. _(config `state.connectionString`, env `NSCHEMA_STATE_CONNECTION_STRING`)_
-- `--state-file <path>` — shorthand for a `file` state store at `<path>`. _(config `state.connectionString`)_
+- `--provider <postgres>` — the database supplying the live schema. Supported: `postgres`. With no provider, only offline operations (plan/refresh against a state store) are available. _(config `provider.postgres`, env `NSCHEMA_PROVIDER`)_
+- `--connection-string <value>` — connection string for the provider. _(config `provider.postgres.connectionString`, env `NSCHEMA_CONNECTION_STRING`)_
+- `--state-file <path>` — path for a `file` state store. _(config `state.file.path`, env `NSCHEMA_STATE_FILE`)_
+- `--state-s3-bucket <bucket>` — bucket for an `s3` state store. _(config `state.s3.bucket`, env `NSCHEMA_STATE_S3_BUCKET`)_
+- `--state-s3-key <key>` — object key for an `s3` state store. _(config `state.s3.key`, env `NSCHEMA_STATE_S3_KEY`)_
 - `--config <path>` — path to the config file. Defaults to `./nschema.json` if present.
 
 ### `nschema plan`
@@ -117,7 +116,7 @@ nschema apply --provider postgres --schema-dir ./schemas
 Read the live schema and write it to the state store. Use this to seed or repair state.
 
 **Needs:** a live database (`--provider` plus a connection string) and a state store to write to (`--state-file`, or
-`--state-type`/`--state-connection-string`). It captures the **whole** schema and so takes no desired-schema or
+`--state-s3-bucket`/`--state-s3-key`). It captures the **whole** schema and so takes no desired-schema or
 `--scope` options.
 
 ```sh
@@ -136,8 +135,8 @@ Settings come from three sources, in increasing order of precedence:
 
 ```json
 {
-  "provider": { "type": "postgres", "connectionString": "Host=localhost;Database=app;..." },
-  "state":    { "type": "file", "connectionString": "./nschema.state.json" },
+  "provider": { "postgres": { "connectionString": "Host=localhost;Database=app;..." } },
+  "state":    { "file": { "path": "./nschema.state.json" } },
   "schema":   { "dir": "./schemas", "format": "yaml", "glob": "**/*.yaml" },
   "scope": ["app"],
   "destructiveActionPolicy": "Error"

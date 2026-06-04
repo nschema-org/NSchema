@@ -25,8 +25,8 @@ internal sealed class ProjectScaffolder
 
         var config = new NSchemaConfiguration
         {
-            Provider = new ProviderConfig { Type = ProviderType.Postgres },
-            State = new StateConfig { Type = StateType.File, ConnectionString = "./nschema.state.json" },
+            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig() },
+            State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },
             Schema = new SchemaConfig { Directory = $"./{SchemaDirectoryName}", Format = format },
         };
         File.WriteAllText(configPath, JsonSerializer.Serialize(config, NSchemaConfigurationFactory.JsonOptions));

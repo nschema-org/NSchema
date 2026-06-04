@@ -31,21 +31,21 @@ internal static class CliOptions
 
     public static class State
     {
-        public static readonly Option<StateType?> Type = new("--state-type")
-        {
-            Description = "State store type: file (default) or s3.",
-            Recursive = true,
-        };
-
-        public static readonly Option<string?> ConnectionString = new("--state-connection-string")
-        {
-            Description = "Connection string for the state store (a path for file, an s3://bucket/key URI for s3).",
-            Recursive = true,
-        };
-
         public static readonly Option<string?> File = new("--state-file")
         {
-            Description = "Shorthand for a file state store's path (equivalent to --state-type file --state-connection-string <path>).",
+            Description = "Path for a file state store.",
+            Recursive = true,
+        };
+
+        public static readonly Option<string?> S3Bucket = new("--state-s3-bucket")
+        {
+            Description = "Bucket for an S3 state store.",
+            Recursive = true,
+        };
+
+        public static readonly Option<string?> S3Key = new("--state-s3-key")
+        {
+            Description = "Object key for an S3 state store.",
             Recursive = true,
         };
     }

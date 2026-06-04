@@ -27,7 +27,7 @@ internal static class InitCommand
         }
 
         Console.WriteLine();
-        Console.WriteLine("Set NSCHEMA_CONNECTION_STRING, then run `nschema plan`.");
+        Console.WriteLine($"Set {EnvironmentVariables.ConnectionString}, then run `nschema plan`.");
         return Task.CompletedTask;
     }
 }

@@ -30,14 +30,17 @@ dotnet test  NSchema.Cli.slnx --filter "FullyQualifiedName~RootCommandTests.HasT
 ## Configuration resolution (the heart of the CLI)
 
 `Configuration/NSchemaConfigurationFactory.Create(ParseResult)` produces an `NSchemaConfiguration` from three layers,
-**lowest to highest precedence**:
+**lowest to highest precedence**: the loaded **`nschema.json`**, then **environment variables**, then **command-line
+options**. The default `./nschema.json` is optional; an explicit `--config` must exist.
 
-1. **`nschema.json`** — deserialized with System.Text.Json (`JsonOptions`). `--config` overrides the path; the default
-   `./nschema.json` is optional, an explicit `--config` must exist.
-2. **Environment variables** — an explicit allow-list (`_environmentOverrides`), e.g. `NSCHEMA_CONNECTION_STRING`,
-   `NSCHEMA_PROVIDER`. Not a blanket prefix — only listed variables are honored.
-3. **Command-line options** — `_cliOverrides`, applied only when the option was explicitly set (`{ Implicit: false }`),
-   so an unspecified flag never clobbers a config/env value.
+All three are unified in one mechanism: the single `_overrides` table of `ConfigOverride` entries. Each entry names a
+command-line `Option`, an optional environment variable (from the `EnvironmentVariables` constants — never raw strings),
+and an apply delegate that writes the resolved value onto the config (creating nested provider/state sections on demand).
+`ConfigOverride.Apply` enforces precedence per setting: an explicitly-set CLI option (`{ Implicit: false }`) wins over the
+environment variable, which wins over the file value — an unspecified flag never clobbers a config/env value. There is no
+separate env list, no per-section routing method, and no string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key`
+(and their env vars) populate `state.s3.bucket`/`state.s3.key` directly. Environment lookups are an allow-list, not a
+blanket prefix — only the variables named in an override are honored.
 
 This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
 `init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
@@ -49,8 +52,16 @@ config binder. `nschema.json` keys are camelCase; `schema.dir` maps to `SchemaCo
 configuration slices it needs (`ConfigureDesiredSchema`, `ConfigureScope`, `ConfigurePolicies`, `ConfigureDatabaseProvider`,
 `ConfigureBackendState`, `ConfigureConfirmation`) — there is no shared "configure everything" method, so adding a slice to
 one command does not affect another. `refresh` intentionally omits the desired-schema and scope slices (it snapshots the
-**whole** live schema). `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on the `ProviderType`/`StateType`
-enums; a `null` provider is valid and means offline (plan/refresh against a state store only).
+**whole** live schema). `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is
+populated** (`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than on a discriminator enum — each section is a
+strongly-typed bag of that provider's settings (connection string, timeouts, …). No populated section is valid and means
+offline (plan/refresh against a state store only). At most one section may be set; each section exposes a `Validate()`
+that the run path enforces via `ThrowIfInvalid`, and which a future `validate` command can reuse.
+
+Each nested section is also reachable from the flat CLI/env overrides in the `_overrides` table: `--connection-string`
+populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and
+`--state-s3-bucket`/`--state-s3-key` populate `state.s3.bucket`/`state.s3.key` (each creating its section on demand). A
+bare `--provider postgres` just ensures the section exists. Rich settings (e.g. `commandTimeout`) are file-only.
 
 ## Error handling and output
 

@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
 
@@ -23,53 +22,48 @@ internal static class NSchemaConfigurationFactory
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    // Apply an explicitly-specified command-line option over the loaded configuration.
-    private static readonly CliOverride[] _cliOverrides =
+    private static readonly ConfigOverride[] _overrides =
     [
-        CliOverride.For(CliOptions.Database.Provider, (c, v) => c.Provider.Type = v),
-        CliOverride.For(CliOptions.Database.ConnectionString, (c, v) => c.Provider.ConnectionString = v),
-        CliOverride.For(CliOptions.State.Type, (c, v) => c.State.Type = v),
-        CliOverride.For(CliOptions.State.ConnectionString, (c, v) => c.State.ConnectionString = v),
-        CliOverride.For(CliOptions.State.File, (c, v) => { c.State.Type = StateType.File; c.State.ConnectionString = v; }),
-        CliOverride.For(CliOptions.Migration.Destructive, (c, v) => c.DestructiveActionPolicy = v),
-        CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
-        CliOverride.For(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
-        CliOverride.For(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
-        CliOverride.For(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
-        CliOverride.For(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
-    ];
-
-    // Apply a recognized environment variable over the loaded configuration.
-    private static readonly (string Variable, Action<NSchemaConfiguration, string> Apply)[] _environmentOverrides =
-    [
-        ("NSCHEMA_PROVIDER", (c, v) => c.Provider.Type = Enum.Parse<ProviderType>(v, ignoreCase: true)),
-        ("NSCHEMA_CONNECTION_STRING", (c, v) => c.Provider.ConnectionString = v),
-        ("NSCHEMA_STATE_TYPE", (c, v) => c.State.Type = Enum.Parse<StateType>(v, ignoreCase: true)),
-        ("NSCHEMA_STATE_CONNECTION_STRING", (c, v) => c.State.ConnectionString = v),
-        ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", (c, v) => c.DestructiveActionPolicy = Enum.Parse<DestructiveActionPolicy>(v, ignoreCase: true)),
+        ConfigOverride.Enum(CliOptions.Database.Provider, EnvironmentVariables.Provider, SelectProvider),
+        ConfigOverride.String(CliOptions.Database.ConnectionString, EnvironmentVariables.ConnectionString,
+            (c, v) => (c.Provider.Postgres ??= new PostgresProviderConfig()).ConnectionString = v),
+        ConfigOverride.String(CliOptions.State.File, EnvironmentVariables.StateFile,
+            (c, v) => (c.State.File ??= new FileStateConfig()).Path = v),
+        ConfigOverride.String(CliOptions.State.S3Bucket, EnvironmentVariables.StateS3Bucket,
+            (c, v) => (c.State.S3 ??= new S3StateConfig()).Bucket = v),
+        ConfigOverride.String(CliOptions.State.S3Key, EnvironmentVariables.StateS3Key,
+            (c, v) => (c.State.S3 ??= new S3StateConfig()).Key = v),
+        ConfigOverride.Enum(CliOptions.Migration.Destructive, EnvironmentVariables.DestructiveActionPolicy,
+            (c, v) => c.DestructiveActionPolicy = v),
+        ConfigOverride.Cli(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
+        ConfigOverride.Cli(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
+        ConfigOverride.Cli(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
+        ConfigOverride.Cli(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
+        ConfigOverride.Cli(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
     ];
 
     public static NSchemaConfiguration Create(ParseResult parseResult)
     {
-        // Load base file.
         var config = LoadFromFile(parseResult) ?? new NSchemaConfiguration();
 
-        // Apply environment variable overrides
-        foreach (var (variable, apply) in _environmentOverrides)
+        foreach (var @override in _overrides)
         {
-            if (Environment.GetEnvironmentVariable(variable) is { } value)
-            {
-                apply(config, value);
-            }
-        }
-
-        // Apply CLI argument overrides
-        foreach (var cliOverride in _cliOverrides)
-        {
-            cliOverride.Apply(config, parseResult);
+            @override.Apply(config, parseResult);
         }
 
         return config;
+    }
+
+    // Ensures the selected provider's section exists so a bare --provider/NSCHEMA_PROVIDER still
+    // selects it (its settings then come from the file or the provider-specific overrides).
+    private static void SelectProvider(NSchemaConfiguration config, ProviderType? type)
+    {
+        switch (type)
+        {
+            case ProviderType.Postgres:
+                config.Provider.Postgres ??= new PostgresProviderConfig();
+                break;
+        }
     }
 
     private static NSchemaConfiguration? LoadFromFile(ParseResult parseResult)
@@ -90,29 +84,44 @@ internal static class NSchemaConfigurationFactory
     }
 
     /// <summary>
-    /// Applies a single command-line option onto the configuration, but only when it was explicitly specified.
+    /// A single configuration override: an optional environment variable and a command-line option that
+    /// both feed one setting. <see cref="Apply"/> resolves the effective value (CLI over environment over
+    /// the loaded file) and writes it onto the configuration.
     /// </summary>
-    private sealed class CliOverride
+    private abstract class ConfigOverride
     {
-        private readonly Func<ParseResult, bool> _shouldApply;
-        private readonly Action<NSchemaConfiguration, ParseResult> _apply;
+        /// <summary>A command-line-only override (no environment variable).</summary>
+        public static ConfigOverride Cli<T>(Option<T> option, Action<NSchemaConfiguration, T> apply)
+            => new TypedOverride<T>(option, environmentVariable: null, parseEnvironment: null, apply);
 
-        private CliOverride(Func<ParseResult, bool> shouldApply, Action<NSchemaConfiguration, ParseResult> apply)
+        /// <summary>A string-valued override also readable from an environment variable.</summary>
+        public static ConfigOverride String(Option<string?> option, string environmentVariable, Action<NSchemaConfiguration, string?> apply)
+            => new TypedOverride<string?>(option, environmentVariable, static value => value, apply);
+
+        /// <summary>An enum-valued override also readable (case-insensitively) from an environment variable.</summary>
+        public static ConfigOverride Enum<TEnum>(Option<TEnum?> option, string environmentVariable, Action<NSchemaConfiguration, TEnum?> apply)
+            where TEnum : struct, Enum
+            => new TypedOverride<TEnum?>(option, environmentVariable, static value => System.Enum.Parse<TEnum>(value, ignoreCase: true), apply);
+
+        public abstract void Apply(NSchemaConfiguration config, ParseResult parseResult);
+
+        private sealed class TypedOverride<T>(
+            Option<T> option,
+            string? environmentVariable,
+            Func<string, T>? parseEnvironment,
+            Action<NSchemaConfiguration, T> apply) : ConfigOverride
         {
-            _shouldApply = shouldApply;
-            _apply = apply;
-        }
-
-        public static CliOverride For<T>(Option<T> option, Action<NSchemaConfiguration, T> apply) => new(
-            pr => pr.GetResult(option) is { Implicit: false },
-            (config, result) => apply(config, result.GetValue(option)!)
-        );
-
-        public void Apply(NSchemaConfiguration config, ParseResult parseResult)
-        {
-            if (_shouldApply(parseResult))
+            public override void Apply(NSchemaConfiguration config, ParseResult parseResult)
             {
-                _apply(config, parseResult);
+                if (parseResult.GetResult(option) is { Implicit: false })
+                {
+                    apply(config, parseResult.GetValue(option)!);
+                }
+                else if (environmentVariable is not null
+                         && Environment.GetEnvironmentVariable(environmentVariable) is { } value)
+                {
+                    apply(config, parseEnvironment!(value));
+                }
             }
         }
     }
