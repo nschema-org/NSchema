@@ -152,7 +152,7 @@ internal static class NSchemaConfigurationFactory
     /// <summary>
     /// Tries to get an override value from the given CLI option.
     /// </summary>
-    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, out T? value)
+    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, [NotNullWhen(true)] out T? value)
     {
         return TryGetOverride(result, option, null, null, out value);
     }

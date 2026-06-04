@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace NSchema.Cli.Configuration.State;
 
 /// <summary>
@@ -14,4 +16,10 @@ internal sealed class StateConfig
     /// Amazon S3 state store settings.
     /// </summary>
     public S3StateConfig? S3 { get; set; }
+
+    /// <summary>
+    /// The number of state store sections populated. Zero means online-only (no state store).
+    /// </summary>
+    [JsonIgnore]
+    public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
 }

@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Cli.Configuration;
 
-namespace NSchema.Cli.Commands;
+namespace NSchema.Cli.Commands.Init;
 
 internal static class InitCommand
 {

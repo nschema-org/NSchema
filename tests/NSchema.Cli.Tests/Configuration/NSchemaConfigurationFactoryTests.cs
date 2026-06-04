@@ -51,7 +51,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
         result.Provider.Postgres!.ConnectionString.ShouldBe("from-file");
@@ -64,7 +64,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config, "--connection-string", "from-cli");
+        var result = Create("plan", "--config", config, "--connection-string", "from-cli");
 
         // Assert
         result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
@@ -78,7 +78,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file", "commandTimeout": 42 } } }""");
 
         // Act
-        var result = Create("--config", config, "--connection-string", "from-cli");
+        var result = Create("plan", "--config", config, "--connection-string", "from-cli");
 
         // Assert
         result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
@@ -93,7 +93,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
         result.Provider.Postgres!.ConnectionString.ShouldBe("from-env");
@@ -106,7 +106,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         Environment.SetEnvironmentVariable(EnvironmentVariables.ConnectionString, "from-env");
 
         // Act
-        var result = Create("--connection-string", "from-cli");
+        var result = Create("plan", "--connection-string", "from-cli");
 
         // Assert
         result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
@@ -183,7 +183,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "schema": { "dir": "./src" } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
         result.Schema.Directory.ShouldBe("./src");
@@ -193,7 +193,7 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
     public void Provider_SelectsNestedSection()
     {
         // Act
-        var result = Create("--provider", "postgres");
+        var result = Create("plan", "--provider", "postgres");
 
         // Assert
         result.Provider.Postgres.ShouldNotBeNull();
@@ -215,7 +215,8 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         result.State.S3.Key.ShouldBe("env/key.json");
     }
 
-    // NSchemaConfigurationFactory is static, so the closest thing to a "_sut" is this invocation helper.
+    // NSchemaConfigurationFactory is static, so the closest thing to a "_sut" is this invocation helper. These tests
+    // exercise the shared resolution engine (file < env < CLI) that the per-command factory methods project from.
     private static NSchemaConfiguration Create(params string[] args)
         => NSchemaConfigurationFactory.Create(RootCommand.Create().Parse(args));
 

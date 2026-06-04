@@ -48,21 +48,35 @@ config binder. `nschema.json` keys are camelCase; `schema.dir` maps to `SchemaCo
 
 ## From config to a run
 
-`CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder`. Each command opts into only the
-configuration slices it needs (`ConfigureDesiredSchema`, `ConfigureScope`, `ConfigurePolicies`, `ConfigureDatabaseProvider`,
-`ConfigureBackendState`, `ConfigureConfirmation`) — there is no shared "configure everything" method, so adding a slice to
-one command does not affect another. `refresh` intentionally omits the desired-schema and scope slices (it snapshots the
-**whole** live schema). `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is
-populated** (`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than on a discriminator enum — each section is a
-strongly-typed bag of that provider's settings (connection string, timeouts, …). No populated section is valid and means
-offline (plan/refresh against a state store only). Validation uses **FluentValidation** (`ProviderConfigValidator`,
-`StateConfigValidator`, and per-section leaf validators) — the run path runs the relevant validator and throws an
-`InvalidOperationException` with the joined `ErrorMessage`s before building, and a future `validate` command can reuse the
-validators directly. The "at most one section" rule is checked via each config's `ConfiguredSectionCount`. After
-validation, the builder binds the now-guaranteed values through **property patterns** (`{ Postgres: { ConnectionString:
-{ } cs } }`), so there are no null-forgiving operators when reading provider/state config.
+`NSchemaConfiguration` is the **on-disk file format** (`nschema.json`) only — the full superset of slices, all optional,
+and the single thing `init` writes. It is **not** what a command runs against. `NSchemaConfigurationFactory.Resolve`
+layers env + CLI over the loaded file to produce that resolved superset, but it is `internal` and unvalidated; nothing
+outside the factory consumes it directly. Instead each command calls `CreateApply`/`CreatePlan`/`CreateRefresh`, which
+**project** the superset into a small, command-specific model (`ApplyConfiguration`, `PlanConfiguration`,
+`RefreshConfiguration` under `Configuration/Commands`) holding only the slices that command needs, then validate it and
+hand back a guaranteed-valid value. A command never sees a config field it has no use for.
 
-Each nested section is also reachable from the flat CLI/env overrides in the `_overrides` table: `--connection-string`
+Each command model has its own **FluentValidation** validator that *composes the slice validators* (`SchemaConfigValidator`,
+`ProviderConfigValidator`, `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
+command's **presence** rules on top: `apply` requires a desired schema **and** a provider; `plan` requires a desired schema
+**and** a current-schema source — a provider (live) **or** a state store (offline); `refresh` requires a provider **and** a
+state store (it snapshots the **whole** live schema, so it takes no desired-schema or scope). Presence is expressed via each
+config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). `Create*` runs the
+validator through `ValidateOrThrow`, which throws a `ValidationException` with the joined `ErrorMessage`s — so an invalid
+run fails before any builder call, and a future `validate` command can reuse the same per-command validators directly.
+
+`CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder` that **trusts its inputs** — it no
+longer validates. Each `Configure*` method takes exactly the slice it applies (`ConfigureDesiredSchema(SchemaConfig)`,
+`ConfigureScope(string[]?)`, `ConfigurePolicies(DestructiveActionPolicy?)`, `ConfigureDatabaseProvider(ProviderConfig)`,
+`ConfigureBackendState(StateConfig)`, `ConfigureConfirmation(bool)`); the command handler passes the corresponding field
+off its validated model. There is no shared "configure everything" method, so adding a slice to one command does not affect
+another. `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is populated**
+(`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than a discriminator enum, and bind through **property
+patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-forgiving operators — the command validator
+already guaranteed the shape. A zero-section provider/state is valid at the builder and means offline; it is the command
+validators (not the builder) that reject it where a section is required.
+
+Each nested section is also reachable from the flat CLI/env overrides: `--connection-string`
 populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and
 `--state-s3-bucket`/`--state-s3-key` populate `state.s3.bucket`/`state.s3.key` (each creating its section on demand). A
 bare `--provider postgres` just ensures the section exists. Rich settings (e.g. `commandTimeout`) are file-only.

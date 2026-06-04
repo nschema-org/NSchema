@@ -11,7 +11,7 @@ internal sealed class SchemaConfig
     /// The directory the desired-schema files are discovered under.
     /// </summary>
     [JsonPropertyName("dir")]
-    public string? Directory { get; set; }
+    public string Directory { get; set; } = "";
 
     /// <summary>
     /// The format the desired schema is expressed in.

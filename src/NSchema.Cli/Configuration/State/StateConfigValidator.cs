@@ -7,8 +7,8 @@ internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
 {
     public StateConfigValidator()
     {
-        RuleFor(x => x)
-            .Must(HaveOnlyOneConfiguration)
+        RuleFor(x => x.ConfiguredSectionCount)
+            .LessThanOrEqualTo(1)
             .WithMessage("More than one state store is configured; specify exactly one.");
 
         RuleFor(x => x.File)
@@ -17,10 +17,4 @@ internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
         RuleFor(x => x.S3)
             .SetNonNullableValidator(new S3StateConfigValidator());
     }
-
-    private static bool HaveOnlyOneConfiguration(StateConfig config) => new []
-    {
-        config.File is not null,
-        config.S3 is not null,
-    }.Count(x => x) <= 1;
 }

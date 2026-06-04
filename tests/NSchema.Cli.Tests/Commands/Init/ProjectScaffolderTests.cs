@@ -1,8 +1,9 @@
 using System.Text.Json;
+using NSchema.Cli.Commands.Init;
 using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Schema;
 
-namespace NSchema.Cli.Tests;
+namespace NSchema.Cli.Tests.Commands.Init;
 
 public sealed class ProjectScaffolderTests : IDisposable
 {

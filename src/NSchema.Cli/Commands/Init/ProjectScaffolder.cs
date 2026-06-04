@@ -4,7 +4,7 @@ using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
 
-namespace NSchema.Cli;
+namespace NSchema.Cli.Commands.Init;
 
 /// <summary>
 /// Scaffolds a starter NSchema project — an <c>nschema.json</c> and a sample schema file — into a directory.

@@ -1,4 +1,3 @@
-using NSchema.Cli.Configuration;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Plan.Model;
@@ -8,13 +7,13 @@ namespace NSchema.Cli.Services;
 /// <summary>
 /// An <see cref="IMigrationConfirmation"/> that prompts on the terminal before applying changes,
 /// </summary>
-internal sealed class ConsoleMigrationConfirmation(NSchemaConfiguration configuration, IMigrationReporter reporter) : IMigrationConfirmation
+internal sealed class ConsoleMigrationConfirmation(bool autoApprove, IMigrationReporter reporter) : IMigrationConfirmation
 {
     public ValueTask<bool> Confirm(MigrationPlan plan, CancellationToken cancellationToken = default)
     {
         reporter.Info($"NSchema will execute {plan.Actions.Count} action(s) against the database.");
 
-        if (configuration.AutoApprove)
+        if (autoApprove)
         {
             reporter.Info("Auto-approve is enabled; skipping confirmation.");
             return ValueTask.FromResult(true);

@@ -1,4 +1,8 @@
 using System.Reflection;
+using NSchema.Cli.Commands.Apply;
+using NSchema.Cli.Commands.Init;
+using NSchema.Cli.Commands.Plan;
+using NSchema.Cli.Commands.Refresh;
 
 namespace NSchema.Cli.Commands;
 
