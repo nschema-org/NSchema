@@ -42,10 +42,10 @@ internal static class NSchemaConfigurationFactory
         return config;
     }
 
-    private static NSchemaConfiguration? LoadFromFile(ParseResult parseResult)
+    private static NSchemaConfiguration? LoadFromFile(ParseResult result)
     {
         // Relative paths must resolve against the working directory the tool was invoked from.
-        var cliPath = parseResult.GetValue(CliOptions.Global.Config);
+        var cliPath = result.GetValue(CliOptions.Global.Config);
         var configFile = Path.GetFullPath(cliPath ?? DefaultConfigurationFile, Directory.GetCurrentDirectory());
 
         if (!File.Exists(configFile))
@@ -190,7 +190,7 @@ internal static class NSchemaConfigurationFactory
             {
                 if (envParser == null)
                 {
-                    throw new InvalidOperationException($"Environment variable override specified without value parser.");
+                    throw new InvalidOperationException("Environment variable override specified without value parser.");
                 }
                 value = envParser(envValue);
                 return true;
