@@ -16,9 +16,9 @@ internal static class CliOptions
         };
     }
 
-    public static class Database
+    public static class Provider
     {
-        public static readonly Option<ProviderType> Provider = new("--provider")
+        public static readonly Option<ProviderType> Type = new("--provider")
         {
             Description = "Database provider supplying the live schema (e.g. postgres).",
             Recursive = true,

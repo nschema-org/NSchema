@@ -11,8 +11,8 @@ internal static class RootCommand
         SetName(root, "nschema");
 
         root.Options.Add(CliOptions.Global.Config);
-        root.Options.Add(CliOptions.Database.Provider);
-        root.Options.Add(CliOptions.Database.ConnectionString);
+        root.Options.Add(CliOptions.Provider.Type);
+        root.Options.Add(CliOptions.Provider.ConnectionString);
         root.Options.Add(CliOptions.State.File);
         root.Options.Add(CliOptions.State.S3Bucket);
         root.Options.Add(CliOptions.State.S3Key);

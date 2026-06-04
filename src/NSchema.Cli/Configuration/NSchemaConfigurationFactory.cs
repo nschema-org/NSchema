@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
 using NSchema.Migration;
 
@@ -30,6 +29,7 @@ internal static class NSchemaConfigurationFactory
     public static NSchemaConfiguration Create(ParseResult result)
     {
         var config = LoadFromFile(result) ?? new NSchemaConfiguration();
+
         ConfigureProvider(config, result);
         ConfigureConnectionString(config, result);
         ConfigureFileState(config, result);
@@ -61,43 +61,35 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureProvider(NSchemaConfiguration config, ParseResult result)
     {
-        var value = GetOverride(result, EnvironmentVariables.Provider, CliOptions.Database.Provider);
-        if (value == null)
+        if (TryGetOverride(result, EnvironmentVariables.Provider, CliOptions.Provider.Type, Enum.Parse<ProviderType>, out var provider))
         {
-            return;
-        }
-
-        var provider = Enum.Parse<ProviderType>(value, ignoreCase: true);
-        switch (provider)
-        {
-            case ProviderType.Postgres:
-                config.Provider.Postgres ??= new PostgresProviderConfig();
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
+            switch (provider)
+            {
+                case ProviderType.Postgres:
+                    config.Provider.Postgres ??= new PostgresProviderConfig();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
     }
 
     private static void ConfigureConnectionString(NSchemaConfiguration config, ParseResult result)
     {
-        var value = GetOverride(result, EnvironmentVariables.ConnectionString, CliOptions.Database.ConnectionString);
-        if (value == null)
+        if (TryGetOverride(result, EnvironmentVariables.ConnectionString, CliOptions.Provider.ConnectionString, out var connectionString))
         {
-            return;
+            config.Provider.Postgres ??= new PostgresProviderConfig();
+            config.Provider.Postgres.ConnectionString = connectionString;
         }
-
-        config.Provider.Postgres ??= new PostgresProviderConfig();
     }
 
     private static void ConfigureFileState(NSchemaConfiguration config, ParseResult result)
     {
-        var value = GetOverride(result, EnvironmentVariables.StateFile, CliOptions.State.File);
-        if (value == null)
+        if (TryGetOverride(result, EnvironmentVariables.StateFile, CliOptions.State.File, out var path))
         {
-            return;
+            config.State.File ??= new FileStateConfig();
+            config.State.File.Path = path;
         }
-        config.State.File ??= new FileStateConfig();
-        config.State.File.Path = value;
     }
 
     private static void ConfigureS3State(NSchemaConfiguration config, ParseResult result)
@@ -125,7 +117,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureAutoApprove(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Apply.AutoApprove, bool.Parse, out var autoApprove))
+        if (TryGetOverride(result, null, CliOptions.Apply.AutoApprove, null, out var autoApprove))
         {
             config.AutoApprove = autoApprove;
         }
@@ -133,7 +125,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureMigrationScope(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Migration.Scope, out var scope))
+        if (TryGetOverride(result, null, CliOptions.Migration.Scope, null, out var scope))
         {
             config.Scope = scope;
         }
@@ -141,7 +133,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureSchema(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Schema.Format, Enum.Parse<SchemaFormat>, out var format))
+        if (TryGetOverride(result, null, CliOptions.Schema.Format, null, out var format))
         {
             config.Schema.Format = format;
         }
@@ -159,10 +151,10 @@ internal static class NSchemaConfigurationFactory
 
     private static bool TryGetOverride(ParseResult parseResult, string? envVar, Option<string> option, [NotNullWhen(true)]out string? value)
     {
-        return TryGetOverride<string?>(parseResult, envVar, option, s => s, out value);
+        return TryGetOverride<string>(parseResult, envVar, option, s => s, out value);
     }
 
-    private static bool TryGetOverride<T>(ParseResult result, string? envVar, Option<T> option, Func<string, T> parse, out T? value)
+    private static bool TryGetOverride<T>(ParseResult result, string? envVar, Option<T> option, Func<string, T>? envParser, out T? value)
     {
         if (result.GetResult(option) is { Implicit: false } argument)
         {
@@ -174,7 +166,11 @@ internal static class NSchemaConfigurationFactory
         {
             if (Environment.GetEnvironmentVariable(envVar) is { } envValue)
             {
-                value = parse(envValue);
+                if (envParser == null)
+                {
+                    throw new InvalidOperationException($"Environment variable override specified without value parser.");
+                }
+                value = envParser(envValue);
                 return true;
             }
         }
