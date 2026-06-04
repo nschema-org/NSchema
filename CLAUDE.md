@@ -33,14 +33,14 @@ dotnet test  NSchema.Cli.slnx --filter "FullyQualifiedName~RootCommandTests.HasT
 **lowest to highest precedence**: the loaded **`nschema.json`**, then **environment variables**, then **command-line
 options**. The default `./nschema.json` is optional; an explicit `--config` must exist.
 
-All three are unified in one mechanism: the single `_overrides` table of `ConfigOverride` entries. Each entry names a
-command-line `Option`, an optional environment variable (from the `EnvironmentVariables` constants — never raw strings),
-and an apply delegate that writes the resolved value onto the config (creating nested provider/state sections on demand).
-`ConfigOverride.Apply` enforces precedence per setting: an explicitly-set CLI option (`{ Implicit: false }`) wins over the
-environment variable, which wins over the file value — an unspecified flag never clobbers a config/env value. There is no
-separate env list, no per-section routing method, and no string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key`
-(and their env vars) populate `state.s3.bucket`/`state.s3.key` directly. Environment lookups are an allow-list, not a
-blanket prefix — only the variables named in an override are honored.
+`Create` loads the file (if any) and then walks one private `Configure*` method per setting (`ConfigureConnectionString`,
+`ConfigureFileState`, `ConfigureS3State`, …), each writing its resolved value onto the config and creating nested
+provider/state sections on demand. They share one `TryGetOverride` helper that enforces precedence per setting: an
+explicitly-set CLI option (`{ Implicit: false }`) wins over the environment variable (named from the
+`EnvironmentVariables` constants — never raw strings), which wins over the file value — an unspecified flag never clobbers
+a config/env value. There is no string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key` (and their env vars)
+populate `state.s3.bucket`/`state.s3.key` directly. Environment lookups are an allow-list, not a blanket prefix — only the
+variables passed to a `TryGetOverride` call are honored.
 
 This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
 `init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
@@ -49,21 +49,26 @@ config binder. `nschema.json` keys are camelCase; `schema.dir` maps to `SchemaCo
 ## From config to a run
 
 `NSchemaConfiguration` is the **on-disk file format** (`nschema.json`) only — the full superset of slices, all optional,
-and the single thing `init` writes. It is **not** what a command runs against. `NSchemaConfigurationFactory.Resolve`
-layers env + CLI over the loaded file to produce that resolved superset, but it is `internal` and unvalidated; nothing
-outside the factory consumes it directly. Instead each command calls `CreateApply`/`CreatePlan`/`CreateRefresh`, which
-**project** the superset into a small, command-specific model (`ApplyConfiguration`, `PlanConfiguration`,
-`RefreshConfiguration` under `Configuration/Commands`) holding only the slices that command needs, then validate it and
-hand back a guaranteed-valid value. A command never sees a config field it has no use for.
+and the single thing `init` writes. It is **not** what a command runs against. `NSchemaConfigurationFactory.Create` layers
+env + CLI over the loaded file and hands back that resolved superset; it is a pure resolution engine and knows nothing
+about commands or their requirements. Each command then **projects** the superset into its own small, command-specific
+model — the dependency points one way (commands → factory), so adding or changing a command never touches the factory.
 
-Each command model has its own **FluentValidation** validator that *composes the slice validators* (`SchemaConfigValidator`,
+The projection and validation are **vertically sliced into the command**: every command lives in its own
+`Commands/<Name>/` folder holding the System.CommandLine `*Command` (option registration + handler), its
+`*Configuration` model (only the slices it needs), and its `*ConfigurationValidator`. The handler's private projection
+method calls `NSchemaConfigurationFactory.Create`, copies the relevant slices onto the command model, and runs the
+validator before building. The `*Configuration` models compose the shared slice types from `Configuration/*` (the reusable
+vocabulary); the command owns only their composition. A command never sees a config field it has no use for.
+
+Each command validator (**FluentValidation**) *composes the slice validators* (`SchemaConfigValidator`,
 `ProviderConfigValidator`, `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
 command's **presence** rules on top: `apply` requires a desired schema **and** a provider; `plan` requires a desired schema
 **and** a current-schema source — a provider (live) **or** a state store (offline); `refresh` requires a provider **and** a
 state store (it snapshots the **whole** live schema, so it takes no desired-schema or scope). Presence is expressed via each
-config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). `Create*` runs the
-validator through `ValidateOrThrow`, which throws a `ValidationException` with the joined `ErrorMessage`s — so an invalid
-run fails before any builder call, and a future `validate` command can reuse the same per-command validators directly.
+config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). The projection runs
+the validator through `ValidateOrThrow`, which throws a `ValidationException` with the joined `ErrorMessage`s — so an
+invalid run fails before any builder call, and a future `validate` command can reuse the same per-command validators.
 
 `CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder` that **trusts its inputs** — it no
 longer validates. Each `Configure*` method takes exactly the slice it applies (`ConfigureDesiredSchema(SchemaConfig)`,
