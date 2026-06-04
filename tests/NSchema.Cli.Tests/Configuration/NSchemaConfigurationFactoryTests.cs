@@ -1,7 +1,5 @@
 using NSchema.Cli.Commands;
 using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.State;
 
 // Configuration resolution reads process-global environment variables, so keep tests from racing on them.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
@@ -162,8 +160,8 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var result = Create("plan", "--state-file", "./state.json");
 
         // Assert
-        result.State.SelectedType.ShouldBe(StateType.File);
-        result.State.File!.Path.ShouldBe("./state.json");
+        result.State.File.ShouldNotBeNull();
+        result.State.File.Path.ShouldBe("./state.json");
     }
 
     [Fact]
@@ -173,8 +171,8 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var result = Create("plan", "--state-s3-bucket", "my-bucket", "--state-s3-key", "state/schema.json");
 
         // Assert
-        result.State.SelectedType.ShouldBe(StateType.S3);
-        result.State.S3!.Bucket.ShouldBe("my-bucket");
+        result.State.S3.ShouldNotBeNull();
+        result.State.S3.Bucket.ShouldBe("my-bucket");
         result.State.S3.Key.ShouldBe("state/schema.json");
     }
 
@@ -198,7 +196,6 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var result = Create("--provider", "postgres");
 
         // Assert
-        result.Provider.SelectedType.ShouldBe(ProviderType.Postgres);
         result.Provider.Postgres.ShouldNotBeNull();
     }
 
@@ -213,8 +210,8 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var result = Create();
 
         // Assert
-        result.State.SelectedType.ShouldBe(StateType.S3);
-        result.State.S3!.Bucket.ShouldBe("env-bucket");
+        result.State.S3.ShouldNotBeNull();
+        result.State.S3.Bucket.ShouldBe("env-bucket");
         result.State.S3.Key.ShouldBe("env/key.json");
     }
 

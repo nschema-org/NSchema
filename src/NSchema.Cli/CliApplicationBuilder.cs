@@ -74,22 +74,16 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureBackendState()
     {
-        // No store configured: plan/apply run online-only and refresh has nowhere to write.
-        if (_configuration.State.SelectedType is null)
-        {
-            return this;
-        }
-
         Validate(_stateValidator, _configuration.State);
 
         // The property patterns bind non-null locals; validation above guarantees a case matches.
         switch (_configuration.State)
         {
-            case { File: { Path: { } path } }:
-                _builder.UseFileStateStore(path);
+            case { File: { } file }:
+                _builder.UseFileStateStore(file.Path);
                 break;
-            case { S3: { Bucket: { } bucket, Key: { } key } }:
-                _builder.UseStateStoreS3(bucket, key);
+            case { S3: { } s3 }:
+                _builder.UseStateStoreS3(s3.Bucket, s3.Key);
                 break;
         }
 
@@ -98,20 +92,14 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabaseProvider()
     {
-        // No provider configured: only offline operations (plan/refresh against the state store) are available.
-        if (_configuration.Provider.SelectedType is null)
-        {
-            return this;
-        }
-
         Validate(_providerValidator, _configuration.Provider);
 
         // The property pattern binds non-null locals; validation above guarantees it matches.
-        if (_configuration.Provider is { Postgres: { ConnectionString: { } connectionString } postgres })
+        if (_configuration.Provider is { Postgres: { } postgres })
         {
             _builder.UseCurrentSchemaPostgres(dataSource =>
             {
-                dataSource.ConnectionStringBuilder.ConnectionString = connectionString;
+                dataSource.ConnectionStringBuilder.ConnectionString = postgres.ConnectionString;
                 if (postgres.CommandTimeout is { } commandTimeout)
                 {
                     dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;

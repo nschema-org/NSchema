@@ -1,8 +1,6 @@
 using System.Text.Json;
 using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
 
 namespace NSchema.Cli.Tests;
 
@@ -33,8 +31,8 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         // Assert
         var config = LoadGeneratedConfig();
-        config.Provider.SelectedType.ShouldBe(ProviderType.Postgres);
-        config.State.SelectedType.ShouldBe(StateType.File);
+        config.Provider.Postgres.ShouldNotBeNull();
+        config.State.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
         config.Schema.Directory.ShouldBe("./schemas");
         config.Schema.Format.ShouldBe(SchemaFormat.Yaml);
@@ -87,7 +85,7 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         // Assert
         Should.NotThrow(act);
-        LoadGeneratedConfig().Provider.SelectedType.ShouldBe(ProviderType.Postgres);
+        LoadGeneratedConfig().Provider.Postgres.ShouldNotBeNull();
     }
 
     private NSchemaConfiguration LoadGeneratedConfig()
