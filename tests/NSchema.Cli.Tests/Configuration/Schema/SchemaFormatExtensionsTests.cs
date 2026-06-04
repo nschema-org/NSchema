@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Schema;
 
-namespace NSchema.Cli.Tests.Configuration;
+namespace NSchema.Cli.Tests.Configuration.Schema;
 
 public sealed class SchemaFormatExtensionsTests
 {

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.State;
 using NSchema.Migration;
 using NSchema.State;
 

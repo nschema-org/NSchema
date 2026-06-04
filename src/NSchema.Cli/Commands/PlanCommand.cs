@@ -8,9 +8,9 @@ internal static class PlanCommand
     public static Command Create()
     {
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
-        command.Options.Add(CliOptions.Desired.Format);
-        command.Options.Add(CliOptions.Desired.SchemaDir);
-        command.Options.Add(CliOptions.Desired.SchemaGlob);
+        command.Options.Add(CliOptions.Schema.Format);
+        command.Options.Add(CliOptions.Schema.Directory);
+        command.Options.Add(CliOptions.Schema.Pattern);
         command.Options.Add(CliOptions.Migration.Scope);
         command.Options.Add(CliOptions.Migration.Destructive);
         command.SetAction(Plan);

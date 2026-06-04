@@ -1,5 +1,7 @@
 using NSchema.Cli.Commands;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.State;
 
 // Configuration resolution reads process-global environment variables, so keep tests from racing on them.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]

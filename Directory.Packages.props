@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
     <PackageVersion Include="NSchema.Aws" Version="3.0.0-alpha.1" />
     <PackageVersion Include="NSchema.Postgres" Version="3.0.0-alpha.1" />

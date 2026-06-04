@@ -49,6 +49,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" />
     <PackageReference Include="NSchema" />
     <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Postgres" />

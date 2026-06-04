@@ -1,6 +1,10 @@
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.Schema;
+using NSchema.Cli.Configuration.State;
 using NSchema.Cli.Services;
 using NSchema.Hosting;
 using NSchema.Postgres;
@@ -13,6 +17,9 @@ namespace NSchema.Cli;
 /// </summary>
 internal sealed class CliApplicationBuilder
 {
+    private static readonly ProviderConfigValidator _providerValidator = new();
+    private static readonly StateConfigValidator _stateValidator = new();
+
     private readonly NSchemaConfiguration _configuration;
 
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication.CreateBuilder();
@@ -44,7 +51,7 @@ internal sealed class CliApplicationBuilder
 
         // Resolve the directory to an absolute root.
         var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Glob) ? schema.Format.DefaultGlob() : schema.Glob;
+        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultGlob() : schema.Pattern;
         var glob = $"{root}/{pattern}";
 
         switch (schema.Format)
@@ -58,9 +65,9 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureScope()
     {
-        if (_configuration.Scope is { Count: > 0 } scope)
+        if (_configuration.Scope is { Length: > 0 } scope)
         {
-            _builder.ForSchemas([.. scope]);
+            _builder.ForSchemas(scope);
         }
         return this;
     }
@@ -73,15 +80,16 @@ internal sealed class CliApplicationBuilder
             return this;
         }
 
-        ThrowIfInvalid(_configuration.State.Validate());
+        Validate(_stateValidator, _configuration.State);
 
+        // The property patterns bind non-null locals; validation above guarantees a case matches.
         switch (_configuration.State)
         {
-            case { File: { } file }:
-                _builder.UseFileStateStore(file.Path!);
+            case { File: { Path: { } path } }:
+                _builder.UseFileStateStore(path);
                 break;
-            case { S3: { } s3 }:
-                _builder.UseStateStoreS3(s3.Bucket!, s3.Key!);
+            case { S3: { Bucket: { } bucket, Key: { } key } }:
+                _builder.UseStateStoreS3(bucket, key);
                 break;
         }
 
@@ -96,32 +104,32 @@ internal sealed class CliApplicationBuilder
             return this;
         }
 
-        ThrowIfInvalid(_configuration.Provider.Validate());
+        Validate(_providerValidator, _configuration.Provider);
 
-        switch (_configuration.Provider)
+        // The property pattern binds non-null locals; validation above guarantees it matches.
+        if (_configuration.Provider is { Postgres: { ConnectionString: { } connectionString } postgres })
         {
-            case { Postgres: { } postgres }:
-                _builder.UseCurrentSchemaPostgres(dataSource =>
+            _builder.UseCurrentSchemaPostgres(dataSource =>
+            {
+                dataSource.ConnectionStringBuilder.ConnectionString = connectionString;
+                if (postgres.CommandTimeout is { } commandTimeout)
                 {
-                    dataSource.ConnectionStringBuilder.ConnectionString = postgres.ConnectionString!;
-                    if (postgres.CommandTimeout is { } commandTimeout)
-                    {
-                        dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;
-                    }
-                });
-                break;
+                    dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;
+                }
+            });
         }
 
         return this;
     }
 
-    // Surfaces configuration validation failures as a single error before the run begins.
-    private static void ThrowIfInvalid(IEnumerable<string> errors)
+    // Runs a validator and surfaces any failures as a single error before the run begins. The core
+    // owns run-time error presentation, so the CLI fails fast here with the aggregated messages.
+    private static void Validate<T>(IValidator<T> validator, T instance)
     {
-        var messages = errors.ToList();
-        if (messages.Count > 0)
+        var result = validator.Validate(instance);
+        if (!result.IsValid)
         {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, messages));
+            throw new InvalidOperationException(string.Join(Environment.NewLine, result.Errors.Select(failure => failure.ErrorMessage)));
         }
     }
 

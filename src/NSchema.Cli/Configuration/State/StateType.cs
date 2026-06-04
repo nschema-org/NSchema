@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Cli.Configuration.State;
 
 /// <summary>
 /// The state store that holds schema state snapshots.

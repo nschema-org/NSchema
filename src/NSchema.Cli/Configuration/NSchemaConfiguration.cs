@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.Schema;
+using NSchema.Cli.Configuration.State;
 using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
@@ -26,7 +29,7 @@ internal sealed class NSchemaConfiguration
     /// <summary>
     /// Optional scope filter limiting the migration to a specific set of database schemas (namespaces).
     /// </summary>
-    public List<string>? Scope { get; set; }
+    public string[]? Scope { get; set; }
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions. Defaults to <see cref="DestructiveActionPolicy.Error"/>.

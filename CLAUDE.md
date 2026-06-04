@@ -55,8 +55,12 @@ one command does not affect another. `refresh` intentionally omits the desired-s
 **whole** live schema). `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is
 populated** (`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than on a discriminator enum — each section is a
 strongly-typed bag of that provider's settings (connection string, timeouts, …). No populated section is valid and means
-offline (plan/refresh against a state store only). At most one section may be set; each section exposes a `Validate()`
-that the run path enforces via `ThrowIfInvalid`, and which a future `validate` command can reuse.
+offline (plan/refresh against a state store only). Validation uses **FluentValidation** (`ProviderConfigValidator`,
+`StateConfigValidator`, and per-section leaf validators) — the run path runs the relevant validator and throws an
+`InvalidOperationException` with the joined `ErrorMessage`s before building, and a future `validate` command can reuse the
+validators directly. The "at most one section" rule is checked via each config's `ConfiguredSectionCount`. After
+validation, the builder binds the now-guaranteed values through **property patterns** (`{ Postgres: { ConnectionString:
+{ } cs } }`), so there are no null-forgiving operators when reading provider/state config.
 
 Each nested section is also reachable from the flat CLI/env overrides in the `_overrides` table: `--connection-string`
 populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and

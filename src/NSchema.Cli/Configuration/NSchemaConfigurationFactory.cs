@@ -1,6 +1,11 @@
 using System.CommandLine;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.Schema;
+using NSchema.Cli.Configuration.State;
+using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
 
@@ -22,48 +27,19 @@ internal static class NSchemaConfigurationFactory
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    private static readonly ConfigOverride[] _overrides =
-    [
-        ConfigOverride.Enum(CliOptions.Database.Provider, EnvironmentVariables.Provider, SelectProvider),
-        ConfigOverride.String(CliOptions.Database.ConnectionString, EnvironmentVariables.ConnectionString,
-            (c, v) => (c.Provider.Postgres ??= new PostgresProviderConfig()).ConnectionString = v),
-        ConfigOverride.String(CliOptions.State.File, EnvironmentVariables.StateFile,
-            (c, v) => (c.State.File ??= new FileStateConfig()).Path = v),
-        ConfigOverride.String(CliOptions.State.S3Bucket, EnvironmentVariables.StateS3Bucket,
-            (c, v) => (c.State.S3 ??= new S3StateConfig()).Bucket = v),
-        ConfigOverride.String(CliOptions.State.S3Key, EnvironmentVariables.StateS3Key,
-            (c, v) => (c.State.S3 ??= new S3StateConfig()).Key = v),
-        ConfigOverride.Enum(CliOptions.Migration.Destructive, EnvironmentVariables.DestructiveActionPolicy,
-            (c, v) => c.DestructiveActionPolicy = v),
-        ConfigOverride.Cli(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
-        ConfigOverride.Cli(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
-        ConfigOverride.Cli(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
-        ConfigOverride.Cli(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
-        ConfigOverride.Cli(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
-    ];
-
-    public static NSchemaConfiguration Create(ParseResult parseResult)
+    public static NSchemaConfiguration Create(ParseResult result)
     {
-        var config = LoadFromFile(parseResult) ?? new NSchemaConfiguration();
-
-        foreach (var @override in _overrides)
-        {
-            @override.Apply(config, parseResult);
-        }
+        var config = LoadFromFile(result) ?? new NSchemaConfiguration();
+        ConfigureProvider(config, result);
+        ConfigureConnectionString(config, result);
+        ConfigureFileState(config, result);
+        ConfigureS3State(config, result);
+        ConfigureDestructiveActionPolicy(config, result);
+        ConfigureAutoApprove(config, result);
+        ConfigureMigrationScope(config, result);
+        ConfigureSchema(config, result);
 
         return config;
-    }
-
-    // Ensures the selected provider's section exists so a bare --provider/NSCHEMA_PROVIDER still
-    // selects it (its settings then come from the file or the provider-specific overrides).
-    private static void SelectProvider(NSchemaConfiguration config, ProviderType? type)
-    {
-        switch (type)
-        {
-            case ProviderType.Postgres:
-                config.Provider.Postgres ??= new PostgresProviderConfig();
-                break;
-        }
     }
 
     private static NSchemaConfiguration? LoadFromFile(ParseResult parseResult)
@@ -83,46 +59,127 @@ internal static class NSchemaConfigurationFactory
                ?? throw new InvalidOperationException($"Failed to parse config file \"{configFile}\".");
     }
 
-    /// <summary>
-    /// A single configuration override: an optional environment variable and a command-line option that
-    /// both feed one setting. <see cref="Apply"/> resolves the effective value (CLI over environment over
-    /// the loaded file) and writes it onto the configuration.
-    /// </summary>
-    private abstract class ConfigOverride
+    private static void ConfigureProvider(NSchemaConfiguration config, ParseResult result)
     {
-        /// <summary>A command-line-only override (no environment variable).</summary>
-        public static ConfigOverride Cli<T>(Option<T> option, Action<NSchemaConfiguration, T> apply)
-            => new TypedOverride<T>(option, environmentVariable: null, parseEnvironment: null, apply);
-
-        /// <summary>A string-valued override also readable from an environment variable.</summary>
-        public static ConfigOverride String(Option<string?> option, string environmentVariable, Action<NSchemaConfiguration, string?> apply)
-            => new TypedOverride<string?>(option, environmentVariable, static value => value, apply);
-
-        /// <summary>An enum-valued override also readable (case-insensitively) from an environment variable.</summary>
-        public static ConfigOverride Enum<TEnum>(Option<TEnum?> option, string environmentVariable, Action<NSchemaConfiguration, TEnum?> apply)
-            where TEnum : struct, Enum
-            => new TypedOverride<TEnum?>(option, environmentVariable, static value => System.Enum.Parse<TEnum>(value, ignoreCase: true), apply);
-
-        public abstract void Apply(NSchemaConfiguration config, ParseResult parseResult);
-
-        private sealed class TypedOverride<T>(
-            Option<T> option,
-            string? environmentVariable,
-            Func<string, T>? parseEnvironment,
-            Action<NSchemaConfiguration, T> apply) : ConfigOverride
+        var value = GetOverride(result, EnvironmentVariables.Provider, CliOptions.Database.Provider);
+        if (value == null)
         {
-            public override void Apply(NSchemaConfiguration config, ParseResult parseResult)
+            return;
+        }
+
+        var provider = Enum.Parse<ProviderType>(value, ignoreCase: true);
+        switch (provider)
+        {
+            case ProviderType.Postgres:
+                config.Provider.Postgres ??= new PostgresProviderConfig();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private static void ConfigureConnectionString(NSchemaConfiguration config, ParseResult result)
+    {
+        var value = GetOverride(result, EnvironmentVariables.ConnectionString, CliOptions.Database.ConnectionString);
+        if (value == null)
+        {
+            return;
+        }
+
+        config.Provider.Postgres ??= new PostgresProviderConfig();
+    }
+
+    private static void ConfigureFileState(NSchemaConfiguration config, ParseResult result)
+    {
+        var value = GetOverride(result, EnvironmentVariables.StateFile, CliOptions.State.File);
+        if (value == null)
+        {
+            return;
+        }
+        config.State.File ??= new FileStateConfig();
+        config.State.File.Path = value;
+    }
+
+    private static void ConfigureS3State(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, EnvironmentVariables.StateS3Bucket, CliOptions.State.S3Bucket, out var bucket))
+        {
+            config.State.S3 ??= new S3StateConfig();
+            config.State.S3.Bucket = bucket;
+        }
+
+        if (TryGetOverride(result, EnvironmentVariables.StateS3Key, CliOptions.State.S3Key, out var key))
+        {
+            config.State.S3 ??= new S3StateConfig();
+            config.State.S3.Key = key;
+        }
+    }
+
+    private static void ConfigureDestructiveActionPolicy(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, EnvironmentVariables.DestructiveActionPolicy, CliOptions.Migration.Destructive, Enum.Parse<DestructiveActionPolicy>, out var value))
+        {
+            config.DestructiveActionPolicy = value;
+        }
+    }
+
+    private static void ConfigureAutoApprove(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, null, CliOptions.Apply.AutoApprove, bool.Parse, out var autoApprove))
+        {
+            config.AutoApprove = autoApprove;
+        }
+    }
+
+    private static void ConfigureMigrationScope(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, null, CliOptions.Migration.Scope, out var scope))
+        {
+            config.Scope = scope;
+        }
+    }
+
+    private static void ConfigureSchema(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, null, CliOptions.Schema.Format, Enum.Parse<SchemaFormat>, out var format))
+        {
+            config.Schema.Format = format;
+        }
+
+        if (TryGetOverride(result, null, CliOptions.Schema.Directory, out var directory))
+        {
+            config.Schema.Directory = directory;
+        }
+
+        if (TryGetOverride(result, null, CliOptions.Schema.Pattern, out var pattern))
+        {
+            config.Schema.Pattern = pattern;
+        }
+    }
+
+    private static bool TryGetOverride(ParseResult parseResult, string? envVar, Option<string> option, [NotNullWhen(true)]out string? value)
+    {
+        return TryGetOverride<string?>(parseResult, envVar, option, s => s, out value);
+    }
+
+    private static bool TryGetOverride<T>(ParseResult result, string? envVar, Option<T> option, Func<string, T> parse, out T? value)
+    {
+        if (result.GetResult(option) is { Implicit: false } argument)
+        {
+            value = argument.GetRequiredValue(option);
+            return true;
+        }
+
+        if (envVar != null)
+        {
+            if (Environment.GetEnvironmentVariable(envVar) is { } envValue)
             {
-                if (parseResult.GetResult(option) is { Implicit: false })
-                {
-                    apply(config, parseResult.GetValue(option)!);
-                }
-                else if (environmentVariable is not null
-                         && Environment.GetEnvironmentVariable(environmentVariable) is { } value)
-                {
-                    apply(config, parseEnvironment!(value));
-                }
+                value = parse(envValue);
+                return true;
             }
         }
+
+        value = default;
+        return false;
     }
 }
