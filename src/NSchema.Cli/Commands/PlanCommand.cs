@@ -8,11 +8,23 @@ internal static class PlanCommand
     public static Command Create()
     {
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
+
+        command.Options.Add(CliOptions.Global.Config);
+
+        command.Options.Add(CliOptions.Provider.Type);
+        command.Options.Add(CliOptions.Provider.ConnectionString);
+
+        command.Options.Add(CliOptions.State.File);
+        command.Options.Add(CliOptions.State.S3Bucket);
+        command.Options.Add(CliOptions.State.S3Key);
+
         command.Options.Add(CliOptions.Schema.Format);
         command.Options.Add(CliOptions.Schema.Directory);
         command.Options.Add(CliOptions.Schema.Pattern);
+
         command.Options.Add(CliOptions.Migration.Scope);
         command.Options.Add(CliOptions.Migration.Destructive);
+
         command.SetAction(Plan);
         return command;
     }

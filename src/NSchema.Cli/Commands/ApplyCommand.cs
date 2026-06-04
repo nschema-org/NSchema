@@ -8,11 +8,23 @@ internal static class ApplyCommand
     public static Command Create()
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
+
+        command.Options.Add(CliOptions.Global.Config);
+
+        command.Options.Add(CliOptions.Provider.Type);
+        command.Options.Add(CliOptions.Provider.ConnectionString);
+
+        command.Options.Add(CliOptions.State.File);
+        command.Options.Add(CliOptions.State.S3Bucket);
+        command.Options.Add(CliOptions.State.S3Key);
+
         command.Options.Add(CliOptions.Schema.Format);
         command.Options.Add(CliOptions.Schema.Directory);
         command.Options.Add(CliOptions.Schema.Pattern);
+
         command.Options.Add(CliOptions.Migration.Scope);
         command.Options.Add(CliOptions.Migration.Destructive);
+
         command.Options.Add(CliOptions.Apply.AutoApprove);
         command.SetAction(Apply);
         return command;

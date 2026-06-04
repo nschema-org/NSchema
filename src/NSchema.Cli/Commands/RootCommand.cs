@@ -1,5 +1,4 @@
 using System.Reflection;
-using NSchema.Cli.Configuration;
 
 namespace NSchema.Cli.Commands;
 
@@ -9,13 +8,6 @@ internal static class RootCommand
     {
         var root = new System.CommandLine.RootCommand("A declarative database schema migration tool.");
         SetName(root, "nschema");
-
-        root.Options.Add(CliOptions.Global.Config);
-        root.Options.Add(CliOptions.Provider.Type);
-        root.Options.Add(CliOptions.Provider.ConnectionString);
-        root.Options.Add(CliOptions.State.File);
-        root.Options.Add(CliOptions.State.S3Bucket);
-        root.Options.Add(CliOptions.State.S3Key);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
