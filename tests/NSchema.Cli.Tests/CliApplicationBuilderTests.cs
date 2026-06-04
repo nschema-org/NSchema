@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Cli.Configuration;
@@ -29,7 +30,7 @@ public sealed class CliApplicationBuilderTests
         var act = () => _sut.ConfigureDesiredSchema();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("schema directory");
+        Should.Throw<ValidationException>(act).Message.ShouldContain("schema directory");
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public sealed class CliApplicationBuilderTests
         var act = () => _sut.ConfigureDatabaseProvider();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("connectionString");
+        Should.Throw<ValidationException>(act).Message.ShouldContain("connectionString");
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public sealed class CliApplicationBuilderTests
         var act = () => _sut.ConfigureBackendState();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("state.s3.key");
+        Should.Throw<ValidationException>(act).Message.ShouldContain("state.s3.key");
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public sealed class CliApplicationBuilderTests
         var act = () => _sut.ConfigureBackendState();
 
         // Assert
-        Should.Throw<InvalidOperationException>(act).Message.ShouldContain("exactly one");
+        Should.Throw<ValidationException>(act).Message.ShouldContain("exactly one");
     }
 
     [Fact]

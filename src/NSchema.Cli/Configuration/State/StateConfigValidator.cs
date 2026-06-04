@@ -12,12 +12,10 @@ internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
             .WithMessage("More than one state store is configured; specify exactly one.");
 
         RuleFor(x => x.File)
-            .SetNonNullableValidator(new FileStateConfigValidator())
-            .When(x => x != null);
+            .SetNonNullableValidator(new FileStateConfigValidator());
 
         RuleFor(x => x.S3)
-            .SetNonNullableValidator(new S3StateConfigValidator())
-            .When(x => x != null);
+            .SetNonNullableValidator(new S3StateConfigValidator());
     }
 
     private static bool HaveOnlyOneConfiguration(StateConfig config) => new []

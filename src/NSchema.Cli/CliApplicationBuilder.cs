@@ -1,10 +1,11 @@
-using FluentValidation;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
+using NSchema.Cli.Extensions;
 using NSchema.Cli.Services;
 using NSchema.Hosting;
 using NSchema.Postgres;
@@ -17,6 +18,7 @@ namespace NSchema.Cli;
 /// </summary>
 internal sealed class CliApplicationBuilder
 {
+    private static readonly SchemaConfigValidator _schemaValidator = new();
     private static readonly ProviderConfigValidator _providerValidator = new();
     private static readonly StateConfigValidator _stateValidator = new();
 
@@ -43,23 +45,23 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var schema = _configuration.Schema;
-        if (string.IsNullOrWhiteSpace(schema.Directory))
+        _schemaValidator.ValidateOrThrow(_configuration.Schema);
+
+        // The property pattern binds the directory non-null; validation above guarantees it is present.
+        if (_configuration.Schema is { Directory: { } directory } schema)
         {
-            throw new InvalidOperationException("No schema directory configured. Set \"schema.dir\" in nschema.json or pass --schema-dir.");
+            var root = Path.GetFullPath(directory, Directory.GetCurrentDirectory());
+            var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultPattern() : schema.Pattern;
+            var glob = $"{root}/{pattern}";
+
+            switch (schema.Format)
+            {
+                case SchemaFormat.Yaml: _builder.AddYamlSchemasFromGlob(glob); break;
+                case SchemaFormat.Json: _builder.AddJsonSchemasFromGlob(glob); break;
+                default: throw new UnreachableException();
+            }
         }
 
-        // Resolve the directory to an absolute root.
-        var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultPattern() : schema.Pattern;
-        var glob = $"{root}/{pattern}";
-
-        switch (schema.Format)
-        {
-            case SchemaFormat.Yaml: _builder.AddYamlSchemasFromGlob(glob); break;
-            case SchemaFormat.Json: _builder.AddJsonSchemasFromGlob(glob); break;
-            default: throw new ArgumentOutOfRangeException(nameof(_configuration), schema.Format, "Unknown schema format.");
-        }
         return this;
     }
 
@@ -74,7 +76,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureBackendState()
     {
-        Validate(_stateValidator, _configuration.State);
+        _stateValidator.ValidateOrThrow(_configuration.State);
 
         // The property patterns bind non-null locals; validation above guarantees a case matches.
         switch (_configuration.State)
@@ -92,7 +94,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabaseProvider()
     {
-        Validate(_providerValidator, _configuration.Provider);
+        _providerValidator.ValidateOrThrow(_configuration.Provider);
 
         // The property pattern binds non-null locals; validation above guarantees it matches.
         if (_configuration.Provider is { Postgres: { } postgres })
@@ -108,17 +110,6 @@ internal sealed class CliApplicationBuilder
         }
 
         return this;
-    }
-
-    // Runs a validator and surfaces any failures as a single error before the run begins. The core
-    // owns run-time error presentation, so the CLI fails fast here with the aggregated messages.
-    private static void Validate<T>(IValidator<T> validator, T instance)
-    {
-        var result = validator.Validate(instance);
-        if (!result.IsValid)
-        {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, result.Errors.Select(failure => failure.ErrorMessage)));
-        }
     }
 
     public CliApplicationBuilder ConfigureConfirmation()

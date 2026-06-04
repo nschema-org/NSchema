@@ -8,6 +8,21 @@ namespace NSchema.Cli.Extensions;
 /// </remarks>
 internal static class FluentValidationExtensions
 {
+    extension<T>(IValidator<T> validator)
+    {
+        /// <summary>
+        /// Validates <paramref name="instance"/> and, on failure, throws a single exception whose message joins every validation error.
+        /// </summary>
+        public void ValidateOrThrow(T instance)
+        {
+            var result = validator.Validate(instance);
+            if (!result.IsValid)
+            {
+                throw new ValidationException(result.Errors);
+            }
+        }
+    }
+
     extension<T, TProperty>(IRuleBuilder<T, TProperty?> ruleBuilder)
     {
         public IRuleBuilderOptions<T, TProperty?> SetNonNullableValidator(IValidator<TProperty> validator, params string[] ruleSets)
