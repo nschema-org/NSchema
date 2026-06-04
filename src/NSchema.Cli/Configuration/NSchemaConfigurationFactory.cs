@@ -61,7 +61,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureProvider(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, EnvironmentVariables.Provider, CliOptions.Provider.Type, Enum.Parse<ProviderType>, out var provider))
+        if (TryGetOverride(result, CliOptions.Provider.Type, EnvironmentVariables.Provider, Enum.Parse<ProviderType>, out var provider))
         {
             switch (provider)
             {
@@ -69,14 +69,14 @@ internal static class NSchemaConfigurationFactory
                     config.Provider.Postgres ??= new PostgresProviderConfig();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(provider), $"Unsupported provider type: {provider}");
             }
         }
     }
 
     private static void ConfigureConnectionString(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, EnvironmentVariables.ConnectionString, CliOptions.Provider.ConnectionString, out var connectionString))
+        if (TryGetOverride(result, CliOptions.Provider.ConnectionString, EnvironmentVariables.ConnectionString, out var connectionString))
         {
             config.Provider.Postgres ??= new PostgresProviderConfig();
             config.Provider.Postgres.ConnectionString = connectionString;
@@ -85,7 +85,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureFileState(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, EnvironmentVariables.StateFile, CliOptions.State.File, out var path))
+        if (TryGetOverride(result, CliOptions.State.File, EnvironmentVariables.StateFile, out var path))
         {
             config.State.File ??= new FileStateConfig();
             config.State.File.Path = path;
@@ -94,13 +94,13 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureS3State(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, EnvironmentVariables.StateS3Bucket, CliOptions.State.S3Bucket, out var bucket))
+        if (TryGetOverride(result, CliOptions.State.S3Bucket, EnvironmentVariables.StateS3Bucket, out var bucket))
         {
             config.State.S3 ??= new S3StateConfig();
             config.State.S3.Bucket = bucket;
         }
 
-        if (TryGetOverride(result, EnvironmentVariables.StateS3Key, CliOptions.State.S3Key, out var key))
+        if (TryGetOverride(result, CliOptions.State.S3Key, EnvironmentVariables.StateS3Key, out var key))
         {
             config.State.S3 ??= new S3StateConfig();
             config.State.S3.Key = key;
@@ -109,7 +109,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureDestructiveActionPolicy(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, EnvironmentVariables.DestructiveActionPolicy, CliOptions.Migration.Destructive, Enum.Parse<DestructiveActionPolicy>, out var value))
+        if (TryGetOverride(result, CliOptions.Migration.Destructive, EnvironmentVariables.DestructiveActionPolicy, Enum.Parse<DestructiveActionPolicy>, out var value))
         {
             config.DestructiveActionPolicy = value;
         }
@@ -117,7 +117,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureAutoApprove(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Apply.AutoApprove, null, out var autoApprove))
+        if (TryGetOverride(result, CliOptions.Apply.AutoApprove, out var autoApprove))
         {
             config.AutoApprove = autoApprove;
         }
@@ -125,7 +125,7 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureMigrationScope(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Migration.Scope, null, out var scope))
+        if (TryGetOverride(result, CliOptions.Migration.Scope, out var scope))
         {
             config.Scope = scope;
         }
@@ -133,28 +133,50 @@ internal static class NSchemaConfigurationFactory
 
     private static void ConfigureSchema(NSchemaConfiguration config, ParseResult result)
     {
-        if (TryGetOverride(result, null, CliOptions.Schema.Format, null, out var format))
+        if (TryGetOverride(result, CliOptions.Schema.Format, out var format))
         {
             config.Schema.Format = format;
         }
 
-        if (TryGetOverride(result, null, CliOptions.Schema.Directory, out var directory))
+        if (TryGetOverride(result, CliOptions.Schema.Directory, out var directory))
         {
             config.Schema.Directory = directory;
         }
 
-        if (TryGetOverride(result, null, CliOptions.Schema.Pattern, out var pattern))
+        if (TryGetOverride(result, CliOptions.Schema.Pattern, out var pattern))
         {
             config.Schema.Pattern = pattern;
         }
     }
 
-    private static bool TryGetOverride(ParseResult parseResult, string? envVar, Option<string> option, [NotNullWhen(true)]out string? value)
+    /// <summary>
+    /// Tries to get an override value from the given CLI option.
+    /// </summary>
+    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, out T? value)
     {
-        return TryGetOverride<string>(parseResult, envVar, option, s => s, out value);
+        return TryGetOverride(result, option, null, null, out value);
     }
 
-    private static bool TryGetOverride<T>(ParseResult result, string? envVar, Option<T> option, Func<string, T>? envParser, out T? value)
+    /// <summary>
+    /// Tries to get a string value from the given CLI option or environment variable.
+    /// </summary>
+    private static bool TryGetOverride(ParseResult parseResult, Option<string> option, string? envVar, [NotNullWhen(true)] out string? value)
+    {
+        return TryGetOverride<string>(parseResult, option, envVar, s => s, out value);
+    }
+
+    /// <summary>
+    /// Tries to get a string value from the given CLI option or environment variable.
+    /// </summary>
+    /// <param name="result">The parse result containing the command line arguments.</param>
+    /// <param name="option">The option to check for an override value.</param>
+    /// <param name="envVar">The environment variable to check for an override value.</param>
+    /// <param name="envParser">A function to parse the environment variable value, if specified.</param>
+    /// <param name="value">The override value, if found.</param>
+    /// <typeparam name="T">The type of the option value.</typeparam>
+    /// <returns><see langword="true"/> if an override value was found; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if an environment variable override is specified without a value parser.</exception>
+    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, string? envVar, Func<string, T>? envParser, out T? value)
     {
         if (result.GetResult(option) is { Implicit: false } argument)
         {
