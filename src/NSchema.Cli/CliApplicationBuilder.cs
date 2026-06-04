@@ -51,7 +51,7 @@ internal sealed class CliApplicationBuilder
 
         // Resolve the directory to an absolute root.
         var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultGlob() : schema.Pattern;
+        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultPattern() : schema.Pattern;
         var glob = $"{root}/{pattern}";
 
         switch (schema.Format)

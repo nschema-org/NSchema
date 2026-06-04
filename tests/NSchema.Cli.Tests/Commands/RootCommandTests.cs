@@ -65,7 +65,7 @@ public sealed class RootCommandTests
     {
         // Act
         var result = _sut.Parse(
-            [command, "--format", "json", "--schema-dir", "d", "--schema-glob", "g", "--scope", "public", "--destructive-actions", "Warn"]);
+            [command, "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--scope", "public", "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();

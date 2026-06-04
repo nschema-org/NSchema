@@ -5,20 +5,20 @@ namespace NSchema.Cli.Tests.Configuration.Schema;
 public sealed class SchemaFormatExtensionsTests
 {
     [Fact]
-    public void DefaultGlob_ForYaml_ReturnsYamlPattern()
+    public void DefaultPattern_ForYaml_ReturnsYamlPattern()
     {
         // Act
-        var glob = SchemaFormat.Yaml.DefaultGlob();
+        var glob = SchemaFormat.Yaml.DefaultPattern();
 
         // Assert
         glob.ShouldBe("**/*.yaml");
     }
 
     [Fact]
-    public void DefaultGlob_ForJson_ReturnsJsonPattern()
+    public void DefaultPattern_ForJson_ReturnsJsonPattern()
     {
         // Act
-        var glob = SchemaFormat.Json.DefaultGlob();
+        var glob = SchemaFormat.Json.DefaultPattern();
 
         // Assert
         glob.ShouldBe("**/*.json");

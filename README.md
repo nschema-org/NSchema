@@ -88,7 +88,7 @@ connection string) or, for offline planning, a state store (`--state-file`).
 
 - `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
 - `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
-- `--schema-glob <glob>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.glob`)_
+- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 
@@ -137,7 +137,7 @@ Settings come from three sources, in increasing order of precedence:
 {
   "provider": { "postgres": { "connectionString": "Host=localhost;Database=app;..." } },
   "state":    { "file": { "path": "./nschema.state.json" } },
-  "schema":   { "dir": "./schemas", "format": "yaml", "glob": "**/*.yaml" },
+  "schema":   { "dir": "./schemas", "format": "yaml", "pattern": "**/*.yaml" },
   "scope": ["app"],
   "destructiveActionPolicy": "Error"
 }
