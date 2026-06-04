@@ -31,7 +31,7 @@ internal static class ApplyCommand
         return command;
     }
 
-    private static ApplyConfiguration Configuration(ParseResult result)
+    private static ApplyConfiguration Resolve(ParseResult result)
     {
         var config = NSchemaConfigurationFactory.Create(result);
         var configuration = new ApplyConfiguration
@@ -50,7 +50,7 @@ internal static class ApplyCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Configuration(parseResult);
+        var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureDesiredSchema(configuration.Schema)
             .ConfigureScope(configuration.Scope)

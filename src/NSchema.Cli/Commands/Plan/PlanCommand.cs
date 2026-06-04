@@ -30,7 +30,7 @@ internal static class PlanCommand
         return command;
     }
 
-    private static PlanConfiguration Configuration(ParseResult result)
+    private static PlanConfiguration Resolve(ParseResult result)
     {
         var config = NSchemaConfigurationFactory.Create(result);
         var configuration = new PlanConfiguration
@@ -48,7 +48,7 @@ internal static class PlanCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Configuration(parseResult);
+        var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureDesiredSchema(configuration.Schema)
             .ConfigureScope(configuration.Scope)

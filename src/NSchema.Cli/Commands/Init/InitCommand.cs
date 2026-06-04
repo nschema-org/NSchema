@@ -10,11 +10,11 @@ internal static class InitCommand
         var command = new Command("init", "Scaffold an nschema.json config and a sample schema in the current directory.");
         command.Options.Add(CliOptions.Init.Format);
         command.Options.Add(CliOptions.Init.Force);
-        command.SetAction(Init);
+        command.SetAction(Run);
         return command;
     }
 
-    private static Task Init(ParseResult parseResult, CancellationToken cancellationToken)
+    private static Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var format = parseResult.GetValue(CliOptions.Init.Format);
         var force = parseResult.GetValue(CliOptions.Init.Force);

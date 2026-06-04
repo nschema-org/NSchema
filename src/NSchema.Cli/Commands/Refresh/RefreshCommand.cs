@@ -23,7 +23,7 @@ internal static class RefreshCommand
         return command;
     }
 
-    private static RefreshConfiguration Configuration(ParseResult result)
+    private static RefreshConfiguration Resolve(ParseResult result)
     {
         var config = NSchemaConfigurationFactory.Create(result);
         var configuration = new RefreshConfiguration
@@ -38,7 +38,7 @@ internal static class RefreshCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Configuration(parseResult);
+        var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)
