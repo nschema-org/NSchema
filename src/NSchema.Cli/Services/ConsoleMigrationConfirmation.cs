@@ -1,7 +1,7 @@
 using NSchema.Cli.Configuration;
 using NSchema.Hosting;
 using NSchema.Migration;
-using NSchema.Migration.Plan;
+using NSchema.Plan.Model;
 
 namespace NSchema.Cli.Services;
 
