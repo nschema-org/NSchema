@@ -37,11 +37,14 @@ public sealed class SpectreMigrationReporterTests
     [Fact]
     public void Error_WritesMessageToErrorConsole()
     {
+        // Exception
+        var ex = new Exception("Boom!");
+
         // Act
-        _sut.Error("Something failed.");
+        _sut.ReportException(ex);
 
         // Assert
-        _error.Output.ShouldContain("Something failed.");
+        _error.Output.ShouldContain("Boom!");
         _out.Output.ShouldBeEmpty();
     }
 

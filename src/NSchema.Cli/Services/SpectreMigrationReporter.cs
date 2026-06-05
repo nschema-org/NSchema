@@ -47,7 +47,7 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
 
     public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
 
-    public void Error(string message) => _error.MarkupLineInterpolated($"[red]{message}[/]");
+    public void ReportException(Exception exception) => _error.WriteException(exception);
 
     public void ReportDiff(MigrationDiff diff)
     {
