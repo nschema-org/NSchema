@@ -15,7 +15,8 @@ namespace NSchema.Cli;
 internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication.CreateBuilder()
-        .WithExceptionBehavior(ExceptionBehavior.Throw);
+        .WithExceptionBehavior(ExceptionBehavior.Throw)
+        .AddYamlSchemaSerializer;
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
     {
