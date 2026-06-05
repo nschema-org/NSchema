@@ -51,15 +51,23 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
 
     public void ReportDiff(MigrationDiff diff)
     {
-        var body = ColorizeByMarker(_diffRenderer.Render(diff));
-        _out.Write(new Panel(body).Header(" Plan ").RoundedBorder());
-        _out.WriteLine();
+        var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
+        WriteSection("Plan", body);
     }
 
     public void ReportSqlPlan(SqlPlan plan)
     {
         var body = DimComments(_sqlPlanRenderer.Render(plan));
-        _out.Write(new Panel(body).Header(" SQL ").RoundedBorder());
+        WriteSection("SQL", body);
+    }
+
+    // A single-line rule header rather than a Panel: it gives the section visual separation without prefixing
+    // every body line with a border character, so the diff/SQL underneath stays cleanly selectable and copyable.
+    private void WriteSection(string title, Markup body)
+    {
+        _out.Write(new Rule(title).LeftJustified());
+        _out.Write(body);
+        _out.WriteLine();
         _out.WriteLine();
     }
 
