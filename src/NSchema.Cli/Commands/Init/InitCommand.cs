@@ -1,5 +1,7 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Cli.Configuration;
+using NSchema.Schema.Serialization;
 
 namespace NSchema.Cli.Commands.Init;
 
@@ -14,12 +16,16 @@ internal static class InitCommand
         return command;
     }
 
-    private static Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var format = parseResult.GetValue(CliOptions.Init.Format);
         var force = parseResult.GetValue(CliOptions.Init.Force);
 
-        var created = new ProjectScaffolder().Scaffold(Directory.GetCurrentDirectory(), format, force);
+        using var app = CliApplicationBuilder.Create().Build();
+        var serializers = app.Services.GetRequiredService<ISchemaDocumentSerializerResolver>();
+
+        var created = await new ProjectScaffolder()
+            .Scaffold(Directory.GetCurrentDirectory(), format, force, serializers, cancellationToken);
 
         foreach (var file in created)
         {
@@ -28,6 +34,5 @@ internal static class InitCommand
 
         Console.WriteLine();
         Console.WriteLine($"Set {EnvironmentVariables.ConnectionString}, then run `nschema plan`.");
-        return Task.CompletedTask;
     }
 }

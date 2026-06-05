@@ -21,4 +21,14 @@ internal static class SchemaFormatExtensions
         SchemaFormat.Json => "json",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown schema format."),
     };
+
+    /// <summary>
+    /// The canonical serializer format name (as registered with the core) for this format.
+    /// </summary>
+    public static string FormatName(this SchemaFormat format) => format switch
+    {
+        SchemaFormat.Yaml => "yaml",
+        SchemaFormat.Json => "json",
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown schema format."),
+    };
 }

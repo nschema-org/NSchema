@@ -3,6 +3,8 @@ using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
+using NSchema.Schema.Model;
+using NSchema.Schema.Serialization;
 
 namespace NSchema.Cli.Commands.Init;
 
@@ -17,8 +19,19 @@ internal sealed class ProjectScaffolder
     /// <summary>
     /// Writes the starter files into <paramref name="directory"/>, returning the created paths (relative to it).
     /// </summary>
+    /// <param name="directory">The directory to scaffold into.</param>
+    /// <param name="format">The format to write the sample schema in.</param>
+    /// <param name="force">Whether to overwrite an existing <c>nschema.json</c>.</param>
+    /// <param name="serializers">Resolves the schema serializer for the chosen <paramref name="format"/>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">An <c>nschema.json</c> already exists and <paramref name="force"/> is false.</exception>
-    public IReadOnlyList<string> Scaffold(string directory, SchemaFormat format, bool force)
+    public async Task<IReadOnlyList<string>> Scaffold(
+        string directory,
+        SchemaFormat format,
+        bool force,
+        ISchemaDocumentSerializerResolver serializers,
+        CancellationToken cancellationToken = default
+    )
     {
         var configPath = Path.Combine(directory, ConfigFileName);
         if (File.Exists(configPath) && !force)
@@ -32,57 +45,31 @@ internal sealed class ProjectScaffolder
             State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },
             Schema = new SchemaConfig { Directory = $"./{SchemaDirectoryName}", Format = format },
         };
-        File.WriteAllText(configPath, JsonSerializer.Serialize(config, NSchemaConfigurationFactory.JsonOptions));
+        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, NSchemaConfigurationFactory.JsonOptions), cancellationToken);
 
         var sampleRelativePath = Path.Combine(SchemaDirectoryName, $"example.{format.Extension()}");
         var samplePath = Path.Combine(directory, sampleRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
-        File.WriteAllText(samplePath, SampleSchema(format));
+
+        var serializer = serializers.ForFormat(format.FormatName());
+        await using var stream = File.Create(samplePath);
+        await serializer.Write(SampleSchema, stream, cancellationToken);
 
         return [ConfigFileName, sampleRelativePath];
     }
 
-    private static string SampleSchema(SchemaFormat format) => format switch
-    {
-        SchemaFormat.Yaml =>
-            """
-            schemas:
-              - name: app
-                tables:
-                  - name: widgets
-                    primaryKey:
-                      name: widgets_pkey
-                      columnNames: [id]
-                    columns:
-                      - name: id
-                        type: bigint
-                        isNullable: false
-                      - name: name
-                        type: text
-                        isNullable: true
-
-            """,
-        SchemaFormat.Json =>
-            """
-            {
-              "schemas": [
-                {
-                  "name": "app",
-                  "tables": [
-                    {
-                      "name": "widgets",
-                      "primaryKey": { "name": "widgets_pkey", "columnNames": ["id"] },
-                      "columns": [
-                        { "name": "id", "type": "bigint", "isNullable": false },
-                        { "name": "name", "type": "text", "isNullable": true }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-
-            """,
-        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown schema format."),
-    };
+    private static DatabaseSchema SampleSchema { get; } = DatabaseSchema.Create(
+    [
+        SchemaDefinition.Create("app", tables:
+        [
+            Table.Create(
+                "widgets",
+                primaryKey: new PrimaryKey("widgets_pkey", ["id"]),
+                columns:
+                [
+                    Column.Create("id", SqlType.BigInt),
+                    Column.Create("name", SqlType.Text, isNullable: true),
+                ]),
+        ]),
+    ]);
 }
