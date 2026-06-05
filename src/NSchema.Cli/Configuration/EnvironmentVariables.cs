@@ -34,4 +34,9 @@ internal static class EnvironmentVariables
     /// The policy applied when the plan contains destructive actions.
     /// </summary>
     public const string DestructiveActionPolicy = "NSCHEMA_DESTRUCTIVE_ACTION_POLICY";
+
+    /// <summary>
+    /// The well-known <c>NO_COLOR</c> convention (https://no-color.org).
+    /// </summary>
+    public const string NoColor = "NO_COLOR";
 }

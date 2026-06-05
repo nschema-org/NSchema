@@ -1,8 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Cli.Configuration.State;
+using NSchema.Cli.Services;
+using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.State;
+using Spectre.Console;
 
 namespace NSchema.Cli.Tests;
 
@@ -75,5 +78,27 @@ public sealed class CliApplicationBuilderTests
 
         // Assert
         app.Services.GetService<ISchemaStateStore>().ShouldBeNull();
+    }
+
+    [Fact]
+    public void Build_RegistersAnAnsiConsole()
+    {
+        // Act
+        using var app = _sut.Build();
+
+        // Assert
+        app.Services.GetService<IAnsiConsole>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Build_ResolvesTheSpectreReporter_WithoutDuplicateFormatCollision()
+    {
+        // Act — a second reporter sharing the core "human" format would throw at resolution; the Spectre reporter
+        // is registered under its own format and selected, so the default coexists harmlessly.
+        using var app = _sut.Build();
+
+        // Assert
+        var reporter = app.Services.GetRequiredService<IMigrationReporterResolver>().Current;
+        reporter.ShouldBeOfType<SpectreMigrationReporter>();
     }
 }

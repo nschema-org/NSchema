@@ -10,7 +10,7 @@ internal static class ApplyCommand
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
 
-        command.Options.Add(CliOptions.Global.Config);
+        command.Options.Add(CliOptions.Common.Config);
 
         command.Options.Add(CliOptions.Provider.Type);
         command.Options.Add(CliOptions.Provider.ConnectionString);

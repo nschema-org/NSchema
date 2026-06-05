@@ -7,11 +7,17 @@ namespace NSchema.Cli.Configuration;
 
 internal static class CliOptions
 {
-    public static class Global
+    public static class Common
     {
         public static readonly Option<string> Config = new("--config")
         {
             Description = "Path to the NSchema config file. Defaults to ./nschema.json if present.",
+        };
+
+        public static readonly Option<bool> NoColor = new("--no-color")
+        {
+            Description = "Disable colored output. Also honored via the NO_COLOR environment variable.",
+            Recursive = true,
         };
     }
 

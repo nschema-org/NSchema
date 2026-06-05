@@ -45,7 +45,7 @@ internal static class NSchemaConfigurationFactory
     private static NSchemaConfiguration? LoadFromFile(ParseResult result)
     {
         // Relative paths must resolve against the working directory the tool was invoked from.
-        var cliPath = result.GetValue(CliOptions.Global.Config);
+        var cliPath = result.GetValue(CliOptions.Common.Config);
         var configFile = Path.GetFullPath(cliPath ?? DefaultConfigurationFile, Directory.GetCurrentDirectory());
 
         if (!File.Exists(configFile))

@@ -2,6 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Cli.Configuration;
 using NSchema.Schema.Serialization;
+using Spectre.Console;
 
 namespace NSchema.Cli.Commands.Init;
 
@@ -23,16 +24,19 @@ internal static class InitCommand
 
         using var app = CliApplicationBuilder.Create().Build();
         var serializers = app.Services.GetRequiredService<ISchemaDocumentSerializerResolver>();
+        var console = app.Services.GetRequiredService<IAnsiConsole>();
 
         var created = await new ProjectScaffolder()
             .Scaffold(Directory.GetCurrentDirectory(), format, force, serializers, cancellationToken);
 
+        var tree = new Tree("[bold]Created[/]");
         foreach (var file in created)
         {
-            Console.WriteLine($"Created {file}");
+            tree.AddNode(Markup.FromInterpolated($"[green]✓[/] {file}"));
         }
 
-        Console.WriteLine();
-        Console.WriteLine($"Set {EnvironmentVariables.ConnectionString}, then run `nschema plan`.");
+        console.Write(tree);
+        console.WriteLine();
+        console.MarkupLineInterpolated($"Set [yellow]{EnvironmentVariables.ConnectionString}[/], then run [green]nschema plan[/].");
     }
 }

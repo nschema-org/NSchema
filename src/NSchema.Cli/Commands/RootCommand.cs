@@ -3,6 +3,7 @@ using NSchema.Cli.Commands.Apply;
 using NSchema.Cli.Commands.Init;
 using NSchema.Cli.Commands.Plan;
 using NSchema.Cli.Commands.Refresh;
+using NSchema.Cli.Configuration;
 
 namespace NSchema.Cli.Commands;
 
@@ -12,6 +13,8 @@ internal static class RootCommand
     {
         var root = new System.CommandLine.RootCommand("A declarative database schema migration tool.");
         SetName(root, "nschema");
+
+        root.Options.Add(CliOptions.Common.NoColor);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
