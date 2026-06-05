@@ -16,7 +16,7 @@ internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication.CreateBuilder()
         .WithExceptionBehavior(ExceptionBehavior.Throw)
-        .AddYamlSchemaSerializer;
+        .AddYamlSchemaSerializer();
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
     {
