@@ -30,7 +30,7 @@ internal static class SchemaFormatExtensions
     /// </summary>
     public static string FormatName(this SchemaFormat format) => format switch
     {
-        SchemaFormat.Yaml => YamlDocumentSchemaSerializer.FormatName,
+        SchemaFormat.Yaml => YamlSchemaDocumentSerializer.FormatName,
         SchemaFormat.Json => JsonSchemaDocumentSerializer.FormatName,
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown schema format."),
     };
