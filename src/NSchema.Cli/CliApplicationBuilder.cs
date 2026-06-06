@@ -110,19 +110,19 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureImportScope(string[]? scope)
+    public CliApplicationBuilder ConfigureImportScope(string[]? schemas, string[]? tables)
     {
-        if (scope is { Length: > 0 })
+        _builder.WithImportOptions(o =>
         {
-            _builder.WithImportOptions(o => o.Schemas = scope);
-        }
+            o.Schemas = schemas;
+            o.Tables = tables;
+        });
         return this;
     }
 
     public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)
     {
-        _builder.Services.AddSingleton<IMigrationConfirmation>(sp =>
-            new ConsoleMigrationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
+        _builder.Services.AddSingleton<IMigrationConfirmation>(sp => new ConsoleMigrationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
         return this;
     }
 

@@ -18,7 +18,7 @@ internal static class CommonOptions
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")
         .AllowMultipleArguments()
-        .WithDescription("Limit the migration to specific database schemas (namespaces). May be specified multiple times.");
+        .WithDescription("Limit the operation to specific database schemas (namespaces). May be specified multiple times.");
 
     public static readonly OptionBinding<DestructiveActionPolicy> Destructive = OptionBinding.Create<DestructiveActionPolicy>()
         .FromOption("--destructive-actions")

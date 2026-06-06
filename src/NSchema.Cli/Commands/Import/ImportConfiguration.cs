@@ -28,10 +28,16 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
+    /// <summary>
+    /// Optional filter limiting the import to specific table names. When <see langword="null"/>, all tables are imported.
+    /// </summary>
+    public string[]? Tables { get; private set; }
+
     public void Bind(ParseResult result)
     {
         Provider.Bind(result);
         Target.Bind(result);
         CommonOptions.Scope.Bind(result, s => Scope = s);
+        ImportOptions.Tables.Bind(result, t => Tables = t);
     }
 }
