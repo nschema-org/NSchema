@@ -1,11 +1,15 @@
-# NSchema.Cli
+# ![NSchema](https://raw.githubusercontent.com/nschema-org/NSchema.Core/main/assets/nschema-logo-horizontal.png)
+
+[![NSchema](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml/badge.svg)](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml)
+
+# NSchema
 
 A declarative database schema migration tool. You describe the schema you want, and NSchema computes and applies the migration to get there.
 
 ## Installation
 
 ```sh
-dotnet tool install --global NSchema.Cli
+dotnet tool install --global nschema
 ```
 
 This installs the `nschema` command.

@@ -1,4 +1,4 @@
-name: NSchema.Cli
+name: NSchema
 
 on:
   workflow_dispatch:
@@ -17,14 +17,14 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema'
+          repository: 'nschema-org/NSchema.Core'
           path: 'build'
 
       - name: Run Build Pipeline
         run: dotnet run --project build/build/NSchema.Build/NSchema.Build.csproj -- build
         shell: bash
         env:
-          Build__ProjectFile: 'src/NSchema.Cli/NSchema.Cli.csproj'
+          Build__ProjectFile: 'src/NSchema/NSchema.csproj'
 
   deploy:
     name: Deploy
@@ -40,7 +40,7 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema'
+          repository: 'nschema-org/NSchema.Core'
           path: 'build'
 
       - name: Run Deploy Pipeline
@@ -48,6 +48,6 @@ jobs:
         shell: bash
         env:
           Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
-          Build__ProjectFile: 'src/NSchema.Cli/NSchema.Cli.csproj'
+          Build__ProjectFile: 'src/NSchema/NSchema.csproj'
           Build__CommitSha: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

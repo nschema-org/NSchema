@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>NSchema</Title>
+    <Description>A declarative database schema migration tool built for .NET</Description>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>nschema</ToolCommandName>
+    <Authors>Tom Wolfe</Authors>
+    <Copyright>Copyright © 2026 Tom Wolfe</Copyright>
+    <PackageId>NSchema</PackageId>
+    <PackageProjectUrl>https://github.com/nschema-org/NSchema</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/nschema-org/NSchema.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>3.0.0-alpha.20</Version>
+    <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
+    <FileVersion>$(Version.Split('-')[0])</FileVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageTags>devops;cicd;build;automation;pipelines;databases;schema;rdbms;deployment;migration</PackageTags>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="/">
+      <Link>README.md</Link>
+    </None>
+    <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="/">
+      <Link>CHANGELOG.md</Link>
+    </None>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="/">
+      <Link>icon.png</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NSchema.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="NSchema.Aws" />
+    <PackageReference Include="NSchema.Core" />
+    <PackageReference Include="NSchema.Postgres" />
+    <PackageReference Include="NSchema.Yaml" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Using Include="NSchema.Extensions" />
+  </ItemGroup>
+
+</Project>

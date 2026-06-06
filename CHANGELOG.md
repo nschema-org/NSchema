@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## Versioning policy
 
-This package uses **lockstep major versioning** with the core NSchema package: `NSchema.Cli X.*.*` is built on `NSchema X.*.*`, so version compatibility is always clear.
+This package uses **lockstep major versioning** with the core NSchema package: `NSchema X.*.*` is built on `NSchema.Core X.*.*`, so version compatibility is always clear.
 
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than a major one, and called out explicitly in this changelog.
 
