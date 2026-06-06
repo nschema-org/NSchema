@@ -6,7 +6,7 @@
     <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/cli/">
-    <Project Path="src/NSchema.Cli/NSchema.Cli.csproj" />
-    <Project Path="tests\NSchema.Cli.Tests\NSchema.Cli.Tests.csproj" />
+    <Project Path="src\NSchema\NSchema.csproj" />
+    <Project Path="tests\NSchema.Tests\NSchema.Tests.csproj" />
   </Folder>
 </Solution>

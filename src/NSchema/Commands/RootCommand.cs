@@ -28,8 +28,8 @@ internal static class RootCommand
         return root;
     }
 
-    // System.CommandLine derives the root command's name from the executable ("NSchema.Cli") and exposes no API to
-    // override it, so help/usage would read "NSchema.Cli" instead of "nschema". We can't rename the assembly to
+    // System.CommandLine derives the root command's name from the executable ("NSchema") and exposes no API to
+    // override it, so help/usage would read "NSchema" instead of "nschema". We can't rename the assembly to
     // "nschema" — that collides with the core NSchema assembly — so we set the backing field directly. The
     // null-conditional degrades to the default name rather than throwing if this internal ever changes, and
     // RootCommandTests.HasTheNschemaCommandName guards it so the breakage surfaces in CI.

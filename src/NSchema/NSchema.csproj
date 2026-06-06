@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Title>NSchema.Cli</Title>
+    <Title>NSchema</Title>
     <Description>A declarative database schema migration tool built for .NET</Description>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,7 +12,7 @@
     <ToolCommandName>nschema</ToolCommandName>
     <Authors>Tom Wolfe</Authors>
     <Copyright>Copyright © 2026 Tom Wolfe</Copyright>
-    <PackageId>NSchema.Cli</PackageId>
+    <PackageId>NSchema</PackageId>
     <PackageProjectUrl>https://github.com/nschema-org/NSchema</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="NSchema.Cli.Tests" />
+    <InternalsVisibleTo Include="NSchema.Tests" />
   </ItemGroup>
 
   <ItemGroup>
