@@ -46,7 +46,6 @@ internal sealed class ApplyConfiguration : IBindable
     {
         CommonOptions.Scope.Bind(result, s => Scope = s);
         CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
-        CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
 
         Schema.Bind(result);

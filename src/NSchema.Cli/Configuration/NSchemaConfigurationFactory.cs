@@ -47,8 +47,3 @@ internal static class NSchemaConfigurationFactory
         return config;
     }
 }
-
-internal interface IBindable
-{
-    void Bind(ParseResult result);
-}
