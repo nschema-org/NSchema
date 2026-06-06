@@ -1,4 +1,5 @@
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Binding;
 
 namespace NSchema.Cli.Commands.Apply;
 

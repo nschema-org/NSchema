@@ -46,7 +46,7 @@ internal sealed class ProjectScaffolder
             State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },
             Schema = new SchemaConfig { Directory = $"./{SchemaDirectoryName}", Format = format },
         };
-        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, NSchemaConfigurationFactory.JsonOptions), cancellationToken);
+        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, ConfigurationFactory.JsonOptions), cancellationToken);
 
         var sampleRelativePath = Path.Combine(SchemaDirectoryName, $"example.{format.Extension()}");
         var samplePath = Path.Combine(directory, sampleRelativePath);

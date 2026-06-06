@@ -120,6 +120,6 @@ public sealed class ProjectScaffolderTests : IDisposable
     private PlanConfiguration LoadGeneratedConfig()
     {
         var json = File.ReadAllText(Path.Combine(_directory, "nschema.json"));
-        return JsonSerializer.Deserialize<PlanConfiguration>(json, NSchemaConfigurationFactory.JsonOptions)!;
+        return JsonSerializer.Deserialize<PlanConfiguration>(json, ConfigurationFactory.JsonOptions)!;
     }
 }

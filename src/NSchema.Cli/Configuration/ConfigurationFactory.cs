@@ -1,10 +1,11 @@
 using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NSchema.Cli.Configuration.Binding;
 
 namespace NSchema.Cli.Configuration;
 
-internal static class NSchemaConfigurationFactory
+internal static class ConfigurationFactory
 {
     private const string DefaultConfigurationFile = "nschema.json";
 

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Cli.Configuration.Binding;
 
 namespace NSchema.Cli.Configuration.Provider;
 

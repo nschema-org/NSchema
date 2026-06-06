@@ -27,7 +27,7 @@ internal static class PlanCommand
 
     private static PlanConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Load<PlanConfiguration>(result);
+        var config = ConfigurationFactory.Load<PlanConfiguration>(result);
         new PlanConfigurationValidator().ValidateOrThrow(config);
         return config;
     }

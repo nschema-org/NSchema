@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json.Serialization;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Binding;
 using NSchema.Cli.Configuration.Import;
 using NSchema.Cli.Configuration.Provider;
 

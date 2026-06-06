@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Cli.Configuration.Binding;
 
 internal interface IBindable
 {

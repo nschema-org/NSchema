@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Cli.Configuration.Binding;
 using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;

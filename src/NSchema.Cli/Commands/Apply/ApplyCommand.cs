@@ -28,7 +28,7 @@ internal static class ApplyCommand
 
     private static ApplyConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Load<ApplyConfiguration>(result);
+        var config = ConfigurationFactory.Load<ApplyConfiguration>(result);
         new ApplyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }

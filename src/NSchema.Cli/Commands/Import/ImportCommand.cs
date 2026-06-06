@@ -24,7 +24,7 @@ internal static class ImportCommand
 
     private static ImportConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Load<ImportConfiguration>(result);
+        var config = ConfigurationFactory.Load<ImportConfiguration>(result);
         new ImportConfigurationValidator().ValidateOrThrow(config);
         return config;
     }

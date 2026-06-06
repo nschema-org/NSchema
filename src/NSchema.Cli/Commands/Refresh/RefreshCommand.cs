@@ -23,7 +23,7 @@ internal static class RefreshCommand
 
     private static RefreshConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Load<RefreshConfiguration>(result);
+        var config = ConfigurationFactory.Load<RefreshConfiguration>(result);
         new RefreshConfigurationValidator().ValidateOrThrow(config);
         return config;
     }

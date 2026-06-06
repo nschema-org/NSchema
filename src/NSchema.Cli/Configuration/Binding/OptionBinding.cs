@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Cli.Configuration.Binding;
 
 /// <summary>
 /// A single configuration binding: between a CLI option, and an environment-variable fallback.
