@@ -12,17 +12,17 @@ internal sealed class ImportTargetConfig : IBindable
     /// - A file path for <see cref="ImportPartitionMode.None"/>;
     /// - The root directory for <see cref="ImportPartitionMode.Schema"/> and <see cref="ImportPartitionMode.Table"/>.
     /// </summary>
-    public string OutputPath { get; private set; } = "";
+    public string OutputPath { get; set; } = "";
 
     /// <summary>
     /// The format for generated schema files.
     /// </summary>
-    public SchemaFormat Format { get; private set; } = SchemaFormat.Yaml;
+    public SchemaFormat Format { get; set; } = SchemaFormat.Yaml;
 
     /// <summary>
     /// Controls how the imported schema is split across output files.
     /// </summary>
-    public ImportPartitionMode Partition { get; private set; } = ImportPartitionMode.None;
+    public ImportPartitionMode Partition { get; set; } = ImportPartitionMode.None;
 
     public void Bind(ParseResult result)
     {

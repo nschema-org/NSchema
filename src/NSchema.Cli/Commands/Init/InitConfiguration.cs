@@ -14,13 +14,13 @@ internal sealed class InitConfiguration : IBindable
     /// The database provider supplying the live schema to import.
     /// </summary>
     [JsonIgnore]
-    public SchemaFormat Format { get; private set; } = SchemaFormat.Yaml;
+    public SchemaFormat Format { get; set; } = SchemaFormat.Yaml;
 
     /// <summary>
     /// Where and how to write the imported schema files.
     /// </summary>
     [JsonIgnore]
-    public bool Force { get; private set; }
+    public bool Force { get; set; }
 
     public void Bind(ParseResult result)
     {

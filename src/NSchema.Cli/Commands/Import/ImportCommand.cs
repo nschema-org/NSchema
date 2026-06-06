@@ -29,7 +29,7 @@ internal static class ImportCommand
 
         using var app = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureImportTarget(configuration.ImportTarget)
+            .ConfigureImportTarget(configuration.Target)
             .ConfigureImportScope(configuration.Scope)
             .Build();
         await app.Import(cancellationToken);

@@ -15,13 +15,13 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema to import.
     /// </summary>
-    public ProviderConfig Provider { get; } = new();
+    public ProviderConfig Provider { get; init; } = new();
 
     /// <summary>
     /// Where and how to write the imported schema files.
     /// </summary>
     [JsonIgnore]
-    public ImportTargetConfig ImportTarget { get; } = new();
+    public ImportTargetConfig Target { get; init; } = new();
 
     /// <summary>
     /// Optional filter limiting the import to specific database schema namespaces.
@@ -31,7 +31,7 @@ internal sealed class ImportConfiguration : IBindable
     public void Bind(ParseResult result)
     {
         Provider.Bind(result);
-        ImportTarget.Bind(result);
+        Target.Bind(result);
         CommonOptions.Scope.Bind(result, s => Scope = s);
     }
 }

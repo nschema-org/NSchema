@@ -15,6 +15,6 @@ internal sealed class ImportConfigurationValidator : AbstractValidator<ImportCon
             .WithMessage($"A database provider is required for import. Configure one in nschema.json, via --provider/--connection-string, or {EnvironmentVariables.ConnectionString}.");
 
         RuleFor(x => x.Provider).SetValidator(new ProviderConfigValidator());
-        RuleFor(x => x.ImportTarget).SetValidator(new ImportTargetConfigValidator());
+        RuleFor(x => x.Target).SetValidator(new ImportTargetConfigValidator());
     }
 }
