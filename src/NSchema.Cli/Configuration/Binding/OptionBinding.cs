@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NSchema.Cli.Configuration.Binding;
 
@@ -22,18 +23,15 @@ internal sealed class OptionBinding<T> where T : notnull
     private string? _optionName;
     private string? _description;
     private bool _allowMultipleArguments;
+    private bool _recursive;
+
     private string? _envVar;
     private Func<string, T>? _parser;
-    private Option<T>? _option;
-
-    internal OptionBinding()
-    {
-    }
 
     /// <summary>
     /// The underlying System.CommandLine option, built on first access and exposed so commands can register it.
     /// </summary>
-    public Option<T> Option => _option ??= BuildOption();
+    public Option<T> Option => field ??= BuildOption();
 
     /// <summary>
     /// Names the CLI option (e.g. <c>--scope</c>).
@@ -47,9 +45,10 @@ internal sealed class OptionBinding<T> where T : notnull
     /// <summary>
     /// Adds an environment variable read when the option is not passed explicitly on the command line.
     /// </summary>
-    public OptionBinding<T> FromEnvironmentVariable(string envVar)
+    public OptionBinding<T> FromEnvironmentVariable(string envVar, Func<string, T>? parser = null)
     {
         _envVar = envVar;
+        _parser = parser;
         return this;
     }
 
@@ -72,12 +71,11 @@ internal sealed class OptionBinding<T> where T : notnull
     }
 
     /// <summary>
-    /// Overrides how the environment-variable string is parsed. Only needed when the defaults (identity for strings,
-    /// <see cref="Enum.Parse(Type, string, bool)"/> for enums) are not appropriate.
+    /// Causes the option to be registered on all subcommands, not just the root command.
     /// </summary>
-    public OptionBinding<T> WithParser(Func<string, T> parser)
+    public OptionBinding<T> Recursive()
     {
-        _parser = parser;
+        _recursive = true;
         return this;
     }
 
@@ -100,6 +98,29 @@ internal sealed class OptionBinding<T> where T : notnull
         }
     }
 
+    public T GetValueOrDefault(ParseResult result, T defaultValue)
+    {
+        return TryGetValue(result, out var value) ? value : defaultValue;
+    }
+
+    public bool TryGetValue(ParseResult result, [NotNullWhen(true)] out T? value)
+    {
+        if (result.GetResult(Option) is { Implicit: false } argument)
+        {
+            value = argument.GetRequiredValue(Option);
+            return true;
+        }
+
+        if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
+        {
+            value = Parse(raw);
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
     private Option<T> BuildOption()
     {
         var name = _optionName ?? throw new InvalidOperationException("Option name not set; call FromOption first.");
@@ -107,6 +128,7 @@ internal sealed class OptionBinding<T> where T : notnull
         {
             Description = _description,
             AllowMultipleArgumentsPerToken = _allowMultipleArguments,
+            Recursive = _recursive,
         };
     }
 
@@ -128,7 +150,6 @@ internal sealed class OptionBinding<T> where T : notnull
             return value;
         }
 
-        throw new InvalidOperationException(
-            $"Environment variable '{_envVar}' overrides '{Option.Name}' but no value parser was supplied.");
+        throw new InvalidOperationException($"Environment variable '{_envVar}' overrides '{Option.Name}' but no value parser was supplied.");
     }
 }

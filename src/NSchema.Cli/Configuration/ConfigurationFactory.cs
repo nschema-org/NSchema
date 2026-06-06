@@ -25,14 +25,14 @@ internal static class ConfigurationFactory
 
     private static T LoadFromFile<T>(ParseResult result) where T : class, new()
     {
-        var cliPath = result.GetValue(CommonOptions.Config);
+        var configRequired = CommonOptions.Config.TryGetValue(result, out var cliPath);
         var configFile = Path.GetFullPath(cliPath ?? DefaultConfigurationFile, Directory.GetCurrentDirectory());
 
         if (!File.Exists(configFile))
         {
-            return cliPath is null
-                ? new T()
-                : throw new FileNotFoundException($"Config file not found: \"{configFile}\".", configFile);
+            return configRequired
+                ? throw new FileNotFoundException($"Config file not found: \"{configFile}\".", configFile)
+                : new T();
         }
 
         using var stream = File.OpenRead(configFile);

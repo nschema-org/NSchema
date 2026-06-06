@@ -1,4 +1,3 @@
-using System.CommandLine;
 using NSchema.Cli.Configuration.Binding;
 using NSchema.Migration;
 
@@ -6,16 +5,15 @@ namespace NSchema.Cli.Configuration;
 
 internal static class CommonOptions
 {
-    public static readonly Option<string> Config = new("--config")
-    {
-        Description = "Path to the NSchema config file. Defaults to ./nschema.json if present.",
-    };
+    public static readonly OptionBinding<string> Config = OptionBinding.Create<string>()
+        .FromOption("--config")
+        .WithDescription("Path to the NSchema config file. Defaults to ./nschema.json if present.");
 
-    public static readonly Option<bool> NoColor = new("--no-color")
-    {
-        Description = "Disable colored output. Also honored via the NO_COLOR environment variable.",
-        Recursive = true,
-    };
+    public static readonly OptionBinding<bool> NoColor = OptionBinding.Create<bool>()
+        .FromOption("--no-color")
+        .FromEnvironmentVariable(EnvironmentVariables.NoColor)
+        .Recursive()
+        .WithDescription("Disable colored output.");
 
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")

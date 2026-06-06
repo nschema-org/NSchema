@@ -9,9 +9,7 @@ var parseResult = root.Parse(args);
 // Disable the built-in error handling so we can do our own.
 var configuration = new System.CommandLine.InvocationConfiguration { EnableDefaultExceptionHandler = false };
 
-// Resolve color preference once (--no-color or the NO_COLOR convention) and apply it to the ambient console the
-// rest of the CLI renders through, and to the stderr console used for errors and cancellation notices here.
-var colorDisabled = ConsoleFactory.IsColorDisabled(parseResult);
+var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
 var error = ConsoleFactory.Create(Console.Error, colorDisabled);
 

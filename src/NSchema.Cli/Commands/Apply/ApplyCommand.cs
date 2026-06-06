@@ -13,7 +13,7 @@ internal static class ApplyCommand
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
 
-        command.Options.Add(CommonOptions.Config);
+        command.Options.Add(CommonOptions.Config.Option);
         command.Options.Add(CommonOptions.Scope.Option);
         command.Options.Add(CommonOptions.Destructive.Option);
 

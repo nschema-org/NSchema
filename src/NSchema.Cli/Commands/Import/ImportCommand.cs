@@ -12,7 +12,7 @@ internal static class ImportCommand
     {
         var command = new Command("import", "Read the live database schema and write it as desired-schema source files.");
 
-        command.Options.Add(CommonOptions.Config);
+        command.Options.Add(CommonOptions.Config.Option);
         command.Options.Add(CommonOptions.Scope.Option);
 
         command.Options.AddRange(ProviderOptions.All);

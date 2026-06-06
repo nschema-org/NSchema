@@ -13,7 +13,7 @@ internal static class PlanCommand
     {
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
 
-        command.Options.Add(CommonOptions.Config);
+        command.Options.Add(CommonOptions.Config.Option);
         command.Options.Add(CommonOptions.Scope.Option);
         command.Options.Add(CommonOptions.Destructive.Option);
 
