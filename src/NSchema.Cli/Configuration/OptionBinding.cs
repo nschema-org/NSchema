@@ -56,7 +56,6 @@ internal sealed class OptionBinding<T> where T : notnull
         {
             var value = Parse(raw);
             action(value);
-            return;
         }
     }
 
