@@ -21,7 +21,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "plan", "apply", "refresh"], ignoreOrder: true);
+        names.ShouldBe(["init", "plan", "apply", "refresh", "import"], ignoreOrder: true);
     }
 
     [Theory]

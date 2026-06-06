@@ -38,6 +38,7 @@ internal static class NSchemaConfigurationFactory
         ConfigureAutoApprove(config, result);
         ConfigureMigrationScope(config, result);
         ConfigureSchema(config, result);
+        ConfigureImportTarget(config, result);
 
         return config;
     }
@@ -146,6 +147,24 @@ internal static class NSchemaConfigurationFactory
         if (TryGetOverride(result, CliOptions.Schema.Pattern, out var pattern))
         {
             config.Schema.Pattern = pattern;
+        }
+    }
+
+    private static void ConfigureImportTarget(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Import.Output, out var outputPath))
+        {
+            config.ImportTarget.OutputPath = outputPath;
+        }
+
+        if (TryGetOverride(result, CliOptions.Import.Format, out var format))
+        {
+            config.ImportTarget.Format = format;
+        }
+
+        if (TryGetOverride(result, CliOptions.Import.Partition, out var partition))
+        {
+            config.ImportTarget.Partition = partition;
         }
     }
 

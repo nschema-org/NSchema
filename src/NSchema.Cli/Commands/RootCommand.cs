@@ -1,5 +1,6 @@
 using System.Reflection;
 using NSchema.Cli.Commands.Apply;
+using NSchema.Cli.Commands.Import;
 using NSchema.Cli.Commands.Init;
 using NSchema.Cli.Commands.Plan;
 using NSchema.Cli.Commands.Refresh;
@@ -20,6 +21,7 @@ internal static class RootCommand
         root.Subcommands.Add(PlanCommand.Create());
         root.Subcommands.Add(ApplyCommand.Create());
         root.Subcommands.Add(RefreshCommand.Create());
+        root.Subcommands.Add(ImportCommand.Create());
 
         return root;
     }
