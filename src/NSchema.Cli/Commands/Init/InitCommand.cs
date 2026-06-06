@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Cli.Configuration;
+using NSchema.Resolution;
 using NSchema.Schema.Serialization;
 using Spectre.Console;
 
@@ -23,7 +24,7 @@ internal static class InitCommand
         var force = parseResult.GetValue(CliOptions.Init.Force);
 
         using var app = CliApplicationBuilder.Create().Build();
-        var serializers = app.Services.GetRequiredService<ISchemaDocumentSerializerResolver>();
+        var serializers = app.Services.GetRequiredService<IKeyedResolver<ISchemaDocumentSerializer>>();
         var console = app.Services.GetRequiredService<IAnsiConsole>();
 
         var created = await new ProjectScaffolder()

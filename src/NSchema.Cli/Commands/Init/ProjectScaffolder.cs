@@ -3,6 +3,7 @@ using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
+using NSchema.Resolution;
 using NSchema.Schema.Model;
 using NSchema.Schema.Serialization;
 
@@ -29,7 +30,7 @@ internal sealed class ProjectScaffolder
         string directory,
         SchemaFormat format,
         bool force,
-        ISchemaDocumentSerializerResolver serializers,
+        IKeyedResolver<ISchemaDocumentSerializer> serializers,
         CancellationToken cancellationToken = default
     )
     {
@@ -51,7 +52,7 @@ internal sealed class ProjectScaffolder
         var samplePath = Path.Combine(directory, sampleRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
 
-        var serializer = serializers.ForFormat(format.FormatName());
+        var serializer = serializers.Resolve(format.FormatName());
         await using var stream = File.Create(samplePath);
         await serializer.Write(SampleSchema, stream, cancellationToken);
 

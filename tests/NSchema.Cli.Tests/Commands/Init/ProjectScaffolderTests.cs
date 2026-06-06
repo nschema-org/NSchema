@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Cli;
 using NSchema.Cli.Commands.Init;
 using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Schema;
+using NSchema.Resolution;
 using NSchema.Schema.Serialization;
 
 namespace NSchema.Cli.Tests.Commands.Init;
@@ -14,7 +14,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-init-").FullName;
     private readonly NSchemaApplication _app = CliApplicationBuilder.Create().Build();
 
-    private ISchemaDocumentSerializerResolver Serializers => _app.Services.GetRequiredService<ISchemaDocumentSerializerResolver>();
+    private IKeyedResolver<ISchemaDocumentSerializer> Serializers => _app.Services.GetRequiredService<IKeyedResolver<ISchemaDocumentSerializer>>();
 
     public void Dispose()
     {
@@ -80,7 +80,7 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         // Act
         await using var stream = File.OpenRead(Path.Combine(_directory, "schemas", "example.yaml"));
-        var schema = await Serializers.ForFormat("yaml").Read(stream, TestContext.Current.CancellationToken);
+        var schema = await Serializers.Resolve("yaml").Read(stream, TestContext.Current.CancellationToken);
 
         // Assert
         var table = schema.Schemas.ShouldHaveSingleItem().Tables.ShouldHaveSingleItem();

@@ -1,3 +1,6 @@
+using NSchema.Schema.Serialization;
+using NSchema.Yaml;
+
 namespace NSchema.Cli.Configuration.Schema;
 
 internal static class SchemaFormatExtensions
@@ -27,8 +30,8 @@ internal static class SchemaFormatExtensions
     /// </summary>
     public static string FormatName(this SchemaFormat format) => format switch
     {
-        SchemaFormat.Yaml => "yaml",
-        SchemaFormat.Json => "json",
+        SchemaFormat.Yaml => YamlDocumentSchemaSerializer.FormatName,
+        SchemaFormat.Json => JsonSchemaDocumentSerializer.FormatName,
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown schema format."),
     };
 }

@@ -21,7 +21,7 @@ internal sealed class CliApplicationBuilder
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
         .UseTerraformRenderer(o => o.IncludeColour = false)
-        .AddReporter<SpectreMigrationReporter>()
+        .AddReporter<SpectreMigrationReporter>(SpectreMigrationReporter.FormatName)
         .WithOutputFormat(SpectreMigrationReporter.FormatName);
 
     private CliApplicationBuilder()
@@ -73,7 +73,7 @@ internal sealed class CliApplicationBuilder
                 _builder.UseFileStateStore(file.Path);
                 break;
             case { S3: { } s3 }:
-                _builder.UseStateStoreS3(s3.Bucket, s3.Key);
+                _builder.UseS3StateStore(s3.Bucket, s3.Key);
                 break;
         }
 

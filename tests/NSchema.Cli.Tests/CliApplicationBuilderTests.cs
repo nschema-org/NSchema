@@ -2,8 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Cli.Configuration.State;
 using NSchema.Cli.Services;
-using NSchema.Hosting;
 using NSchema.Migration;
+using NSchema.Resolution;
 using NSchema.State;
 using Spectre.Console;
 
@@ -98,7 +98,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.Build();
 
         // Assert
-        var reporter = app.Services.GetRequiredService<IMigrationReporterResolver>().Current;
+        var reporter = app.Services.GetRequiredService<IKeyedResolver<IMigrationReporter>>().Current;
         reporter.ShouldBeOfType<SpectreMigrationReporter>();
     }
 }
