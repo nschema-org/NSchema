@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NSchema.Cli.Configuration;
 
@@ -44,27 +43,21 @@ internal sealed class OptionBinding<T> where T : notnull
         init => Option.Description = value;
     }
 
-    /// <summary>
-    /// Resolves this binding against the parsed command line with CLI &gt; environment precedence. Returns
-    /// <see langword="false"/> when neither an explicit CLI argument nor the environment variable is set, leaving the
-    /// caller's file/base value untouched.
-    /// </summary>
-    public bool TryResolve(ParseResult result, [NotNullWhen(true)] out T? value)
+    public void Bind(ParseResult result, Action<T> action)
     {
         if (result.GetResult(Option) is { Implicit: false } argument)
         {
-            value = argument.GetRequiredValue(Option);
-            return true;
+            var value = argument.GetRequiredValue(Option);
+            action(value);
+            return;
         }
 
         if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
         {
-            value = Parse(raw);
-            return true;
+            var value = Parse(raw);
+            action(value);
+            return;
         }
-
-        value = default;
-        return false;
     }
 
     private T Parse(string raw)

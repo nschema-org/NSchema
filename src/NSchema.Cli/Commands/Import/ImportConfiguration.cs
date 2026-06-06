@@ -9,7 +9,7 @@ namespace NSchema.Cli.Commands.Import;
 /// <summary>
 /// Configuration for the import command.
 /// </summary>
-internal sealed class ImportConfiguration : IConfigurable
+internal sealed class ImportConfiguration : IBindable
 {
     /// <summary>
     /// The database provider supplying the live schema to import.
@@ -27,14 +27,10 @@ internal sealed class ImportConfiguration : IConfigurable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        Provider.Configure(result);
-        ImportTarget.Configure(result);
-
-        if (CommonOptions.Scope.TryResolve(result, out var scope))
-        {
-            Scope = scope;
-        }
+        Provider.Bind(result);
+        ImportTarget.Bind(result);
+        CommonOptions.Scope.Bind(result, s => Scope = s);
     }
 }

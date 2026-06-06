@@ -6,7 +6,7 @@ namespace NSchema.Cli.Configuration.State;
 /// <summary>
 /// Configures a backend store used to keep state snapshots.
 /// </summary>
-internal sealed class StateConfig : IConfigurable
+internal sealed class StateConfig : IBindable
 {
     /// <summary>
     /// Local-file state store settings.
@@ -24,24 +24,10 @@ internal sealed class StateConfig : IConfigurable
     [JsonIgnore]
     public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (StateOptions.File.TryResolve(result, out var path))
-        {
-            File ??= new FileStateConfig();
-            File.Path = path;
-        }
-
-        if (StateOptions.S3Bucket.TryResolve(result, out var bucket))
-        {
-            S3 ??= new S3StateConfig();
-            S3.Bucket = bucket;
-        }
-
-        if (StateOptions.S3Key.TryResolve(result, out var key))
-        {
-            S3 ??= new S3StateConfig();
-            S3.Key = key;
-        }
+        StateOptions.File.Bind(result, p => (File ??= new FileStateConfig()).Path = p);
+        StateOptions.S3Bucket.Bind(result, b => (S3 ??= new S3StateConfig()).Bucket = b);
+        StateOptions.S3Key.Bind(result, k => (S3 ??= new S3StateConfig()).Key = k);
     }
 }

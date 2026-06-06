@@ -6,7 +6,7 @@ namespace NSchema.Cli.Configuration.Provider;
 /// <summary>
 /// Configures the database provider that supplies the current (live) schema.
 /// </summary>
-internal sealed class ProviderConfig : IConfigurable
+internal sealed class ProviderConfig : IBindable
 {
     /// <summary>
     /// PostgreSQL provider settings.
@@ -19,24 +19,20 @@ internal sealed class ProviderConfig : IConfigurable
     [JsonIgnore]
     public int ConfiguredSectionCount => Postgres is not null ? 1 : 0;
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (ProviderOptions.Type.TryResolve(result, out var provider))
-        {
-            switch (provider)
+        ProviderOptions.Type.Bind(result, p =>
             {
-                case ProviderType.Postgres:
-                    Postgres ??= new PostgresProviderConfig();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(provider), $"Unsupported provider type: {provider}");
-            }
-        }
+                switch (p)
+                {
+                    case ProviderType.Postgres:
+                        Postgres ??= new PostgresProviderConfig();
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(p), $"Unsupported provider type: {p}");
+                }
+            });
 
-        if (ProviderOptions.ConnectionString.TryResolve(result, out var connectionString))
-        {
-            Postgres ??= new PostgresProviderConfig();
-            Postgres.ConnectionString = connectionString;
-        }
+        ProviderOptions.ConnectionString.Bind(result, cs => (Postgres ??= new PostgresProviderConfig()).ConnectionString = cs);
     }
 }

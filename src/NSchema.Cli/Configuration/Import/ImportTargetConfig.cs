@@ -4,7 +4,7 @@ using NSchema.Import;
 
 namespace NSchema.Cli.Configuration.Import;
 
-internal sealed class ImportTargetConfig : IConfigurable
+internal sealed class ImportTargetConfig : IBindable
 {
     /// <summary>
     /// The output path:
@@ -23,21 +23,10 @@ internal sealed class ImportTargetConfig : IConfigurable
     /// </summary>
     public ImportPartitionMode Partition { get; private set; } = ImportPartitionMode.None;
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (ImportTargetOptions.Output.TryResolve(result, out var outputPath))
-        {
-            OutputPath = outputPath;
-        }
-
-        if (ImportTargetOptions.Format.TryResolve(result, out var format))
-        {
-            Format = format;
-        }
-
-        if (ImportTargetOptions.Partition.TryResolve(result, out var partition))
-        {
-            Partition = partition;
-        }
+        ImportTargetOptions.Output.Bind(result, p => OutputPath = p);
+        ImportTargetOptions.Format.Bind(result, f => Format = f);
+        ImportTargetOptions.Partition.Bind(result, p => Partition = p);
     }
 }

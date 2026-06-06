@@ -10,7 +10,7 @@ namespace NSchema.Cli.Commands.Plan;
 /// <summary>
 /// configuration for the plan command.
 /// </summary>
-internal sealed class PlanConfiguration : IConfigurable
+internal sealed class PlanConfiguration : IBindable
 {
     /// <summary>
     /// How the desired schema is located and read.
@@ -37,20 +37,13 @@ internal sealed class PlanConfiguration : IConfigurable
     /// </summary>
     public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (CommonOptions.Scope.TryResolve(result, out var scope))
-        {
-            Scope = scope;
-        }
+        CommonOptions.Scope.Bind(result, s => Scope = s);
+        CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
 
-        if (CommonOptions.Destructive.TryResolve(result, out var policy))
-        {
-            DestructiveActionPolicy = policy;
-        }
-
-        Schema.Configure(result);
-        Provider.Configure(result);
-        State.Configure(result);
+        Schema.Bind(result);
+        Provider.Bind(result);
+        State.Bind(result);
     }
 }

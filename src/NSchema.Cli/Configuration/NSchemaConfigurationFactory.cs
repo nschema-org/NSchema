@@ -40,15 +40,15 @@ internal static class NSchemaConfigurationFactory
     }
 
 
-    public static T Load<T>(ParseResult args) where T : class, IConfigurable, new()
+    public static T Load<T>(ParseResult args) where T : class, IBindable, new()
     {
         var config = LoadFromFile<T>(args);
-        config.Configure(args);
+        config.Bind(args);
         return config;
     }
 }
 
-interface IConfigurable
+internal interface IBindable
 {
-    void Configure(ParseResult result);
+    void Bind(ParseResult result);
 }

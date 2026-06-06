@@ -10,7 +10,7 @@ namespace NSchema.Cli.Commands.Apply;
 /// <summary>
 /// configuration for the apply command.
 /// </summary>
-internal sealed class ApplyConfiguration : IConfigurable
+internal sealed class ApplyConfiguration : IBindable
 {
     /// <summary>
     /// How the desired schema is located and read.
@@ -42,25 +42,15 @@ internal sealed class ApplyConfiguration : IConfigurable
     /// </summary>
     public bool AutoApprove { get; private set; }
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (CommonOptions.Scope.TryResolve(result, out var scope))
-        {
-            Scope = scope;
-        }
+        CommonOptions.Scope.Bind(result, s => Scope = s);
+        CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
+        CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
+        ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
 
-        if (CommonOptions.Destructive.TryResolve(result, out var policy))
-        {
-            DestructiveActionPolicy = policy;
-        }
-
-        if (ApplyOptions.AutoApprove.TryResolve(result, out var autoApprove))
-        {
-            AutoApprove = autoApprove;
-        }
-
-        Schema.Configure(result);
-        Provider.Configure(result);
-        State.Configure(result);
+        Schema.Bind(result);
+        Provider.Bind(result);
+        State.Bind(result);
     }
 }

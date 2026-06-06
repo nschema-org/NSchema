@@ -6,7 +6,7 @@ namespace NSchema.Cli.Configuration.Schema;
 /// <summary>
 /// Configures how the desired schema is located and read. Required for the plan and apply commands.
 /// </summary>
-internal sealed class SchemaConfig : IConfigurable
+internal sealed class SchemaConfig : IBindable
 {
     /// <summary>
     /// The directory the desired-schema files are discovered under.
@@ -24,21 +24,10 @@ internal sealed class SchemaConfig : IConfigurable
     /// </summary>
     public string? Pattern { get; set; }
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        if (SchemaOptions.Format.TryResolve(result, out var format))
-        {
-            Format = format;
-        }
-
-        if (SchemaOptions.Directory.TryResolve(result, out var directory))
-        {
-            Directory = directory;
-        }
-
-        if (SchemaOptions.Pattern.TryResolve(result, out var pattern))
-        {
-            Pattern = pattern;
-        }
+        SchemaOptions.Format.Bind(result, f => Format = f);
+        SchemaOptions.Directory.Bind(result, d => Directory = d);
+        SchemaOptions.Pattern.Bind(result, p => Pattern = p);
     }
 }

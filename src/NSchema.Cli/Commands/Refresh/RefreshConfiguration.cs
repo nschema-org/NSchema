@@ -8,7 +8,7 @@ namespace NSchema.Cli.Commands.Refresh;
 /// <summary>
 /// configuration for the refresh command.
 /// </summary>
-internal sealed class RefreshConfiguration : IConfigurable
+internal sealed class RefreshConfiguration : IBindable
 {
     /// <summary>
     /// The database provider supplying the live schema.
@@ -20,9 +20,9 @@ internal sealed class RefreshConfiguration : IConfigurable
     /// </summary>
     public StateConfig State { get; init; } = new();
 
-    public void Configure(ParseResult result)
+    public void Bind(ParseResult result)
     {
-        Provider.Configure(result);
-        State.Configure(result);
+        Provider.Bind(result);
+        State.Bind(result);
     }
 }
