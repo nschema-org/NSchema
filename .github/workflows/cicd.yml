@@ -17,7 +17,7 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema'
+          repository: 'nschema-org/NSchema.Core'
           path: 'build'
 
       - name: Run Build Pipeline
@@ -40,7 +40,7 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema'
+          repository: 'nschema-org/NSchema.Core'
           path: 'build'
 
       - name: Run Deploy Pipeline
