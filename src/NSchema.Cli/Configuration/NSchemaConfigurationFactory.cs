@@ -1,6 +1,9 @@
 using System.CommandLine;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.State;
 using NSchema.Migration;
 
 namespace NSchema.Cli.Configuration;
@@ -23,59 +26,26 @@ internal static class NSchemaConfigurationFactory
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    // Apply an explicitly-specified command-line option over the loaded configuration.
-    private static readonly CliOverride[] _cliOverrides =
-    [
-        CliOverride.For(CliOptions.Database.Provider, (c, v) => c.Provider.Type = v),
-        CliOverride.For(CliOptions.Database.ConnectionString, (c, v) => c.Provider.ConnectionString = v),
-        CliOverride.For(CliOptions.State.Type, (c, v) => c.State.Type = v),
-        CliOverride.For(CliOptions.State.ConnectionString, (c, v) => c.State.ConnectionString = v),
-        CliOverride.For(CliOptions.State.File, (c, v) => { c.State.Type = StateType.File; c.State.ConnectionString = v; }),
-        CliOverride.For(CliOptions.Migration.Destructive, (c, v) => c.DestructiveActionPolicy = v),
-        CliOverride.For(CliOptions.Apply.AutoApprove, (c, v) => c.AutoApprove = v),
-        CliOverride.For(CliOptions.Migration.Scope, (c, v) => c.Scope = [.. v]),
-        CliOverride.For(CliOptions.Desired.Format, (c, v) => c.Schema.Format = v),
-        CliOverride.For(CliOptions.Desired.SchemaDir, (c, v) => c.Schema.Directory = v),
-        CliOverride.For(CliOptions.Desired.SchemaGlob, (c, v) => c.Schema.Glob = v),
-    ];
-
-    // Apply a recognized environment variable over the loaded configuration.
-    private static readonly (string Variable, Action<NSchemaConfiguration, string> Apply)[] _environmentOverrides =
-    [
-        ("NSCHEMA_PROVIDER", (c, v) => c.Provider.Type = Enum.Parse<ProviderType>(v, ignoreCase: true)),
-        ("NSCHEMA_CONNECTION_STRING", (c, v) => c.Provider.ConnectionString = v),
-        ("NSCHEMA_STATE_TYPE", (c, v) => c.State.Type = Enum.Parse<StateType>(v, ignoreCase: true)),
-        ("NSCHEMA_STATE_CONNECTION_STRING", (c, v) => c.State.ConnectionString = v),
-        ("NSCHEMA_DESTRUCTIVE_ACTION_POLICY", (c, v) => c.DestructiveActionPolicy = Enum.Parse<DestructiveActionPolicy>(v, ignoreCase: true)),
-    ];
-
-    public static NSchemaConfiguration Create(ParseResult parseResult)
+    public static NSchemaConfiguration Create(ParseResult result)
     {
-        // Load base file.
-        var config = LoadFromFile(parseResult) ?? new NSchemaConfiguration();
+        var config = LoadFromFile(result) ?? new NSchemaConfiguration();
 
-        // Apply environment variable overrides
-        foreach (var (variable, apply) in _environmentOverrides)
-        {
-            if (Environment.GetEnvironmentVariable(variable) is { } value)
-            {
-                apply(config, value);
-            }
-        }
-
-        // Apply CLI argument overrides
-        foreach (var cliOverride in _cliOverrides)
-        {
-            cliOverride.Apply(config, parseResult);
-        }
+        ConfigureProvider(config, result);
+        ConfigureConnectionString(config, result);
+        ConfigureFileState(config, result);
+        ConfigureS3State(config, result);
+        ConfigureDestructiveActionPolicy(config, result);
+        ConfigureAutoApprove(config, result);
+        ConfigureMigrationScope(config, result);
+        ConfigureSchema(config, result);
 
         return config;
     }
 
-    private static NSchemaConfiguration? LoadFromFile(ParseResult parseResult)
+    private static NSchemaConfiguration? LoadFromFile(ParseResult result)
     {
         // Relative paths must resolve against the working directory the tool was invoked from.
-        var cliPath = parseResult.GetValue(CliOptions.Global.Config);
+        var cliPath = result.GetValue(CliOptions.Common.Config);
         var configFile = Path.GetFullPath(cliPath ?? DefaultConfigurationFile, Directory.GetCurrentDirectory());
 
         if (!File.Exists(configFile))
@@ -89,31 +59,145 @@ internal static class NSchemaConfigurationFactory
                ?? throw new InvalidOperationException($"Failed to parse config file \"{configFile}\".");
     }
 
-    /// <summary>
-    /// Applies a single command-line option onto the configuration, but only when it was explicitly specified.
-    /// </summary>
-    private sealed class CliOverride
+    private static void ConfigureProvider(NSchemaConfiguration config, ParseResult result)
     {
-        private readonly Func<ParseResult, bool> _shouldApply;
-        private readonly Action<NSchemaConfiguration, ParseResult> _apply;
-
-        private CliOverride(Func<ParseResult, bool> shouldApply, Action<NSchemaConfiguration, ParseResult> apply)
+        if (TryGetOverride(result, CliOptions.Provider.Type, EnvironmentVariables.Provider, Enum.Parse<ProviderType>, out var provider))
         {
-            _shouldApply = shouldApply;
-            _apply = apply;
-        }
-
-        public static CliOverride For<T>(Option<T> option, Action<NSchemaConfiguration, T> apply) => new(
-            pr => pr.GetResult(option) is { Implicit: false },
-            (config, result) => apply(config, result.GetValue(option)!)
-        );
-
-        public void Apply(NSchemaConfiguration config, ParseResult parseResult)
-        {
-            if (_shouldApply(parseResult))
+            switch (provider)
             {
-                _apply(config, parseResult);
+                case ProviderType.Postgres:
+                    config.Provider.Postgres ??= new PostgresProviderConfig();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(provider), $"Unsupported provider type: {provider}");
             }
         }
+    }
+
+    private static void ConfigureConnectionString(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Provider.ConnectionString, EnvironmentVariables.ConnectionString, out var connectionString))
+        {
+            config.Provider.Postgres ??= new PostgresProviderConfig();
+            config.Provider.Postgres.ConnectionString = connectionString;
+        }
+    }
+
+    private static void ConfigureFileState(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.State.File, EnvironmentVariables.StateFile, out var path))
+        {
+            config.State.File ??= new FileStateConfig();
+            config.State.File.Path = path;
+        }
+    }
+
+    private static void ConfigureS3State(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.State.S3Bucket, EnvironmentVariables.StateS3Bucket, out var bucket))
+        {
+            config.State.S3 ??= new S3StateConfig();
+            config.State.S3.Bucket = bucket;
+        }
+
+        if (TryGetOverride(result, CliOptions.State.S3Key, EnvironmentVariables.StateS3Key, out var key))
+        {
+            config.State.S3 ??= new S3StateConfig();
+            config.State.S3.Key = key;
+        }
+    }
+
+    private static void ConfigureDestructiveActionPolicy(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Migration.Destructive, EnvironmentVariables.DestructiveActionPolicy, Enum.Parse<DestructiveActionPolicy>, out var value))
+        {
+            config.DestructiveActionPolicy = value;
+        }
+    }
+
+    private static void ConfigureAutoApprove(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Apply.AutoApprove, out var autoApprove))
+        {
+            config.AutoApprove = autoApprove;
+        }
+    }
+
+    private static void ConfigureMigrationScope(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Migration.Scope, out var scope))
+        {
+            config.Scope = scope;
+        }
+    }
+
+    private static void ConfigureSchema(NSchemaConfiguration config, ParseResult result)
+    {
+        if (TryGetOverride(result, CliOptions.Schema.Format, out var format))
+        {
+            config.Schema.Format = format;
+        }
+
+        if (TryGetOverride(result, CliOptions.Schema.Directory, out var directory))
+        {
+            config.Schema.Directory = directory;
+        }
+
+        if (TryGetOverride(result, CliOptions.Schema.Pattern, out var pattern))
+        {
+            config.Schema.Pattern = pattern;
+        }
+    }
+
+    /// <summary>
+    /// Tries to get an override value from the given CLI option.
+    /// </summary>
+    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, [NotNullWhen(true)] out T? value)
+    {
+        return TryGetOverride(result, option, null, null, out value);
+    }
+
+    /// <summary>
+    /// Tries to get a string value from the given CLI option or environment variable.
+    /// </summary>
+    private static bool TryGetOverride(ParseResult parseResult, Option<string> option, string? envVar, [NotNullWhen(true)] out string? value)
+    {
+        return TryGetOverride<string>(parseResult, option, envVar, s => s, out value);
+    }
+
+    /// <summary>
+    /// Tries to get a string value from the given CLI option or environment variable.
+    /// </summary>
+    /// <param name="result">The parse result containing the command line arguments.</param>
+    /// <param name="option">The option to check for an override value.</param>
+    /// <param name="envVar">The environment variable to check for an override value.</param>
+    /// <param name="envParser">A function to parse the environment variable value, if specified.</param>
+    /// <param name="value">The override value, if found.</param>
+    /// <typeparam name="T">The type of the option value.</typeparam>
+    /// <returns><see langword="true"/> if an override value was found; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if an environment variable override is specified without a value parser.</exception>
+    private static bool TryGetOverride<T>(ParseResult result, Option<T> option, string? envVar, Func<string, T>? envParser, out T? value)
+    {
+        if (result.GetResult(option) is { Implicit: false } argument)
+        {
+            value = argument.GetRequiredValue(option);
+            return true;
+        }
+
+        if (envVar != null)
+        {
+            if (Environment.GetEnvironmentVariable(envVar) is { } envValue)
+            {
+                if (envParser == null)
+                {
+                    throw new InvalidOperationException("Environment variable override specified without value parser.");
+                }
+                value = envParser(envValue);
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
     }
 }

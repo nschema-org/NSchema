@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Cli.Configuration.Schema;
 
 /// <summary>
 /// Configures how the desired schema is located and read. Required for the plan and apply commands.
@@ -11,7 +11,7 @@ internal sealed class SchemaConfig
     /// The directory the desired-schema files are discovered under.
     /// </summary>
     [JsonPropertyName("dir")]
-    public string? Directory { get; set; }
+    public string Directory { get; set; } = "";
 
     /// <summary>
     /// The format the desired schema is expressed in.
@@ -21,5 +21,5 @@ internal sealed class SchemaConfig
     /// <summary>
     /// The glob matched within <see cref="Directory"/>. When null, the format's default glob is used.
     /// </summary>
-    public string? Glob { get; set; }
+    public string? Pattern { get; set; }
 }

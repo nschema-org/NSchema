@@ -30,14 +30,17 @@ dotnet test  NSchema.Cli.slnx --filter "FullyQualifiedName~RootCommandTests.HasT
 ## Configuration resolution (the heart of the CLI)
 
 `Configuration/NSchemaConfigurationFactory.Create(ParseResult)` produces an `NSchemaConfiguration` from three layers,
-**lowest to highest precedence**:
+**lowest to highest precedence**: the loaded **`nschema.json`**, then **environment variables**, then **command-line
+options**. The default `./nschema.json` is optional; an explicit `--config` must exist.
 
-1. **`nschema.json`** — deserialized with System.Text.Json (`JsonOptions`). `--config` overrides the path; the default
-   `./nschema.json` is optional, an explicit `--config` must exist.
-2. **Environment variables** — an explicit allow-list (`_environmentOverrides`), e.g. `NSCHEMA_CONNECTION_STRING`,
-   `NSCHEMA_PROVIDER`. Not a blanket prefix — only listed variables are honored.
-3. **Command-line options** — `_cliOverrides`, applied only when the option was explicitly set (`{ Implicit: false }`),
-   so an unspecified flag never clobbers a config/env value.
+`Create` loads the file (if any) and then walks one private `Configure*` method per setting (`ConfigureConnectionString`,
+`ConfigureFileState`, `ConfigureS3State`, …), each writing its resolved value onto the config and creating nested
+provider/state sections on demand. They share one `TryGetOverride` helper that enforces precedence per setting: an
+explicitly-set CLI option (`{ Implicit: false }`) wins over the environment variable (named from the
+`EnvironmentVariables` constants — never raw strings), which wins over the file value — an unspecified flag never clobbers
+a config/env value. There is no string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key` (and their env vars)
+populate `state.s3.bucket`/`state.s3.key` directly. Environment lookups are an allow-list, not a blanket prefix — only the
+variables passed to a `TryGetOverride` call are honored.
 
 This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
 `init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
@@ -45,12 +48,43 @@ config binder. `nschema.json` keys are camelCase; `schema.dir` maps to `SchemaCo
 
 ## From config to a run
 
-`CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder`. Each command opts into only the
-configuration slices it needs (`ConfigureDesiredSchema`, `ConfigureScope`, `ConfigurePolicies`, `ConfigureDatabaseProvider`,
-`ConfigureBackendState`, `ConfigureConfirmation`) — there is no shared "configure everything" method, so adding a slice to
-one command does not affect another. `refresh` intentionally omits the desired-schema and scope slices (it snapshots the
-**whole** live schema). `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on the `ProviderType`/`StateType`
-enums; a `null` provider is valid and means offline (plan/refresh against a state store only).
+`NSchemaConfiguration` is the **on-disk file format** (`nschema.json`) only — the full superset of slices, all optional,
+and the single thing `init` writes. It is **not** what a command runs against. `NSchemaConfigurationFactory.Create` layers
+env + CLI over the loaded file and hands back that resolved superset; it is a pure resolution engine and knows nothing
+about commands or their requirements. Each command then **projects** the superset into its own small, command-specific
+model — the dependency points one way (commands → factory), so adding or changing a command never touches the factory.
+
+The projection and validation are **vertically sliced into the command**: every command lives in its own
+`Commands/<Name>/` folder holding the System.CommandLine `*Command` (option registration + handler), its
+`*Configuration` model (only the slices it needs), and its `*ConfigurationValidator`. The handler's private projection
+method calls `NSchemaConfigurationFactory.Create`, copies the relevant slices onto the command model, and runs the
+validator before building. The `*Configuration` models compose the shared slice types from `Configuration/*` (the reusable
+vocabulary); the command owns only their composition. A command never sees a config field it has no use for.
+
+Each command validator (**FluentValidation**) *composes the slice validators* (`SchemaConfigValidator`,
+`ProviderConfigValidator`, `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
+command's **presence** rules on top: `apply` requires a desired schema **and** a provider; `plan` requires a desired schema
+**and** a current-schema source — a provider (live) **or** a state store (offline); `refresh` requires a provider **and** a
+state store (it snapshots the **whole** live schema, so it takes no desired-schema or scope). Presence is expressed via each
+config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). The projection runs
+the validator through `ValidateOrThrow`, which throws a `ValidationException` with the joined `ErrorMessage`s — so an
+invalid run fails before any builder call, and a future `validate` command can reuse the same per-command validators.
+
+`CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder` that **trusts its inputs** — it no
+longer validates. Each `Configure*` method takes exactly the slice it applies (`ConfigureDesiredSchema(SchemaConfig)`,
+`ConfigureScope(string[]?)`, `ConfigurePolicies(DestructiveActionPolicy?)`, `ConfigureDatabaseProvider(ProviderConfig)`,
+`ConfigureBackendState(StateConfig)`, `ConfigureConfirmation(bool)`); the command handler passes the corresponding field
+off its validated model. There is no shared "configure everything" method, so adding a slice to one command does not affect
+another. `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is populated**
+(`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than a discriminator enum, and bind through **property
+patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-forgiving operators — the command validator
+already guaranteed the shape. A zero-section provider/state is valid at the builder and means offline; it is the command
+validators (not the builder) that reject it where a section is required.
+
+Each nested section is also reachable from the flat CLI/env overrides: `--connection-string`
+populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and
+`--state-s3-bucket`/`--state-s3-key` populate `state.s3.bucket`/`state.s3.key` (each creating its section on demand). A
+bare `--provider postgres` just ensures the section exists. Rich settings (e.g. `commandTimeout`) are file-only.
 
 ## Error handling and output
 

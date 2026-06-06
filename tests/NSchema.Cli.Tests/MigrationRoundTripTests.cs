@@ -14,7 +14,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     private readonly string _schema = $"test_{Guid.NewGuid():N}";
     private readonly string _schemaDirectory = Directory.CreateTempSubdirectory("nschema-int-").FullName;
 
-    public Task InitializeAsync()
+    public ValueTask InitializeAsync()
     {
         // A desired schema describing one table in this test's unique schema.
         var schemaDocument = $$"""
@@ -38,10 +38,10 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         """;
 
         File.WriteAllText(Path.Combine(_schemaDirectory, "schema.json"), schemaDocument);
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await using var command = fixture.DataSource.CreateCommand($"DROP SCHEMA IF EXISTS \"{_schema}\" CASCADE");
         await command.ExecuteNonQueryAsync();
@@ -84,7 +84,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // Assert
         exitCode.ShouldBe(0);
         File.Exists(stateFile).ShouldBeTrue();
-        (await File.ReadAllTextAsync(stateFile)).ShouldContain("widgets");
+        (await File.ReadAllTextAsync(stateFile, TestContext.Current.CancellationToken)).ShouldContain("widgets");
     }
 
     // Desired-schema options are valid only for plan and apply; refresh rejects them.

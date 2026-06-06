@@ -10,11 +10,12 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
 {
     private static readonly string[] _managedEnvironmentVariables =
     [
-        "NSCHEMA_PROVIDER",
-        "NSCHEMA_CONNECTION_STRING",
-        "NSCHEMA_STATE_TYPE",
-        "NSCHEMA_STATE_CONNECTION_STRING",
-        "NSCHEMA_DESTRUCTIVE_ACTION_POLICY",
+        EnvironmentVariables.Provider,
+        EnvironmentVariables.ConnectionString,
+        EnvironmentVariables.StateFile,
+        EnvironmentVariables.StateS3Bucket,
+        EnvironmentVariables.StateS3Key,
+        EnvironmentVariables.DestructiveActionPolicy,
     ];
 
     private readonly Dictionary<string, string?> _environmentSnapshot = [];
@@ -47,53 +48,68 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
     public void UsesConfigFile_WhenNotOverridden()
     {
         // Arrange
-        var config = ConfigFile("""{ "provider": { "connectionString": "from-file" } }""");
+        var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
-        result.Provider.ConnectionString.ShouldBe("from-file");
+        result.Provider.Postgres!.ConnectionString.ShouldBe("from-file");
     }
 
     [Fact]
     public void CommandLine_OverridesConfigFile()
     {
         // Arrange
-        var config = ConfigFile("""{ "provider": { "connectionString": "from-file" } }""");
+        var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config, "--connection-string", "from-cli");
+        var result = Create("plan", "--config", config, "--connection-string", "from-cli");
 
         // Assert
-        result.Provider.ConnectionString.ShouldBe("from-cli");
+        result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
+    }
+
+    [Fact]
+    public void CommandLine_ConnectionString_PreservesOtherProviderSettings()
+    {
+        // Arrange
+        // The flat connection-string override must land on the existing section, not replace it.
+        var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file", "commandTimeout": 42 } } }""");
+
+        // Act
+        var result = Create("plan", "--config", config, "--connection-string", "from-cli");
+
+        // Assert
+        result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
+        result.Provider.Postgres.CommandTimeout.ShouldBe(42);
     }
 
     [Fact]
     public void Environment_OverridesConfigFile()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("NSCHEMA_CONNECTION_STRING", "from-env");
-        var config = ConfigFile("""{ "provider": { "connectionString": "from-file" } }""");
+        Environment.SetEnvironmentVariable(EnvironmentVariables.ConnectionString, "from-env");
+        var config = ConfigFile("""{ "provider": { "postgres": { "connectionString": "from-file" } } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
-        result.Provider.ConnectionString.ShouldBe("from-env");
+        result.Provider.Postgres!.ConnectionString.ShouldBe("from-env");
     }
 
     [Fact]
     public void CommandLine_OverridesEnvironment()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("NSCHEMA_CONNECTION_STRING", "from-env");
+        Environment.SetEnvironmentVariable(EnvironmentVariables.ConnectionString, "from-env");
 
         // Act
-        var result = Create("--connection-string", "from-cli");
+        var result = Create("plan", "--connection-string", "from-cli");
 
         // Assert
-        result.Provider.ConnectionString.ShouldBe("from-cli");
+        result.Provider.Postgres!.ConnectionString.ShouldBe("from-cli");
     }
 
     [Fact]
@@ -138,14 +154,26 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
     }
 
     [Fact]
-    public void StateFile_SetsFileTypeAndConnectionString()
+    public void StateFile_SetsFileStorePath()
     {
         // Act
         var result = Create("plan", "--state-file", "./state.json");
 
         // Assert
-        result.State.Type.ShouldBe(StateType.File);
-        result.State.ConnectionString.ShouldBe("./state.json");
+        result.State.File.ShouldNotBeNull();
+        result.State.File.Path.ShouldBe("./state.json");
+    }
+
+    [Fact]
+    public void StateS3_SetFromTypedFlags()
+    {
+        // Act
+        var result = Create("plan", "--state-s3-bucket", "my-bucket", "--state-s3-key", "state/schema.json");
+
+        // Assert
+        result.State.S3.ShouldNotBeNull();
+        result.State.S3.Bucket.ShouldBe("my-bucket");
+        result.State.S3.Key.ShouldBe("state/schema.json");
     }
 
     [Fact]
@@ -155,36 +183,40 @@ public sealed class NSchemaConfigurationFactoryTests : IDisposable
         var config = ConfigFile("""{ "schema": { "dir": "./src" } }""");
 
         // Act
-        var result = Create("--config", config);
+        var result = Create("plan", "--config", config);
 
         // Assert
         result.Schema.Directory.ShouldBe("./src");
     }
 
     [Fact]
-    public void Provider_ParsedAsEnum()
+    public void Provider_SelectsNestedSection()
     {
         // Act
-        var result = Create("--provider", "postgres");
+        var result = Create("plan", "--provider", "postgres");
 
         // Assert
-        result.Provider.Type.ShouldBe(ProviderType.Postgres);
+        result.Provider.Postgres.ShouldNotBeNull();
     }
 
     [Fact]
-    public void StateType_BoundFromEnvironment()
+    public void StateS3_BoundFromEnvironment()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("NSCHEMA_STATE_TYPE", "s3");
+        Environment.SetEnvironmentVariable(EnvironmentVariables.StateS3Bucket, "env-bucket");
+        Environment.SetEnvironmentVariable(EnvironmentVariables.StateS3Key, "env/key.json");
 
         // Act
         var result = Create();
 
         // Assert
-        result.State.Type.ShouldBe(StateType.S3);
+        result.State.S3.ShouldNotBeNull();
+        result.State.S3.Bucket.ShouldBe("env-bucket");
+        result.State.S3.Key.ShouldBe("env/key.json");
     }
 
-    // NSchemaConfigurationFactory is static, so the closest thing to a "_sut" is this invocation helper.
+    // NSchemaConfigurationFactory is static, so the closest thing to a "_sut" is this invocation helper. These tests
+    // exercise the shared resolution engine (file < env < CLI) that the per-command factory methods project from.
     private static NSchemaConfiguration Create(params string[] args)
         => NSchemaConfigurationFactory.Create(RootCommand.Create().Parse(args));
 
