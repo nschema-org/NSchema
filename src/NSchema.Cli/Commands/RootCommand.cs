@@ -4,6 +4,7 @@ using NSchema.Cli.Commands.Import;
 using NSchema.Cli.Commands.Init;
 using NSchema.Cli.Commands.Plan;
 using NSchema.Cli.Commands.Refresh;
+using NSchema.Cli.Commands.Validate;
 using NSchema.Cli.Configuration;
 
 namespace NSchema.Cli.Commands;
@@ -18,6 +19,7 @@ internal static class RootCommand
         root.Options.Add(CommonOptions.NoColor.Option);
 
         root.Subcommands.Add(InitCommand.Create());
+        root.Subcommands.Add(ValidateCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
         root.Subcommands.Add(ApplyCommand.Create());
         root.Subcommands.Add(RefreshCommand.Create());
