@@ -22,16 +22,11 @@ internal static class ImportCommand
         return command;
     }
 
-    private static ImportConfiguration Resolve(ParseResult result)
-    {
-        var config = ConfigurationFactory.Load<ImportConfiguration>(result);
-        new ImportConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = ConfigurationFactory.Load<ImportConfiguration>(parseResult);
+        new ImportConfigurationValidator().ValidateOrThrow(configuration);
+
         using var app = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureImportTarget(configuration.ImportTarget)

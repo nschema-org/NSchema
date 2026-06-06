@@ -15,13 +15,13 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema to import.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public ProviderConfig Provider { get; } = new();
 
     /// <summary>
     /// Where and how to write the imported schema files.
     /// </summary>
     [JsonIgnore]
-    public ImportTargetConfig ImportTarget { get; init; } = new();
+    public ImportTargetConfig ImportTarget { get; } = new();
 
     /// <summary>
     /// Optional filter limiting the import to specific database schema namespaces.
