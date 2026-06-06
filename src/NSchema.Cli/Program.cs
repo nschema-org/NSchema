@@ -1,5 +1,6 @@
 using NSchema.Cli.Commands;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Extensions;
 using Spectre.Console;
 
 var root = RootCommand.Create();
@@ -25,6 +26,6 @@ catch (OperationCanceledException)
 }
 catch (Exception ex)
 {
-    error.MarkupLineInterpolated($"[red]Error:[/] {ex.Message}");
+    error.ReportException(ex);
     return 1;
 }
