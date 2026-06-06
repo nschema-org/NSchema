@@ -17,7 +17,7 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            Target = new ImportTargetConfig { OutputPath= "./schemas" , Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
+            Target = new ImportTargetConfig { OutputPath = "./schemas", Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
         };
 
         // Act
@@ -34,7 +34,7 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = new ProviderConfig(),
-            Target = new ImportTargetConfig { OutputPath= "./schemas" , Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
+            Target = new ImportTargetConfig { OutputPath = "./schemas", Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
         };
 
         // Act
