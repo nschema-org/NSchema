@@ -1,10 +1,9 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Import;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Extensions;
+using NSchema.Configuration;
+using NSchema.Configuration.Import;
+using NSchema.Configuration.Provider;
 
-namespace NSchema.Cli.Commands.Import;
+namespace NSchema.Commands.Import;
 
 internal static class ImportCommand
 {

@@ -1,7 +1,7 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.Schema;
+namespace NSchema.Configuration.Schema;
 
 internal static class SchemaOptions
 {

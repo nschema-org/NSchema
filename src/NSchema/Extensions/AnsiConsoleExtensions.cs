@@ -1,7 +1,7 @@
 using NSchema.Policies;
 using Spectre.Console;
 
-namespace NSchema.Cli.Extensions;
+namespace NSchema.Extensions;
 
 internal static class AnsiConsoleExtensions
 {

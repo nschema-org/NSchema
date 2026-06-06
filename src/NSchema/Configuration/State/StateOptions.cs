@@ -1,7 +1,7 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 internal static class StateOptions
 {

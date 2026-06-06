@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Extensions;
+namespace NSchema.Extensions;
 
 internal static class CommandExtensions
 {

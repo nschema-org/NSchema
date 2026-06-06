@@ -1,13 +1,13 @@
 using System.Reflection;
-using NSchema.Cli.Commands.Apply;
-using NSchema.Cli.Commands.Import;
-using NSchema.Cli.Commands.Init;
-using NSchema.Cli.Commands.Plan;
-using NSchema.Cli.Commands.Refresh;
-using NSchema.Cli.Commands.Validate;
-using NSchema.Cli.Configuration;
+using NSchema.Commands.Apply;
+using NSchema.Commands.Import;
+using NSchema.Commands.Init;
+using NSchema.Commands.Plan;
+using NSchema.Commands.Refresh;
+using NSchema.Commands.Validate;
+using NSchema.Configuration;
 
-namespace NSchema.Cli.Commands;
+namespace NSchema.Commands;
 
 internal static class RootCommand
 {

@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NSchema.Cli.Configuration.State;
-using NSchema.Cli.Services;
+using NSchema.Configuration.State;
 using NSchema.Migration;
 using NSchema.Resolution;
+using NSchema.Services;
 using NSchema.State;
 using Spectre.Console;
 
-namespace NSchema.Cli.Tests;
+namespace NSchema.Tests;
 
 public sealed class CliApplicationBuilderTests
 {

@@ -1,8 +1,8 @@
-using NSchema.Cli.Commands.Refresh;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.State;
+using NSchema.Commands.Refresh;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Tests.Commands.Refresh;
+namespace NSchema.Tests.Commands.Refresh;
 
 public sealed class RefreshConfigurationValidatorTests
 {

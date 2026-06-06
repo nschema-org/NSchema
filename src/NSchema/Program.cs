@@ -1,6 +1,5 @@
-using NSchema.Cli.Commands;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Extensions;
+using NSchema.Commands;
+using NSchema.Configuration;
 using Spectre.Console;
 
 var root = RootCommand.Create();

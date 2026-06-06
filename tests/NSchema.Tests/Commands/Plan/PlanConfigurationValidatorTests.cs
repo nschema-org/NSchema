@@ -1,9 +1,9 @@
-using NSchema.Cli.Commands.Plan;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
+using NSchema.Commands.Plan;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Tests.Commands.Plan;
+namespace NSchema.Tests.Commands.Plan;
 
 public sealed class PlanConfigurationValidatorTests
 {

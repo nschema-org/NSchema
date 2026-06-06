@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Configuration;
 
 /// <summary>
 /// The environment variables the CLI reads as configuration overrides.

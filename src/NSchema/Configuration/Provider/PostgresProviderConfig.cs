@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 /// <summary>
 /// Configures the PostgreSQL database provider.

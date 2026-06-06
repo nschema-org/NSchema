@@ -2,7 +2,7 @@ using NSchema.Hosting;
 using NSchema.Plan.Model;
 using Spectre.Console;
 
-namespace NSchema.Cli.Services;
+namespace NSchema.Services;
 
 /// <summary>
 /// An <see cref="IMigrationConfirmation"/> that prompts on the terminal before applying changes.

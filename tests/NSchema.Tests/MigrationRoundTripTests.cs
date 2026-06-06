@@ -1,8 +1,8 @@
 using System.CommandLine;
-using NSchema.Cli.Tests.Fixtures;
-using CliCommands = NSchema.Cli.Commands;
+using NSchema.Tests.Fixtures;
+using RootCommand = NSchema.Commands.RootCommand;
 
-namespace NSchema.Cli.Tests;
+namespace NSchema.Tests;
 
 /// <summary>
 /// Drives the real CLI pipeline (parse → configure → run) against a live PostgreSQL container to prove the
@@ -101,7 +101,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         ];
 
         // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
-        return await CliCommands.RootCommand.Create()
+        return await RootCommand.Create()
             .Parse(args)
             .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
     }

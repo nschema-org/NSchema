@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Tests.Configuration.Schema;
+namespace NSchema.Tests.Configuration.Schema;
 
 public sealed class SchemaConfigValidatorTests
 {

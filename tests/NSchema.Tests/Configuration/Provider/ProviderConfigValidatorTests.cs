@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration.Provider;
+using NSchema.Configuration.Provider;
 
-namespace NSchema.Cli.Tests.Configuration.Provider;
+namespace NSchema.Tests.Configuration.Provider;
 
 public sealed class ProviderConfigValidatorTests
 {

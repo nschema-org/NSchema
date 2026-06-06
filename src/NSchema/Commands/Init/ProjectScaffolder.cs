@@ -1,13 +1,13 @@
 using System.Text.Json;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 using NSchema.Resolution;
 using NSchema.Schema.Model;
 using NSchema.Schema.Serialization;
 
-namespace NSchema.Cli.Commands.Init;
+namespace NSchema.Commands.Init;
 
 /// <summary>
 /// Scaffolds a starter NSchema project — an <c>nschema.json</c> and a sample schema file — into a directory.

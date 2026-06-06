@@ -1,7 +1,7 @@
-using NSchema.Cli.Configuration;
+using NSchema.Configuration;
 using Spectre.Console;
 
-namespace NSchema.Cli.Tests.Configuration;
+namespace NSchema.Tests.Configuration;
 
 public sealed class ConsoleFactoryTests : IDisposable
 {

@@ -1,9 +1,9 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Schema;
 using NSchema.Import;
 
-namespace NSchema.Cli.Configuration.Import;
+namespace NSchema.Configuration.Import;
 
 internal sealed class ImportTargetConfig : IBindable
 {

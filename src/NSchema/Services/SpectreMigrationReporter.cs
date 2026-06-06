@@ -1,6 +1,5 @@
 using System.Text;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Extensions;
+using NSchema.Configuration;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Migration;
@@ -9,7 +8,7 @@ using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
 
-namespace NSchema.Cli.Services;
+namespace NSchema.Services;
 
 /// <summary>
 /// An <see cref="IMigrationReporter"/> that presents run output with Spectre.Console.

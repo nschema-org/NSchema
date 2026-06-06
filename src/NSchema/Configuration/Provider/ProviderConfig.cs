@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.Text.Json.Serialization;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 /// <summary>
 /// Configures the database provider that supplies the current (live) schema.

@@ -1,7 +1,7 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 internal static class ProviderOptions
 {

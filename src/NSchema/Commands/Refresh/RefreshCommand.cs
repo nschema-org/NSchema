@@ -1,10 +1,9 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.State;
-using NSchema.Cli.Extensions;
+using NSchema.Configuration;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Commands.Refresh;
+namespace NSchema.Commands.Refresh;
 
 internal static class RefreshCommand
 {

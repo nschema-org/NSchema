@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
 
-namespace NSchema.Cli.Configuration.Binding;
+namespace NSchema.Configuration.Binding;
 
 /// <summary>
 /// Entry point for building <see cref="OptionBinding{T}"/> instances fluently.

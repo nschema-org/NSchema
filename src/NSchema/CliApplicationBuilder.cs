@@ -1,18 +1,18 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
-using NSchema.Cli.Configuration.Import;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
-using NSchema.Cli.Services;
+using NSchema.Configuration.Import;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Postgres;
+using NSchema.Services;
 using NSchema.Yaml;
 using Spectre.Console;
 
-namespace NSchema.Cli;
+namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {

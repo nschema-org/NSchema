@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.Text.Json.Serialization;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures a backend store used to keep state snapshots.

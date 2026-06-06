@@ -1,7 +1,7 @@
-using NSchema.Cli.Commands.Validate;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Commands.Validate;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Tests.Commands.Validate;
+namespace NSchema.Tests.Commands.Validate;
 
 public sealed class ValidateConfigurationValidatorTests
 {

@@ -1,8 +1,8 @@
-using NSchema.Cli.Services;
 using NSchema.Plan.Model;
+using NSchema.Services;
 using Spectre.Console.Testing;
 
-namespace NSchema.Cli.Tests.Services;
+namespace NSchema.Tests.Services;
 
 public sealed class ConsoleMigrationConfirmationTests
 {

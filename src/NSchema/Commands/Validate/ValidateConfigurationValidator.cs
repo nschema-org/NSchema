@@ -1,7 +1,7 @@
 using FluentValidation;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Commands.Validate;
+namespace NSchema.Commands.Validate;
 
 internal sealed class ValidateConfigurationValidator : AbstractValidator<ValidateConfiguration>
 {

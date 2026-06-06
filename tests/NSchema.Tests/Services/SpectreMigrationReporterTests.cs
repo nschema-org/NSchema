@@ -1,12 +1,12 @@
-using NSchema.Cli.Services;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Policies;
+using NSchema.Services;
 using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console.Testing;
 
-namespace NSchema.Cli.Tests.Services;
+namespace NSchema.Tests.Services;
 
 public sealed class SpectreMigrationReporterTests
 {

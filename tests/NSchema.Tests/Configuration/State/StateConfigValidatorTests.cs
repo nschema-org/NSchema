@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Tests.Configuration.State;
+namespace NSchema.Tests.Configuration.State;
 
 public sealed class StateConfigValidatorTests
 {

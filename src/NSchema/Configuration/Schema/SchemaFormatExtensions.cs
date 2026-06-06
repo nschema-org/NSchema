@@ -1,7 +1,7 @@
 using NSchema.Schema.Serialization;
 using NSchema.Yaml;
 
-namespace NSchema.Cli.Configuration.Schema;
+namespace NSchema.Configuration.Schema;
 
 internal static class SchemaFormatExtensions
 {

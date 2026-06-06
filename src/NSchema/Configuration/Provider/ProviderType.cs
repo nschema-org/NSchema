@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 /// <summary>
 /// The database provider that supplies the current (live) schema.

@@ -1,12 +1,12 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Binding;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 using NSchema.Migration;
 
-namespace NSchema.Cli.Commands.Apply;
+namespace NSchema.Commands.Apply;
 
 /// <summary>
 /// configuration for the apply command.

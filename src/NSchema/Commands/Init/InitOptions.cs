@@ -1,8 +1,8 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Commands.Init;
+namespace NSchema.Commands.Init;
 
 internal static class InitOptions
 {

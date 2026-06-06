@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 internal sealed class PostgresProviderConfigValidator : AbstractValidator<PostgresProviderConfig>
 {

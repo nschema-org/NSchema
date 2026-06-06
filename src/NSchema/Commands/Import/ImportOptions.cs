@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Commands.Import;
+namespace NSchema.Commands.Import;
 
 internal static class ImportOptions
 {

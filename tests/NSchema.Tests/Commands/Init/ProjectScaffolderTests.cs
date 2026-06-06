@@ -1,13 +1,13 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Cli.Commands.Init;
-using NSchema.Cli.Commands.Plan;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Commands.Init;
+using NSchema.Commands.Plan;
+using NSchema.Configuration;
+using NSchema.Configuration.Schema;
 using NSchema.Resolution;
 using NSchema.Schema.Serialization;
 
-namespace NSchema.Cli.Tests.Commands.Init;
+namespace NSchema.Tests.Commands.Init;
 
 public sealed class ProjectScaffolderTests : IDisposable
 {

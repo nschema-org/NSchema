@@ -1,7 +1,6 @@
 using FluentValidation;
-using NSchema.Cli.Extensions;
 
-namespace NSchema.Cli.Configuration.Provider;
+namespace NSchema.Configuration.Provider;
 
 internal sealed class ProviderConfigValidator : AbstractValidator<ProviderConfig>
 {

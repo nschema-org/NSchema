@@ -1,12 +1,11 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Extensions;
+using NSchema.Configuration;
 using NSchema.Resolution;
 using NSchema.Schema.Serialization;
 using Spectre.Console;
 
-namespace NSchema.Cli.Commands.Init;
+namespace NSchema.Commands.Init;
 
 internal static class InitCommand
 {

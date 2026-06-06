@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 internal sealed class FileStateConfigValidator : AbstractValidator<FileStateConfig>
 {

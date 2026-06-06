@@ -57,5 +57,9 @@
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Using Include="NSchema.Extensions" />
+  </ItemGroup>
 
 </Project>

@@ -1,8 +1,8 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
-using NSchema.Cli.Configuration.Schema;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Tests.Configuration.Binding;
+namespace NSchema.Tests.Configuration.Binding;
 
 public sealed class OptionBindingTests : IDisposable
 {

@@ -1,9 +1,9 @@
 using FluentValidation;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Commands.Refresh;
+namespace NSchema.Commands.Refresh;
 
 internal sealed class RefreshConfigurationValidator : AbstractValidator<RefreshConfiguration>
 {

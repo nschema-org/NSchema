@@ -1,7 +1,7 @@
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 using NSchema.Migration;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Configuration;
 
 internal static class CommonOptions
 {

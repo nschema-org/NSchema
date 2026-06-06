@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration.Schema;
+namespace NSchema.Configuration.Schema;
 
 /// <summary>
 /// The format the desired schema is expressed in. Selects which provider reads the schema files.

@@ -1,7 +1,7 @@
 using Npgsql;
 using Testcontainers.PostgreSql;
 
-namespace NSchema.Cli.Tests.Fixtures;
+namespace NSchema.Tests.Fixtures;
 
 /// <summary>
 /// Starts a throwaway PostgreSQL container shared across the integration test collection.

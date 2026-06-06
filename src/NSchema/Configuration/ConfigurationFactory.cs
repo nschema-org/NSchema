@@ -1,9 +1,9 @@
 using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Configuration;
 
 internal static class ConfigurationFactory
 {

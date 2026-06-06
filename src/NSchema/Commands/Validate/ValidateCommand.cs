@@ -1,9 +1,8 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Extensions;
+using NSchema.Configuration;
+using NSchema.Configuration.Schema;
 
-namespace NSchema.Cli.Commands.Validate;
+namespace NSchema.Commands.Validate;
 
 internal static class ValidateCommand
 {

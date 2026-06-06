@@ -1,9 +1,9 @@
 using System.CommandLine;
-using NSchema.Cli.Configuration.Binding;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Commands.Refresh;
+namespace NSchema.Commands.Refresh;
 
 /// <summary>
 /// configuration for the refresh command.

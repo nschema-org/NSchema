@@ -1,8 +1,8 @@
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Commands.Init;
+namespace NSchema.Commands.Init;
 
 /// <summary>
 /// Represents the model for a boilerplate nschema.json project file.

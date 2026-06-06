@@ -1,11 +1,10 @@
 using System.CommandLine;
-using CliCommands = NSchema.Cli.Commands;
 
-namespace NSchema.Cli.Tests.Commands;
+namespace NSchema.Tests.Commands;
 
 public sealed class RootCommandTests
 {
-    private readonly RootCommand _sut = CliCommands.RootCommand.Create();
+    private readonly RootCommand _sut = NSchema.Commands.RootCommand.Create();
 
     [Fact]
     public void HasTheNschemaCommandName()

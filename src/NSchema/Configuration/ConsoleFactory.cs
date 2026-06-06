@@ -1,6 +1,6 @@
 using Spectre.Console;
 
-namespace NSchema.Cli.Configuration;
+namespace NSchema.Configuration;
 
 /// <summary>
 /// Builds the <see cref="IAnsiConsole"/>s the CLI renders through.

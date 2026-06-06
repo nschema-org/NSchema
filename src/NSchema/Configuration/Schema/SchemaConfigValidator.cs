@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace NSchema.Cli.Configuration.Schema;
+namespace NSchema.Configuration.Schema;
 
 internal sealed class SchemaConfigValidator : AbstractValidator<SchemaConfig>
 {

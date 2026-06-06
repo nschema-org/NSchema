@@ -1,7 +1,6 @@
 using FluentValidation;
-using NSchema.Cli.Extensions;
 
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
 {

@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures a local-file state store.

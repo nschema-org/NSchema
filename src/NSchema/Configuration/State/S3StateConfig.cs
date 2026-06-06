@@ -1,4 +1,4 @@
-namespace NSchema.Cli.Configuration.State;
+namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures an Amazon S3 state store.

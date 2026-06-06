@@ -1,6 +1,6 @@
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Commands.Apply;
+namespace NSchema.Commands.Apply;
 
 internal static class ApplyOptions
 {

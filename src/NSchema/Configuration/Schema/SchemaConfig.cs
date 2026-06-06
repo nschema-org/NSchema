@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.Text.Json.Serialization;
-using NSchema.Cli.Configuration.Binding;
+using NSchema.Configuration.Binding;
 
-namespace NSchema.Cli.Configuration.Schema;
+namespace NSchema.Configuration.Schema;
 
 /// <summary>
 /// Configures how the desired schema is located and read. Required for the plan and apply commands.

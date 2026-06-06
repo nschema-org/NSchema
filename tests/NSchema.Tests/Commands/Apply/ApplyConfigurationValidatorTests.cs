@@ -1,9 +1,9 @@
-using NSchema.Cli.Commands.Apply;
-using NSchema.Cli.Configuration.Provider;
-using NSchema.Cli.Configuration.Schema;
-using NSchema.Cli.Configuration.State;
+using NSchema.Commands.Apply;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.Schema;
+using NSchema.Configuration.State;
 
-namespace NSchema.Cli.Tests.Commands.Apply;
+namespace NSchema.Tests.Commands.Apply;
 
 public sealed class ApplyConfigurationValidatorTests
 {

@@ -1,7 +1,7 @@
 using FluentValidation;
 using FluentValidation.Validators;
 
-namespace NSchema.Cli.Extensions;
+namespace NSchema.Extensions;
 
 /// <remarks>
 /// Taken from: https://github.com/FluentValidation/FluentValidation/issues/1648

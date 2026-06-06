@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace NSchema.Cli.Configuration.Import;
+namespace NSchema.Configuration.Import;
 
 internal sealed class ImportTargetConfigValidator : AbstractValidator<ImportTargetConfig>
 {
