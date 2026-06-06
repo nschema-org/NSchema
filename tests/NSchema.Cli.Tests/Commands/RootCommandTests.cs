@@ -21,7 +21,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "plan", "apply", "refresh"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import"], ignoreOrder: true);
     }
 
     [Theory]
@@ -80,6 +80,32 @@ public sealed class RootCommandTests
     {
         // Act
         var result = _sut.Parse(["refresh", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void Validate_AcceptsSchemaOptions()
+    {
+        // Act
+        var result = _sut.Parse(["validate", "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--config", "c"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+        result.CommandResult.Command.Name.ShouldBe("validate");
+    }
+
+    [Theory]
+    [InlineData("--scope", "public")]
+    [InlineData("--destructive-actions", "Warn")]
+    [InlineData("--provider", "postgres")]
+    [InlineData("--connection-string", "x")]
+    [InlineData("--state-file", "s")]
+    public void ValidateRejects_ProviderStateAndMigrationOptions(string option, string value)
+    {
+        // Act
+        var result = _sut.Parse(["validate", option, value]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();

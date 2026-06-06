@@ -47,6 +47,7 @@ This installs the `nschema` command.
 3. Preview the migration, then apply it (`nschema.json` already has the provider and schema directory, so no flags are needed):
 
    ```sh
+   nschema validate   # optional: check the schema files are well-formed first
    nschema plan
    nschema apply
    ```
@@ -55,7 +56,7 @@ This installs the `nschema` command.
 
 ## Commands
 
-The `plan`, `apply`, and `refresh` commands accept the [common options](#common-options) below. Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` is standalone — it only writes files.
+The `plan`, `apply`, `refresh`, and `import` commands accept the [common options](#common-options) below (`import` uses the provider options, not the state ones). Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
 
 ### `nschema init`
 
@@ -66,6 +67,26 @@ Scaffold an `nschema.json` and a sample schema in the current directory, to get 
 
 ```sh
 nschema init
+```
+
+### `nschema validate`
+
+Check that your desired-schema files are well-formed and internally consistent, without contacting a database or state store. Useful as a fast pre-flight check in CI. It exits non-zero if it finds an error and zero otherwise; warnings are reported but do not fail the command.
+
+It verifies that:
+
+- every file parses;
+- primary keys, indexes, and foreign keys reference columns that exist, and foreign keys reference a table whose primary key or a unique index matches the referenced columns (**errors**);
+- tables have a primary key, primary-key columns aren't nullable, and no key or index lists a column twice (**warnings**).
+
+**Needs:** only a desired schema (`--schema-dir`).
+
+- `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
+- `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
+- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
+
+```sh
+nschema validate --schema-dir ./schemas
 ```
 
 ### Common options
@@ -121,6 +142,23 @@ Read the live schema and write it to the state store. Use this to seed or repair
 
 ```sh
 nschema refresh --provider postgres --state-file ./nschema.state.json
+```
+
+### `nschema import`
+
+Read the live database schema and write it out as desired-schema source files. Use this to adopt an existing database
+into NSchema: import it, then check the generated files into source control and manage further changes with `plan`/`apply`.
+
+**Needs:** a live database (`--provider` plus a connection string) and an output path (`--output`).
+
+- `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
+- `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
+- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (Unlike the other commands, this sets the format written **out**.)
+- `--tables <name>` — limit the import to specific tables. May be repeated.
+- `--scope <name>` — limit the import to specific database schemas (namespaces). May be repeated.
+
+```sh
+nschema import --provider postgres --output ./schemas --partition Table
 ```
 
 ## Configuration

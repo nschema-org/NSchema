@@ -16,7 +16,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g NSchema.Cli`
 
 ### Added
 
-- `init`, `plan`, `apply`, and `refresh` commands for scaffolding a project and previewing, applying, and snapshotting schema migrations.
+- `init`, `plan`, `apply`, `refresh`, `import` and `validate` commands.
 - Schema support for JSON and YAML files.
 - Provider support for Postgres.
 - Backend store support for files and Amazon S3.

@@ -40,13 +40,13 @@ internal sealed class ProjectScaffolder
             throw new InvalidOperationException($"{ConfigFileName} already exists. Use --force to overwrite.");
         }
 
-        var config = new NSchemaConfiguration
+        var config = new ScaffoldedProjectConfig
         {
             Provider = new ProviderConfig { Postgres = new PostgresProviderConfig() },
             State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },
             Schema = new SchemaConfig { Directory = $"./{SchemaDirectoryName}", Format = format },
         };
-        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, NSchemaConfigurationFactory.JsonOptions), cancellationToken);
+        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, ConfigurationFactory.JsonOptions), cancellationToken);
 
         var sampleRelativePath = Path.Combine(SchemaDirectoryName, $"example.{format.Extension()}");
         var samplePath = Path.Combine(directory, sampleRelativePath);

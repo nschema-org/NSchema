@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Cli.Commands.Init;
+using NSchema.Cli.Commands.Plan;
 using NSchema.Cli.Configuration;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Resolution;
@@ -116,9 +117,9 @@ public sealed class ProjectScaffolderTests : IDisposable
         LoadGeneratedConfig().Provider.Postgres.ShouldNotBeNull();
     }
 
-    private NSchemaConfiguration LoadGeneratedConfig()
+    private PlanConfiguration LoadGeneratedConfig()
     {
         var json = File.ReadAllText(Path.Combine(_directory, "nschema.json"));
-        return JsonSerializer.Deserialize<NSchemaConfiguration>(json, NSchemaConfigurationFactory.JsonOptions)!;
+        return JsonSerializer.Deserialize<PlanConfiguration>(json, ConfigurationFactory.JsonOptions)!;
     }
 }

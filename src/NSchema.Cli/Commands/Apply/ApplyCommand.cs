@@ -1,5 +1,8 @@
 using System.CommandLine;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.Schema;
+using NSchema.Cli.Configuration.State;
 using NSchema.Cli.Extensions;
 
 namespace NSchema.Cli.Commands.Apply;
@@ -10,42 +13,24 @@ internal static class ApplyCommand
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
 
-        command.Options.Add(CliOptions.Common.Config);
+        command.Options.Add(CommonOptions.Config.Option);
+        command.Options.Add(CommonOptions.Scope.Option);
+        command.Options.Add(CommonOptions.Destructive.Option);
 
-        command.Options.Add(CliOptions.Provider.Type);
-        command.Options.Add(CliOptions.Provider.ConnectionString);
+        command.Options.AddRange(ProviderOptions.All);
+        command.Options.AddRange(StateOptions.All);
+        command.Options.AddRange(SchemaOptions.All);
 
-        command.Options.Add(CliOptions.State.File);
-        command.Options.Add(CliOptions.State.S3Bucket);
-        command.Options.Add(CliOptions.State.S3Key);
-
-        command.Options.Add(CliOptions.Schema.Format);
-        command.Options.Add(CliOptions.Schema.Directory);
-        command.Options.Add(CliOptions.Schema.Pattern);
-
-        command.Options.Add(CliOptions.Migration.Scope);
-        command.Options.Add(CliOptions.Migration.Destructive);
-
-        command.Options.Add(CliOptions.Apply.AutoApprove);
+        command.Options.Add(ApplyOptions.AutoApprove.Option);
         command.SetAction(Run);
         return command;
     }
 
     private static ApplyConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Create(result);
-        var configuration = new ApplyConfiguration
-        {
-            Schema = config.Schema,
-            Provider = config.Provider,
-            State = config.State,
-            Scope = config.Scope,
-            DestructiveActionPolicy = config.DestructiveActionPolicy,
-            AutoApprove = config.AutoApprove,
-        };
-
-        new ApplyConfigurationValidator().ValidateOrThrow(configuration);
-        return configuration;
+        var config = ConfigurationFactory.Load<ApplyConfiguration>(result);
+        new ApplyConfigurationValidator().ValidateOrThrow(config);
+        return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)

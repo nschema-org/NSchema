@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
+using NSchema.Cli.Configuration.Import;
 using NSchema.Cli.Configuration.Provider;
 using NSchema.Cli.Configuration.Schema;
 using NSchema.Cli.Configuration.State;
@@ -98,10 +99,30 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
+    public CliApplicationBuilder ConfigureImportTarget(ImportTargetConfig importTarget)
+    {
+        _builder.AddFileImportTarget(o =>
+        {
+            o.OutputPath = Path.GetFullPath(importTarget.OutputPath, Directory.GetCurrentDirectory());
+            o.Format = importTarget.Format.FormatName();
+            o.Partition = importTarget.Partition;
+        });
+        return this;
+    }
+
+    public CliApplicationBuilder ConfigureImportScope(string[]? schemas, string[]? tables)
+    {
+        _builder.WithImportOptions(o =>
+        {
+            o.Schemas = schemas;
+            o.Tables = tables;
+        });
+        return this;
+    }
+
     public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)
     {
-        _builder.Services.AddSingleton<IMigrationConfirmation>(sp =>
-            new ConsoleMigrationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
+        _builder.Services.AddSingleton<IMigrationConfirmation>(sp => new ConsoleMigrationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
         return this;
     }
 

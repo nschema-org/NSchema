@@ -1,5 +1,6 @@
 using System.Text;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Extensions;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Migration;
@@ -47,7 +48,10 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
 
     public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
 
-    public void ReportException(Exception exception) => _error.WriteException(exception);
+    public void ReportException(Exception exception)
+    {
+        _error.WriteException(exception);
+    }
 
     public void ReportDiff(MigrationDiff diff)
     {
@@ -76,31 +80,7 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
         // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
         var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
         var console = notable ? _error : _out;
-
-        if (diagnostics.Count == 0)
-        {
-            _out.MarkupLine("[grey]No policy diagnostics.[/]");
-            _out.WriteLine();
-            return;
-        }
-
-        var table = new Table()
-            .RoundedBorder()
-            .Title("Policy diagnostics")
-            .AddColumn("Severity")
-            .AddColumn("Policy")
-            .AddColumn("Message");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            table.AddRow(
-                new Markup(SeverityLabel(diagnostic.Severity)),
-                new Markup(Markup.Escape(diagnostic.PolicyName)),
-                new Markup(Markup.Escape(diagnostic.Message)));
-        }
-
-        console.Write(table);
-        console.WriteLine();
+        console.ReportDiagnostics(diagnostics);
     }
 
     // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the
@@ -183,13 +163,6 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
 
         return new Markup(builder.ToString());
     }
-
-    private static string SeverityLabel(PolicyDiagnosticSeverity severity) => severity switch
-    {
-        PolicyDiagnosticSeverity.Error => "[red]error[/]",
-        PolicyDiagnosticSeverity.Warning => "[yellow]warning[/]",
-        _ => "[grey]info[/]",
-    };
 
     // Mirror the output console's color decision (which already reflects --no-color / NO_COLOR) onto stderr.
     private static IAnsiConsole CreateStandardErrorConsole(IAnsiConsole output) =>
