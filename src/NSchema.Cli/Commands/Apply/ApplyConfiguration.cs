@@ -44,17 +44,17 @@ internal sealed class ApplyConfiguration : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        if (result.TryGetOverride(CommonOptions.Scope, out var scope))
+        if (CommonOptions.Scope.TryResolve(result, out var scope))
         {
             Scope = scope;
         }
 
-        if (result.TryGetOverride(CommonOptions.Destructive, EnvironmentVariables.DestructiveActionPolicy, Enum.Parse<DestructiveActionPolicy>, out var policy))
+        if (CommonOptions.Destructive.TryResolve(result, out var policy))
         {
             DestructiveActionPolicy = policy;
         }
 
-        if (result.TryGetOverride(ApplyOptions.AutoApprove, out var autoApprove))
+        if (ApplyOptions.AutoApprove.TryResolve(result, out var autoApprove))
         {
             AutoApprove = autoApprove;
         }

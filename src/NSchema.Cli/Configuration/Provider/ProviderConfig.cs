@@ -21,7 +21,7 @@ internal sealed class ProviderConfig : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        if (result.TryGetOverride(ProviderOptions.Type, EnvironmentVariables.Provider, Enum.Parse<ProviderType>, out var provider))
+        if (ProviderOptions.Type.TryResolve(result, out var provider))
         {
             switch (provider)
             {
@@ -33,7 +33,7 @@ internal sealed class ProviderConfig : IConfigurable
             }
         }
 
-        if (ProviderOptions.ConnectionStringOption.TryGetOverride(result, out var connectionString))
+        if (ProviderOptions.ConnectionString.TryResolve(result, out var connectionString))
         {
             Postgres ??= new PostgresProviderConfig();
             Postgres.ConnectionString = connectionString;

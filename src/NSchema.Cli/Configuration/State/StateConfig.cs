@@ -26,19 +26,19 @@ internal sealed class StateConfig : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        if (result.TryGetOverride(StateOptions.File, EnvironmentVariables.StateFile, out var path))
+        if (StateOptions.File.TryResolve(result, out var path))
         {
             File ??= new FileStateConfig();
             File.Path = path;
         }
 
-        if (result.TryGetOverride(StateOptions.S3Bucket, EnvironmentVariables.StateS3Bucket, out var bucket))
+        if (StateOptions.S3Bucket.TryResolve(result, out var bucket))
         {
             S3 ??= new S3StateConfig();
             S3.Bucket = bucket;
         }
 
-        if (result.TryGetOverride(StateOptions.S3Key, EnvironmentVariables.StateS3Key, out var key))
+        if (StateOptions.S3Key.TryResolve(result, out var key))
         {
             S3 ??= new S3StateConfig();
             S3.Key = key;

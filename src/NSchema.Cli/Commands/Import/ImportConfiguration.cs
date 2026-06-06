@@ -32,7 +32,7 @@ internal sealed class ImportConfiguration : IConfigurable
         Provider.Configure(result);
         ImportTarget.Configure(result);
 
-        if (result.TryGetOverride(CommonOptions.Scope, out var scope))
+        if (CommonOptions.Scope.TryResolve(result, out var scope))
         {
             Scope = scope;
         }

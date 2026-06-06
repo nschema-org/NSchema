@@ -14,12 +14,8 @@ internal static class RefreshCommand
 
         command.Options.Add(CommonOptions.Config);
 
-        command.Options.Add(ProviderOptions.Type);
-        command.Options.Add(ProviderOptions.ConnectionString);
-
-        command.Options.Add(StateOptions.File);
-        command.Options.Add(StateOptions.S3Bucket);
-        command.Options.Add(StateOptions.S3Key);
+        command.Options.AddRange(ProviderOptions.All);
+        command.Options.AddRange(StateOptions.All);
 
         command.SetAction(Run);
         return command;

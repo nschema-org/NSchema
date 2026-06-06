@@ -14,19 +14,12 @@ internal static class PlanCommand
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
 
         command.Options.Add(CommonOptions.Config);
-        command.Options.Add(CommonOptions.Scope);
-        command.Options.Add(CommonOptions.Destructive);
+        command.Options.Add(CommonOptions.Scope.Option);
+        command.Options.Add(CommonOptions.Destructive.Option);
 
-        command.Options.Add(ProviderOptions.Type);
-        command.Options.Add(ProviderOptions.ConnectionString);
-
-        command.Options.Add(StateOptions.File);
-        command.Options.Add(StateOptions.S3Bucket);
-        command.Options.Add(StateOptions.S3Key);
-
-        command.Options.Add(SchemaOptions.Format);
-        command.Options.Add(SchemaOptions.Directory);
-        command.Options.Add(SchemaOptions.Pattern);
+        command.Options.AddRange(ProviderOptions.All);
+        command.Options.AddRange(StateOptions.All);
+        command.Options.AddRange(SchemaOptions.All);
 
         command.SetAction(Run);
         return command;

@@ -25,18 +25,17 @@ internal sealed class ImportTargetConfig : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        var o = new EnvironmentOption<string>(ImportTargetOptions.Output);
-        if (o.TryGetOverride(result, out var outputPath))
+        if (ImportTargetOptions.Output.TryResolve(result, out var outputPath))
         {
             OutputPath = outputPath;
         }
 
-        if (result.TryGetOverride(ImportTargetOptions.Format, out var format))
+        if (ImportTargetOptions.Format.TryResolve(result, out var format))
         {
             Format = format;
         }
 
-        if (result.TryGetOverride(ImportTargetOptions.Partition, out var partition))
+        if (ImportTargetOptions.Partition.TryResolve(result, out var partition))
         {
             Partition = partition;
         }

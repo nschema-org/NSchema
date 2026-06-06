@@ -16,13 +16,15 @@ internal static class CommonOptions
         Recursive = true,
     };
 
-    public static readonly Option<string[]> Scope = new("--scope")
-    {
-        Description = "Limit the migration to specific database schemas (namespaces). May be specified multiple times.",
-        AllowMultipleArgumentsPerToken = true,
-    };
+    public static readonly OptionBinding<string[]> Scope = new(
+        new Option<string[]>("--scope")
+        {
+            Description = "Limit the migration to specific database schemas (namespaces). May be specified multiple times.",
+            AllowMultipleArgumentsPerToken = true,
+        });
 
-    public static readonly Option<DestructiveActionPolicy> Destructive = new("--destructive-actions")
+    public static readonly OptionBinding<DestructiveActionPolicy> Destructive = new(
+        "--destructive-actions", EnvironmentVariables.DestructiveActionPolicy, Enum.Parse<DestructiveActionPolicy>)
     {
         Description = "Policy for destructive actions: Error (default), Warn, or Allow.",
     };

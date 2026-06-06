@@ -26,17 +26,17 @@ internal sealed class SchemaConfig : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        if (result.TryGetOverride(SchemaOptions.Format, out var format))
+        if (SchemaOptions.Format.TryResolve(result, out var format))
         {
             Format = format;
         }
 
-        if (result.TryGetOverride(SchemaOptions.Directory, out var directory))
+        if (SchemaOptions.Directory.TryResolve(result, out var directory))
         {
             Directory = directory;
         }
 
-        if (result.TryGetOverride(SchemaOptions.Pattern, out var pattern))
+        if (SchemaOptions.Pattern.TryResolve(result, out var pattern))
         {
             Pattern = pattern;
         }

@@ -39,18 +39,18 @@ internal sealed class PlanConfiguration : IConfigurable
 
     public void Configure(ParseResult result)
     {
-        if (result.TryGetOverride(CommonOptions.Scope, out var scope))
+        if (CommonOptions.Scope.TryResolve(result, out var scope))
         {
             Scope = scope;
         }
 
-        if (result.TryGetOverride(CommonOptions.Destructive, EnvironmentVariables.DestructiveActionPolicy, Enum.Parse<DestructiveActionPolicy>, out var policy))
+        if (CommonOptions.Destructive.TryResolve(result, out var policy))
         {
             DestructiveActionPolicy = policy;
         }
 
         Schema.Configure(result);
         Provider.Configure(result);
-        Provider.Configure(result);
+        State.Configure(result);
     }
 }
