@@ -1,3 +1,4 @@
+using System.CommandLine;
 using System.Text.Json.Serialization;
 
 namespace NSchema.Cli.Configuration.Schema;
@@ -5,7 +6,7 @@ namespace NSchema.Cli.Configuration.Schema;
 /// <summary>
 /// Configures how the desired schema is located and read. Required for the plan and apply commands.
 /// </summary>
-internal sealed class SchemaConfig
+internal sealed class SchemaConfig : IConfigurable
 {
     /// <summary>
     /// The directory the desired-schema files are discovered under.
@@ -22,4 +23,22 @@ internal sealed class SchemaConfig
     /// The glob matched within <see cref="Directory"/>. When null, the format's default glob is used.
     /// </summary>
     public string? Pattern { get; set; }
+
+    public void Configure(ParseResult result)
+    {
+        if (result.TryGetOverride(SchemaOptions.Format, out var format))
+        {
+            Format = format;
+        }
+
+        if (result.TryGetOverride(SchemaOptions.Directory, out var directory))
+        {
+            Directory = directory;
+        }
+
+        if (result.TryGetOverride(SchemaOptions.Pattern, out var pattern))
+        {
+            Pattern = pattern;
+        }
+    }
 }

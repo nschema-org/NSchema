@@ -12,16 +12,16 @@ internal static class InitCommand
     public static Command Create()
     {
         var command = new Command("init", "Scaffold an nschema.json config and a sample schema in the current directory.");
-        command.Options.Add(CliOptions.Init.Format);
-        command.Options.Add(CliOptions.Init.Force);
+        command.Options.Add(InitOptions.Format);
+        command.Options.Add(InitOptions.Force);
         command.SetAction(Run);
         return command;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var format = parseResult.GetValue(CliOptions.Init.Format);
-        var force = parseResult.GetValue(CliOptions.Init.Force);
+        var format = parseResult.GetValue(InitOptions.Format);
+        var force = parseResult.GetValue(InitOptions.Force);
 
         using var app = CliApplicationBuilder.Create().Build();
         var serializers = app.Services.GetRequiredService<IKeyedResolver<ISchemaDocumentSerializer>>();

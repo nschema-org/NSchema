@@ -12,7 +12,7 @@ internal static class ConsoleFactory
     /// Whether colored output should be suppressed: either <c>--no-color</c> was passed or <c>NO_COLOR</c> is set.
     /// </summary>
     public static bool IsColorDisabled(ParseResult parseResult) =>
-        parseResult.GetValue(CliOptions.Common.NoColor)
+        parseResult.GetValue(CommonOptions.NoColor)
         || Environment.GetEnvironmentVariable(EnvironmentVariables.NoColor) is not null;
 
     /// <summary>

@@ -1,0 +1,21 @@
+using System.CommandLine;
+
+namespace NSchema.Cli.Configuration.Schema;
+
+internal static class SchemaOptions
+{
+    public static readonly Option<SchemaFormat> Format = new("--format")
+    {
+        Description = "The format the desired schema is expressed in: yaml (default) or json.",
+    };
+
+    public static readonly Option<string> Directory = new("--schema-dir")
+    {
+        Description = "Directory containing the desired-schema files. Required for plan and apply unless set in config.",
+    };
+
+    public static readonly Option<string> Pattern = new("--schema-pattern")
+    {
+        Description = "Glob matched within the schema directory. Defaults to a per-format pattern (e.g. **/*.yaml).",
+    };
+}

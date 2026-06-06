@@ -1,5 +1,7 @@
 using System.CommandLine;
 using NSchema.Cli.Configuration;
+using NSchema.Cli.Configuration.Provider;
+using NSchema.Cli.Configuration.State;
 using NSchema.Cli.Extensions;
 
 namespace NSchema.Cli.Commands.Refresh;
@@ -10,14 +12,14 @@ internal static class RefreshCommand
     {
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
 
-        command.Options.Add(CliOptions.Common.Config);
+        command.Options.Add(CommonOptions.Config);
 
-        command.Options.Add(CliOptions.Provider.Type);
-        command.Options.Add(CliOptions.Provider.ConnectionString);
+        command.Options.Add(ProviderOptions.Type);
+        command.Options.Add(ProviderOptions.ConnectionString);
 
-        command.Options.Add(CliOptions.State.File);
-        command.Options.Add(CliOptions.State.S3Bucket);
-        command.Options.Add(CliOptions.State.S3Key);
+        command.Options.Add(StateOptions.File);
+        command.Options.Add(StateOptions.S3Bucket);
+        command.Options.Add(StateOptions.S3Key);
 
         command.SetAction(Run);
         return command;
@@ -25,15 +27,9 @@ internal static class RefreshCommand
 
     private static RefreshConfiguration Resolve(ParseResult result)
     {
-        var config = NSchemaConfigurationFactory.Create(result);
-        var configuration = new RefreshConfiguration
-        {
-            Provider = config.Provider,
-            State = config.State,
-        };
-
-        new RefreshConfigurationValidator().ValidateOrThrow(configuration);
-        return configuration;
+        var config = NSchemaConfigurationFactory.Load<RefreshConfiguration>(result);
+        new RefreshConfigurationValidator().ValidateOrThrow(config);
+        return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)

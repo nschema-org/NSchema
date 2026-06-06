@@ -40,7 +40,7 @@ internal sealed class ProjectScaffolder
             throw new InvalidOperationException($"{ConfigFileName} already exists. Use --force to overwrite.");
         }
 
-        var config = new NSchemaConfiguration
+        var config = new ScaffoldedProjectConfig
         {
             Provider = new ProviderConfig { Postgres = new PostgresProviderConfig() },
             State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },

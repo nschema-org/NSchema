@@ -15,7 +15,7 @@ internal static class RootCommand
         var root = new System.CommandLine.RootCommand("A declarative database schema migration tool.");
         SetName(root, "nschema");
 
-        root.Options.Add(CliOptions.Common.NoColor);
+        root.Options.Add(CommonOptions.NoColor);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
