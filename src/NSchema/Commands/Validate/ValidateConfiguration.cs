@@ -17,8 +17,6 @@ internal sealed class ValidateConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        ValidateOptions.SchemaFormat.Bind(result, f => Schema.Format = f);
         ValidateOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
-        ValidateOptions.SchemaPattern.Bind(result, p => Schema.Pattern = p);
     }
 }

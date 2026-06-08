@@ -18,28 +18,26 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     public ValueTask InitializeAsync()
     {
-        // A desired schema describing one table in this test's unique schema.
-        var schemaDocument = $$"""
-        {
-          "schemas": [
-            {
-              "name": "{{_schema}}",
-              "tables": [
-                {
-                  "name": "widgets",
-                  "primaryKey": { "name": "widgets_pkey", "columnNames": ["id"] },
-                  "columns": [
-                    { "name": "id", "type": "bigint", "isNullable": false },
-                    { "name": "name", "type": "text", "isNullable": true }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+        // A desired schema describing one table in this test's unique schema. YAML is the default format, so the
+        // commands need no --format flag (the schema format is a config-only setting).
+        var schemaDocument = $"""
+        schemas:
+          - name: {_schema}
+            tables:
+              - name: widgets
+                primaryKey:
+                  name: widgets_pkey
+                  columnNames: [id]
+                columns:
+                  - name: id
+                    type: bigint
+                    isNullable: false
+                  - name: name
+                    type: text
+                    isNullable: true
         """;
 
-        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.json"), schemaDocument);
+        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.yaml"), schemaDocument);
         return ValueTask.CompletedTask;
     }
 
@@ -107,8 +105,8 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
-    // Desired-schema options are valid only for plan and apply; refresh rejects them.
-    private string[] SchemaArguments => ["--schema-dir", _schemaDirectory, "--format", "json"];
+    // The schema directory is the one desired-schema flag (format/pattern are config-only); refresh takes none of them.
+    private string[] SchemaArguments => ["--schema-dir", _schemaDirectory];
 
     private async Task<int> RunCli(string command, string[] commandArguments)
     {

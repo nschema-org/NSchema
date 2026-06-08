@@ -10,7 +10,6 @@ internal static class RefreshCommand
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.AddRange(RefreshOptions.All);
 
         command.SetAction(Run);
         return command;

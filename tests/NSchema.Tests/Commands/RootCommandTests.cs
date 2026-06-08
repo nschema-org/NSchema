@@ -66,9 +66,8 @@ public sealed class RootCommandTests
     [InlineData("apply")]
     public void DesiredAndMigrationOptions_AreAcceptedByPlanAndApply(string command)
     {
-        // Act
-        var result = _sut.Parse(
-            [command, "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--scope", "public", "--destructive-actions", "Warn"]);
+        // Act — schema format/pattern are config-only; the schema directory and migration knobs stay flags.
+        var result = _sut.Parse([command, "--schema-dir", "d", "--scope", "public", "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -91,8 +90,8 @@ public sealed class RootCommandTests
     [Fact]
     public void Validate_AcceptsSchemaOptions()
     {
-        // Act
-        var result = _sut.Parse(["validate", "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--config", "c"]);
+        // Act — schema format/pattern are config-only; validate takes the directory and --config.
+        var result = _sut.Parse(["validate", "--schema-dir", "d", "--config", "c"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();

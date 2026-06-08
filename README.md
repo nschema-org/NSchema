@@ -90,8 +90,8 @@ It verifies that:
 **Needs:** only a desired schema (`--schema-dir`).
 
 - `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
-- `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
-- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
+
+The schema **format** (`schema.format`, default `yaml`) and **glob** (`schema.pattern`, default `**/*.yaml` or `**/*.json`) describe how the project's files are laid out, so they're set in `nschema.json` rather than per run.
 
 ```sh
 nschema validate --schema-dir ./schemas
@@ -116,10 +116,10 @@ Compute and show the migration plan, without changing anything.
 `provider.postgres`) or, for offline planning, a state store (configured `state`). See [Database and state](#database-and-state).
 
 - `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
-- `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
-- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
+
+The schema **format** (`schema.format`) and **glob** (`schema.pattern`) are config-only — see [`validate`](#nschema-validate).
 
 ```sh
 nschema plan --schema-dir ./schemas
@@ -161,7 +161,7 @@ into NSchema: import it, then check the generated files into source control and 
 
 - `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
 - `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
-- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (Unlike the other commands, this sets the format written **out**.)
+- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (This sets the format written **out**, distinct from the `schema.format` other commands read.)
 - `--tables <name>` — limit the import to specific tables. May be repeated.
 - `--scope <name>` — limit the import to specific database schemas (namespaces). May be repeated.
 

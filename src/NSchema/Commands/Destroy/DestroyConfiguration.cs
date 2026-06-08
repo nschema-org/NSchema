@@ -45,11 +45,7 @@ internal sealed class DestroyConfiguration : IBindable
     {
         DestroyOptions.Scope.Bind(result, s => Scope = s);
         DestroyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
-
-        DestroyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
-
-        DestroyOptions.SchemaFormat.Bind(result, f => Schema.Format = f);
         DestroyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
-        DestroyOptions.SchemaPattern.Bind(result, p => Schema.Pattern = p);
+        DestroyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }
