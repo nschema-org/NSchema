@@ -6,11 +6,14 @@ namespace NSchema.Configuration.Import;
 internal sealed class ImportTargetConfig
 {
     /// <summary>
-    /// The output path:
-    /// - A file path for <see cref="ImportPartitionMode.None"/>;
-    /// - The root directory for <see cref="ImportPartitionMode.Schema"/> and <see cref="ImportPartitionMode.Table"/>.
+    /// The file to write to when <see cref="Partition"/> is <see cref="ImportPartitionMode.None"/>.
     /// </summary>
-    public string OutputPath { get; set; } = "";
+    public string? OutputFile { get; set; }
+
+    /// <summary>
+    /// The directory to write into when <see cref="Partition"/> is <see cref="ImportPartitionMode.Schema"/> or <see cref="ImportPartitionMode.Table"/>.
+    /// </summary>
+    public string? OutputDirectory { get; set; }
 
     /// <summary>
     /// The format for generated schema files.

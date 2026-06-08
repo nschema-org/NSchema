@@ -27,15 +27,15 @@ internal static class ImportCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
 
-        var outputPath = Path.GetFullPath(configuration.Target.OutputPath, Directory.GetCurrentDirectory());
+        var cwd = Directory.GetCurrentDirectory();
         var args = new ImportArguments
         {
             Schemas = configuration.Scope,
             Tables = configuration.Tables,
             Partition = configuration.Target.Partition,
             Format = configuration.Target.Format.FormatName(),
-            OutputDirectory = outputPath, // TODO: Separate into out-dir and out-file args?
-            OutputFile = outputPath,
+            OutputFile = configuration.Target.OutputFile == null ? null : Path.GetFullPath(configuration.Target.OutputFile, cwd),
+            OutputDirectory = configuration.Target.OutputDirectory == null ? null : Path.GetFullPath(configuration.Target.OutputDirectory, cwd)
         };
 
         await app.Import(args, cancellationToken);
