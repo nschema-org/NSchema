@@ -2,7 +2,7 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Schema;
-using NSchema.Import;
+using NSchema.Operations.Import;
 
 namespace NSchema.Commands.Import;
 

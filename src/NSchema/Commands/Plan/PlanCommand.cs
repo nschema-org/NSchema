@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Operations.Plan;
 
 namespace NSchema.Commands.Plan;
 
@@ -28,11 +29,10 @@ internal static class PlanCommand
         var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureDesiredSchema(configuration.Schema)
-            .ConfigureScope(configuration.Scope)
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        await app.Plan(cancellationToken);
+        await app.Plan(new PlanArguments { Schemas = configuration.Scope }, cancellationToken);
     }
 }

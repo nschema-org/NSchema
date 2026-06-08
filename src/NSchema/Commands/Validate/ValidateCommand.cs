@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Operations.Validate;
 
 namespace NSchema.Commands.Validate;
 
@@ -28,6 +29,6 @@ internal static class ValidateCommand
         using var app = CliApplicationBuilder.Create()
             .ConfigureDesiredSchema(configuration.Schema)
             .Build();
-        await app.Validate(cancellationToken);
+        await app.Validate(new ValidateArguments(), cancellationToken);
     }
 }

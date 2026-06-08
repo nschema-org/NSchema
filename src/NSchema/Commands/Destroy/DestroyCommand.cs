@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Operations.Destroy;
 
 namespace NSchema.Commands.Destroy;
 
@@ -27,7 +28,6 @@ internal static class DestroyCommand
     {
         var configuration = Resolve(parseResult);
         var builder = CliApplicationBuilder.Create()
-            .ConfigureScope(configuration.Scope)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.AutoApprove);
@@ -40,6 +40,6 @@ internal static class DestroyCommand
         }
 
         using var app = builder.Build();
-        await app.Destroy(cancellationToken);
+        await app.Destroy(new DestroyArguments(), cancellationToken);
     }
 }

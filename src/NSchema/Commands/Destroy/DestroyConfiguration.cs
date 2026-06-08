@@ -27,11 +27,6 @@ internal sealed class DestroyConfiguration : IBindable
     public StateConfig State { get; init; } = new();
 
     /// <summary>
-    /// Optional scope filter limiting the teardown to specific database schemas (namespaces).
-    /// </summary>
-    public string[]? Scope { get; private set; }
-
-    /// <summary>
     /// Whether to skip the interactive confirmation prompt before tearing down the schema.
     /// </summary>
     public bool AutoApprove { get; private set; }
@@ -43,7 +38,6 @@ internal sealed class DestroyConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        DestroyOptions.Scope.Bind(result, s => Scope = s);
         DestroyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
         DestroyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }

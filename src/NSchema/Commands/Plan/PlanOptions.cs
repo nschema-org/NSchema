@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Migration;
+using NSchema.Diff.Policies;
 
 namespace NSchema.Commands.Plan;
 

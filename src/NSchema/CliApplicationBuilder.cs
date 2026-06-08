@@ -1,11 +1,10 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
-using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
-using NSchema.Migration;
+using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Services;
@@ -17,13 +16,16 @@ namespace NSchema;
 internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
-        .CreateBuilder(new NSchemaApplicationOptions { ExceptionBehavior = ExceptionBehavior.Throw })
+        .CreateBuilder(new NSchemaApplicationOptions
+        {
+            ExceptionBehavior = ExceptionBehavior.Throw,
+            Reporter = SpectreOperationReporter.ReporterName
+        })
         .AddYamlSchemaSerializer()
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
         .UseTerraformRenderer(o => o.IncludeColour = false)
-        .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName)
-        .WithOperationOptions(o => o.Reporter = SpectreOperationReporter.ReporterName);
+        .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName);
 
     private CliApplicationBuilder()
     {
@@ -51,16 +53,6 @@ internal sealed class CliApplicationBuilder
             case SchemaFormat.Yaml: _builder.AddYamlSchemasFromGlob(glob); break;
             case SchemaFormat.Json: _builder.AddJsonSchemasFromGlob(glob); break;
             default: throw new UnreachableException();
-        }
-
-        return this;
-    }
-
-    public CliApplicationBuilder ConfigureScope(string[]? scope)
-    {
-        if (scope is { Length: > 0 })
-        {
-            _builder.ForSchemas(scope);
         }
 
         return this;
@@ -96,27 +88,6 @@ internal sealed class CliApplicationBuilder
             });
         }
 
-        return this;
-    }
-
-    public CliApplicationBuilder ConfigureImportTarget(ImportTargetConfig importTarget)
-    {
-        _builder.AddFileImportTarget(o =>
-        {
-            o.OutputPath = Path.GetFullPath(importTarget.OutputPath, Directory.GetCurrentDirectory());
-            o.Format = importTarget.Format.FormatName();
-            o.Partition = importTarget.Partition;
-        });
-        return this;
-    }
-
-    public CliApplicationBuilder ConfigureImportScope(string[]? schemas, string[]? tables)
-    {
-        _builder.WithImportOptions(o =>
-        {
-            o.Schemas = schemas;
-            o.Tables = tables;
-        });
         return this;
     }
 

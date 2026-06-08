@@ -2,7 +2,7 @@ using NSchema.Commands.Import;
 using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
-using NSchema.Import;
+using NSchema.Operations.Import;
 
 namespace NSchema.Tests.Commands.Import;
 
