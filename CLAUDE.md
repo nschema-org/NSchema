@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`NSchema.Cli` is a thin command-line front-end (packaged as the `nschema` .NET global tool) over the **NSchema** core
+`NSchema` is a thin command-line front-end (packaged as the `nschema` .NET global tool) over the **NSchema** core
 framework — a declarative database schema migration engine ("Terraform for database schemas"). The CLI's job is to
 resolve configuration, translate it into a core `NSchemaApplication`, and run one operation.
 
@@ -16,10 +16,10 @@ pinned version here — it cannot be done from this repo alone.
 ## Commands
 
 ```sh
-dotnet build NSchema.Cli.slnx
-dotnet test  NSchema.Cli.slnx                                   # all tests
-dotnet test  NSchema.Cli.slnx --filter "FullyQualifiedName~OptionBindingTests"   # one class
-dotnet test  NSchema.Cli.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNschemaCommandName"  # one test
+dotnet build NSchema.slnx
+dotnet test  NSchema.slnx                                   # all tests
+dotnet test  NSchema.slnx --filter "FullyQualifiedName~OptionBindingTests"   # one class
+dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNschemaCommandName"  # one test
 ```
 
 - **`dotnet test` requires a running Docker daemon** — `MigrationRoundTripTests` spins up a PostgreSQL container via
@@ -116,9 +116,7 @@ Options are **colocated with the slice they configure** as `OptionBinding`s: `Co
 `.Option`s); a `*Command.Create` registers a group with `command.Options.AddRange(ProviderOptions.All)` (the `AddRange`
 extension lives in `Extensions/CommandExtensions`) and adds individual ones via `.Option` (e.g.
 `CommonOptions.Scope.Option`). Env-var **names** stay centralized in `Configuration/EnvironmentVariables` as the
-auditable surface; the bindings reference those constants. Note `RootCommand` sets the displayed command name to `nschema` via
-reflection on a System.CommandLine internal (it otherwise derives "NSchema.Cli" from the assembly, which can't be renamed
-without colliding with the core `NSchema` assembly); `RootCommandTests.HasTheNschemaCommandName` guards that reflection.
+auditable surface; the bindings reference those constants.
 
 ## Desired-schema files
 

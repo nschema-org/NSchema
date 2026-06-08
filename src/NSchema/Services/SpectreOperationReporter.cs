@@ -2,8 +2,10 @@ using System.Text;
 using NSchema.Configuration;
 using NSchema.Diff;
 using NSchema.Diff.Model;
-using NSchema.Migration;
+using NSchema.Operations;
+using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Scripts.Model;
 using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
@@ -11,14 +13,14 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IMigrationReporter"/> that presents run output with Spectre.Console.
+/// An <see cref="IOperationReporter"/> that presents run output with Spectre.Console.
 /// </summary>
-internal sealed class SpectreMigrationReporter : IMigrationReporter
+internal sealed class SpectreOperationReporter : IOperationReporter
 {
     /// <summary>
     /// The output format this reporter is registered under.
     /// </summary>
-    public const string FormatName = "fancy";
+    public const string ReporterName = "fancy";
 
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _error;
@@ -28,22 +30,20 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreMigrationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
         : this(console, CreateStandardErrorConsole(console), diffRenderer, sqlPlanRenderer) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    internal SpectreMigrationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
     {
         _out = output;
         _error = error;
         _diffRenderer = diffRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
     }
-
-    public string Format => FormatName;
 
     public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
 
@@ -52,16 +52,54 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
         _error.WriteException(exception);
     }
 
-    public void ReportDiff(MigrationDiff diff)
+    public void ReportDiff(DatabaseDiff diff)
     {
         var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
         WriteSection("Plan", body);
+    }
+
+    public void ReportPlan(MigrationPlan plan)
+    {
+        ReportScripts("Pre-deployment", plan.PreDeploymentScripts);
+        ReportScripts("Post-deployment", plan.PostDeploymentScripts);
+    }
+
+    // Lists the script names under a section rule (the SQL itself is shown by ReportSqlPlan). An empty section is
+    // skipped, matching the default reporter, so a plan with no scripts produces no output.
+    private void ReportScripts(string title, IReadOnlyList<Script> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            return;
+        }
+
+        var builder = new StringBuilder();
+
+        for (var i = 0; i < scripts.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+
+            builder.Append("  - ").Append(Markup.Escape(scripts[i].Name));
+        }
+
+        WriteSection(title, new Markup(builder.ToString()));
     }
 
     public void ReportSqlPlan(SqlPlan plan)
     {
         var body = DimComments(_sqlPlanRenderer.Render(plan));
         WriteSection("SQL", body);
+    }
+
+    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
+    {
+        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
+        var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
+        var console = notable ? _error : _out;
+        console.ReportDiagnostics(diagnostics);
     }
 
     // A single-line rule header rather than a Panel: it gives the section visual separation without prefixing
@@ -72,14 +110,6 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
         _out.Write(body);
         _out.WriteLine();
         _out.WriteLine();
-    }
-
-    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
-    {
-        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
-        var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
-        var console = notable ? _error : _out;
-        console.ReportDiagnostics(diagnostics);
     }
 
     // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the

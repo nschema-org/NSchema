@@ -1,6 +1,8 @@
 using NSchema.Diff;
 using NSchema.Diff.Model;
+using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Scripts.Model;
 using NSchema.Services;
 using NSchema.Sql;
 using NSchema.Sql.Model;
@@ -8,19 +10,19 @@ using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
 
-public sealed class SpectreMigrationReporterTests
+public sealed class SpectreOperationReporterTests
 {
     private readonly TestConsole _out = new();
     private readonly TestConsole _error = new();
     private readonly IDiffRenderer _diffRenderer = Substitute.For<IDiffRenderer>();
     private readonly ISqlPlanRenderer _sqlPlanRenderer = Substitute.For<ISqlPlanRenderer>();
-    private readonly SpectreMigrationReporter _sut;
+    private readonly SpectreOperationReporter _sut;
 
-    public SpectreMigrationReporterTests()
+    public SpectreOperationReporterTests()
     {
         _out.Profile.Width = 200;
         _error.Profile.Width = 200;
-        _sut = new SpectreMigrationReporter(_out, _error, _diffRenderer, _sqlPlanRenderer);
+        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _sqlPlanRenderer);
     }
 
     [Fact]
@@ -52,7 +54,7 @@ public sealed class SpectreMigrationReporterTests
     public void ReportDiff_FramesTheRenderedDiffInAPanel()
     {
         // Arrange
-        _diffRenderer.Render(Arg.Any<MigrationDiff>()).Returns(
+        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns(
             "+ table app.widgets\n    + id bigint not null\nPlan: 1 to add, 0 to change, 0 to destroy.");
 
         // Act
@@ -68,7 +70,7 @@ public sealed class SpectreMigrationReporterTests
     public void ReportDiff_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
     {
         // Arrange — column array types contain square brackets, which are Spectre markup delimiters.
-        _diffRenderer.Render(Arg.Any<MigrationDiff>()).Returns("~ tags type: text → text[]");
+        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("~ tags type: text → text[]");
 
         // Act
         _sut.ReportDiff(diff: null!);
@@ -89,6 +91,55 @@ public sealed class SpectreMigrationReporterTests
         // Assert
         _out.Output.ShouldContain("SQL");
         _out.Output.ShouldContain("CREATE TABLE app.widgets");
+    }
+
+    [Fact]
+    public void ReportPlan_ListsEachScriptNameUnderItsSection()
+    {
+        // Arrange
+        var plan = new MigrationPlan(
+            [],
+            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)],
+            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldContain("Pre-deployment");
+        _out.Output.ShouldContain("seed-roles");
+        _out.Output.ShouldContain("Post-deployment");
+        _out.Output.ShouldContain("reindex");
+    }
+
+    [Fact]
+    public void ReportPlan_SkipsSectionsWithNoScripts()
+    {
+        // Arrange
+        var plan = new MigrationPlan(
+            [],
+            [],
+            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldNotContain("Pre-deployment");
+        _out.Output.ShouldContain("Post-deployment");
+    }
+
+    [Fact]
+    public void ReportPlan_WritesNothing_WhenThereAreNoScripts()
+    {
+        // Arrange
+        var plan = new MigrationPlan([], [], []);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldBeEmpty();
     }
 
     [Fact]

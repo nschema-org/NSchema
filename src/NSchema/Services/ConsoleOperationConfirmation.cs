@@ -1,17 +1,16 @@
-using NSchema.Hosting;
-using NSchema.Plan.Model;
+using NSchema.Operations.Confirmation;
 using Spectre.Console;
 
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IMigrationConfirmation"/> that prompts on the terminal before applying changes.
+/// An <see cref="IOperationConfirmation"/> that prompts on the terminal before applying changes.
 /// </summary>
-internal sealed class ConsoleMigrationConfirmation(bool autoApprove, IAnsiConsole console) : IMigrationConfirmation
+internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsole console) : IOperationConfirmation
 {
-    public ValueTask<bool> Confirm(MigrationPlan plan, CancellationToken cancellationToken = default)
+    public ValueTask<bool> Confirm(OperationConfirmationRequest request, CancellationToken cancellationToken = default)
     {
-        console.MarkupLineInterpolated($"NSchema will execute [yellow]{plan.Actions.Count}[/] action(s) against the database.");
+        console.MarkupLineInterpolated($"NSchema will execute [yellow]{request.Plan.Actions.Count}[/] action(s) against the database.");
 
         if (autoApprove)
         {

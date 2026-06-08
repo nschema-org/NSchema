@@ -17,11 +17,11 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema.Core'
+          repository: 'nschema-org/NSchema.Build'
           path: 'build'
 
       - name: Run Build Pipeline
-        run: dotnet run --project build/build/NSchema.Build/NSchema.Build.csproj -- build
+        run: dotnet run --project build/src/NSchema.Build/NSchema.Build.csproj -- build
         shell: bash
         env:
           Build__ProjectFile: 'src/NSchema/NSchema.csproj'
@@ -40,11 +40,11 @@ jobs:
       - name: Check out build pipeline
         uses: actions/checkout@v6
         with:
-          repository: 'nschema-org/NSchema.Core'
+          repository: 'nschema-org/NSchema.Build'
           path: 'build'
 
       - name: Run Deploy Pipeline
-        run: dotnet run --project build/build/NSchema.Build/NSchema.Build.csproj -- deploy
+        run: dotnet run --project build/src/NSchema.Build/NSchema.Build.csproj -- deploy
         shell: bash
         env:
           Build__NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
