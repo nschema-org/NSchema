@@ -49,7 +49,7 @@ This installs the `nschema` command.
 2. Point at your database (the connection string is a secret, so prefer the environment):
 
    ```sh
-   export NSCHEMA_CONNECTION_STRING="Host=localhost;Database=app;Username=postgres;Password=postgres"
+   export NSCHEMA_POSTGRES_CONNECTION_STRING="Host=localhost;Database=app;Username=postgres;Password=postgres"
    ```
 
 3. Preview the migration, then apply it (`nschema.json` already has the provider and schema directory, so no flags are needed):
@@ -64,7 +64,7 @@ This installs the `nschema` command.
 
 ## Commands
 
-The `plan`, `apply`, `refresh`, `import`, and `destroy` commands accept the [common options](#common-options) below (`import` uses the provider options, not the state ones). Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
+The `plan`, `apply`, `refresh`, `import`, and `destroy` commands all talk to a database, and most also use a state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
 
 ### `nschema init`
 
@@ -87,42 +87,42 @@ It verifies that:
 - primary keys, indexes, and foreign keys reference columns that exist, and foreign keys reference a table whose primary key or a unique index matches the referenced columns (**errors**);
 - tables have a primary key, primary-key columns aren't nullable, and no key or index lists a column twice (**warnings**).
 
-**Needs:** only a desired schema (`--schema-dir`).
+**Needs:** only a desired schema, configured in `nschema.json`.
 
-- `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
-- `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
-- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
+The schema's location and shape describe how the project's files are laid out, so they all live in config rather than as per-run flags: **dir** (`schema.dir`), **format** (`schema.format`, default `yaml`), and **glob** (`schema.pattern`, default `**/*.yaml` or `**/*.json`). Run inside the project, or point at it with `--directory`.
 
 ```sh
-nschema validate --schema-dir ./schemas
+nschema validate --directory ./my-project
 ```
 
-### Common options
+### Database and state
 
-Available to all commands. These select the database and state store that hold the current schema.
+The live database (`provider`) and the state store (`state`) describe *where* your schema lives, so — like a Terraform backend — they're defined in [`nschema.json`](#nschemajson) rather than passed as flags each run. There is no `--provider` or `--state-*` option. The one value that doesn't belong in a committed file is the database password, so the connection string has an environment override:
 
-- `--provider <postgres>` — the database supplying the live schema. Supported: `postgres`. With no provider, only offline operations (plan/refresh against a state store) are available. _(config `provider.postgres`, env `NSCHEMA_PROVIDER`)_
-- `--connection-string <value>` — connection string for the provider. _(config `provider.postgres.connectionString`, env `NSCHEMA_CONNECTION_STRING`)_
-- `--state-file <path>` — path for a `file` state store. _(config `state.file.path`, env `NSCHEMA_STATE_FILE`)_
-- `--state-s3-bucket <bucket>` — bucket for an `s3` state store. _(config `state.s3.bucket`, env `NSCHEMA_STATE_S3_BUCKET`)_
-- `--state-s3-key <key>` — object key for an `s3` state store. _(config `state.s3.key`, env `NSCHEMA_STATE_S3_KEY`)_
-- `--config <path>` — path to the config file. Defaults to `./nschema.json` if present.
+- **Connection string** — `provider.postgres.connectionString` in `nschema.json`, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The variable names the Postgres provider on its own — just as `state.s3.*` names the S3 store — so no separate provider selector is needed.
+
+The schema source is config too — `schema.dir` (plus `schema.format`/`schema.pattern`) — so a project's *where* (database, state, schema files) lives entirely in `nschema.json`, and the CLI flags are just the per-run workflow knobs.
+
+Every command also accepts:
+
+- `--directory <dir>` — the project directory to run in; `nschema.json` and the relative paths inside it resolve here (like `terraform -chdir`). Defaults to the current directory.
+- `--config <path>` — config file path, relative to `--directory`. Defaults to `nschema.json`.
+- `--no-color` — disable colored output. _(env `NO_COLOR`)_
 
 ### `nschema plan`
 
 Compute and show the migration plan, without changing anything.
 
-**Needs:** a desired schema (`--schema-dir`) and a current-state source — either a live database (`--provider` plus a
-connection string) or, for offline planning, a state store (`--state-file`).
+**Needs:** a desired schema (configured `schema.dir`) and a current-state source — either a live database (configured
+`provider.postgres`) or, for offline planning, a state store (configured `state`). See [Database and state](#database-and-state).
 
-- `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
-- `--format <yaml|json>` — the format the desired schema is expressed in. Defaults to `yaml`. _(config `schema.format`)_
-- `--schema-pattern <pattern>` — glob matched within the schema directory. Defaults to `**/*.yaml` or `**/*.json`. _(config `schema.pattern`)_
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 
+The schema **format** (`schema.format`) and **glob** (`schema.pattern`) are config-only — see [`validate`](#nschema-validate).
+
 ```sh
-nschema plan --provider postgres --schema-dir ./schemas
+nschema plan
 ```
 
 ### `nschema apply`
@@ -137,19 +137,19 @@ Accepts every [`plan`](#nschema-plan) option, plus:
 - `--auto-approve` — skip the confirmation prompt and apply immediately.
 
 ```sh
-nschema apply --provider postgres --schema-dir ./schemas
+nschema apply
 ```
 
 ### `nschema refresh`
 
 Read the live schema and write it to the state store. Use this to seed or repair state.
 
-**Needs:** a live database (`--provider` plus a connection string) and a state store to write to (`--state-file`, or
-`--state-s3-bucket`/`--state-s3-key`). It captures the **whole** schema and so takes no desired-schema or
-`--scope` options.
+**Needs:** a live database (configured `provider.postgres`) and a state store to write to (configured `state.file` or
+`state.s3`). It captures the **whole** schema and so takes no desired-schema or `--scope` options — with both inputs in
+`nschema.json`, it runs with no flags at all.
 
 ```sh
-nschema refresh --provider postgres --state-file ./nschema.state.json
+nschema refresh
 ```
 
 ### `nschema import`
@@ -157,16 +157,16 @@ nschema refresh --provider postgres --state-file ./nschema.state.json
 Read the live database schema and write it out as desired-schema source files. Use this to adopt an existing database
 into NSchema: import it, then check the generated files into source control and manage further changes with `plan`/`apply`.
 
-**Needs:** a live database (`--provider` plus a connection string) and an output path (`--output`).
+**Needs:** a live database (configured `provider.postgres`) and an output path (`--output`).
 
 - `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
 - `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
-- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (Unlike the other commands, this sets the format written **out**.)
+- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (This sets the format written **out**, distinct from the `schema.format` other commands read.)
 - `--tables <name>` — limit the import to specific tables. May be repeated.
 - `--scope <name>` — limit the import to specific database schemas (namespaces). May be repeated.
 
 ```sh
-nschema import --provider postgres --output ./schemas --partition Table
+nschema import --output ./schemas --partition Table
 ```
 
 ### `nschema destroy`
@@ -175,20 +175,20 @@ Drop all managed schema objects from the target database. Prompts for confirmati
 `--auto-approve` is given. This is purely destructive and is exempt from the destructive-action policy — it's the
 intended escape hatch for tearing a managed schema back down.
 
-**Needs:** a live database (`--provider` plus a connection string the tool can write to), and a source for the
-schema to tear down — a state store (`--state-file`, or `--state-s3-bucket`/`--state-s3-key`), or, with no store,
-a desired schema (`--schema-dir`) to fall back on. When a state store is configured it is refreshed after the
-teardown. Accepts `--scope` to limit the teardown to specific namespaces, and `--auto-approve` to skip the prompt.
+**Needs:** a live database (configured `provider.postgres`) the tool can write to, and a source for the schema to tear
+down — a configured state store (`state.file` or `state.s3`), or, with no store, a desired schema (configured
+`schema.dir`) to fall back on. When a state store is configured it is refreshed after the teardown. Accepts `--scope` to
+limit the teardown to specific namespaces, and `--auto-approve` to skip the prompt.
 
 ```sh
-nschema destroy --provider postgres --state-file ./nschema.state.json
+nschema destroy
 ```
 
 ## Configuration
 
 Settings come from three sources, in increasing order of precedence:
 
-1. The `nschema.json` config file (or the file passed to `--config`).
+1. The `nschema.json` config file — discovered in the `--directory` (default: the current directory), or the file passed to `--config`. Relative paths inside it (`schema.dir`, `state.file.path`) resolve against that directory.
 2. `NSCHEMA_*` environment variables.
 3. Command-line options.
 
@@ -206,13 +206,13 @@ Settings come from three sources, in increasing order of precedence:
 
 ### Connection string
 
-The database connection string is a secret. Prefer supplying it through the environment:
+The database connection string is a secret. Supply it through the environment:
 
 ```sh
-export NSCHEMA_CONNECTION_STRING="..."
+export NSCHEMA_POSTGRES_CONNECTION_STRING="..."
 ```
 
-It can also be passed with `--connection-string` or set in `nschema.json`, but _please_ don't commit secrets to source control.
+It can also be set in `nschema.json` under `provider.postgres.connectionString` (handy for a local throwaway database), but _please_ don't commit secrets to source control. The environment variable takes precedence when both are present.
 
 ## Desired schema files
 

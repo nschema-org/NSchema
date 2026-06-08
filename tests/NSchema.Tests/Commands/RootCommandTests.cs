@@ -21,14 +21,14 @@ public sealed class RootCommandTests
     [InlineData("apply")]
     [InlineData("refresh")]
     [InlineData("destroy")]
-    public void GlobalOptions_AreAvailableToEveryCommand(string command)
+    public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {
-        // Act
+        // The live database (provider.postgres) and state store are defined in nschema.json — with the connection
+        // string supplied via the NSCHEMA_POSTGRES_CONNECTION_STRING env var — so these are rejected as unknown flags.
         var result = _sut.Parse([command, "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
-        result.Errors.ShouldBeEmpty();
-        result.CommandResult.Command.Name.ShouldBe(command);
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -64,11 +64,10 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("plan")]
     [InlineData("apply")]
-    public void DesiredAndMigrationOptions_AreAcceptedByPlanAndApply(string command)
+    public void MigrationOptions_AreAcceptedByPlanAndApply(string command)
     {
-        // Act
-        var result = _sut.Parse(
-            [command, "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--scope", "public", "--destructive-actions", "Warn"]);
+        // Act — the schema (dir/format/pattern) is config-only now; only the migration knobs are flags.
+        var result = _sut.Parse([command, "--scope", "public", "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -77,9 +76,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
-    [InlineData("--format", "json")]
-    [InlineData("--schema-dir", "d")]
-    public void RefreshRejects_DesiredAndMigrationOptions(string option, string value)
+    public void RefreshRejects_MigrationOptions(string option, string value)
     {
         // Act
         var result = _sut.Parse(["refresh", option, value]);
@@ -88,11 +85,28 @@ public sealed class RootCommandTests
         result.Errors.ShouldNotBeEmpty();
     }
 
-    [Fact]
-    public void Validate_AcceptsSchemaOptions()
+    [Theory]
+    [InlineData("init")]
+    [InlineData("validate")]
+    [InlineData("plan")]
+    [InlineData("apply")]
+    [InlineData("refresh")]
+    [InlineData("import")]
+    [InlineData("destroy")]
+    public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
-        // Act
-        var result = _sut.Parse(["validate", "--format", "json", "--schema-dir", "d", "--schema-pattern", "g", "--config", "c"]);
+        // --directory is a recursive root option, so it can follow the subcommand on any command.
+        var result = _sut.Parse([command, "--directory", "."]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Validate_AcceptsConfigAndDirectory()
+    {
+        // Act — validate reads the schema from config; it exposes no schema flags of its own.
+        var result = _sut.Parse(["validate", "--config", "c", "--directory", "."]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -102,10 +116,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
-    [InlineData("--provider", "postgres")]
-    [InlineData("--connection-string", "x")]
-    [InlineData("--state-file", "s")]
-    public void ValidateRejects_ProviderStateAndMigrationOptions(string option, string value)
+    public void ValidateRejects_MigrationOptions(string option, string value)
     {
         // Act
         var result = _sut.Parse(["validate", option, value]);

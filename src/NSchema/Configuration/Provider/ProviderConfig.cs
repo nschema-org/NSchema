@@ -1,13 +1,11 @@
-using System.CommandLine;
 using System.Text.Json.Serialization;
-using NSchema.Configuration.Binding;
 
 namespace NSchema.Configuration.Provider;
 
 /// <summary>
 /// Configures the database provider that supplies the current (live) schema.
 /// </summary>
-internal sealed class ProviderConfig : IBindable
+internal sealed class ProviderConfig
 {
     /// <summary>
     /// PostgreSQL provider settings.
@@ -20,20 +18,8 @@ internal sealed class ProviderConfig : IBindable
     [JsonIgnore]
     public int ConfiguredSectionCount => Postgres is not null ? 1 : 0;
 
-    public void Bind(ParseResult result)
-    {
-        ProviderOptions.Type.Bind(result, p =>
-            {
-                switch (p)
-                {
-                    case ProviderType.Postgres:
-                        Postgres ??= new PostgresProviderConfig();
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(p), $"Unsupported provider type: {p}");
-                }
-            });
-
-        ProviderOptions.ConnectionString.Bind(result, cs => (Postgres ??= new PostgresProviderConfig()).ConnectionString = cs);
-    }
+    /// <summary>
+    /// Returns the PostgreSQL section, creating it on first use.
+    /// </summary>
+    public PostgresProviderConfig EnsurePostgres() => Postgres ??= new PostgresProviderConfig();
 }

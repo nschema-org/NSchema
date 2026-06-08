@@ -170,6 +170,47 @@ public sealed class OptionBindingTests : IDisposable
     }
 
     [Fact]
+    public void Bind_AppliesEnvironmentValue_ForEnvironmentOnlyBinding()
+    {
+        // Arrange — no FromOption: the binding is environment-only and registers no CLI option.
+        Environment.SetEnvironmentVariable(EnvVar, "from-env");
+        var binding = OptionBinding.Create<string>().FromEnvironmentVariable(EnvVar);
+        var result = new Command("test").Parse([]);
+
+        // Act
+        string? captured = null;
+        binding.Bind(result, value => captured = value);
+
+        // Assert
+        captured.ShouldBe("from-env");
+    }
+
+    [Fact]
+    public void Bind_DoesNotInvokeAction_ForEnvironmentOnlyBinding_WhenUnset()
+    {
+        // Arrange
+        var binding = OptionBinding.Create<string>().FromEnvironmentVariable(EnvVar);
+        var result = new Command("test").Parse([]);
+
+        // Act
+        var called = false;
+        binding.Bind(result, _ => called = true);
+
+        // Assert
+        called.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Option_Throws_ForEnvironmentOnlyBinding()
+    {
+        // Arrange — an environment-only binding has no CLI option to expose.
+        var binding = OptionBinding.Create<string>().FromEnvironmentVariable(EnvVar);
+
+        // Act / Assert
+        Should.Throw<InvalidOperationException>(() => binding.Option);
+    }
+
+    [Fact]
     public void Option_ReflectsBuilderSettings()
     {
         // Arrange

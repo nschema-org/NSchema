@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Text.Json;
+using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
 using RootCommand = NSchema.Commands.RootCommand;
 
@@ -16,28 +18,30 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     public ValueTask InitializeAsync()
     {
-        // A desired schema describing one table in this test's unique schema.
-        var schemaDocument = $$"""
-        {
-          "schemas": [
-            {
-              "name": "{{_schema}}",
-              "tables": [
-                {
-                  "name": "widgets",
-                  "primaryKey": { "name": "widgets_pkey", "columnNames": ["id"] },
-                  "columns": [
-                    { "name": "id", "type": "bigint", "isNullable": false },
-                    { "name": "name", "type": "text", "isNullable": true }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+        // A desired schema describing one table in this test's unique schema. YAML is the default format, so the
+        // commands need no --format flag (the schema format is a config-only setting).
+        var schemaDocument = $"""
+        schemas:
+          - name: {_schema}
+            tables:
+              - name: widgets
+                primaryKey:
+                  name: widgets_pkey
+                  columnNames: [id]
+                columns:
+                  - name: id
+                    type: bigint
+                    isNullable: false
+                  - name: name
+                    type: text
+                    isNullable: true
         """;
 
-        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.json"), schemaDocument);
+        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.yaml"), schemaDocument);
+
+        // The project's nschema.json lives in the run directory; schema.dir is relative to it. Commands find it via
+        // --directory, the way real usage does — no per-command schema flags.
+        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), """{ "schema": { "dir": "." } }""");
         return ValueTask.CompletedTask;
     }
 
@@ -52,7 +56,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Apply_CreatesTheDesiredSchemaInTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        var exitCode = await RunCli("apply", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -63,7 +67,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Plan_DoesNotModifyTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("plan", SchemaArguments);
+        var exitCode = await RunCli("plan");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -74,12 +78,14 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Refresh_WritesTheLiveSchemaToTheStateFile()
     {
         // Arrange
-        // Refresh reads the live database, so it needs no desired-schema options.
-        await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        // Refresh reads the live database, so it needs no desired-schema options. The state store is defined in
+        // config (state stores are config-only), so we point refresh at a config file declaring the file store.
+        await RunCli("apply", "--auto-approve");
         var stateFile = Path.Combine(_schemaDirectory, "state.json");
+        var configFile = WriteConfig("refresh.json", new { state = new { file = new { path = stateFile } } });
 
         // Act
-        var exitCode = await RunCli("refresh", ["--state-file", stateFile]);
+        var exitCode = await RunCli("refresh", "--config", configFile);
 
         // Assert
         exitCode.ShouldBe(0);
@@ -92,34 +98,45 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     {
         // Arrange — create the table so there's something to tear down. With no state store, destroy reads the
         // managed schema from the desired-schema files and drops everything declared there.
-        await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        await RunCli("apply", "--auto-approve");
         (await TableExists("widgets")).ShouldBeTrue();
 
         // Act
-        var exitCode = await RunCli("destroy", [.. SchemaArguments, "--auto-approve"]);
+        var exitCode = await RunCli("destroy", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
-    // Desired-schema options are valid only for plan and apply; refresh rejects them.
-    private string[] SchemaArguments => ["--schema-dir", _schemaDirectory, "--format", "json"];
-
-    private async Task<int> RunCli(string command, string[] commandArguments)
+    private async Task<int> RunCli(string command, params string[] commandArguments)
     {
-        string[] args =
-        [
-            command,
-            "--provider", "postgres",
-            "--connection-string", fixture.ConnectionString,
-            .. commandArguments,
-        ];
+        // --directory points every command at the project dir; nschema.json and its relative paths resolve there.
+        string[] args = [command, "--directory", _schemaDirectory, .. commandArguments];
 
-        // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
-        return await RootCommand.Create()
-            .Parse(args)
-            .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
+        // The live database is supplied the way real usage does it: via the connection-string environment variable.
+        // --directory changes the process working directory (in ConfigurationFactory), so snapshot and restore it.
+        var workingDirectory = Directory.GetCurrentDirectory();
+        Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, fixture.ConnectionString);
+        try
+        {
+            // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
+            return await RootCommand.Create()
+                .Parse(args)
+                .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(workingDirectory);
+            Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
+        }
+    }
+
+    private string WriteConfig(string name, object config)
+    {
+        var path = Path.Combine(_schemaDirectory, name);
+        File.WriteAllText(path, JsonSerializer.Serialize(config));
+        return path;
     }
 
     private async Task<bool> TableExists(string table)

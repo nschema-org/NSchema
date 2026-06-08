@@ -35,6 +35,6 @@ internal static class InitCommand
 
         console.Write(tree);
         console.WriteLine();
-        console.MarkupLineInterpolated($"Set [yellow]{EnvironmentVariables.ConnectionString}[/], then run [green]nschema plan[/].");
+        console.MarkupLineInterpolated($"Set [yellow]{EnvironmentVariables.PostgresConnectionString}[/], then run [green]nschema plan[/].");
     }
 }

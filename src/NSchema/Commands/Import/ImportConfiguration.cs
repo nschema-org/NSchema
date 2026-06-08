@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Text.Json.Serialization;
-using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
@@ -35,9 +34,12 @@ internal sealed class ImportConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        Provider.Bind(result);
-        Target.Bind(result);
-        CommonOptions.Scope.Bind(result, s => Scope = s);
+        ImportOptions.Scope.Bind(result, s => Scope = s);
+        ImportOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+
         ImportOptions.Tables.Bind(result, t => Tables = t);
+        ImportOptions.Format.Bind(result, f => Target.Format = f);
+        ImportOptions.Output.Bind(result, o => Target.OutputPath = o);
+        ImportOptions.Partition.Bind(result, p => Target.Partition = p);
     }
 }

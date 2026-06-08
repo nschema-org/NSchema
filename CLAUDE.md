@@ -30,27 +30,30 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 ## Configuration resolution (the heart of the CLI)
 
 A command's config is resolved in three layers, **lowest to highest precedence**: the loaded **`nschema.json`**, then
-**environment variables**, then **command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it
-deserializes the file into `T` (if any; the default `./nschema.json` is optional, an explicit `--config` must exist), then
-calls `T.Bind(ParseResult)` to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the
-factory is generic and knows nothing about commands or slices.
+**environment variables**, then **command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it first
+honors **`--directory`** (the recursive root option; it `SetCurrentDirectory`s so the config file and every relative path
+inside it resolve against the project dir, Terraform-`-chdir`-style — done here, the one chokepoint every command funnels
+through, so it holds whether the CLI runs via `Program` or is invoked directly in a test), then deserializes the file into
+`T` (if any; the default `nschema.json` is optional, an explicit `--config` must exist), then calls `T.Bind(ParseResult)`
+to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the factory is generic and
+knows nothing about commands or slices.
 
-The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: its
+The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: an optional
 System.CommandLine `Option<T>`, an optional environment variable, and a parser. It is built fluently
 (`OptionBinding.Create<T>().FromOption("--x").FromEnvironmentVariable(EnvVar).WithDescription(...)`); `.AllowMultipleArguments()`
-and `.Recursive()` configure the underlying option, which is built lazily and cached on first `.Option` access. A binding
-declared without `.FromEnvironmentVariable` is CLI-only. **Parsing the env string is automatic**: enums via
-case-insensitive `Enum.Parse`, strings via identity; pass a parser to `.FromEnvironmentVariable(env, parser)` only for
-other types (an unparseable env value with no parser throws).
+and `.Recursive()` configure the underlying option, which is built lazily and cached on first `.Option` access. At least
+one source is required: a binding with only `.FromEnvironmentVariable` (no `.FromOption`) is **environment-only** — it
+registers no CLI option and `.Option` throws (e.g. the connection string, `NSCHEMA_POSTGRES_CONNECTION_STRING`); one with
+only `.FromOption` is CLI-only. **Parsing the env string is automatic**: enums via case-insensitive `Enum.Parse`, strings
+via identity; pass a parser to `.FromEnvironmentVariable(env, parser)` only for other types (an unparseable env value with
+no parser throws).
 
 `OptionBinding.Bind(result, apply)` enforces the precedence per binding: an explicitly-set CLI option (`{ Implicit: false }`)
 wins over the environment variable, which wins over whatever value is already on the model (the file/base value) — when
 neither CLI nor env is set, `apply` is **not** called, so an unspecified flag never clobbers a config value.
 (`TryGetValue`/`GetValueOrDefault` expose the same resolution without a setter, for consumers like `ConfigurationFactory`
 reading `--config` and `ConsoleFactory`/`Program` reading `--no-color`.) Environment lookups are an allow-list: a binding
-reads only the one variable it was given, named from the `EnvironmentVariables` constants — never raw strings. There is no
-string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key` (and their env vars) populate `state.s3.bucket`/`state.s3.key`
-directly.
+reads only the one variable it was given, named from the `EnvironmentVariables` constants — never raw strings.
 
 This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
 `init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
@@ -65,14 +68,16 @@ layers env + CLI on top. The dependency points one way (commands → factory), s
 touches `ConfigurationFactory`.
 
 Resolution is **vertically sliced into the command**: every command lives in its own `Commands/<Name>/` folder holding
-the System.CommandLine `*Command` (option registration + handler), its `*Configuration` model, and its
-`*ConfigurationValidator`. The handler's private `Resolve` calls `ConfigurationFactory.Load<TConfiguration>`, runs the
-validator via `ValidateOrThrow`, and hands the validated model to the builder. A command's `Bind` is the composition
-root: it calls each binding's `Bind` for its own scalar fields (e.g. `CommonOptions.Scope.Bind(result, s => Scope = s)`)
-and delegates to each composed slice's `Bind` (`Provider.Bind(result)`, `State.Bind(result)`, …). The slices
-(`SchemaConfig`, `ProviderConfig`, `StateConfig`, `ImportTargetConfig`) are the shared, reusable vocabulary — each is an
-`IBindable` that owns binding its own nested sections (creating `provider.postgres`, `state.file`/`s3` on demand). A
-command never sees a config field it has no use for.
+the System.CommandLine `*Command` (option registration + handler), its `*Configuration` model, its `*Options` (the
+command's own option bindings), and its `*ConfigurationValidator`. The handler's private `Resolve` calls
+`ConfigurationFactory.Load<TConfiguration>`, runs the validator via `ValidateOrThrow`, and hands the validated model to
+the builder. A command's `Bind` is the composition root and owns **every** binding itself: it resolves each option
+through its command-local `*Options` and writes the result straight onto the model (e.g.
+`ApplyOptions.Scope.Bind(result, s => Scope = s)`, `ApplyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d)`).
+The slices (`SchemaConfig`, `ProviderConfig`, `StateConfig`, `ImportTargetConfig`) are **plain data** — the shared,
+reusable vocabulary the command writes into; they no longer bind themselves. Where a flat input must materialize a nested
+section, the slice exposes a small accessor (`ProviderConfig.EnsurePostgres()`) the command calls, rather than the command
+reaching in. A command never sees a config field it has no use for.
 
 Each command validator (**FluentValidation**) *composes the slice validators* (`SchemaConfigValidator`,
 `ProviderConfigValidator`, `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
@@ -94,10 +99,13 @@ patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-f
 already guaranteed the shape. A zero-section provider/state is valid at the builder and means offline; it is the command
 validators (not the builder) that reject it where a section is required.
 
-Each nested section is also reachable from the flat CLI/env overrides: `--connection-string`
-populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and
-`--state-s3-bucket`/`--state-s3-key` populate `state.s3.bucket`/`state.s3.key` (each creating its section on demand). A
-bare `--provider postgres` just ensures the section exists. Rich settings (e.g. `commandTimeout`) are file-only.
+The provider and state store are **defined in `nschema.json`**, not via CLI flags — they describe where the schema
+lives, like a Terraform backend, so there are no `--provider`/`--state-*` options. The lone exception is the secret
+connection string, which has an environment override: `NSCHEMA_POSTGRES_CONNECTION_STRING` is a self-identifying,
+environment-only binding that fills `provider.postgres.connectionString` (via `ProviderConfig.EnsurePostgres()`, creating
+the section if the file omitted it) — it names the Postgres provider on its own, just as `state.s3.*` names the S3 store,
+so no discriminator flag is needed. Everything else about a section (e.g. `commandTimeout`, the chosen state store) is
+file-only.
 
 ## Error handling and output
 
@@ -109,18 +117,20 @@ is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does *
 
 ## Options layout
 
-Options are **colocated with the slice they configure** as `OptionBinding`s: `Configuration/Provider/ProviderOptions`,
-`State/StateOptions`, `Schema/SchemaOptions`, `Import/ImportTargetOptions`, plus the cross-cutting
-`Configuration/CommonOptions` (`Config`, `NoColor`, `Scope`, `Destructive`) and command-specific groups like
-`Commands/Apply/ApplyOptions`. Each slice options class exposes `All` (an `IEnumerable<Option>` of its bindings'
-`.Option`s); a `*Command.Create` registers a group with `command.Options.AddRange(ProviderOptions.All)` (the `AddRange`
-extension lives in `Extensions/CommandExtensions`) and adds individual ones via `.Option` (e.g.
-`CommonOptions.Scope.Option`). Env-var **names** stay centralized in `Configuration/EnvironmentVariables` as the
-auditable surface; the bindings reference those constants.
+Options are **owned by the command, not the slice**: each command has a `Commands/<Name>/<Name>Options` class holding an
+`OptionBinding` for every flag (and env-only binding) it resolves, with the description tailored to that command.
+Duplication across commands — both `apply` and `plan` declare their own `--scope`, etc. — is the deliberate cost of
+per-command ownership and contextual help; there are no shared slice-level option classes. `Configuration/CommonOptions`
+holds only the two harness-level flags that are **not** bound to any config slice: `Config` (read by
+`ConfigurationFactory`) and `NoColor` (read at the root). Each `*Options` exposes `All` (an `IEnumerable<Option>` of its
+**CLI** bindings — env-only bindings like `PostgresConnectionString` are excluded); `*Command.Create` registers it with
+`command.Options.AddRange(<Name>Options.All)` (the `AddRange` extension lives in `Extensions/CommandExtensions`) plus
+`CommonOptions.Config.Option`, while the root command adds `CommonOptions.NoColor.Option` recursively. Env-var **names**
+stay centralized in `Configuration/EnvironmentVariables` as the auditable surface; the bindings reference those constants.
 
 ## Desired-schema files
 
-The files users point `--schema-dir` at are **`DatabaseSchema` documents** (YAML by default, or JSON). Column `type` is a
+The files under `schema.dir` are **`DatabaseSchema` documents** (YAML by default, or JSON). Column `type` is a
 **compact string** (`bigint`, `text`, `varchar(255)`), not the `{ "kind": ... }` object form — that object form is the
 state-snapshot serialization, which is a different thing. See `README.md` for a worked example.
 
@@ -128,6 +138,8 @@ state-snapshot serialization, which is a different thing. See `README.md` for a 
 
 Tests use `// Arrange` / `// Act` / `// Assert` sections and a single member-level `_sut` field where the system under
 test is an instance (static types use a small invocation helper instead). Mocks use NSubstitute, assertions use Shouldly.
-Test parallelization is disabled assembly-wide because config resolution reads process-global environment variables; tests
-that exercise env-var bindings (e.g. `OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they
-touch in their constructor and `Dispose` to stay hermetic.
+Test parallelization is disabled assembly-wide (`[assembly: CollectionBehavior(DisableTestParallelization = true)]` in
+`AssemblyInfo.cs`) because config resolution reads and mutates process-global state — environment variables, and the
+current working directory via `--directory`. Tests that touch that state restore it: env-var tests (e.g.
+`OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they use in their constructor and `Dispose`,
+and the cwd-changing tests (`ConfigurationFactoryTests`, `MigrationRoundTripTests`) save and restore the working directory.

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
@@ -44,11 +43,8 @@ internal sealed class DestroyConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        CommonOptions.Scope.Bind(result, s => Scope = s);
-        CommonOptions.AutoApprove.Bind(result, a => AutoApprove = a);
-
-        Schema.Bind(result);
-        Provider.Bind(result);
-        State.Bind(result);
+        DestroyOptions.Scope.Bind(result, s => Scope = s);
+        DestroyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
+        DestroyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

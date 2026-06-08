@@ -22,7 +22,6 @@ internal sealed class RefreshConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        Provider.Bind(result);
-        State.Bind(result);
+        RefreshOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

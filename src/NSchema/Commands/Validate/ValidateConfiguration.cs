@@ -15,8 +15,8 @@ internal sealed class ValidateConfiguration : IBindable
     /// </summary>
     public SchemaConfig Schema { get; init; } = new();
 
+    // Validate reads the schema entirely from nschema.json (located via --directory), so it binds no CLI options.
     public void Bind(ParseResult result)
     {
-        Schema.Bind(result);
     }
 }

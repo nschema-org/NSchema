@@ -15,8 +15,7 @@ internal static class OptionBinding
 }
 
 /// <summary>
-/// A single configuration binding between a CLI option and an optional environment-variable fallback, applied with
-/// CLI &gt; environment precedence. Built fluently via <see cref="OptionBinding.Create{T}"/>.
+/// A single configuration binding to a CLI option and/or an environment variable, applied with CLI &gt; environment precedence.
 /// </summary>
 internal sealed class OptionBinding<T> where T : notnull
 {
@@ -86,7 +85,7 @@ internal sealed class OptionBinding<T> where T : notnull
     /// </summary>
     public void Bind(ParseResult result, Action<T> apply)
     {
-        if (result.GetResult(Option) is { Implicit: false } argument)
+        if (_optionName is not null && result.GetResult(Option) is { Implicit: false } argument)
         {
             apply(argument.GetRequiredValue(Option));
             return;
@@ -105,7 +104,7 @@ internal sealed class OptionBinding<T> where T : notnull
 
     public bool TryGetValue(ParseResult result, [NotNullWhen(true)] out T? value)
     {
-        if (result.GetResult(Option) is { Implicit: false } argument)
+        if (_optionName is not null && result.GetResult(Option) is { Implicit: false } argument)
         {
             value = argument.GetRequiredValue(Option);
             return true;
@@ -150,6 +149,6 @@ internal sealed class OptionBinding<T> where T : notnull
             return value;
         }
 
-        throw new InvalidOperationException($"Environment variable '{_envVar}' overrides '{Option.Name}' but no value parser was supplied.");
+        throw new InvalidOperationException($"Environment variable '{_envVar}' has no value parser for type '{typeof(T).Name}'.");
     }
 }

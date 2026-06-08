@@ -1,8 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
-using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Destroy;
 
@@ -13,12 +10,7 @@ internal static class DestroyCommand
         var command = new Command("destroy", "Drop all managed schema objects from the target database.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.Add(CommonOptions.Scope.Option);
-        command.Options.Add(CommonOptions.AutoApprove.Option);
-
-        command.Options.AddRange(ProviderOptions.All);
-        command.Options.AddRange(StateOptions.All);
-        command.Options.AddRange(SchemaOptions.All);
+        command.Options.AddRange(DestroyOptions.All);
 
         command.SetAction(Run);
         return command;

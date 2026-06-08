@@ -1,8 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
-using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Apply;
 
@@ -13,13 +10,7 @@ internal static class ApplyCommand
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.Add(CommonOptions.Scope.Option);
-        command.Options.Add(CommonOptions.Destructive.Option);
-        command.Options.Add(CommonOptions.AutoApprove.Option);
-
-        command.Options.AddRange(ProviderOptions.All);
-        command.Options.AddRange(StateOptions.All);
-        command.Options.AddRange(SchemaOptions.All);
+        command.Options.AddRange(ApplyOptions.All);
 
         command.SetAction(Run);
         return command;
