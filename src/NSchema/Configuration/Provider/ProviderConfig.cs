@@ -18,21 +18,8 @@ internal sealed class ProviderConfig
     [JsonIgnore]
     public int ConfiguredSectionCount => Postgres is not null ? 1 : 0;
 
-    public void SetProvider(ProviderType type)
-    {
-        switch (type)
-        {
-            case ProviderType.Postgres: Postgres ??= new PostgresProviderConfig(); break;
-            default: throw new ArgumentOutOfRangeException(nameof(type), $"Unsupported provider type: {type}");
-        }
-    }
-
-    public void SetConnectionString(string connectionString)
-    {
-        if (Postgres is null)
-        {
-            throw new InvalidOperationException("Cannot set connection string when no provider type is configured; specify a provider type first.");
-        }
-        Postgres.ConnectionString = connectionString;
-    }
+    /// <summary>
+    /// Returns the PostgreSQL section, creating it on first use.
+    /// </summary>
+    public PostgresProviderConfig EnsurePostgres() => Postgres ??= new PostgresProviderConfig();
 }

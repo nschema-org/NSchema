@@ -12,7 +12,7 @@ internal sealed class RefreshConfigurationValidator : AbstractValidator<RefreshC
         // Refresh reads the live schema, so a provider is mandatory.
         RuleFor(x => x.Provider.ConfiguredSectionCount)
             .Equal(1)
-            .WithMessage($"A database provider is required for refresh. Configure one in nschema.json, via --provider/--connection-string, or {EnvironmentVariables.ConnectionString}.");
+            .WithMessage($"A database provider is required for refresh. Configure provider.postgres in nschema.json, or set {EnvironmentVariables.PostgresConnectionString}.");
         RuleFor(x => x.Provider).SetValidator(new ProviderConfigValidator());
 
         // Refresh writes the snapshot to the state store, so a store is mandatory.

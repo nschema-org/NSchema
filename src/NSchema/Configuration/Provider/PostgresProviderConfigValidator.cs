@@ -8,7 +8,7 @@ internal sealed class PostgresProviderConfigValidator : AbstractValidator<Postgr
     {
         RuleFor(x => x.ConnectionString)
             .NotEmpty()
-            .WithMessage($"provider.postgres.connectionString is required. Set it in nschema.json, --connection-string, or {EnvironmentVariables.ConnectionString}.");
+            .WithMessage($"provider.postgres.connectionString is required. Set it using {EnvironmentVariables.PostgresConnectionString}.");
 
         RuleFor(x => x.CommandTimeout)
             .GreaterThanOrEqualTo(0)

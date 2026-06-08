@@ -35,8 +35,7 @@ internal sealed class ImportConfiguration : IBindable
     public void Bind(ParseResult result)
     {
         ImportOptions.Scope.Bind(result, s => Scope = s);
-        ImportOptions.Provider.Bind(result, Provider.SetProvider);
-        ImportOptions.ConnectionString.Bind(result, Provider.SetConnectionString);
+        ImportOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
 
         ImportOptions.Tables.Bind(result, t => Tables = t);
         ImportOptions.Format.Bind(result, f => Target.Format = f);

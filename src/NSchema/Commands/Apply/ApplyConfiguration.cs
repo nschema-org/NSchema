@@ -48,15 +48,10 @@ internal sealed class ApplyConfiguration : IBindable
         ApplyOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
 
-        ApplyOptions.Provider.Bind(result, Provider.SetProvider);
-        ApplyOptions.ConnectionString.Bind(result, Provider.SetConnectionString);
+        ApplyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
 
         ApplyOptions.SchemaFormat.Bind(result, f => Schema.Format = f);
         ApplyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
         ApplyOptions.SchemaPattern.Bind(result, p => Schema.Pattern = p);
-
-        ApplyOptions.StateFile.Bind(result, State.SetFilePath);
-        ApplyOptions.StateS3Bucket.Bind(result, State.SetS3Bucket);
-        ApplyOptions.StateS3Key.Bind(result, State.SetS3Key);
     }
 }

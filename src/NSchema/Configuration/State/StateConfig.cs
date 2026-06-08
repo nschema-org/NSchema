@@ -22,10 +22,4 @@ internal sealed class StateConfig
     /// </summary>
     [JsonIgnore]
     public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
-
-    public void SetFilePath(string path) => (File ??= new FileStateConfig()).Path = path;
-
-    public void SetS3Bucket(string bucket) => (S3 ??= new S3StateConfig()).Bucket = bucket;
-
-    public void SetS3Key(string key) => (S3 ??= new S3StateConfig()).Key = key;
 }

@@ -42,15 +42,10 @@ internal sealed class PlanConfiguration : IBindable
         PlanOptions.Scope.Bind(result, s => Scope = s);
         PlanOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
 
-        PlanOptions.Provider.Bind(result, Provider.SetProvider);
-        PlanOptions.ConnectionString.Bind(result, Provider.SetConnectionString);
+        PlanOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
 
         PlanOptions.SchemaFormat.Bind(result, f => Schema.Format = f);
         PlanOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
         PlanOptions.SchemaPattern.Bind(result, p => Schema.Pattern = p);
-
-        PlanOptions.StateFile.Bind(result, State.SetFilePath);
-        PlanOptions.StateS3Bucket.Bind(result, State.SetS3Bucket);
-        PlanOptions.StateS3Key.Bind(result, State.SetS3Key);
     }
 }

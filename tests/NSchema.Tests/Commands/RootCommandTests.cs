@@ -21,14 +21,14 @@ public sealed class RootCommandTests
     [InlineData("apply")]
     [InlineData("refresh")]
     [InlineData("destroy")]
-    public void ProviderAndStateOptions_AreAcceptedByDatabaseCommands(string command)
+    public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {
-        // Act
+        // The live database (provider.postgres) and state store are defined in nschema.json — with the connection
+        // string supplied via the NSCHEMA_POSTGRES_CONNECTION_STRING env var — so these are rejected as unknown flags.
         var result = _sut.Parse([command, "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
-        result.Errors.ShouldBeEmpty();
-        result.CommandResult.Command.Name.ShouldBe(command);
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -102,10 +102,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
-    [InlineData("--provider", "postgres")]
-    [InlineData("--connection-string", "x")]
-    [InlineData("--state-file", "s")]
-    public void ValidateRejects_ProviderStateAndMigrationOptions(string option, string value)
+    public void ValidateRejects_MigrationOptions(string option, string value)
     {
         // Act
         var result = _sut.Parse(["validate", option, value]);

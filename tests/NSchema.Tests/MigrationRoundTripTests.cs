@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Text.Json;
+using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
 using RootCommand = NSchema.Commands.RootCommand;
 
@@ -74,12 +76,14 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Refresh_WritesTheLiveSchemaToTheStateFile()
     {
         // Arrange
-        // Refresh reads the live database, so it needs no desired-schema options.
+        // Refresh reads the live database, so it needs no desired-schema options. The state store is defined in
+        // nschema.json (state stores are config-only), so we point refresh at a config file declaring the file store.
         await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
         var stateFile = Path.Combine(_schemaDirectory, "state.json");
+        var configFile = WriteConfig(new { state = new { file = new { path = stateFile } } });
 
         // Act
-        var exitCode = await RunCli("refresh", ["--state-file", stateFile]);
+        var exitCode = await RunCli("refresh", ["--config", configFile]);
 
         // Assert
         exitCode.ShouldBe(0);
@@ -108,18 +112,28 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     private async Task<int> RunCli(string command, string[] commandArguments)
     {
-        string[] args =
-        [
-            command,
-            "--provider", "postgres",
-            "--connection-string", fixture.ConnectionString,
-            .. commandArguments,
-        ];
+        string[] args = [command, .. commandArguments];
 
-        // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
-        return await RootCommand.Create()
-            .Parse(args)
-            .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
+        // The live database is supplied the way real usage does it: via the connection-string environment variable.
+        Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, fixture.ConnectionString);
+        try
+        {
+            // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
+            return await RootCommand.Create()
+                .Parse(args)
+                .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
+        }
+    }
+
+    private string WriteConfig(object config)
+    {
+        var path = Path.Combine(_schemaDirectory, "nschema.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(config));
+        return path;
     }
 
     private async Task<bool> TableExists(string table)

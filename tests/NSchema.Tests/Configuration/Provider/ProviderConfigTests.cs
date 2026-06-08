@@ -7,47 +7,29 @@ public sealed class ProviderConfigTests
     private readonly ProviderConfig _sut = new();
 
     [Fact]
-    public void SetProvider_CreatesPostgresSection()
+    public void EnsurePostgres_CreatesSectionOnFirstUse()
     {
         // Act
-        _sut.SetProvider(ProviderType.Postgres);
+        var section = _sut.EnsurePostgres();
 
         // Assert
-        _sut.Postgres.ShouldNotBeNull();
+        section.ShouldNotBeNull();
+        _sut.Postgres.ShouldBeSameAs(section);
         _sut.ConfiguredSectionCount.ShouldBe(1);
     }
 
     [Fact]
-    public void SetProvider_PreservesExistingSection()
+    public void EnsurePostgres_PreservesExistingSection()
     {
         // Arrange
         var existing = new PostgresProviderConfig { ConnectionString = "Host=localhost" };
         _sut.Postgres = existing;
 
         // Act
-        _sut.SetProvider(ProviderType.Postgres);
+        var section = _sut.EnsurePostgres();
 
         // Assert
-        _sut.Postgres.ShouldBeSameAs(existing);
-    }
-
-    [Fact]
-    public void SetConnectionString_SetsValue_WhenProviderConfigured()
-    {
-        // Arrange
-        _sut.SetProvider(ProviderType.Postgres);
-
-        // Act
-        _sut.SetConnectionString("Host=localhost");
-
-        // Assert
-        _sut.Postgres!.ConnectionString.ShouldBe("Host=localhost");
-    }
-
-    [Fact]
-    public void SetConnectionString_Throws_WhenNoProviderConfigured()
-    {
-        // Act / Assert
-        Should.Throw<InvalidOperationException>(() => _sut.SetConnectionString("Host=localhost"));
+        section.ShouldBeSameAs(existing);
+        section.ConnectionString.ShouldBe("Host=localhost");
     }
 }

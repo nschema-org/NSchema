@@ -35,22 +35,22 @@ deserializes the file into `T` (if any; the default `./nschema.json` is optional
 calls `T.Bind(ParseResult)` to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the
 factory is generic and knows nothing about commands or slices.
 
-The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: its
+The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: an optional
 System.CommandLine `Option<T>`, an optional environment variable, and a parser. It is built fluently
 (`OptionBinding.Create<T>().FromOption("--x").FromEnvironmentVariable(EnvVar).WithDescription(...)`); `.AllowMultipleArguments()`
-and `.Recursive()` configure the underlying option, which is built lazily and cached on first `.Option` access. A binding
-declared without `.FromEnvironmentVariable` is CLI-only. **Parsing the env string is automatic**: enums via
-case-insensitive `Enum.Parse`, strings via identity; pass a parser to `.FromEnvironmentVariable(env, parser)` only for
-other types (an unparseable env value with no parser throws).
+and `.Recursive()` configure the underlying option, which is built lazily and cached on first `.Option` access. At least
+one source is required: a binding with only `.FromEnvironmentVariable` (no `.FromOption`) is **environment-only** — it
+registers no CLI option and `.Option` throws (e.g. the connection string, `NSCHEMA_POSTGRES_CONNECTION_STRING`); one with
+only `.FromOption` is CLI-only. **Parsing the env string is automatic**: enums via case-insensitive `Enum.Parse`, strings
+via identity; pass a parser to `.FromEnvironmentVariable(env, parser)` only for other types (an unparseable env value with
+no parser throws).
 
 `OptionBinding.Bind(result, apply)` enforces the precedence per binding: an explicitly-set CLI option (`{ Implicit: false }`)
 wins over the environment variable, which wins over whatever value is already on the model (the file/base value) — when
 neither CLI nor env is set, `apply` is **not** called, so an unspecified flag never clobbers a config value.
 (`TryGetValue`/`GetValueOrDefault` expose the same resolution without a setter, for consumers like `ConfigurationFactory`
 reading `--config` and `ConsoleFactory`/`Program` reading `--no-color`.) Environment lookups are an allow-list: a binding
-reads only the one variable it was given, named from the `EnvironmentVariables` constants — never raw strings. There is no
-string-parsing shorthand: `--state-s3-bucket`/`--state-s3-key` (and their env vars) populate `state.s3.bucket`/`state.s3.key`
-directly.
+reads only the one variable it was given, named from the `EnvironmentVariables` constants — never raw strings.
 
 This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
 `init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
@@ -94,10 +94,13 @@ patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-f
 already guaranteed the shape. A zero-section provider/state is valid at the builder and means offline; it is the command
 validators (not the builder) that reject it where a section is required.
 
-Each nested section is also reachable from the flat CLI/env overrides: `--connection-string`
-populates `provider.postgres.connectionString`, `--state-file` populates `state.file.path`, and
-`--state-s3-bucket`/`--state-s3-key` populate `state.s3.bucket`/`state.s3.key` (each creating its section on demand). A
-bare `--provider postgres` just ensures the section exists. Rich settings (e.g. `commandTimeout`) are file-only.
+The provider and state store are **defined in `nschema.json`**, not via CLI flags — they describe where the schema
+lives, like a Terraform backend, so there are no `--provider`/`--state-*` options. The lone exception is the secret
+connection string, which has an environment override: `NSCHEMA_POSTGRES_CONNECTION_STRING` is a self-identifying,
+environment-only binding that fills `provider.postgres.connectionString` (via `ProviderConfig.EnsurePostgres()`, creating
+the section if the file omitted it) — it names the Postgres provider on its own, just as `state.s3.*` names the S3 store,
+so no discriminator flag is needed. Everything else about a section (e.g. `commandTimeout`, the chosen state store) is
+file-only.
 
 ## Error handling and output
 

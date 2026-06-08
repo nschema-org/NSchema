@@ -6,29 +6,10 @@ namespace NSchema.Configuration;
 internal static class EnvironmentVariables
 {
     /// <summary>
-    /// Selects the database provider (e.g. <c>postgres</c>).
+    /// The connection string for the PostgreSQL provider. Self-identifying: it fills <c>provider.postgres</c>, so no
+    /// separate provider discriminator is needed (mirroring how <c>state.s3</c> is named by its own settings).
     /// </summary>
-    public const string Provider = "NSCHEMA_PROVIDER";
-
-    /// <summary>
-    /// The connection string for the database provider.
-    /// </summary>
-    public const string ConnectionString = "NSCHEMA_CONNECTION_STRING";
-
-    /// <summary>
-    /// The path for a file state store.
-    /// </summary>
-    public const string StateFile = "NSCHEMA_STATE_FILE";
-
-    /// <summary>
-    /// The bucket for an S3 state store.
-    /// </summary>
-    public const string StateS3Bucket = "NSCHEMA_STATE_S3_BUCKET";
-
-    /// <summary>
-    /// The object key for an S3 state store.
-    /// </summary>
-    public const string StateS3Key = "NSCHEMA_STATE_S3_KEY";
+    public const string PostgresConnectionString = "NSCHEMA_POSTGRES_CONNECTION_STRING";
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions.
