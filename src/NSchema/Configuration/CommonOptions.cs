@@ -15,6 +15,10 @@ internal static class CommonOptions
         .Recursive()
         .WithDescription("Disable colored output.");
 
+    public static readonly OptionBinding<bool> AutoApprove = OptionBinding.Create<bool>()
+        .FromOption("--auto-approve")
+        .WithDescription("Skip the interactive confirmation prompt and perform the operation immediately.");
+
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")
         .AllowMultipleArguments()

@@ -12,15 +12,15 @@ As a consequence, breaking changes that are specific to this provider (rather th
 
 ## [Unreleased]
 
-Initial release of the NSchema CLI. `dotnet tool install -g NSchema.Cli`
+Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 ### Added
 
-- `init`, `plan`, `apply`, `refresh`, `import` and `validate` commands.
+- `init`, `plan`, `apply`, `refresh`, `import`, `destroy` and `validate` commands.
 - Schema support for JSON and YAML files.
 - Provider support for Postgres.
 - Backend store support for files and Amazon S3.
 - Configuration from multiple sources, including `nschema.json`, environment variables, and CLI args.
 - `--scope` to limit a migration to specific database schemas.
 - `--destructive-actions` to control the policy for destructive changes `<error|warn|allow>`.
-- `--auto-approve` to skip the confirmation prompt on `apply`.
+- `--auto-approve` to skip the confirmation prompt on `apply` and `destroy`.

@@ -87,6 +87,22 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         (await File.ReadAllTextAsync(stateFile, TestContext.Current.CancellationToken)).ShouldContain("widgets");
     }
 
+    [Fact]
+    public async Task Destroy_DropsTheManagedSchemaFromTheDatabase()
+    {
+        // Arrange — create the table so there's something to tear down. With no state store, destroy reads the
+        // managed schema from the desired-schema files and drops everything declared there.
+        await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        (await TableExists("widgets")).ShouldBeTrue();
+
+        // Act
+        var exitCode = await RunCli("destroy", [.. SchemaArguments, "--auto-approve"]);
+
+        // Assert
+        exitCode.ShouldBe(0);
+        (await TableExists("widgets")).ShouldBeFalse();
+    }
+
     // Desired-schema options are valid only for plan and apply; refresh rejects them.
     private string[] SchemaArguments => ["--schema-dir", _schemaDirectory, "--format", "json"];
 

@@ -59,6 +59,24 @@ public sealed class ConsoleOperationConfirmationTests
     }
 
     [Fact]
+    public async Task Confirm_WarnsAndPromptsToDestroy_WhenRequestIsDestructive()
+    {
+        // Arrange
+        var request = new DestroyConfirmationRequest(new MigrationPlan([], [], []));
+        _console.Interactive();
+        _console.Input.PushTextWithEnter("yes");
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
+
+        // Act
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        approved.ShouldBeTrue();
+        _console.Output.ShouldContain("DROP");
+        _console.Output.ShouldContain("destroy these objects");
+    }
+
+    [Fact]
     public async Task Confirm_DeclinesWithoutPrompting_WhenNotInteractive()
     {
         // Arrange — a non-interactive console (redirected stdin / CI) has no input to read.

@@ -4,13 +4,21 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IOperationConfirmation"/> that prompts on the terminal before applying changes.
+/// An <see cref="IOperationConfirmation"/> that prompts on the terminal before changes are made to the database.
 /// </summary>
 internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsole console) : IOperationConfirmation
 {
     public ValueTask<bool> Confirm(OperationConfirmationRequest request, CancellationToken cancellationToken = default)
     {
-        console.MarkupLineInterpolated($"NSchema will execute [yellow]{request.Plan.Actions.Count}[/] action(s) against the database.");
+        // A destructive request (teardown) drops managed objects, so warn more loudly and prompt accordingly.
+        if (request.IsDestructive)
+        {
+            console.MarkupLineInterpolated($"[red]NSchema will DROP managed objects via [yellow]{request.Plan.Actions.Count}[/] action(s). This is destructive and cannot be undone.[/]");
+        }
+        else
+        {
+            console.MarkupLineInterpolated($"NSchema will execute [yellow]{request.Plan.Actions.Count}[/] action(s) against the database.");
+        }
 
         if (autoApprove)
         {
@@ -22,12 +30,16 @@ internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsol
         // block or throw, preserving the previous Console.ReadLine() behavior where EOF declined.
         if (!console.Profile.Capabilities.Interactive)
         {
-            console.MarkupLine("[grey]No interactive terminal; declining. Use --auto-approve to apply non-interactively.[/]");
+            console.MarkupLine("[grey]No interactive terminal; declining. Use --auto-approve to proceed non-interactively.[/]");
             return ValueTask.FromResult(false);
         }
 
+        var question = request.IsDestructive
+            ? "Do you want to destroy these objects? Only [green]yes[/] will be accepted:"
+            : "Do you want to apply these changes? Only [green]yes[/] will be accepted:";
+
         var response = console.Prompt(
-            new TextPrompt<string>("Do you want to apply these changes? Only [green]yes[/] will be accepted:")
+            new TextPrompt<string>(question)
                 .AllowEmpty());
 
         var approved = string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase);

@@ -64,7 +64,7 @@ This installs the `nschema` command.
 
 ## Commands
 
-The `plan`, `apply`, `refresh`, and `import` commands accept the [common options](#common-options) below (`import` uses the provider options, not the state ones). Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
+The `plan`, `apply`, `refresh`, `import`, and `destroy` commands accept the [common options](#common-options) below (`import` uses the provider options, not the state ones). Any option can instead be set in `nschema.json` or via an environment variable (see: [Configuration](#configuration)). `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
 
 ### `nschema init`
 
@@ -167,6 +167,21 @@ into NSchema: import it, then check the generated files into source control and 
 
 ```sh
 nschema import --provider postgres --output ./schemas --partition Table
+```
+
+### `nschema destroy`
+
+Drop all managed schema objects from the target database. Prompts for confirmation before making changes unless
+`--auto-approve` is given. This is purely destructive and is exempt from the destructive-action policy — it's the
+intended escape hatch for tearing a managed schema back down.
+
+**Needs:** a live database (`--provider` plus a connection string the tool can write to), and a source for the
+schema to tear down — a state store (`--state-file`, or `--state-s3-bucket`/`--state-s3-key`), or, with no store,
+a desired schema (`--schema-dir`) to fall back on. When a state store is configured it is refreshed after the
+teardown. Accepts `--scope` to limit the teardown to specific namespaces, and `--auto-approve` to skip the prompt.
+
+```sh
+nschema destroy --provider postgres --state-file ./nschema.state.json
 ```
 
 ## Configuration

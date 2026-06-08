@@ -4,17 +4,16 @@ using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 
-namespace NSchema.Commands.Apply;
+namespace NSchema.Commands.Destroy;
 
-internal static class ApplyCommand
+internal static class DestroyCommand
 {
     public static Command Create()
     {
-        var command = new Command("apply", "Compute the plan and apply it to the target database.");
+        var command = new Command("destroy", "Drop all managed schema objects from the target database.");
 
         command.Options.Add(CommonOptions.Config.Option);
         command.Options.Add(CommonOptions.Scope.Option);
-        command.Options.Add(CommonOptions.Destructive.Option);
         command.Options.Add(CommonOptions.AutoApprove.Option);
 
         command.Options.AddRange(ProviderOptions.All);
@@ -25,24 +24,30 @@ internal static class ApplyCommand
         return command;
     }
 
-    private static ApplyConfiguration Resolve(ParseResult result)
+    private static DestroyConfiguration Resolve(ParseResult result)
     {
-        var config = ConfigurationFactory.Load<ApplyConfiguration>(result);
-        new ApplyConfigurationValidator().ValidateOrThrow(config);
+        var config = ConfigurationFactory.Load<DestroyConfiguration>(result);
+        new DestroyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var configuration = Resolve(parseResult);
-        using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Schema)
+        var builder = CliApplicationBuilder.Create()
             .ConfigureScope(configuration.Scope)
-            .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
-            .ConfigureConfirmation(configuration.AutoApprove)
-            .Build();
-        await app.Apply(cancellationToken);
+            .ConfigureConfirmation(configuration.AutoApprove);
+
+        // The desired schema is only the teardown source when no state store is configured; otherwise omit it so we
+        // don't glob the working directory for schema files that aren't needed.
+        if (configuration.HasSchema)
+        {
+            builder.ConfigureDesiredSchema(configuration.Schema);
+        }
+
+        using var app = builder.Build();
+        await app.Destroy(cancellationToken);
     }
 }
