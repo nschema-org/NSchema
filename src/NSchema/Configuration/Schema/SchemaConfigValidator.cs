@@ -8,7 +8,7 @@ internal sealed class SchemaConfigValidator : AbstractValidator<SchemaConfig>
     {
         RuleFor(x => x.Directory)
             .NotEmpty()
-            .WithMessage("No schema directory configured. Set \"schema.dir\" in nschema.json or pass --schema-dir.");
+            .WithMessage("No schema directory configured. Set \"schema.dir\" in nschema.json.");
 
         RuleFor(x => x.Format)
             .IsInEnum()

@@ -10,7 +10,6 @@ internal static class ValidateCommand
         var command = new Command("validate", "Validate the desired schema without contacting a database or state store.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.AddRange(ValidateOptions.All);
 
         command.SetAction(Run);
         return command;

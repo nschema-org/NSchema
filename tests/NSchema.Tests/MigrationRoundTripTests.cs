@@ -38,6 +38,10 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         """;
 
         File.WriteAllText(Path.Combine(_schemaDirectory, "schema.yaml"), schemaDocument);
+
+        // The project's nschema.json lives in the run directory; schema.dir is relative to it. Commands find it via
+        // --directory, the way real usage does — no per-command schema flags.
+        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), """{ "schema": { "dir": "." } }""");
         return ValueTask.CompletedTask;
     }
 
@@ -52,7 +56,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Apply_CreatesTheDesiredSchemaInTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        var exitCode = await RunCli("apply", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -63,7 +67,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Plan_DoesNotModifyTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("plan", SchemaArguments);
+        var exitCode = await RunCli("plan");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -75,13 +79,13 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     {
         // Arrange
         // Refresh reads the live database, so it needs no desired-schema options. The state store is defined in
-        // nschema.json (state stores are config-only), so we point refresh at a config file declaring the file store.
-        await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        // config (state stores are config-only), so we point refresh at a config file declaring the file store.
+        await RunCli("apply", "--auto-approve");
         var stateFile = Path.Combine(_schemaDirectory, "state.json");
-        var configFile = WriteConfig(new { state = new { file = new { path = stateFile } } });
+        var configFile = WriteConfig("refresh.json", new { state = new { file = new { path = stateFile } } });
 
         // Act
-        var exitCode = await RunCli("refresh", ["--config", configFile]);
+        var exitCode = await RunCli("refresh", "--config", configFile);
 
         // Assert
         exitCode.ShouldBe(0);
@@ -94,25 +98,25 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     {
         // Arrange — create the table so there's something to tear down. With no state store, destroy reads the
         // managed schema from the desired-schema files and drops everything declared there.
-        await RunCli("apply", [.. SchemaArguments, "--auto-approve"]);
+        await RunCli("apply", "--auto-approve");
         (await TableExists("widgets")).ShouldBeTrue();
 
         // Act
-        var exitCode = await RunCli("destroy", [.. SchemaArguments, "--auto-approve"]);
+        var exitCode = await RunCli("destroy", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
-    // The schema directory is the one desired-schema flag (format/pattern are config-only); refresh takes none of them.
-    private string[] SchemaArguments => ["--schema-dir", _schemaDirectory];
-
-    private async Task<int> RunCli(string command, string[] commandArguments)
+    private async Task<int> RunCli(string command, params string[] commandArguments)
     {
-        string[] args = [command, .. commandArguments];
+        // --directory points every command at the project dir; nschema.json and its relative paths resolve there.
+        string[] args = [command, "--directory", _schemaDirectory, .. commandArguments];
 
         // The live database is supplied the way real usage does it: via the connection-string environment variable.
+        // --directory changes the process working directory (in ConfigurationFactory), so snapshot and restore it.
+        var workingDirectory = Directory.GetCurrentDirectory();
         Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, fixture.ConnectionString);
         try
         {
@@ -123,13 +127,14 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         }
         finally
         {
+            Directory.SetCurrentDirectory(workingDirectory);
             Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
         }
     }
 
-    private string WriteConfig(object config)
+    private string WriteConfig(string name, object config)
     {
-        var path = Path.Combine(_schemaDirectory, "nschema.json");
+        var path = Path.Combine(_schemaDirectory, name);
         File.WriteAllText(path, JsonSerializer.Serialize(config));
         return path;
     }

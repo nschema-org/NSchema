@@ -87,14 +87,12 @@ It verifies that:
 - primary keys, indexes, and foreign keys reference columns that exist, and foreign keys reference a table whose primary key or a unique index matches the referenced columns (**errors**);
 - tables have a primary key, primary-key columns aren't nullable, and no key or index lists a column twice (**warnings**).
 
-**Needs:** only a desired schema (`--schema-dir`).
+**Needs:** only a desired schema, configured in `nschema.json`.
 
-- `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
-
-The schema **format** (`schema.format`, default `yaml`) and **glob** (`schema.pattern`, default `**/*.yaml` or `**/*.json`) describe how the project's files are laid out, so they're set in `nschema.json` rather than per run.
+The schema's location and shape describe how the project's files are laid out, so they all live in config rather than as per-run flags: **dir** (`schema.dir`), **format** (`schema.format`, default `yaml`), and **glob** (`schema.pattern`, default `**/*.yaml` or `**/*.json`). Run inside the project, or point at it with `--directory`.
 
 ```sh
-nschema validate --schema-dir ./schemas
+nschema validate --directory ./my-project
 ```
 
 ### Database and state
@@ -103,26 +101,28 @@ The live database (`provider`) and the state store (`state`) describe *where* yo
 
 - **Connection string** — `provider.postgres.connectionString` in `nschema.json`, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The variable names the Postgres provider on its own — just as `state.s3.*` names the S3 store — so no separate provider selector is needed.
 
+The schema source is config too — `schema.dir` (plus `schema.format`/`schema.pattern`) — so a project's *where* (database, state, schema files) lives entirely in `nschema.json`, and the CLI flags are just the per-run workflow knobs.
+
 Every command also accepts:
 
-- `--config <path>` — path to the config file. Defaults to `./nschema.json` if present.
+- `--directory <dir>` — the project directory to run in; `nschema.json` and the relative paths inside it resolve here (like `terraform -chdir`). Defaults to the current directory.
+- `--config <path>` — config file path, relative to `--directory`. Defaults to `nschema.json`.
 - `--no-color` — disable colored output. _(env `NO_COLOR`)_
 
 ### `nschema plan`
 
 Compute and show the migration plan, without changing anything.
 
-**Needs:** a desired schema (`--schema-dir`) and a current-state source — either a live database (configured
+**Needs:** a desired schema (configured `schema.dir`) and a current-state source — either a live database (configured
 `provider.postgres`) or, for offline planning, a state store (configured `state`). See [Database and state](#database-and-state).
 
-- `--schema-dir <path>` _(required)_ — directory containing the desired-schema files. _(config `schema.dir`)_
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 
 The schema **format** (`schema.format`) and **glob** (`schema.pattern`) are config-only — see [`validate`](#nschema-validate).
 
 ```sh
-nschema plan --schema-dir ./schemas
+nschema plan
 ```
 
 ### `nschema apply`
@@ -137,7 +137,7 @@ Accepts every [`plan`](#nschema-plan) option, plus:
 - `--auto-approve` — skip the confirmation prompt and apply immediately.
 
 ```sh
-nschema apply --schema-dir ./schemas
+nschema apply
 ```
 
 ### `nschema refresh`
@@ -176,19 +176,19 @@ Drop all managed schema objects from the target database. Prompts for confirmati
 intended escape hatch for tearing a managed schema back down.
 
 **Needs:** a live database (configured `provider.postgres`) the tool can write to, and a source for the schema to tear
-down — a configured state store (`state.file` or `state.s3`), or, with no store, a desired schema (`--schema-dir`) to
-fall back on. When a state store is configured it is refreshed after the teardown. Accepts `--scope` to limit the
-teardown to specific namespaces, and `--auto-approve` to skip the prompt.
+down — a configured state store (`state.file` or `state.s3`), or, with no store, a desired schema (configured
+`schema.dir`) to fall back on. When a state store is configured it is refreshed after the teardown. Accepts `--scope` to
+limit the teardown to specific namespaces, and `--auto-approve` to skip the prompt.
 
 ```sh
-nschema destroy --schema-dir ./schemas
+nschema destroy
 ```
 
 ## Configuration
 
 Settings come from three sources, in increasing order of precedence:
 
-1. The `nschema.json` config file (or the file passed to `--config`).
+1. The `nschema.json` config file — discovered in the `--directory` (default: the current directory), or the file passed to `--config`. Relative paths inside it (`schema.dir`, `state.file.path`) resolve against that directory.
 2. `NSCHEMA_*` environment variables.
 3. Command-line options.
 

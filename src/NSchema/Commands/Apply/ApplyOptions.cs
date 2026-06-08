@@ -10,10 +10,6 @@ internal static class ApplyOptions
     public static readonly OptionBinding<string> PostgresConnectionString = OptionBinding.Create<string>()
         .FromEnvironmentVariable(EnvironmentVariables.PostgresConnectionString);
 
-    public static readonly OptionBinding<string> SchemaDirectory = OptionBinding.Create<string>()
-        .FromOption("--schema-dir")
-        .WithDescription("Directory containing the desired-schema files to apply. Required unless set in config.");
-
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")
         .AllowMultipleArguments()
@@ -30,7 +26,6 @@ internal static class ApplyOptions
 
     public static IEnumerable<Option> All =>
     [
-        SchemaDirectory.Option,
         Scope.Option,
         Destructive.Option,
         AutoApprove.Option,

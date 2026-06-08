@@ -41,7 +41,6 @@ internal sealed class PlanConfiguration : IBindable
     {
         PlanOptions.Scope.Bind(result, s => Scope = s);
         PlanOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
-        PlanOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
         PlanOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

@@ -64,10 +64,10 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("plan")]
     [InlineData("apply")]
-    public void DesiredAndMigrationOptions_AreAcceptedByPlanAndApply(string command)
+    public void MigrationOptions_AreAcceptedByPlanAndApply(string command)
     {
-        // Act — schema format/pattern are config-only; the schema directory and migration knobs stay flags.
-        var result = _sut.Parse([command, "--schema-dir", "d", "--scope", "public", "--destructive-actions", "Warn"]);
+        // Act — the schema (dir/format/pattern) is config-only now; only the migration knobs are flags.
+        var result = _sut.Parse([command, "--scope", "public", "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -76,9 +76,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
-    [InlineData("--format", "json")]
-    [InlineData("--schema-dir", "d")]
-    public void RefreshRejects_DesiredAndMigrationOptions(string option, string value)
+    public void RefreshRejects_MigrationOptions(string option, string value)
     {
         // Act
         var result = _sut.Parse(["refresh", option, value]);
@@ -87,11 +85,28 @@ public sealed class RootCommandTests
         result.Errors.ShouldNotBeEmpty();
     }
 
-    [Fact]
-    public void Validate_AcceptsSchemaOptions()
+    [Theory]
+    [InlineData("init")]
+    [InlineData("validate")]
+    [InlineData("plan")]
+    [InlineData("apply")]
+    [InlineData("refresh")]
+    [InlineData("import")]
+    [InlineData("destroy")]
+    public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
-        // Act — schema format/pattern are config-only; validate takes the directory and --config.
-        var result = _sut.Parse(["validate", "--schema-dir", "d", "--config", "c"]);
+        // --directory is a recursive root option, so it can follow the subcommand on any command.
+        var result = _sut.Parse([command, "--directory", "."]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Validate_AcceptsConfigAndDirectory()
+    {
+        // Act — validate reads the schema from config; it exposes no schema flags of its own.
+        var result = _sut.Parse(["validate", "--config", "c", "--directory", "."]);
 
         // Assert
         result.Errors.ShouldBeEmpty();

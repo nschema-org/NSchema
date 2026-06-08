@@ -9,10 +9,6 @@ internal static class DestroyOptions
     public static readonly OptionBinding<string> PostgresConnectionString = OptionBinding.Create<string>()
         .FromEnvironmentVariable(EnvironmentVariables.PostgresConnectionString);
 
-    public static readonly OptionBinding<string> SchemaDirectory = OptionBinding.Create<string>()
-        .FromOption("--schema-dir")
-        .WithDescription("Directory containing the managed-schema files, used as the teardown source when no state store is configured.");
-
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")
         .AllowMultipleArguments()
@@ -24,7 +20,6 @@ internal static class DestroyOptions
 
     public static IEnumerable<Option> All =>
     [
-        SchemaDirectory.Option,
         Scope.Option,
         AutoApprove.Option,
     ];

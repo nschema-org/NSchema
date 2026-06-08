@@ -47,7 +47,6 @@ internal sealed class ApplyConfiguration : IBindable
         ApplyOptions.Scope.Bind(result, s => Scope = s);
         ApplyOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
-        ApplyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
         ApplyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

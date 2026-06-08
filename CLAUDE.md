@@ -30,10 +30,13 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 ## Configuration resolution (the heart of the CLI)
 
 A command's config is resolved in three layers, **lowest to highest precedence**: the loaded **`nschema.json`**, then
-**environment variables**, then **command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it
-deserializes the file into `T` (if any; the default `./nschema.json` is optional, an explicit `--config` must exist), then
-calls `T.Bind(ParseResult)` to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the
-factory is generic and knows nothing about commands or slices.
+**environment variables**, then **command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it first
+honors **`--directory`** (the recursive root option; it `SetCurrentDirectory`s so the config file and every relative path
+inside it resolve against the project dir, Terraform-`-chdir`-style — done here, the one chokepoint every command funnels
+through, so it holds whether the CLI runs via `Program` or is invoked directly in a test), then deserializes the file into
+`T` (if any; the default `nschema.json` is optional, an explicit `--config` must exist), then calls `T.Bind(ParseResult)`
+to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the factory is generic and
+knows nothing about commands or slices.
 
 The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: an optional
 System.CommandLine `Option<T>`, an optional environment variable, and a parser. It is built fluently
@@ -116,7 +119,7 @@ is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does *
 
 Options are **owned by the command, not the slice**: each command has a `Commands/<Name>/<Name>Options` class holding an
 `OptionBinding` for every flag (and env-only binding) it resolves, with the description tailored to that command.
-Duplication across commands — both `apply` and `plan` declare their own `--schema-dir`, etc. — is the deliberate cost of
+Duplication across commands — both `apply` and `plan` declare their own `--scope`, etc. — is the deliberate cost of
 per-command ownership and contextual help; there are no shared slice-level option classes. `Configuration/CommonOptions`
 holds only the two harness-level flags that are **not** bound to any config slice: `Config` (read by
 `ConfigurationFactory`) and `NoColor` (read at the root). Each `*Options` exposes `All` (an `IEnumerable<Option>` of its
@@ -127,7 +130,7 @@ stay centralized in `Configuration/EnvironmentVariables` as the auditable surfac
 
 ## Desired-schema files
 
-The files users point `--schema-dir` at are **`DatabaseSchema` documents** (YAML by default, or JSON). Column `type` is a
+The files under `schema.dir` are **`DatabaseSchema` documents** (YAML by default, or JSON). Column `type` is a
 **compact string** (`bigint`, `text`, `varchar(255)`), not the `{ "kind": ... }` object form — that object form is the
 state-snapshot serialization, which is a different thing. See `README.md` for a worked example.
 
@@ -135,6 +138,8 @@ state-snapshot serialization, which is a different thing. See `README.md` for a 
 
 Tests use `// Arrange` / `// Act` / `// Assert` sections and a single member-level `_sut` field where the system under
 test is an instance (static types use a small invocation helper instead). Mocks use NSubstitute, assertions use Shouldly.
-Test parallelization is disabled assembly-wide because config resolution reads process-global environment variables; tests
-that exercise env-var bindings (e.g. `OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they
-touch in their constructor and `Dispose` to stay hermetic.
+Test parallelization is disabled assembly-wide (`[assembly: CollectionBehavior(DisableTestParallelization = true)]` in
+`AssemblyInfo.cs`) because config resolution reads and mutates process-global state — environment variables, and the
+current working directory via `--directory`. Tests that touch that state restore it: env-var tests (e.g.
+`OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they use in their constructor and `Dispose`,
+and the cwd-changing tests (`ConfigurationFactoryTests`, `MigrationRoundTripTests`) save and restore the working directory.
