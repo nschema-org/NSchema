@@ -1,0 +1,33 @@
+using System.CommandLine;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
+
+namespace NSchema.Commands.Drift;
+
+/// <summary>
+/// configuration for the drift command.
+/// </summary>
+internal sealed class DriftConfiguration : IBindable
+{
+    /// <summary>
+    /// The database provider supplying the live schema the recorded state is compared against.
+    /// </summary>
+    public ProviderConfig Provider { get; init; } = new();
+
+    /// <summary>
+    /// The state store holding the recorded schema the live database is compared against.
+    /// </summary>
+    public StateConfig State { get; init; } = new();
+
+    /// <summary>
+    /// Optional scope filter limiting the drift check to specific database schemas (namespaces).
+    /// </summary>
+    public string[]? Scope { get; private set; }
+
+    public void Bind(ParseResult result)
+    {
+        DriftOptions.Scope.Bind(result, s => Scope = s);
+        DriftOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+    }
+}

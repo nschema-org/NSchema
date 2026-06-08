@@ -2,6 +2,8 @@ using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Schema;
+using NSchema.Schema.Model;
 using NSchema.Scripts.Model;
 using NSchema.Services;
 using NSchema.Sql;
@@ -15,6 +17,7 @@ public sealed class SpectreOperationReporterTests
     private readonly TestConsole _out = new();
     private readonly TestConsole _error = new();
     private readonly IDiffRenderer _diffRenderer = Substitute.For<IDiffRenderer>();
+    private readonly ISchemaRenderer _schemaRenderer = Substitute.For<ISchemaRenderer>();
     private readonly ISqlPlanRenderer _sqlPlanRenderer = Substitute.For<ISqlPlanRenderer>();
     private readonly SpectreOperationReporter _sut;
 
@@ -22,7 +25,7 @@ public sealed class SpectreOperationReporterTests
     {
         _out.Profile.Width = 200;
         _error.Profile.Width = 200;
-        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _sqlPlanRenderer);
+        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer);
     }
 
     [Fact]
@@ -74,6 +77,33 @@ public sealed class SpectreOperationReporterTests
 
         // Act
         _sut.ReportDiff(diff: null!);
+
+        // Assert
+        _out.Output.ShouldContain("text[]");
+    }
+
+    [Fact]
+    public void ReportSchema_FramesTheRenderedSchemaInASection()
+    {
+        // Arrange
+        _schemaRenderer.Render(Arg.Any<DatabaseSchema>()).Returns("table app.widgets\n    id bigint not null");
+
+        // Act
+        _sut.ReportSchema(schema: null!);
+
+        // Assert
+        _out.Output.ShouldContain("Schema");
+        _out.Output.ShouldContain("table app.widgets");
+    }
+
+    [Fact]
+    public void ReportSchema_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
+    {
+        // Arrange — column array types contain square brackets, which are Spectre markup delimiters.
+        _schemaRenderer.Render(Arg.Any<DatabaseSchema>()).Returns("tags text[]");
+
+        // Act
+        _sut.ReportSchema(schema: null!);
 
         // Assert
         _out.Output.ShouldContain("text[]");

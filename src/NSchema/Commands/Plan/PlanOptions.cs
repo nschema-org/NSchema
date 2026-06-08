@@ -20,9 +20,14 @@ internal static class PlanOptions
         .FromEnvironmentVariable(EnvironmentVariables.DestructiveActionPolicy)
         .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, or Allow.");
 
+    public static readonly OptionBinding<bool> Destroy = OptionBinding.Create<bool>()
+        .FromOption("--destroy")
+        .WithDescription("Preview the plan that \"destroy\" would run to tear the managed schema down, without applying it.");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
         Destructive.Option,
+        Destroy.Option,
     ];
 }

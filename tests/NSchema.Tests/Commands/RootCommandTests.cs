@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift"], ignoreOrder: true);
     }
 
     [Theory]
@@ -21,6 +21,8 @@ public sealed class RootCommandTests
     [InlineData("apply")]
     [InlineData("refresh")]
     [InlineData("destroy")]
+    [InlineData("show")]
+    [InlineData("drift")]
     public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {
         // The live database (provider.postgres) and state store are defined in nschema.json — with the connection
@@ -73,6 +75,26 @@ public sealed class RootCommandTests
         result.Errors.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Destroy_IsAcceptedByPlan()
+    {
+        // Act — plan --destroy previews a teardown, Terraform-style.
+        var result = _sut.Parse(["plan", "--destroy"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Destroy_IsRejectedByApply()
+    {
+        // Act — --destroy is a plan-only preview flag; tearing down for real is the dedicated destroy command.
+        var result = _sut.Parse(["apply", "--destroy"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
@@ -93,6 +115,8 @@ public sealed class RootCommandTests
     [InlineData("refresh")]
     [InlineData("import")]
     [InlineData("destroy")]
+    [InlineData("show")]
+    [InlineData("drift")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.
@@ -120,6 +144,30 @@ public sealed class RootCommandTests
     {
         // Act
         var result = _sut.Parse(["validate", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("show")]
+    [InlineData("drift")]
+    public void Scope_IsAcceptedByShowAndDrift(string command)
+    {
+        // Act — show and drift filter the recorded state by namespace, but expose no destructive-action knob.
+        var result = _sut.Parse([command, "--scope", "public"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("show")]
+    [InlineData("drift")]
+    public void ShowAndDriftReject_DestructiveActions(string command)
+    {
+        // Act — neither command produces a migration, so the destructive-action policy is meaningless.
+        var result = _sut.Parse([command, "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();
