@@ -5,6 +5,7 @@ using NSchema.Diff.Model;
 using NSchema.Operations;
 using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Scripts.Model;
 using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
@@ -44,8 +45,6 @@ internal sealed class SpectreOperationReporter : IOperationReporter
         _sqlPlanRenderer = sqlPlanRenderer;
     }
 
-    public string Format => ReporterName;
-
     public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
 
     public void ReportException(Exception exception)
@@ -61,14 +60,46 @@ internal sealed class SpectreOperationReporter : IOperationReporter
 
     public void ReportPlan(MigrationPlan plan)
     {
-        // TODO: Implement
-        throw new NotImplementedException();
+        ReportScripts("Pre-deployment", plan.PreDeploymentScripts);
+        ReportScripts("Post-deployment", plan.PostDeploymentScripts);
+    }
+
+    // Lists the script names under a section rule (the SQL itself is shown by ReportSqlPlan). An empty section is
+    // skipped, matching the default reporter, so a plan with no scripts produces no output.
+    private void ReportScripts(string title, IReadOnlyList<Script> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            return;
+        }
+
+        var builder = new StringBuilder();
+
+        for (var i = 0; i < scripts.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+
+            builder.Append("  - ").Append(Markup.Escape(scripts[i].Name));
+        }
+
+        WriteSection(title, new Markup(builder.ToString()));
     }
 
     public void ReportSqlPlan(SqlPlan plan)
     {
         var body = DimComments(_sqlPlanRenderer.Render(plan));
         WriteSection("SQL", body);
+    }
+
+    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
+    {
+        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
+        var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
+        var console = notable ? _error : _out;
+        console.ReportDiagnostics(diagnostics);
     }
 
     // A single-line rule header rather than a Panel: it gives the section visual separation without prefixing
@@ -79,14 +110,6 @@ internal sealed class SpectreOperationReporter : IOperationReporter
         _out.Write(body);
         _out.WriteLine();
         _out.WriteLine();
-    }
-
-    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
-    {
-        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
-        var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
-        var console = notable ? _error : _out;
-        console.ReportDiagnostics(diagnostics);
     }
 
     // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the

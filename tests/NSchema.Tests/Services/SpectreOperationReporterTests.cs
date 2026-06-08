@@ -1,6 +1,8 @@
 using NSchema.Diff;
 using NSchema.Diff.Model;
+using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Scripts.Model;
 using NSchema.Services;
 using NSchema.Sql;
 using NSchema.Sql.Model;
@@ -89,6 +91,55 @@ public sealed class SpectreOperationReporterTests
         // Assert
         _out.Output.ShouldContain("SQL");
         _out.Output.ShouldContain("CREATE TABLE app.widgets");
+    }
+
+    [Fact]
+    public void ReportPlan_ListsEachScriptNameUnderItsSection()
+    {
+        // Arrange
+        var plan = new MigrationPlan(
+            [],
+            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)],
+            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldContain("Pre-deployment");
+        _out.Output.ShouldContain("seed-roles");
+        _out.Output.ShouldContain("Post-deployment");
+        _out.Output.ShouldContain("reindex");
+    }
+
+    [Fact]
+    public void ReportPlan_SkipsSectionsWithNoScripts()
+    {
+        // Arrange
+        var plan = new MigrationPlan(
+            [],
+            [],
+            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldNotContain("Pre-deployment");
+        _out.Output.ShouldContain("Post-deployment");
+    }
+
+    [Fact]
+    public void ReportPlan_WritesNothing_WhenThereAreNoScripts()
+    {
+        // Arrange
+        var plan = new MigrationPlan([], [], []);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldBeEmpty();
     }
 
     [Fact]
