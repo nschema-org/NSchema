@@ -118,11 +118,22 @@ Compute and show the migration plan, without changing anything.
 
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
+- `--destroy` — preview the SQL that [`destroy`](#nschema-destroy) would run to tear the managed schema down, instead of a forward plan (Terraform's `plan -destroy`).
 
 The schema **format** (`schema.format`) and **glob** (`schema.pattern`) are config-only — see [`validate`](#nschema-validate).
 
 ```sh
 nschema plan
+```
+
+With `--destroy` the command previews a teardown rather than a forward migration. It takes the same inputs as
+[`destroy`](#nschema-destroy) — a live database (configured `provider.postgres`) the teardown SQL is rendered against,
+and a managed-schema source (a configured state store, or a desired schema to fall back on) — but only **shows** the SQL;
+it never connects to apply it, prompts, or writes state. `--scope` and `--destructive-actions` don't apply to a teardown
+and are ignored.
+
+```sh
+nschema plan --destroy
 ```
 
 ### `nschema apply`

@@ -33,14 +33,28 @@ internal sealed class PlanConfiguration : IBindable
     public string[]? Scope { get; private set; }
 
     /// <summary>
-    /// The policy applied when the plan contains destructive actions.
+    /// The policy applied when the plan contains destructive actions. Unused in <c>--destroy</c> mode, which bypasses
+    /// the diff and its policies.
     /// </summary>
     public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
+
+    /// <summary>
+    /// Whether to preview a teardown of the managed schema (Terraform's <c>plan -destroy</c>) instead of a forward plan.
+    /// </summary>
+    // internal set: bound via Bind, but the mode toggle drives the validator's two branches, so tests set it directly.
+    public bool Destroy { get; internal set; }
+
+    /// <summary>
+    /// Whether a desired schema source is configured to fall back on when no state store is present (the teardown
+    /// source in <c>--destroy</c> mode).
+    /// </summary>
+    public bool HasSchema => !string.IsNullOrWhiteSpace(Schema.Directory);
 
     public void Bind(ParseResult result)
     {
         PlanOptions.Scope.Bind(result, s => Scope = s);
         PlanOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
+        PlanOptions.Destroy.Bind(result, d => Destroy = d);
         PlanOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

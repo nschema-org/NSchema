@@ -75,6 +75,26 @@ public sealed class RootCommandTests
         result.Errors.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Destroy_IsAcceptedByPlan()
+    {
+        // Act — plan --destroy previews a teardown, Terraform-style.
+        var result = _sut.Parse(["plan", "--destroy"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Destroy_IsRejectedByApply()
+    {
+        // Act — --destroy is a plan-only preview flag; tearing down for real is the dedicated destroy command.
+        var result = _sut.Parse(["apply", "--destroy"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
