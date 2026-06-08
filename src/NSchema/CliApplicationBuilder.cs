@@ -5,7 +5,6 @@ using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
-using NSchema.Hosting;
 using NSchema.Migration;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
@@ -17,8 +16,8 @@ namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
-    private readonly NSchemaApplicationBuilder _builder = NSchemaApplication.CreateBuilder()
-        .WithExceptionBehavior(ExceptionBehavior.Throw)
+    private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
+        .CreateBuilder(new NSchemaApplicationOptions { ExceptionBehavior = ExceptionBehavior.Throw })
         .AddYamlSchemaSerializer()
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
