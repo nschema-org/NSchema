@@ -21,7 +21,7 @@ public sealed class RootCommandTests
     [InlineData("apply")]
     [InlineData("refresh")]
     [InlineData("destroy")]
-    public void GlobalOptions_AreAvailableToEveryCommand(string command)
+    public void ProviderAndStateOptions_AreAcceptedByDatabaseCommands(string command)
     {
         // Act
         var result = _sut.Parse([command, "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);

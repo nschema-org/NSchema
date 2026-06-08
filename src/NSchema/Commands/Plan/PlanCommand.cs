@@ -1,8 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
-using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Plan;
 
@@ -13,12 +10,7 @@ internal static class PlanCommand
         var command = new Command("plan", "Compute and show the migration plan without applying it.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.Add(CommonOptions.Scope.Option);
-        command.Options.Add(CommonOptions.Destructive.Option);
-
-        command.Options.AddRange(ProviderOptions.All);
-        command.Options.AddRange(StateOptions.All);
-        command.Options.AddRange(SchemaOptions.All);
+        command.Options.AddRange(PlanOptions.All);
 
         command.SetAction(Run);
         return command;

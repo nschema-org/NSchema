@@ -1,7 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Import;
-using NSchema.Configuration.Provider;
 
 namespace NSchema.Commands.Import;
 
@@ -12,10 +10,7 @@ internal static class ImportCommand
         var command = new Command("import", "Read the live database schema and write it as desired-schema source files.");
 
         command.Options.Add(CommonOptions.Config.Option);
-        command.Options.Add(CommonOptions.Scope.Option);
-
-        command.Options.AddRange(ProviderOptions.All);
-        command.Options.AddRange(ImportTargetOptions.All);
+        command.Options.AddRange(ImportOptions.All);
 
         command.SetAction(Run);
         return command;

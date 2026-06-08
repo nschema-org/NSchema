@@ -1,11 +1,9 @@
-using System.CommandLine;
-using NSchema.Configuration.Binding;
 using NSchema.Configuration.Schema;
 using NSchema.Import;
 
 namespace NSchema.Configuration.Import;
 
-internal sealed class ImportTargetConfig : IBindable
+internal sealed class ImportTargetConfig
 {
     /// <summary>
     /// The output path:
@@ -23,11 +21,4 @@ internal sealed class ImportTargetConfig : IBindable
     /// Controls how the imported schema is split across output files.
     /// </summary>
     public ImportPartitionMode Partition { get; set; } = ImportPartitionMode.None;
-
-    public void Bind(ParseResult result)
-    {
-        ImportTargetOptions.Output.Bind(result, p => OutputPath = p);
-        ImportTargetOptions.Format.Bind(result, f => Format = f);
-        ImportTargetOptions.Partition.Bind(result, p => Partition = p);
-    }
 }

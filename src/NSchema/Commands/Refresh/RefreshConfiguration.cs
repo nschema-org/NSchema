@@ -22,7 +22,11 @@ internal sealed class RefreshConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        Provider.Bind(result);
-        State.Bind(result);
+        RefreshOptions.Provider.Bind(result, Provider.SetProvider);
+        RefreshOptions.ConnectionString.Bind(result, Provider.SetConnectionString);
+
+        RefreshOptions.StateFile.Bind(result, State.SetFilePath);
+        RefreshOptions.StateS3Bucket.Bind(result, State.SetS3Bucket);
+        RefreshOptions.StateS3Key.Bind(result, State.SetS3Key);
     }
 }

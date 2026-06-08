@@ -1,7 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Provider;
-using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Refresh;
 
@@ -12,9 +10,7 @@ internal static class RefreshCommand
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
 
         command.Options.Add(CommonOptions.Config.Option);
-
-        command.Options.AddRange(ProviderOptions.All);
-        command.Options.AddRange(StateOptions.All);
+        command.Options.AddRange(RefreshOptions.All);
 
         command.SetAction(Run);
         return command;

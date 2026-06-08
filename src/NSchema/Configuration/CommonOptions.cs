@@ -1,8 +1,12 @@
 using NSchema.Configuration.Binding;
-using NSchema.Migration;
 
 namespace NSchema.Configuration;
 
+/// <summary>
+/// The cross-cutting options that steer the harness rather than a command's configuration: the config-file
+/// location (read by <see cref="ConfigurationFactory"/>) and color output (read at the root by the console
+/// setup). Options that bind into a command's configuration are owned by that command's own option set.
+/// </summary>
 internal static class CommonOptions
 {
     public static readonly OptionBinding<string> Config = OptionBinding.Create<string>()
@@ -14,18 +18,4 @@ internal static class CommonOptions
         .FromEnvironmentVariable(EnvironmentVariables.NoColor)
         .Recursive()
         .WithDescription("Disable colored output.");
-
-    public static readonly OptionBinding<bool> AutoApprove = OptionBinding.Create<bool>()
-        .FromOption("--auto-approve")
-        .WithDescription("Skip the interactive confirmation prompt and perform the operation immediately.");
-
-    public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
-        .FromOption("--scope")
-        .AllowMultipleArguments()
-        .WithDescription("Limit the operation to specific database schemas (namespaces). May be specified multiple times.");
-
-    public static readonly OptionBinding<DestructiveActionPolicy> Destructive = OptionBinding.Create<DestructiveActionPolicy>()
-        .FromOption("--destructive-actions")
-        .FromEnvironmentVariable(EnvironmentVariables.DestructiveActionPolicy)
-        .WithDescription("Policy for destructive actions: Error (default), Warn, or Allow.");
 }

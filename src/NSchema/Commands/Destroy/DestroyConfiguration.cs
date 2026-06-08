@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
@@ -44,11 +43,18 @@ internal sealed class DestroyConfiguration : IBindable
 
     public void Bind(ParseResult result)
     {
-        CommonOptions.Scope.Bind(result, s => Scope = s);
-        CommonOptions.AutoApprove.Bind(result, a => AutoApprove = a);
+        DestroyOptions.Scope.Bind(result, s => Scope = s);
+        DestroyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
 
-        Schema.Bind(result);
-        Provider.Bind(result);
-        State.Bind(result);
+        DestroyOptions.Provider.Bind(result, Provider.SetProvider);
+        DestroyOptions.ConnectionString.Bind(result, Provider.SetConnectionString);
+
+        DestroyOptions.SchemaFormat.Bind(result, f => Schema.Format = f);
+        DestroyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d);
+        DestroyOptions.SchemaPattern.Bind(result, p => Schema.Pattern = p);
+
+        DestroyOptions.StateFile.Bind(result, State.SetFilePath);
+        DestroyOptions.StateS3Bucket.Bind(result, State.SetS3Bucket);
+        DestroyOptions.StateS3Key.Bind(result, State.SetS3Key);
     }
 }
