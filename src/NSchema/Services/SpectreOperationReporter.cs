@@ -5,6 +5,8 @@ using NSchema.Diff.Model;
 using NSchema.Operations;
 using NSchema.Plan.Model;
 using NSchema.Policies;
+using NSchema.Schema;
+using NSchema.Schema.Model;
 using NSchema.Scripts.Model;
 using NSchema.Sql;
 using NSchema.Sql.Model;
@@ -25,23 +27,27 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _error;
     private readonly IDiffRenderer _diffRenderer;
+    private readonly ISchemaRenderer _schemaRenderer;
     private readonly ISqlPlanRenderer _sqlPlanRenderer;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
+    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
-        : this(console, CreateStandardErrorConsole(console), diffRenderer, sqlPlanRenderer) { }
+    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
+        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
+    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
     {
         _out = output;
         _error = error;
         _diffRenderer = diffRenderer;
+        _schemaRenderer = schemaRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
     }
 
@@ -50,6 +56,13 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     public void ReportException(Exception exception)
     {
         _error.WriteException(exception);
+    }
+
+    public void ReportSchema(DatabaseSchema schema)
+    {
+        // A single state, not a diff — render it plainly with no marker coloring under a "Schema" section.
+        var body = new Markup(Markup.Escape(_schemaRenderer.Render(schema).Trim()));
+        WriteSection("Schema", body);
     }
 
     public void ReportDiff(DatabaseDiff diff)

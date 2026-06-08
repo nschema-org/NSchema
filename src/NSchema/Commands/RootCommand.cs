@@ -1,9 +1,11 @@
 using NSchema.Commands.Apply;
 using NSchema.Commands.Destroy;
+using NSchema.Commands.Drift;
 using NSchema.Commands.Import;
 using NSchema.Commands.Init;
 using NSchema.Commands.Plan;
 using NSchema.Commands.Refresh;
+using NSchema.Commands.Show;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
 
@@ -25,6 +27,8 @@ internal static class RootCommand
         root.Subcommands.Add(RefreshCommand.Create());
         root.Subcommands.Add(ImportCommand.Create());
         root.Subcommands.Add(DestroyCommand.Create());
+        root.Subcommands.Add(ShowCommand.Create());
+        root.Subcommands.Add(DriftCommand.Create());
 
         return root;
     }

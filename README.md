@@ -64,7 +64,7 @@ This installs the `nschema` command.
 
 ## Commands
 
-The `plan`, `apply`, `refresh`, `import`, and `destroy` commands all talk to a database, and most also use a state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
+The `plan`, `apply`, `refresh`, `import`, `destroy`, `show`, and `drift` commands all talk to a database or state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
 
 ### `nschema init`
 
@@ -182,6 +182,31 @@ limit the teardown to specific namespaces, and `--auto-approve` to skip the prom
 
 ```sh
 nschema destroy
+```
+
+### `nschema show`
+
+Print the schema recorded in the state store as human-readable text. The live database is never contacted — this is a
+read of what NSchema last recorded, useful for inspecting state or diffing it against `import` output.
+
+**Needs:** a state store (configured `state.file` or `state.s3`). Accepts `--scope` to limit the output to specific
+namespaces.
+
+```sh
+nschema show
+```
+
+### `nschema drift`
+
+Check whether the live database has drifted from the recorded state, reporting the difference as a diff (recorded →
+live, so an out-of-band change appears as an add and a manual drop as a remove). This is a pure observation: no
+transformers or policies run, so it never fails on a policy violation.
+
+**Needs:** a live database (configured `provider.postgres`) and a state store to compare against (configured
+`state.file` or `state.s3`). Accepts `--scope` to limit the check to specific namespaces.
+
+```sh
+nschema drift
 ```
 
 ## Configuration
