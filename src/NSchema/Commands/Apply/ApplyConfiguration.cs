@@ -3,7 +3,7 @@ using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
-using NSchema.Migration;
+using NSchema.Diff.Policies;
 
 namespace NSchema.Commands.Apply;
 

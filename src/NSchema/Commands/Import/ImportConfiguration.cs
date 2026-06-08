@@ -39,7 +39,8 @@ internal sealed class ImportConfiguration : IBindable
 
         ImportOptions.Tables.Bind(result, t => Tables = t);
         ImportOptions.Format.Bind(result, f => Target.Format = f);
-        ImportOptions.Output.Bind(result, o => Target.OutputPath = o);
+        ImportOptions.OutputFile.Bind(result, o => Target.OutputFile = o);
+        ImportOptions.OutputDirectory.Bind(result, o => Target.OutputDirectory = o);
         ImportOptions.Partition.Bind(result, p => Target.Partition = p);
     }
 }

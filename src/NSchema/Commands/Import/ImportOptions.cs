@@ -2,7 +2,7 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Schema;
-using NSchema.Import;
+using NSchema.Operations.Import;
 
 namespace NSchema.Commands.Import;
 
@@ -21,9 +21,13 @@ internal static class ImportOptions
         .AllowMultipleArguments()
         .WithDescription("Limit the import to specific database tables. May be specified multiple times.");
 
-    public static readonly OptionBinding<string> Output = OptionBinding.Create<string>()
-        .FromOption("--output")
-        .WithDescription("Output path for imported schema files. A file path for --partition None; a directory root for Schema or Table.");
+    public static readonly OptionBinding<string> OutputFile = OptionBinding.Create<string>()
+        .FromOption("--output-file")
+        .WithDescription("File to write the imported schema to. Use with --partition None (the default), which writes the whole schema as one document.");
+
+    public static readonly OptionBinding<string> OutputDirectory = OptionBinding.Create<string>()
+        .FromOption("--output-dir")
+        .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table.");
 
     public static readonly OptionBinding<SchemaFormat> Format = OptionBinding.Create<SchemaFormat>()
         .FromOption("--format")
@@ -37,7 +41,8 @@ internal static class ImportOptions
     [
         Scope.Option,
         Tables.Option,
-        Output.Option,
+        OutputFile.Option,
+        OutputDirectory.Option,
         Format.Option,
         Partition.Option,
     ];

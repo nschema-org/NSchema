@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Configuration.State;
-using NSchema.Migration;
+using NSchema.Diff.Policies;
 using NSchema.Operations;
 using NSchema.Resolution;
 using NSchema.Services;
@@ -15,36 +15,14 @@ public sealed class CliApplicationBuilderTests
     private readonly CliApplicationBuilder _sut = CliApplicationBuilder.Create();
 
     [Fact]
-    public void ConfigureScope_SetsSchemaNamesOnMigrationOptions()
-    {
-        // Act
-        using var app = _sut.ConfigureScope(["public", "sales"]).Build();
-
-        // Assert
-        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
-        options.SchemaNames.ShouldBe(["public", "sales"]);
-    }
-
-    [Fact]
-    public void ConfigureScope_LeavesSchemaNamesUnset_WhenScopeNull()
-    {
-        // Act
-        using var app = _sut.ConfigureScope(null).Build();
-
-        // Assert
-        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
-        options.SchemaNames.ShouldBeNull();
-    }
-
-    [Fact]
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
     {
         // Act
         using var app = _sut.ConfigurePolicies(DestructiveActionPolicy.Warn).Build();
 
         // Assert
-        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
-        options.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Warn);
+        var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
+        options.Policy.ShouldBe(DestructiveActionPolicy.Warn);
     }
 
     [Fact]
@@ -54,8 +32,8 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.ConfigurePolicies(null).Build();
 
         // Assert
-        var options = app.Services.GetRequiredService<IOptions<MigrationOptions>>().Value;
-        options.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Error);
+        var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
+        options.Policy.ShouldBe(DestructiveActionPolicy.Error);
     }
 
     [Fact]

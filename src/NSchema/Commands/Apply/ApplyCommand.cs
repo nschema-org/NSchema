@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Operations.Apply;
 
 namespace NSchema.Commands.Apply;
 
@@ -28,12 +29,11 @@ internal static class ApplyCommand
         var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureDesiredSchema(configuration.Schema)
-            .ConfigureScope(configuration.Scope)
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.AutoApprove)
             .Build();
-        await app.Apply(cancellationToken);
+        await app.Apply(new ApplyArguments { Schemas = configuration.Scope }, cancellationToken);
     }
 }

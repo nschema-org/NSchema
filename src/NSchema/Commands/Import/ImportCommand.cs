@@ -1,5 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Configuration.Schema;
+using NSchema.Operations.Import;
 
 namespace NSchema.Commands.Import;
 
@@ -23,9 +25,19 @@ internal static class ImportCommand
 
         using var app = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureImportTarget(configuration.Target)
-            .ConfigureImportScope(configuration.Scope, configuration.Tables)
             .Build();
-        await app.Import(cancellationToken);
+
+        var cwd = Directory.GetCurrentDirectory();
+        var args = new ImportArguments
+        {
+            Schemas = configuration.Scope,
+            Tables = configuration.Tables,
+            Partition = configuration.Target.Partition,
+            Format = configuration.Target.Format.FormatName(),
+            OutputFile = configuration.Target.OutputFile == null ? null : Path.GetFullPath(configuration.Target.OutputFile, cwd),
+            OutputDirectory = configuration.Target.OutputDirectory == null ? null : Path.GetFullPath(configuration.Target.OutputDirectory, cwd)
+        };
+
+        await app.Import(args, cancellationToken);
     }
 }

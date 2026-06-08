@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Operations.Refresh;
 
 namespace NSchema.Commands.Refresh;
 
@@ -29,6 +30,6 @@ internal static class RefreshCommand
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
-        await app.Refresh(cancellationToken);
+        await app.Refresh(new RefreshArguments(), cancellationToken);
     }
 }
