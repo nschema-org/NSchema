@@ -4,49 +4,47 @@ using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
-using NSchema.Migration;
 
-namespace NSchema.Commands.Apply;
+namespace NSchema.Commands.Destroy;
 
 /// <summary>
-/// configuration for the apply command.
+/// Configuration for the destroy command.
 /// </summary>
-internal sealed class ApplyConfiguration : IBindable
+internal sealed class DestroyConfiguration : IBindable
 {
     /// <summary>
-    /// How the desired schema is located and read.
+    /// How the desired schema is located and read; used as the managed-schema source when no state store is configured.
     /// </summary>
     public SchemaConfig Schema { get; init; } = new();
 
     /// <summary>
-    /// The database provider the plan is applied against.
+    /// The database provider the teardown is generated and executed against.
     /// </summary>
     public ProviderConfig Provider { get; init; } = new();
 
     /// <summary>
-    /// The state store the post-apply snapshot is written to; offline when no section is populated.
+    /// The state store the managed schema is read from and the post-destroy snapshot is written to; offline when no section is populated.
     /// </summary>
     public StateConfig State { get; init; } = new();
 
     /// <summary>
-    /// Optional scope filter limiting the migration to specific database schemas (namespaces).
+    /// Optional scope filter limiting the teardown to specific database schemas (namespaces).
     /// </summary>
     public string[]? Scope { get; private set; }
 
     /// <summary>
-    /// The policy applied when the plan contains destructive actions.
-    /// </summary>
-    public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
-
-    /// <summary>
-    /// The policy applied when the plan contains destructive actions.
+    /// Whether to skip the interactive confirmation prompt before tearing down the schema.
     /// </summary>
     public bool AutoApprove { get; private set; }
+
+    /// <summary>
+    /// Whether a desired schema source is configured to fall back on when no state store is present.
+    /// </summary>
+    public bool HasSchema => !string.IsNullOrWhiteSpace(Schema.Directory);
 
     public void Bind(ParseResult result)
     {
         CommonOptions.Scope.Bind(result, s => Scope = s);
-        CommonOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         CommonOptions.AutoApprove.Bind(result, a => AutoApprove = a);
 
         Schema.Bind(result);

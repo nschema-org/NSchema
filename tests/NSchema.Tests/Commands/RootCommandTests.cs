@@ -20,13 +20,14 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy"], ignoreOrder: true);
     }
 
     [Theory]
     [InlineData("plan")]
     [InlineData("apply")]
     [InlineData("refresh")]
+    [InlineData("destroy")]
     public void GlobalOptions_AreAvailableToEveryCommand(string command)
     {
         // Act
@@ -42,6 +43,16 @@ public sealed class RootCommandTests
     {
         // Act
         var result = _sut.Parse(["apply", "--auto-approve"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AutoApprove_IsAcceptedByDestroy()
+    {
+        // Act
+        var result = _sut.Parse(["destroy", "--auto-approve"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
