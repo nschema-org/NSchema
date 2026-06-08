@@ -7,6 +7,7 @@ using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Hosting;
 using NSchema.Migration;
+using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Services;
 using NSchema.Yaml;
@@ -22,8 +23,8 @@ internal sealed class CliApplicationBuilder
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
         .UseTerraformRenderer(o => o.IncludeColour = false)
-        .AddReporter<SpectreMigrationReporter>(SpectreMigrationReporter.FormatName)
-        .WithOutputFormat(SpectreMigrationReporter.FormatName);
+        .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName)
+        .WithOperationOptions(o => o.Reporter = SpectreOperationReporter.ReporterName);
 
     private CliApplicationBuilder()
     {
@@ -122,7 +123,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)
     {
-        _builder.Services.AddSingleton<IMigrationConfirmation>(sp => new ConsoleMigrationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
+        _builder.Services.AddSingleton<IOperationConfirmation>(sp => new ConsoleOperationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
         return this;
     }
 

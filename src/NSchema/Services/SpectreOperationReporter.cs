@@ -2,7 +2,8 @@ using System.Text;
 using NSchema.Configuration;
 using NSchema.Diff;
 using NSchema.Diff.Model;
-using NSchema.Migration;
+using NSchema.Operations;
+using NSchema.Plan.Model;
 using NSchema.Policies;
 using NSchema.Sql;
 using NSchema.Sql.Model;
@@ -11,14 +12,14 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IMigrationReporter"/> that presents run output with Spectre.Console.
+/// An <see cref="IOperationReporter"/> that presents run output with Spectre.Console.
 /// </summary>
-internal sealed class SpectreMigrationReporter : IMigrationReporter
+internal sealed class SpectreOperationReporter : IOperationReporter
 {
     /// <summary>
     /// The output format this reporter is registered under.
     /// </summary>
-    public const string FormatName = "fancy";
+    public const string ReporterName = "fancy";
 
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _error;
@@ -28,14 +29,14 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreMigrationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
         : this(console, CreateStandardErrorConsole(console), diffRenderer, sqlPlanRenderer) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    internal SpectreMigrationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISqlPlanRenderer sqlPlanRenderer)
     {
         _out = output;
         _error = error;
@@ -43,7 +44,7 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
         _sqlPlanRenderer = sqlPlanRenderer;
     }
 
-    public string Format => FormatName;
+    public string Format => ReporterName;
 
     public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
 
@@ -52,10 +53,16 @@ internal sealed class SpectreMigrationReporter : IMigrationReporter
         _error.WriteException(exception);
     }
 
-    public void ReportDiff(MigrationDiff diff)
+    public void ReportDiff(DatabaseDiff diff)
     {
         var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
         WriteSection("Plan", body);
+    }
+
+    public void ReportPlan(MigrationPlan plan)
+    {
+        // TODO: Implement
+        throw new NotImplementedException();
     }
 
     public void ReportSqlPlan(SqlPlan plan)

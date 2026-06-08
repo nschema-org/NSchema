@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Configuration.State;
 using NSchema.Migration;
+using NSchema.Operations;
 using NSchema.Resolution;
 using NSchema.Services;
 using NSchema.State;
@@ -98,7 +99,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.Build();
 
         // Assert
-        var reporter = app.Services.GetRequiredService<IKeyedResolver<IMigrationReporter>>().Current;
-        reporter.ShouldBeOfType<SpectreMigrationReporter>();
+        var reporter = app.Services.GetRequiredService<IKeyedResolver<IOperationReporter>>().Current;
+        reporter.ShouldBeOfType<SpectreOperationReporter>();
     }
 }

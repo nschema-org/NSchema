@@ -1,23 +1,25 @@
+using NSchema.Operations.Confirmation;
 using NSchema.Plan.Model;
 using NSchema.Services;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
 
-public sealed class ConsoleMigrationConfirmationTests
+public sealed class ConsoleOperationConfirmationTests
 {
     private readonly TestConsole _console = new();
 
-    public ConsoleMigrationConfirmationTests() => _console.Profile.Width = 200;
+    public ConsoleOperationConfirmationTests() => _console.Profile.Width = 200;
 
     [Fact]
     public async Task Confirm_ReturnsTrue_WhenAutoApprove()
     {
         // Arrange
-        var sut = new ConsoleMigrationConfirmation(autoApprove: true, _console);
+        var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
+        var sut = new ConsoleOperationConfirmation(autoApprove: true, _console);
 
         // Act
-        var approved = await sut.Confirm(new MigrationPlan([]), TestContext.Current.CancellationToken);
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
 
         // Assert
         approved.ShouldBeTrue();
@@ -28,12 +30,13 @@ public sealed class ConsoleMigrationConfirmationTests
     public async Task Confirm_ReturnsTrue_WhenUserTypesYes()
     {
         // Arrange
+        var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
         _console.Interactive();
         _console.Input.PushTextWithEnter("yes");
-        var sut = new ConsoleMigrationConfirmation(autoApprove: false, _console);
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
         // Act
-        var approved = await sut.Confirm(new MigrationPlan([]), TestContext.Current.CancellationToken);
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
 
         // Assert
         approved.ShouldBeTrue();
@@ -43,12 +46,13 @@ public sealed class ConsoleMigrationConfirmationTests
     public async Task Confirm_ReturnsFalse_WhenUserTypesAnythingElse()
     {
         // Arrange
+        var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
         _console.Interactive();
         _console.Input.PushTextWithEnter("no");
-        var sut = new ConsoleMigrationConfirmation(autoApprove: false, _console);
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
         // Act
-        var approved = await sut.Confirm(new MigrationPlan([]), TestContext.Current.CancellationToken);
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
 
         // Assert
         approved.ShouldBeFalse();
@@ -58,10 +62,11 @@ public sealed class ConsoleMigrationConfirmationTests
     public async Task Confirm_DeclinesWithoutPrompting_WhenNotInteractive()
     {
         // Arrange — a non-interactive console (redirected stdin / CI) has no input to read.
-        var sut = new ConsoleMigrationConfirmation(autoApprove: false, _console);
+        var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
         // Act
-        var approved = await sut.Confirm(new MigrationPlan([]), TestContext.Current.CancellationToken);
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
 
         // Assert
         approved.ShouldBeFalse();

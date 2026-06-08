@@ -22,11 +22,10 @@ internal static class InitCommand
         var configuration = ConfigurationFactory.Load<InitConfiguration>(parseResult);
 
         using var app = CliApplicationBuilder.Create().Build();
-        var serializers = app.Services.GetRequiredService<IKeyedResolver<ISchemaDocumentSerializer>>();
+        var serializers = app.Services.GetRequiredService<IKeyedResolver<ISchemaSerializer>>();
         var console = app.Services.GetRequiredService<IAnsiConsole>();
 
-        var created = await new ProjectScaffolder()
-            .Scaffold(Directory.GetCurrentDirectory(), configuration.Format, configuration.Force, serializers, cancellationToken);
+        var created = await ProjectScaffolder.Scaffold(Directory.GetCurrentDirectory(), configuration.Format, configuration.Force, serializers, cancellationToken);
 
         var tree = new Tree("[bold]Created[/]");
         foreach (var file in created)

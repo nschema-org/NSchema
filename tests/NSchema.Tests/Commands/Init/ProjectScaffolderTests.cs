@@ -15,7 +15,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-init-").FullName;
     private readonly NSchemaApplication _app = CliApplicationBuilder.Create().Build();
 
-    private IKeyedResolver<ISchemaDocumentSerializer> Serializers => _app.Services.GetRequiredService<IKeyedResolver<ISchemaDocumentSerializer>>();
+    private IKeyedResolver<ISchemaSerializer> Serializers => _app.Services.GetRequiredService<IKeyedResolver<ISchemaSerializer>>();
 
     public void Dispose()
     {
@@ -27,7 +27,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     public async Task Scaffold_CreatesConfigAndSampleSchema()
     {
         // Act
-        var created = await _sut.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
+        var created = await ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         created.ShouldBe(["nschema.json", Path.Combine("schemas", "example.yaml")]);
@@ -39,7 +39,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     public async Task Scaffold_GeneratedConfig_RoundTripsThroughTheLoader()
     {
         // Act
-        await _sut.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         var config = LoadGeneratedConfig();
@@ -54,7 +54,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     public async Task Scaffold_GeneratedConfig_OmitsUnsetDefaults()
     {
         // Act
-        await _sut.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         var json = File.ReadAllText(Path.Combine(_directory, "nschema.json"));
@@ -66,7 +66,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     public async Task Scaffold_JsonFormat_WritesJsonSampleAndConfig()
     {
         // Act
-        await _sut.Scaffold(_directory, SchemaFormat.Json, force: false, Serializers, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(_directory, SchemaFormat.Json, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         File.Exists(Path.Combine(_directory, "schemas", "example.json")).ShouldBeTrue();
@@ -77,7 +77,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     public async Task Scaffold_SampleSchema_RoundTripsThroughTheSerializer()
     {
         // Arrange
-        await _sut.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Act
         await using var stream = File.OpenRead(Path.Combine(_directory, "schemas", "example.yaml"));
@@ -97,7 +97,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         File.WriteAllText(Path.Combine(_directory, "nschema.json"), "{}");
 
         // Act
-        var act = () => _sut.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
+        var act = () => ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: false, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         (await Should.ThrowAsync<InvalidOperationException>(act)).Message.ShouldContain("--force");
@@ -110,7 +110,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         File.WriteAllText(Path.Combine(_directory, "nschema.json"), "stale");
 
         // Act
-        var act = () => _sut.Scaffold(_directory, SchemaFormat.Yaml, force: true, Serializers, TestContext.Current.CancellationToken);
+        var act = () => ProjectScaffolder.Scaffold(_directory, SchemaFormat.Yaml, force: true, Serializers, TestContext.Current.CancellationToken);
 
         // Assert
         await Should.NotThrowAsync(act);

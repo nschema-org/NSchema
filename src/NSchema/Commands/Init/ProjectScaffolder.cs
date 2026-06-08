@@ -26,11 +26,11 @@ internal sealed class ProjectScaffolder
     /// <param name="serializers">Resolves the schema serializer for the chosen <paramref name="format"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">An <c>nschema.json</c> already exists and <paramref name="force"/> is false.</exception>
-    public async Task<IReadOnlyList<string>> Scaffold(
+    public static async Task<IReadOnlyList<string>> Scaffold(
         string directory,
         SchemaFormat format,
         bool force,
-        IKeyedResolver<ISchemaDocumentSerializer> serializers,
+        IKeyedResolver<ISchemaSerializer> serializers,
         CancellationToken cancellationToken = default
     )
     {
