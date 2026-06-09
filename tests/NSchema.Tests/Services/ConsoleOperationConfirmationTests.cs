@@ -77,6 +77,39 @@ public sealed class ConsoleOperationConfirmationTests
     }
 
     [Fact]
+    public async Task Confirm_WarnsAndPromptsToForceUnlock_ForForceUnlockRequest()
+    {
+        // Arrange
+        var request = new ForceUnlockConfirmationRequest();
+        _console.Interactive();
+        _console.Input.PushTextWithEnter("yes");
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
+
+        // Act
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        approved.ShouldBeTrue();
+        _console.Output.ShouldContain("force-unlock the state");
+    }
+
+    [Fact]
+    public async Task Confirm_HintsTheForceFlag_WhenForceUnlockIsNotInteractive()
+    {
+        // Arrange — force-unlock skips its prompt with --force, not --auto-approve, so the non-interactive hint
+        // names the right flag.
+        var request = new ForceUnlockConfirmationRequest();
+        var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
+
+        // Act
+        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        approved.ShouldBeFalse();
+        _console.Output.ShouldContain("--force");
+    }
+
+    [Fact]
     public async Task Confirm_DeclinesWithoutPrompting_WhenNotInteractive()
     {
         // Arrange — a non-interactive console (redirected stdin / CI) has no input to read.

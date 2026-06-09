@@ -64,7 +64,7 @@ This installs the `nschema` command.
 
 ## Commands
 
-The `plan`, `apply`, `refresh`, `import`, `destroy`, `show`, and `drift` commands all talk to a database or state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
+The `plan`, `apply`, `refresh`, `import`, `destroy`, `show`, `drift`, and `force-unlock` commands all talk to a database or state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
 
 ### `nschema init`
 
@@ -218,6 +218,20 @@ transformers or policies run, so it never fails on a policy violation.
 
 ```sh
 nschema drift
+```
+
+### `nschema force-unlock`
+
+Forcibly release a stale lock on the state store. NSchema locks the state during write operations (`apply`, `destroy`,
+`refresh`); if one is interrupted, the lock can be left behind and block further runs. This removes whatever lock is
+currently held — use it only once you're sure no operation is still running, Terraform's `force-unlock` style. Because
+overriding a live lock can corrupt shared state, it prompts for confirmation first; pass `--force` to skip the prompt.
+
+**Needs:** a state store (configured `state.file` or `state.s3`); the lock lives with it. The live database is never
+contacted. Accepts `--force` to skip the confirmation prompt.
+
+```sh
+nschema force-unlock
 ```
 
 ## Configuration

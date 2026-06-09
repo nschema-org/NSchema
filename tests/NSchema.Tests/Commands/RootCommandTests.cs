@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock"], ignoreOrder: true);
     }
 
     [Theory]
@@ -51,6 +51,26 @@ public sealed class RootCommandTests
 
         // Assert
         result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Force_IsAcceptedByForceUnlock()
+    {
+        // Act — force-unlock skips its confirmation prompt with --force (Terraform's force-unlock -force).
+        var result = _sut.Parse(["force-unlock", "--force"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AutoApprove_IsRejectedByForceUnlock()
+    {
+        // Act — force-unlock uses --force, not the apply/destroy --auto-approve flag.
+        var result = _sut.Parse(["force-unlock", "--auto-approve"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -117,6 +137,7 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("force-unlock")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.
