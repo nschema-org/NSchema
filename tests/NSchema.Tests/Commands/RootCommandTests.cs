@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock"], ignoreOrder: true);
     }
 
     [Theory]
@@ -117,6 +117,7 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("force-unlock")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.

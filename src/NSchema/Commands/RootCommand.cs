@@ -1,6 +1,7 @@
 using NSchema.Commands.Apply;
 using NSchema.Commands.Destroy;
 using NSchema.Commands.Drift;
+using NSchema.Commands.ForceUnlock;
 using NSchema.Commands.Import;
 using NSchema.Commands.Init;
 using NSchema.Commands.Plan;
@@ -29,6 +30,7 @@ internal static class RootCommand
         root.Subcommands.Add(DestroyCommand.Create());
         root.Subcommands.Add(ShowCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
+        root.Subcommands.Add(ForceUnlockCommand.Create());
 
         return root;
     }
