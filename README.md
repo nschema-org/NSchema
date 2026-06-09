@@ -224,10 +224,11 @@ nschema drift
 
 Forcibly release a stale lock on the state store. NSchema locks the state during write operations (`apply`, `destroy`,
 `refresh`); if one is interrupted, the lock can be left behind and block further runs. This removes whatever lock is
-currently held — use it only once you're sure no operation is still running, Terraform's `force-unlock` style.
+currently held — use it only once you're sure no operation is still running, Terraform's `force-unlock` style. Because
+overriding a live lock can corrupt shared state, it prompts for confirmation first; pass `--force` to skip the prompt.
 
 **Needs:** a state store (configured `state.file` or `state.s3`); the lock lives with it. The live database is never
-contacted.
+contacted. Accepts `--force` to skip the confirmation prompt.
 
 ```sh
 nschema force-unlock

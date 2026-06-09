@@ -11,6 +11,7 @@ internal static class ForceUnlockCommand
         var command = new Command("force-unlock", "Forcibly release a stale lock on the state store.");
 
         command.Options.Add(CommonOptions.Config.Option);
+        command.Options.AddRange(ForceUnlockOptions.All);
 
         command.SetAction(Run);
         return command;
@@ -28,6 +29,7 @@ internal static class ForceUnlockCommand
         var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
+            .ConfigureConfirmation(configuration.Force)
             .Build();
         await app.ForceUnlock(new ForceUnlockArguments(), cancellationToken);
     }

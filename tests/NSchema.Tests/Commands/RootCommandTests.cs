@@ -54,6 +54,26 @@ public sealed class RootCommandTests
     }
 
     [Fact]
+    public void Force_IsAcceptedByForceUnlock()
+    {
+        // Act — force-unlock skips its confirmation prompt with --force (Terraform's force-unlock -force).
+        var result = _sut.Parse(["force-unlock", "--force"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AutoApprove_IsRejectedByForceUnlock()
+    {
+        // Act — force-unlock uses --force, not the apply/destroy --auto-approve flag.
+        var result = _sut.Parse(["force-unlock", "--auto-approve"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
     public void AutoApprove_IsRejectedByPlan()
     {
         // Act
