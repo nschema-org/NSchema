@@ -14,12 +14,7 @@ internal sealed class SchemaConfig
     public string Directory { get; set; } = "";
 
     /// <summary>
-    /// The format the desired schema is expressed in.
-    /// </summary>
-    public SchemaFormat Format { get; set; } = SchemaFormat.Yaml;
-
-    /// <summary>
-    /// The glob matched within <see cref="Directory"/>. When null, the format's default glob is used.
+    /// The glob matched within <see cref="Directory"/>. When null, the default <c>**/*.sql</c> glob is used.
     /// </summary>
     public string? Pattern { get; set; }
 }

@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Schema;
 using NSchema.Operations.Import;
 
 namespace NSchema.Commands.Import;
@@ -29,10 +28,6 @@ internal static class ImportOptions
         .FromOption("--output-dir")
         .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table.");
 
-    public static readonly OptionBinding<SchemaFormat> Format = OptionBinding.Create<SchemaFormat>()
-        .FromOption("--format")
-        .WithDescription("Format for the generated schema files: yaml (default) or json.");
-
     public static readonly OptionBinding<ImportPartitionMode> Partition = OptionBinding.Create<ImportPartitionMode>()
         .FromOption("--partition")
         .WithDescription("How to split the imported schema across files: None (single file, default), Schema (one per namespace), Table (one per table).");
@@ -43,7 +38,6 @@ internal static class ImportOptions
         Tables.Option,
         OutputFile.Option,
         OutputDirectory.Option,
-        Format.Option,
         Partition.Option,
     ];
 }

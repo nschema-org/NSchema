@@ -53,7 +53,6 @@
     <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Core" />
     <PackageReference Include="NSchema.Postgres" />
-    <PackageReference Include="NSchema.Yaml" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>

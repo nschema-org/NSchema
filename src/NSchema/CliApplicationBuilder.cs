@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration.Provider;
@@ -7,8 +6,9 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
+using NSchema.Schema;
+using NSchema.Schema.Serialization.Ddl;
 using NSchema.Services;
-using NSchema.Yaml;
 using Spectre.Console;
 
 namespace NSchema;
@@ -21,7 +21,6 @@ internal sealed class CliApplicationBuilder
             ExceptionBehavior = ExceptionBehavior.Throw,
             Reporter = SpectreOperationReporter.ReporterName
         })
-        .AddYamlSchemaSerializer()
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
         .UseTerraformRenderer(o => o.IncludeColour = false)
@@ -45,15 +44,10 @@ internal sealed class CliApplicationBuilder
     public CliApplicationBuilder ConfigureDesiredSchema(SchemaConfig schema)
     {
         var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultPattern() : schema.Pattern;
+        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? "**/*.sql" : schema.Pattern;
         var glob = $"{root}/{pattern}";
 
-        switch (schema.Format)
-        {
-            case SchemaFormat.Yaml: _builder.AddYamlSchemasFromGlob(glob); break;
-            case SchemaFormat.Json: _builder.AddJsonSchemasFromGlob(glob); break;
-            default: throw new UnreachableException();
-        }
+        _builder.AddFileSchemasFromGlob(glob, path => new FileSchemaProvider(path, DdlSchemaSerializer.Instance));
 
         return this;
     }

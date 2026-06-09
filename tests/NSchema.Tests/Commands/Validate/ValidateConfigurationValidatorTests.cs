@@ -39,20 +39,4 @@ public sealed class ValidateConfigurationValidatorTests
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("schema directory"));
     }
-
-    [Fact]
-    public void Invalid_WhenFormatNotInEnum()
-    {
-        // Arrange
-        var config = new ValidateConfiguration
-        {
-            Schema = new SchemaConfig { Directory = "./schemas", Format = (SchemaFormat)42 },
-        };
-
-        // Act
-        var result = _sut.Validate(config);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
-    }
 }
