@@ -20,13 +20,13 @@ public sealed class ConfigurationFactoryTests : IDisposable
     public void Load_HonorsDirectory_ForConfigDiscovery()
     {
         // Arrange — a project whose nschema.json lives in its own directory, not the shell's.
-        File.WriteAllText(Path.Combine(_projectDirectory, "nschema.json"), """{ "schema": { "dir": "./schemas" } }""");
+        File.WriteAllText(Path.Combine(_projectDirectory, "nschema.json"), """{ "state": { "file": { "path": "./custom.state.json" } } }""");
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
         var config = ConfigurationFactory.Load<PlanConfiguration>(parseResult);
 
-        // Assert — the config was discovered under --directory (an empty config would have left the dir blank).
-        config.Schema.Directory.ShouldBe("./schemas");
+        // Assert — the config was discovered under --directory (an empty config would have left state unset).
+        config.State.File!.Path.ShouldBe("./custom.state.json");
     }
 }

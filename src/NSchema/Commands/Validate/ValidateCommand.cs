@@ -16,18 +16,14 @@ internal static class ValidateCommand
         return command;
     }
 
-    private static ValidateConfiguration Resolve(ParseResult result)
-    {
-        var config = ConfigurationFactory.Load<ValidateConfiguration>(result);
-        new ValidateConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        // Loading resolves --directory (chdir) so the recursive *.sql glob runs against the project root. There is
+        // nothing else to configure for validate, so the loaded model is discarded.
+        ConfigurationFactory.Load<ValidateConfiguration>(parseResult);
+
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Schema)
+            .ConfigureDesiredSchema()
             .Build();
         await app.Validate(new ValidateArguments(), cancellationToken);
     }

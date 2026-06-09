@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Destroy;
@@ -11,10 +10,6 @@ namespace NSchema.Commands.Destroy;
 /// </summary>
 internal sealed class DestroyConfiguration : IBindable
 {
-    /// <summary>
-    /// How the desired schema is located and read; used as the managed-schema source when no state store is configured.
-    /// </summary>
-    public SchemaConfig Schema { get; init; } = new();
 
     /// <summary>
     /// The database provider the teardown is generated and executed against.
@@ -32,9 +27,10 @@ internal sealed class DestroyConfiguration : IBindable
     public bool AutoApprove { get; private set; }
 
     /// <summary>
-    /// Whether a desired schema source is configured to fall back on when no state store is present.
+    /// Whether a state store is configured to read the managed schema from; when absent, the teardown source falls
+    /// back to the desired schema globbed from the working directory.
     /// </summary>
-    public bool HasSchema => !string.IsNullOrWhiteSpace(Schema.Directory);
+    public bool HasStateStore => State.ConfiguredSectionCount >= 1;
 
     public void Bind(ParseResult result)
     {

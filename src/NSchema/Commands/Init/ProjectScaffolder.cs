@@ -1,7 +1,6 @@
 using System.Text.Json;
 using NSchema.Configuration;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Resolution;
 using NSchema.Schema.Model;
@@ -43,7 +42,6 @@ internal sealed class ProjectScaffolder
         {
             Provider = new ProviderConfig { Postgres = new PostgresProviderConfig() },
             State = new StateConfig { File = new FileStateConfig { Path = "./nschema.state.json" } },
-            Schema = new SchemaConfig { Directory = $"./{SchemaDirectoryName}" },
         };
         await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, ConfigurationFactory.JsonOptions), cancellationToken);
 

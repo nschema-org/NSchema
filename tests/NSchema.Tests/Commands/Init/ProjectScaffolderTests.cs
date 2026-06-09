@@ -55,7 +55,6 @@ public sealed class ProjectScaffolderTests : IDisposable
         config.Provider.Postgres.ShouldNotBeNull();
         config.State.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
-        config.Schema.Directory.ShouldBe("./schemas");
     }
 
     [Fact]

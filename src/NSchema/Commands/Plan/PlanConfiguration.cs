@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 
@@ -12,11 +11,6 @@ namespace NSchema.Commands.Plan;
 /// </summary>
 internal sealed class PlanConfiguration : IBindable
 {
-    /// <summary>
-    /// How the desired schema is located and read.
-    /// </summary>
-    public SchemaConfig Schema { get; init; } = new();
-
     /// <summary>
     /// The database provider supplying the live schema; offline when no section is populated.
     /// </summary>
@@ -45,10 +39,10 @@ internal sealed class PlanConfiguration : IBindable
     public bool Destroy { get; internal set; }
 
     /// <summary>
-    /// Whether a desired schema source is configured to fall back on when no state store is present (the teardown
-    /// source in <c>--destroy</c> mode).
+    /// Whether a state store is configured to read the managed schema from in <c>--destroy</c> mode; when absent,
+    /// the teardown source falls back to the desired schema globbed from the working directory.
     /// </summary>
-    public bool HasSchema => !string.IsNullOrWhiteSpace(Schema.Directory);
+    public bool HasStateStore => State.ConfiguredSectionCount >= 1;
 
     public void Bind(ParseResult result)
     {

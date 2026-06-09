@@ -1,7 +1,6 @@
 using FluentValidation;
 using NSchema.Configuration;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Apply;
@@ -10,8 +9,6 @@ internal sealed class ApplyConfigurationValidator : AbstractValidator<ApplyConfi
 {
     public ApplyConfigurationValidator()
     {
-        RuleFor(x => x.Schema).SetValidator(new SchemaConfigValidator());
-
         // Apply writes to a live database, so a provider is mandatory — not merely "at most one".
         RuleFor(x => x.Provider.ConfiguredSectionCount)
             .GreaterThanOrEqualTo(1)

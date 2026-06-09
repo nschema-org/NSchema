@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 
@@ -12,11 +11,6 @@ namespace NSchema.Commands.Apply;
 /// </summary>
 internal sealed class ApplyConfiguration : IBindable
 {
-    /// <summary>
-    /// How the desired schema is located and read.
-    /// </summary>
-    public SchemaConfig Schema { get; init; } = new();
-
     /// <summary>
     /// The database provider the plan is applied against.
     /// </summary>

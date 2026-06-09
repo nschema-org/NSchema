@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
@@ -41,12 +40,9 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema(SchemaConfig schema)
+    public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? "**/*.sql" : schema.Pattern;
-        var glob = $"{root}/{pattern}";
-
+        var glob = $"{Directory.GetCurrentDirectory()}/**/*.sql";
         _builder.AddFileSchemasFromGlob(glob, path => new FileSchemaProvider(path, DdlSchemaSerializer.Instance));
 
         return this;

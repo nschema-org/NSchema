@@ -18,30 +18,23 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     public ValueTask InitializeAsync()
     {
-        // A desired schema describing one table in this test's unique schema. YAML is the default format, so the
-        // commands need no --format flag (the schema format is a config-only setting).
+        // A desired schema describing one table in this test's unique schema, written as NSchema DDL — the only
+        // schema format. The desired schema is every *.sql file found recursively under the project directory.
         var schemaDocument = $"""
-        schemas:
-          - name: {_schema}
-            tables:
-              - name: widgets
-                primaryKey:
-                  name: widgets_pkey
-                  columnNames: [id]
-                columns:
-                  - name: id
-                    type: bigint
-                    isNullable: false
-                  - name: name
-                    type: text
-                    isNullable: true
+        CREATE SCHEMA {_schema};
+
+        CREATE TABLE {_schema}.widgets (
+          id   bigint NOT NULL,
+          name text,
+          CONSTRAINT widgets_pkey PRIMARY KEY (id)
+        );
         """;
 
-        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.yaml"), schemaDocument);
+        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.sql"), schemaDocument);
 
-        // The project's nschema.json lives in the run directory; schema.dir is relative to it. Commands find it via
-        // --directory, the way real usage does — no per-command schema flags.
-        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), """{ "schema": { "dir": "." } }""");
+        // The project's nschema.json lives in the run directory; commands find it via --directory, the way real usage
+        // does — no per-command schema flags. Provider/state are configured per test.
+        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), "{ }");
         return ValueTask.CompletedTask;
     }
 
