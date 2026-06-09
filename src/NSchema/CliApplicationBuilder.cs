@@ -42,8 +42,18 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var glob = $"{Directory.GetCurrentDirectory()}/**/*.sql";
-        _builder.AddFileSchemasFromGlob(glob, path => new FileSchemaProvider(path, DdlSchemaSerializer.Instance));
+        var root = Directory.GetCurrentDirectory();
+
+        // Guard the empty-glob footgun: with no schema files the desired schema would be empty, and a forward plan or
+        // apply would read that as "drop everything". A clear error beats a surprising teardown.
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+        if (!Directory.EnumerateFiles(root, "*.sql", options).Any())
+        {
+            throw new InvalidOperationException(
+                $"No schema files (*.sql) found under \"{root}\". Add a .sql schema file, or point at your project directory with --directory.");
+        }
+
+        _builder.AddFileSchemasFromGlob($"{root}/**/*.sql", path => new FileSchemaProvider(path, DdlSchemaSerializer.Instance));
 
         return this;
     }

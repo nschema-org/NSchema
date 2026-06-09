@@ -80,4 +80,42 @@ public sealed class CliApplicationBuilderTests
         var reporter = app.Services.GetRequiredService<IKeyedResolver<IOperationReporter>>().Current;
         reporter.ShouldBeOfType<SpectreOperationReporter>();
     }
+
+    [Fact]
+    public void ConfigureDesiredSchema_WhenNoSqlFiles_Throws()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-noschema-").FullName;
+        try
+        {
+            Directory.SetCurrentDirectory(directory);
+            Should.Throw<InvalidOperationException>(() => _sut.ConfigureDesiredSchema())
+                .Message.ShouldContain("No schema files");
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConfigureDesiredSchema_FindsSqlFilesRecursively()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-schema-").FullName;
+        try
+        {
+            var nested = Directory.CreateDirectory(Path.Combine(directory, "schemas"));
+            File.WriteAllText(Path.Combine(nested.FullName, "example.sql"), "CREATE SCHEMA app;");
+            Directory.SetCurrentDirectory(directory);
+
+            Should.NotThrow(() => _sut.ConfigureDesiredSchema());
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

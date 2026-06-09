@@ -26,24 +26,18 @@ This installs the `nschema` command.
    nschema init
    ```
 
-   This writes `nschema.json` and `schemas/example.yaml`. Edit the sample to describe your desired schema:
+   This writes `nschema.json` and `schemas/example.sql`. Edit the sample to describe your desired schema, written in
+   NSchema DDL — a declarative, SQL-flavoured schema language:
 
-   ```yaml
-   # schemas/example.yaml
-   schemas:
-     - name: app
-       tables:
-         - name: widgets
-           primaryKey:
-             name: widgets_pkey
-             columnNames: [id]
-           columns:
-             - name: id
-               type: bigint
-               isNullable: false
-             - name: name
-               type: text
-               isNullable: true
+   ```sql
+   -- schemas/example.sql
+   CREATE SCHEMA app;
+
+   CREATE TABLE app.widgets (
+     id   bigint NOT NULL,
+     name text,
+     CONSTRAINT widgets_pkey PRIMARY KEY (id)
+   );
    ```
 
 2. Point at your database (the connection string is a secret, so prefer the environment):
@@ -52,7 +46,7 @@ This installs the `nschema` command.
    export NSCHEMA_POSTGRES_CONNECTION_STRING="Host=localhost;Database=app;Username=postgres;Password=postgres"
    ```
 
-3. Preview the migration, then apply it (`nschema.json` already has the provider and schema directory, so no flags are needed):
+3. Preview the migration, then apply it (`nschema.json` already has the provider, and the desired schema is just your `*.sql` files, so no flags are needed):
 
    ```sh
    nschema validate   # optional: check the schema files are well-formed first
@@ -70,7 +64,6 @@ The `plan`, `apply`, `refresh`, `import`, `destroy`, `show`, `drift`, and `force
 
 Scaffold an `nschema.json` and a sample schema in the current directory, to get a new project going. It connects to nothing.
 
-- `--format <yaml|json>` — format for the generated config and sample schema. Defaults to `yaml`.
 - `--force` — overwrite an existing `nschema.json`.
 
 ```sh
@@ -87,9 +80,9 @@ It verifies that:
 - primary keys, indexes, and foreign keys reference columns that exist, and foreign keys reference a table whose primary key or a unique index matches the referenced columns (**errors**);
 - tables have a primary key, primary-key columns aren't nullable, and no key or index lists a column twice (**warnings**).
 
-**Needs:** only a desired schema, configured in `nschema.json`.
+**Needs:** only a desired schema — your `*.sql` files.
 
-The schema's location and shape describe how the project's files are laid out, so they all live in config rather than as per-run flags: **dir** (`schema.dir`), **format** (`schema.format`, default `yaml`), and **glob** (`schema.pattern`, default `**/*.yaml` or `**/*.json`). Run inside the project, or point at it with `--directory`.
+The desired schema is every `*.sql` file found recursively under the project directory. Run inside the project, or point at it with `--directory`. There is nothing to configure: no format (it's always NSchema DDL) and no directory or glob.
 
 ```sh
 nschema validate --directory ./my-project
@@ -101,7 +94,7 @@ The live database (`provider`) and the state store (`state`) describe *where* yo
 
 - **Connection string** — `provider.postgres.connectionString` in `nschema.json`, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The variable names the Postgres provider on its own — just as `state.s3.*` names the S3 store — so no separate provider selector is needed.
 
-The schema source is config too — `schema.dir` (plus `schema.format`/`schema.pattern`) — so a project's *where* (database, state, schema files) lives entirely in `nschema.json`, and the CLI flags are just the per-run workflow knobs.
+The desired schema needs no config at all — it's every `*.sql` file under the project directory. So a project's *where* (database and state) lives in `nschema.json`, the schema lives in your `*.sql` files, and the CLI flags are just the per-run workflow knobs.
 
 Every command also accepts:
 
@@ -113,14 +106,12 @@ Every command also accepts:
 
 Compute and show the migration plan, without changing anything.
 
-**Needs:** a desired schema (configured `schema.dir`) and a current-state source — either a live database (configured
+**Needs:** a desired schema (your `*.sql` files) and a current-state source — either a live database (configured
 `provider.postgres`) or, for offline planning, a state store (configured `state`). See [Database and state](#database-and-state).
 
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 - `--destroy` — preview the SQL that [`destroy`](#nschema-destroy) would run to tear the managed schema down, instead of a forward plan (Terraform's `plan -destroy`).
-
-The schema **format** (`schema.format`) and **glob** (`schema.pattern`) are config-only — see [`validate`](#nschema-validate).
 
 ```sh
 nschema plan
@@ -172,7 +163,6 @@ into NSchema: import it, then check the generated files into source control and 
 
 - `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
 - `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
-- `--format <yaml|json>` — format for the generated files. Defaults to `yaml`. (This sets the format written **out**, distinct from the `schema.format` other commands read.)
 - `--tables <name>` — limit the import to specific tables. May be repeated.
 - `--scope <name>` — limit the import to specific database schemas (namespaces). May be repeated.
 
@@ -187,9 +177,9 @@ Drop all managed schema objects from the target database. Prompts for confirmati
 intended escape hatch for tearing a managed schema back down.
 
 **Needs:** a live database (configured `provider.postgres`) the tool can write to, and a source for the schema to tear
-down — a configured state store (`state.file` or `state.s3`), or, with no store, a desired schema (configured
-`schema.dir`) to fall back on. When a state store is configured it is refreshed after the teardown. Accepts `--scope` to
-limit the teardown to specific namespaces, and `--auto-approve` to skip the prompt.
+down — a configured state store (`state.file` or `state.s3`), or, with no store, your `*.sql` files to fall back on.
+When a state store is configured it is refreshed after the teardown. Accepts `--scope` to limit the teardown to specific
+namespaces, and `--auto-approve` to skip the prompt.
 
 ```sh
 nschema destroy
@@ -238,7 +228,7 @@ nschema force-unlock
 
 Settings come from three sources, in increasing order of precedence:
 
-1. The `nschema.json` config file — discovered in the `--directory` (default: the current directory), or the file passed to `--config`. Relative paths inside it (`schema.dir`, `state.file.path`) resolve against that directory.
+1. The `nschema.json` config file — discovered in the `--directory` (default: the current directory), or the file passed to `--config`. Relative paths inside it (e.g. `state.file.path`) resolve against that directory.
 2. `NSCHEMA_*` environment variables.
 3. Command-line options.
 
@@ -248,11 +238,13 @@ Settings come from three sources, in increasing order of precedence:
 {
   "provider": { "postgres": { "connectionString": "Host=localhost;Database=app;..." } },
   "state":    { "file": { "path": "./nschema.state.json" } },
-  "schema":   { "dir": "./schemas", "format": "yaml", "pattern": "**/*.yaml" },
   "scope": ["app"],
   "destructiveActionPolicy": "Error"
 }
 ```
+
+`nschema.json` configures only *where* your schema lives (the database and state store). The desired schema itself is
+not configured — it's every `*.sql` file found recursively under the project directory.
 
 ### Connection string
 
@@ -266,29 +258,36 @@ It can also be set in `nschema.json` under `provider.postgres.connectionString` 
 
 ## Desired schema files
 
-A schema file is a document with a `schemas` array; each schema has `tables`, and each table has `columns` (and an
-optional `primaryKey`). Column `type` is a compact string such as `bigint`, `text`, `varchar(255)`, or `decimal(18,2)`.
-The YAML and JSON formats describe the same structure — the YAML quickstart above is equivalent to:
+Schema files are written in **NSchema DDL** — a declarative, SQL-flavoured schema language. It borrows SQL's
+`CREATE TABLE` shape so it reads instantly to anyone who works with databases, but it describes *desired state*: you
+write the final shape of the schema, never `ALTER`/migration steps. Column types are canonical and dialect-agnostic
+(`bigint`, `text`, `varchar(255)`, `decimal(18,2)`, …); anything the library doesn't recognise passes through as-is.
 
-```json
-{
-  "schemas": [
-    {
-      "name": "app",
-      "tables": [
-        {
-          "name": "widgets",
-          "primaryKey": { "name": "widgets_pkey", "columnNames": ["id"] },
-          "columns": [
-            { "name": "id", "type": "bigint", "isNullable": false },
-            { "name": "name", "type": "text", "isNullable": true }
-          ]
-        }
-      ]
-    }
-  ]
-}
+The desired schema is every `*.sql` file found recursively under the project directory — split it across as many files
+as you like (e.g. one per schema or per table). A more complete example:
+
+```sql
+CREATE SCHEMA shop;
+
+--- Line items for an order.
+CREATE TABLE shop.order_items (
+  order_id    int           NOT NULL,
+  product_id  int           NOT NULL,
+  quantity    int           NOT NULL DEFAULT 1,
+  unit_price  numeric(12,2) NOT NULL,
+
+  CONSTRAINT order_items_pkey PRIMARY KEY (order_id, product_id),
+  CONSTRAINT fk_order   FOREIGN KEY (order_id)   REFERENCES shop.orders (id)   ON DELETE CASCADE,
+  CONSTRAINT chk_qty    CHECK (quantity > 0),
+
+  INDEX ix_product (product_id)
+);
+
+GRANT SELECT, INSERT ON shop.order_items TO app_rw;
 ```
+
+A `---` doc-comment before a declaration becomes that object's database comment (`COMMENT ON …`); ordinary `--` comments
+are notes for the reader and are not persisted.
 
 ## License
 
