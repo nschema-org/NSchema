@@ -56,17 +56,17 @@ internal sealed class ProjectScaffolder
         return [ConfigFileName, sampleRelativePath];
     }
 
-    private static DatabaseSchema SampleSchema { get; } = DatabaseSchema.Create(
+    private static DatabaseSchema SampleSchema { get; } = new DatabaseSchema(
     [
-        SchemaDefinition.Create("app", tables:
+        new SchemaDefinition("app", Tables:
         [
-            Table.Create(
+            new Table(
                 "widgets",
-                primaryKey: new PrimaryKey("widgets_pkey", ["id"]),
-                columns:
+                PrimaryKey: new PrimaryKey("widgets_pkey", ["id"]),
+                Columns:
                 [
-                    Column.Create("id", SqlType.BigInt),
-                    Column.Create("name", SqlType.Text, isNullable: true),
+                    new Column("id", SqlType.BigInt),
+                    new Column("name", SqlType.Text, IsNullable: true),
                 ]),
         ]),
     ]);
