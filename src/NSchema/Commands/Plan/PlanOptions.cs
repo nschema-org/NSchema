@@ -24,10 +24,15 @@ internal static class PlanOptions
         .FromOption("--destroy")
         .WithDescription("Preview the plan that \"destroy\" would run to tear the managed schema down, without applying it.");
 
+    public static readonly OptionBinding<string> Out = OptionBinding.Create<string>()
+        .FromOption("--out")
+        .WithDescription("Write the computed plan to this file so it can be replayed later with apply --plan-file.");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
         Destructive.Option,
         Destroy.Option,
+        Out.Option,
     ];
 }

@@ -112,9 +112,11 @@ Compute and show the migration plan, without changing anything.
 - `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 - `--destroy` — preview the SQL that [`destroy`](#nschema-destroy) would run to tear the managed schema down, instead of a forward plan (Terraform's `plan -destroy`).
+- `--out <path>` — write the computed plan to a file so it can be replayed later by [`apply --plan-file`](#nschema-apply) (Terraform's `plan -out`). Works with `--destroy` too, saving the teardown plan.
 
 ```sh
 nschema plan
+nschema plan --out tonight.nplan   # save it to apply later
 ```
 
 With `--destroy` the command previews a teardown rather than a forward migration. It takes the same inputs as
@@ -137,9 +139,11 @@ Compute the plan and apply it to the target database. Prompts for confirmation b
 Accepts every [`plan`](#nschema-plan) option, plus:
 
 - `--auto-approve` — skip the confirmation prompt and apply immediately.
+- `--plan-file <path>` — replay a plan saved by [`plan --out`](#nschema-plan), executing exactly that plan instead of computing a fresh one (Terraform's `apply <planfile>`). The saved plan already fixes its scope, desired schema, and destructive-action policy, so those inputs are ignored — and the `*.sql` files need not be present. A live database to write to is still required, and you're still prompted for confirmation unless `--auto-approve` is given.
 
 ```sh
 nschema apply
+nschema apply --plan-file tonight.nplan   # apply exactly what plan --out saved
 ```
 
 ### `nschema refresh`
