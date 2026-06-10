@@ -42,7 +42,7 @@ internal static class PlanCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        await app.Plan(new PlanArguments { Schemas = configuration.Scope }, cancellationToken);
+        await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
     }
 
     private static async Task RunDestroy(PlanConfiguration configuration, CancellationToken cancellationToken)
@@ -59,6 +59,6 @@ internal static class PlanCommand
         }
 
         using var app = builder.Build();
-        await app.PlanDestroy(new PlanDestroyArguments(), cancellationToken);
+        await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
     }
 }

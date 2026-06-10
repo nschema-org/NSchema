@@ -96,6 +96,46 @@ public sealed class RootCommandTests
     }
 
     [Fact]
+    public void Out_IsAcceptedByPlan()
+    {
+        // Act — plan --out saves the computed plan for later replay (Terraform's plan -out).
+        var result = _sut.Parse(["plan", "--out", "plan.nschema"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Out_IsRejectedByApply()
+    {
+        // Act — saving a plan is a plan-only concern; apply consumes one with --plan-file.
+        var result = _sut.Parse(["apply", "--out", "plan.nschema"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void PlanFile_IsAcceptedByApply()
+    {
+        // Act — apply --plan-file replays a saved plan (Terraform's apply <planfile>).
+        var result = _sut.Parse(["apply", "--plan-file", "plan.nschema"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void PlanFile_IsRejectedByPlan()
+    {
+        // Act — plan computes and (optionally) saves a plan; it never consumes one.
+        var result = _sut.Parse(["plan", "--plan-file", "plan.nschema"]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
     public void Destroy_IsAcceptedByPlan()
     {
         // Act — plan --destroy previews a teardown, Terraform-style.

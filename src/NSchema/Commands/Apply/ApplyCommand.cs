@@ -27,14 +27,24 @@ internal static class ApplyCommand
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var configuration = Resolve(parseResult);
-        using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema()
-            .ConfigureScripts()
-            .ConfigurePolicies(configuration.DestructiveActionPolicy)
+
+        var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
-            .ConfigureConfirmation(configuration.AutoApprove)
-            .Build();
-        await app.Apply(new ApplyArguments { Schemas = configuration.Scope }, cancellationToken);
+            .ConfigureConfirmation(configuration.AutoApprove);
+
+        // Replaying a saved plan runs exactly the SQL captured at plan time, so the desired schema, deployment
+        // scripts, and destructive-action policy that shaped that plan are not consulted again — and the *.sql files
+        // needn't even be present. A fresh apply computes the plan now, so it configures all three.
+        if (configuration.PlanFile is null)
+        {
+            builder
+                .ConfigureDesiredSchema()
+                .ConfigureScripts()
+                .ConfigurePolicies(configuration.DestructiveActionPolicy);
+        }
+
+        using var app = builder.Build();
+        await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile }, cancellationToken);
     }
 }

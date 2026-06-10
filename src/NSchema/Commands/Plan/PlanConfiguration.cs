@@ -44,11 +44,18 @@ internal sealed class PlanConfiguration : IBindable
     /// </summary>
     public bool HasStateStore => State.ConfiguredSectionCount >= 1;
 
+    /// <summary>
+    /// Optional path the computed plan is written to so it can be replayed later by <c>apply --plan-file</c>
+    /// </summary>
+    // internal set: bound via Bind, but paired with the Destroy toggle in tests, so they set it directly.
+    public string? OutFile { get; internal set; }
+
     public void Bind(ParseResult result)
     {
         PlanOptions.Scope.Bind(result, s => Scope = s);
         PlanOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         PlanOptions.Destroy.Bind(result, d => Destroy = d);
+        PlanOptions.Out.Bind(result, o => OutFile = o);
         PlanOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

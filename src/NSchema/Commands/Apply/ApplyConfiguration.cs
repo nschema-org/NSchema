@@ -32,15 +32,21 @@ internal sealed class ApplyConfiguration : IBindable
     public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
 
     /// <summary>
-    /// The policy applied when the plan contains destructive actions.
+    /// Whether to skip the interactive confirmation prompt and apply immediately.
     /// </summary>
     public bool AutoApprove { get; private set; }
+
+    /// <summary>
+    /// Optional path to a plan previously saved with <c>plan --out</c>.
+    /// </summary>
+    public string? PlanFile { get; private set; }
 
     public void Bind(ParseResult result)
     {
         ApplyOptions.Scope.Bind(result, s => Scope = s);
         ApplyOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
         ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
+        ApplyOptions.PlanFile.Bind(result, p => PlanFile = p);
         ApplyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
     }
 }

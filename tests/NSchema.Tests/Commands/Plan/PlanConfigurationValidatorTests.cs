@@ -97,6 +97,43 @@ public sealed class PlanConfigurationValidatorTests
     }
 
     [Fact]
+    public void Valid_ForForwardPlan_WithOutFile()
+    {
+        // Arrange — a forward plan can be saved for later replay.
+        var config = new PlanConfiguration
+        {
+            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            State = new StateConfig(),
+            OutFile = "plan.nschema",
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Valid_ForDestroy_WithOutFile()
+    {
+        // Arrange — a teardown preview can also be saved for later replay (PlanDestroyArguments.OutFile).
+        var config = new PlanConfiguration
+        {
+            Destroy = true,
+            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            State = new StateConfig(),
+            OutFile = "plan.nschema",
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Invalid_ForDestroy_WhenProviderMissing()
     {
         // Arrange — the teardown SQL is rendered against the provider, so one is required.
