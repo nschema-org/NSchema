@@ -289,6 +289,21 @@ GRANT SELECT, INSERT ON shop.order_items TO app_rw;
 A `---` doc-comment before a declaration becomes that object's database comment (`COMMENT ON …`); ordinary `--` comments
 are notes for the reader and are not persisted.
 
+### Deployment scripts
+
+Some setup can't be expressed declaratively — creating an extension, a role, a custom grant, or backfilling data. For
+these, write **raw SQL** files named `*.pre.sql` or `*.post.sql`:
+
+- `*.pre.sql` files run (in filename order) **before** the migration;
+- `*.post.sql` files run **after** it.
+
+They can live anywhere under the project, alongside your schema files (the `.pre.sql`/`.post.sql` suffix is what
+distinguishes them — they're excluded from the desired schema, not parsed as NSchema DDL). `plan` previews them and
+`apply` runs them; a numeric prefix orders them (`001_extensions.pre.sql`, `010_backfill.post.sql`).
+
+> Deployment scripts run on **every** `apply`, so they must be **idempotent** (e.g. `CREATE EXTENSION IF NOT EXISTS …`).
+> They are not one-time, versioned migrations.
+
 ## License
 
 See [LICENSE](LICENSE).

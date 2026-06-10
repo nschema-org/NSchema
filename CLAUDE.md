@@ -138,6 +138,13 @@ written in **NSchema DDL** — the core's canonical, SQL-flavoured `DatabaseSche
 registered by the core; the CLI no longer offers YAML or JSON). Column types are canonical compact strings (`bigint`,
 `text`, `varchar(255)`). There is no format, directory, or glob to configure. See `README.md` for a worked example.
 
+**Deployment scripts** are raw SQL files distinguished by suffix: `*.pre.sql` runs before the migration, `*.post.sql`
+after (both in filename order, registered via the core's `AddScriptFromFile`/`ScriptType`). They are the imperative
+escape hatch (extensions, backfills, grants NSchema doesn't model) and are deliberately **excluded** from the desired
+schema by `ConfigureDesiredSchema` (so the DSL parser never sees them). `ConfigureScripts` registers them, and is
+called only by the deployment commands — `apply` and forward `plan` — not by `validate`, `destroy`, or `plan --destroy`.
+They run on every apply, so they must be idempotent.
+
 ## Test conventions
 
 Tests use `// Arrange` / `// Act` / `// Assert` sections and a single member-level `_sut` field where the system under

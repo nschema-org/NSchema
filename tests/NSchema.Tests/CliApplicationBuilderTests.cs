@@ -4,6 +4,8 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
 using NSchema.Resolution;
+using NSchema.Scripts;
+using NSchema.Scripts.Model;
 using NSchema.Services;
 using NSchema.State;
 using Spectre.Console;
@@ -111,6 +113,58 @@ public sealed class CliApplicationBuilderTests
             Directory.SetCurrentDirectory(directory);
 
             Should.NotThrow(() => _sut.ConfigureDesiredSchema());
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConfigureDesiredSchema_ExcludesDeploymentScripts()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-onlyscripts-").FullName;
+        try
+        {
+            // Only a deployment script, no declarative schema — the script must not count as a schema file.
+            File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
+            Directory.SetCurrentDirectory(directory);
+
+            Should.Throw<InvalidOperationException>(() => _sut.ConfigureDesiredSchema())
+                .Message.ShouldContain("No schema files");
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureScripts_RegistersPreAndPostDeploymentScriptsBySuffix()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-scripts-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "schema.sql"), "CREATE SCHEMA app;");
+            File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
+            File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
+            Directory.SetCurrentDirectory(directory);
+
+            using var app = _sut.ConfigureDesiredSchema().ConfigureScripts().Build();
+
+            var scripts = new List<Script>();
+            foreach (var provider in app.Services.GetServices<IScriptProvider>())
+            {
+                scripts.AddRange(await provider.GetScripts(TestContext.Current.CancellationToken));
+            }
+
+            scripts.Select(s => (s.Name, s.Type)).ShouldBe(
+                [("001_extensions", ScriptType.PreDeployment), ("010_backfill", ScriptType.PostDeployment)],
+                ignoreOrder: true);
         }
         finally
         {

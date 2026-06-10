@@ -7,6 +7,7 @@ using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Schema;
 using NSchema.Schema.Serialization.Ddl;
+using NSchema.Scripts.Model;
 using NSchema.Services;
 using Spectre.Console;
 
@@ -14,6 +15,11 @@ namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
+
+    private const string PreScriptSuffix = ".pre.sql";
+    private const string PostScriptSuffix = ".post.sql";
+    private static readonly EnumerationOptions _sqlEnumeration = new() { RecurseSubdirectories = true, IgnoreInaccessible = true };
+
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
         .CreateBuilder(new NSchemaApplicationOptions
         {
@@ -43,20 +49,54 @@ internal sealed class CliApplicationBuilder
     public CliApplicationBuilder ConfigureDesiredSchema()
     {
         var root = Directory.GetCurrentDirectory();
+        var schemaFiles = SqlFiles(root).Where(IsSchemaFile).ToList();
 
         // Guard the empty-glob footgun: with no schema files the desired schema would be empty, and a forward plan or
         // apply would read that as "drop everything". A clear error beats a surprising teardown.
-        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
-        if (!Directory.EnumerateFiles(root, "*.sql", options).Any())
+        if (schemaFiles.Count == 0)
         {
             throw new InvalidOperationException(
                 $"No schema files (*.sql) found under \"{root}\". Add a .sql schema file, or point at your project directory with --directory.");
         }
 
-        _builder.AddFileSchemasFromGlob($"{root}/**/*.sql", path => new FileSchemaProvider(path, DdlSchemaSerializer.Instance));
+        foreach (var file in schemaFiles)
+        {
+            _builder.AddSchema(_ => new FileSchemaProvider(file, DdlSchemaSerializer.Instance));
+        }
 
         return this;
     }
+
+    public CliApplicationBuilder ConfigureScripts()
+    {
+        foreach (var file in SqlFiles(Directory.GetCurrentDirectory()))
+        {
+            if (file.EndsWith(PreScriptSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                _builder.AddScriptFromFile(ScriptType.PreDeployment, file, ScriptName(file, PreScriptSuffix));
+            }
+            else if (file.EndsWith(PostScriptSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                _builder.AddScriptFromFile(ScriptType.PostDeployment, file, ScriptName(file, PostScriptSuffix));
+            }
+        }
+
+        return this;
+    }
+
+    private static List<string> SqlFiles(string root) =>
+        Directory.EnumerateFiles(root, "*.sql", _sqlEnumeration).OrderBy(path => path, StringComparer.Ordinal).ToList();
+
+    // The plan/log name drops the whole .pre.sql/.post.sql suffix, so "001_extensions.pre.sql" reads as "001_extensions".
+    private static string ScriptName(string path, string suffix)
+    {
+        var fileName = Path.GetFileName(path);
+        return fileName[..^suffix.Length];
+    }
+
+    private static bool IsSchemaFile(string path) =>
+        !path.EndsWith(PreScriptSuffix, StringComparison.OrdinalIgnoreCase) &&
+        !path.EndsWith(PostScriptSuffix, StringComparison.OrdinalIgnoreCase);
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig state)
     {
