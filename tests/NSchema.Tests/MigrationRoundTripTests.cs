@@ -2,13 +2,15 @@ using System.CommandLine;
 using System.Text.Json;
 using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
+using Spectre.Console;
 using RootCommand = NSchema.Commands.RootCommand;
 
 namespace NSchema.Tests;
 
 /// <summary>
 /// Drives the real CLI pipeline (parse → configure → run) against a live PostgreSQL container to prove the
-/// plan/apply/refresh happy paths end to end. Each test uses a unique database schema for isolation.
+/// plan/apply/refresh/destroy/plan --destroy/show/drift happy paths end to end. Each test uses a unique database
+/// schema for isolation.
 /// </summary>
 [Collection("postgres")]
 public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : IAsyncLifetime
@@ -18,30 +20,23 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     public ValueTask InitializeAsync()
     {
-        // A desired schema describing one table in this test's unique schema. YAML is the default format, so the
-        // commands need no --format flag (the schema format is a config-only setting).
+        // A desired schema describing one table in this test's unique schema, written as NSchema DDL — the only
+        // schema format. The desired schema is every *.sql file found recursively under the project directory.
         var schemaDocument = $"""
-        schemas:
-          - name: {_schema}
-            tables:
-              - name: widgets
-                primaryKey:
-                  name: widgets_pkey
-                  columnNames: [id]
-                columns:
-                  - name: id
-                    type: bigint
-                    isNullable: false
-                  - name: name
-                    type: text
-                    isNullable: true
+        CREATE SCHEMA {_schema};
+
+        CREATE TABLE {_schema}.widgets (
+          id   bigint NOT NULL,
+          name text,
+          CONSTRAINT widgets_pkey PRIMARY KEY (id)
+        );
         """;
 
-        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.yaml"), schemaDocument);
+        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.sql"), schemaDocument);
 
-        // The project's nschema.json lives in the run directory; schema.dir is relative to it. Commands find it via
-        // --directory, the way real usage does — no per-command schema flags.
-        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), """{ "schema": { "dir": "." } }""");
+        // The project's nschema.json lives in the run directory; commands find it via --directory, the way real usage
+        // does — no per-command schema flags. Provider/state are configured per test.
+        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), "{ }");
         return ValueTask.CompletedTask;
     }
 
@@ -56,7 +51,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Apply_CreatesTheDesiredSchemaInTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("apply", "--auto-approve");
+        var (exitCode, _) = await RunCli("apply", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -67,7 +62,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Plan_DoesNotModifyTheDatabase()
     {
         // Act
-        var exitCode = await RunCli("plan");
+        var (exitCode, _) = await RunCli("plan");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -85,7 +80,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var configFile = WriteConfig("refresh.json", new { state = new { file = new { path = stateFile } } });
 
         // Act
-        var exitCode = await RunCli("refresh", "--config", configFile);
+        var (exitCode, _) = await RunCli("refresh", "--config", configFile);
 
         // Assert
         exitCode.ShouldBe(0);
@@ -102,14 +97,109 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         (await TableExists("widgets")).ShouldBeTrue();
 
         // Act
-        var exitCode = await RunCli("destroy", "--auto-approve");
+        var (exitCode, _) = await RunCli("destroy", "--auto-approve");
 
         // Assert
         exitCode.ShouldBe(0);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
-    private async Task<int> RunCli(string command, params string[] commandArguments)
+    [Fact]
+    public async Task PlanDestroy_PreviewsTheTeardownWithoutDropping()
+    {
+        // Arrange — a table to tear down. With no state store, plan --destroy reads the managed schema from the
+        // desired-schema files and renders the teardown SQL against the live database, but never executes it.
+        await RunCli("apply", "--auto-approve");
+
+        // Act
+        var (exitCode, _) = await RunCli("plan", "--destroy");
+
+        // Assert — the teardown is only previewed: the command succeeds, but the table is left in place.
+        exitCode.ShouldBe(0);
+        (await TableExists("widgets")).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Show_PrintsTheRecordedState()
+    {
+        // Arrange — apply, then refresh to record the live schema into the state store.
+        await RunCli("apply", "--auto-approve");
+        var stateFile = Path.Combine(_schemaDirectory, "state.json");
+        var configFile = WriteConfig("state.json.config", new { state = new { file = new { path = stateFile } } });
+        await RunCli("refresh", "--config", configFile);
+
+        // Act — show reads only the recorded state (it never contacts the live database).
+        var (exitCode, output) = await RunCli("show", "--config", configFile);
+
+        // Assert
+        exitCode.ShouldBe(0);
+        output.ShouldContain("widgets");
+    }
+
+    [Fact]
+    public async Task Drift_DetectsAnOutOfBandChange()
+    {
+        // Arrange — record state matching the live schema, then change the live database behind NSchema's back.
+        await RunCli("apply", "--auto-approve");
+        var stateFile = Path.Combine(_schemaDirectory, "state.json");
+        var configFile = WriteConfig("drift.json", new { state = new { file = new { path = stateFile } } });
+        await RunCli("refresh", "--config", configFile);
+        await ExecuteSql($"ALTER TABLE \"{_schema}\".widgets DROP COLUMN name");
+
+        // Act — drift compares the recorded state (which still has the column) against the live database.
+        var (exitCode, output) = await RunCli("drift", "--config", configFile);
+
+        // Assert — drift is a pure observation, so it succeeds, and it reports the dropped column.
+        exitCode.ShouldBe(0);
+        output.ShouldContain("name");
+    }
+
+    [Fact]
+    public async Task Apply_ThenPlan_WithUniqueAndCheckConstraints_RoundTripsCleanly()
+    {
+        // Arrange — a schema exercising unique and check constraints (with constraint comments), which the Postgres
+        // provider both generates (as separate ALTER TABLE ADD CONSTRAINT statements) and introspects. Applying then
+        // re-planning must round-trip cleanly: what we read back out of the database has to match what we declared,
+        // or the second plan would show spurious changes. The `integer` spelling exercises the DSL's alias to the
+        // canonical `int`, which introspection reports — without it, the re-plan would drift on the column type.
+        var schemaDocument = $"""
+        CREATE SCHEMA {_schema};
+
+        CREATE TABLE {_schema}.accounts (
+          id      bigint  NOT NULL,
+          email   text    NOT NULL,
+          balance integer NOT NULL,
+          CONSTRAINT accounts_pkey PRIMARY KEY (id),
+          --- one account per email address
+          CONSTRAINT accounts_email_key UNIQUE (email),
+          --- balances may never go negative
+          CONSTRAINT accounts_balance_check CHECK (balance >= 0)
+        );
+        """;
+        File.WriteAllText(Path.Combine(_schemaDirectory, "schema.sql"), schemaDocument);
+
+        // Act
+        var (applyExit, _) = await RunCli("apply", "--auto-approve");
+        var (planExit, planOutput) = await RunCli("plan");
+
+        // Assert — the apply succeeds, both constraints land with their comments, and the re-plan finds nothing to do.
+        applyExit.ShouldBe(0);
+        (await ConstraintComment("accounts_email_key")).ShouldBe("one account per email address");
+        (await ConstraintComment("accounts_balance_check")).ShouldBe("balances may never go negative");
+        planExit.ShouldBe(0);
+        planOutput.ShouldContain("No changes detected.");
+    }
+
+    private async Task<string?> ConstraintComment(string constraintName)
+    {
+        await using var command = fixture.DataSource.CreateCommand(
+            "SELECT obj_description(oid, 'pg_constraint') FROM pg_constraint WHERE conname = @name AND connamespace = @schema::regnamespace");
+        command.Parameters.AddWithValue("name", constraintName);
+        command.Parameters.AddWithValue("schema", _schema);
+        return await command.ExecuteScalarAsync() as string;
+    }
+
+    private async Task<(int ExitCode, string Output)> RunCli(string command, params string[] commandArguments)
     {
         // --directory points every command at the project dir; nschema.json and its relative paths resolve there.
         string[] args = [command, "--directory", _schemaDirectory, .. commandArguments];
@@ -118,15 +208,32 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // --directory changes the process working directory (in ConfigurationFactory), so snapshot and restore it.
         var workingDirectory = Directory.GetCurrentDirectory();
         Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, fixture.ConnectionString);
+
+        // Capture the CLI's output so command behaviour (the diff/schema/SQL the reporter prints) can be asserted.
+        // The builder snapshots AnsiConsole.Console at construction, so swap it before the command builds its app.
+        var writer = new StringWriter();
+        var previousConsole = AnsiConsole.Console;
+        var recording = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        // A StringWriter has no terminal width, so Spectre defaults to 80 and elides framed content (the SQL preview)
+        // to "...". Widen it so the rendered plan/diff/schema is captured in full.
+        recording.Profile.Width = 500;
+        AnsiConsole.Console = recording;
         try
         {
             // Disable the built-in handler so a failure surfaces as a thrown exception in the test rather than exit code 1.
-            return await RootCommand.Create()
+            var exitCode = await RootCommand.Create()
                 .Parse(args)
                 .InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
+            return (exitCode, writer.ToString());
         }
         finally
         {
+            AnsiConsole.Console = previousConsole;
             Directory.SetCurrentDirectory(workingDirectory);
             Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
         }
@@ -146,5 +253,11 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         command.Parameters.AddWithValue("schema", _schema);
         command.Parameters.AddWithValue("table", table);
         return (bool)(await command.ExecuteScalarAsync())!;
+    }
+
+    private async Task ExecuteSql(string sql)
+    {
+        await using var command = fixture.DataSource.CreateCommand(sql);
+        await command.ExecuteNonQueryAsync();
     }
 }

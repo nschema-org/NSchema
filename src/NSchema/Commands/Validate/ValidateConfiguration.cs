@@ -1,21 +1,14 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Schema;
 
 namespace NSchema.Commands.Validate;
 
 /// <summary>
-/// Configuration for the validate command. It checks only the desired schema, so it composes nothing but the schema
-/// slice — no provider, state, or scope.
+/// Configuration for the validate command. The desired schema is always the <c>*.sql</c> files under the working
+/// directory, so there is nothing to configure — the type exists only so the loader can resolve <c>--directory</c>.
 /// </summary>
 internal sealed class ValidateConfiguration : IBindable
 {
-    /// <summary>
-    /// How the desired schema is located and read.
-    /// </summary>
-    public SchemaConfig Schema { get; init; } = new();
-
-    // Validate reads the schema entirely from nschema.json (located via --directory), so it binds no CLI options.
     public void Bind(ParseResult result)
     {
     }

@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Schema;
+using NSchema.Operations.Import;
 
 namespace NSchema.Tests.Configuration.Binding;
 
@@ -129,16 +129,16 @@ public sealed class OptionBindingTests : IDisposable
     public void Bind_ParsesEnumFromEnvironment_CaseInsensitively()
     {
         // Arrange
-        Environment.SetEnvironmentVariable(EnvVar, "json");
-        var binding = OptionBinding.Create<SchemaFormat>().FromOption("--format").FromEnvironmentVariable(EnvVar);
+        Environment.SetEnvironmentVariable(EnvVar, "schema");
+        var binding = OptionBinding.Create<ImportPartitionMode>().FromOption("--partition").FromEnvironmentVariable(EnvVar);
         var result = Parse(binding);
 
         // Act
-        SchemaFormat? captured = null;
+        ImportPartitionMode? captured = null;
         binding.Bind(result, value => captured = value);
 
         // Assert
-        captured.ShouldBe(SchemaFormat.Json);
+        captured.ShouldBe(ImportPartitionMode.Schema);
     }
 
     [Fact]

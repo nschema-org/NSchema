@@ -1,6 +1,5 @@
 using NSchema.Commands.Destroy;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Destroy;
@@ -27,13 +26,13 @@ public sealed class DestroyConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_WithProviderAndSchema_NoStore()
+    public void Valid_WithProviderOnly_FallsBackToWorkingDirectorySchema()
     {
-        // Arrange
+        // Arrange — with no state store, the managed schema is the *.sql files under the working directory, so a
+        // provider alone is sufficient.
         var config = new DestroyConfiguration
         {
             Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            Schema = new SchemaConfig { Directory = "./schema" },
         };
 
         // Act
@@ -59,22 +58,5 @@ public sealed class DestroyConfigurationValidatorTests
         // Assert
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("database provider is required"));
-    }
-
-    [Fact]
-    public void Invalid_WhenNoManagedSchemaSource()
-    {
-        // Arrange — provider present, but neither a state store nor a desired schema to tear down.
-        var config = new DestroyConfiguration
-        {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-        };
-
-        // Act
-        var result = _sut.Validate(config);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("managed schema source"));
     }
 }

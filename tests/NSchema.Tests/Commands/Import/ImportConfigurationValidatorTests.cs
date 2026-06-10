@@ -1,7 +1,6 @@
 using NSchema.Commands.Import;
 using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Operations.Import;
 
 namespace NSchema.Tests.Commands.Import;
@@ -20,7 +19,7 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = AProvider(),
-            Target = new ImportTargetConfig { OutputFile = "./schema.yaml", Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
+            Target = new ImportTargetConfig { OutputFile = "./schema.yaml", Partition = ImportPartitionMode.None },
         };
 
         // Act
@@ -39,7 +38,7 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = AProvider(),
-            Target = new ImportTargetConfig { OutputDirectory = "./schemas", Format = SchemaFormat.Yaml, Partition = partition },
+            Target = new ImportTargetConfig { OutputDirectory = "./schemas", Partition = partition },
         };
 
         // Act
@@ -56,7 +55,7 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = new ProviderConfig(),
-            Target = new ImportTargetConfig { OutputFile = "./schema.yaml", Format = SchemaFormat.Yaml, Partition = ImportPartitionMode.None },
+            Target = new ImportTargetConfig { OutputFile = "./schema.yaml", Partition = ImportPartitionMode.None },
         };
 
         // Act

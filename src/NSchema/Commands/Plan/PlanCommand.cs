@@ -36,7 +36,8 @@ internal static class PlanCommand
         }
 
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Schema)
+            .ConfigureDesiredSchema()
+            .ConfigureScripts()
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
@@ -50,11 +51,11 @@ internal static class PlanCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State);
 
-        // The desired schema is only the teardown source when no state store is configured; otherwise omit it so we
-        // don't glob the working directory for schema files that aren't needed.
-        if (configuration.HasSchema)
+        // The working-directory schema is only the teardown source when no state store is configured; otherwise omit
+        // it so we don't glob for schema files that aren't needed.
+        if (!configuration.HasStateStore)
         {
-            builder.ConfigureDesiredSchema(configuration.Schema);
+            builder.ConfigureDesiredSchema();
         }
 
         using var app = builder.Build();

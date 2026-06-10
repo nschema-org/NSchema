@@ -1,5 +1,4 @@
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Init;
@@ -18,9 +17,4 @@ internal sealed class ScaffoldedProjectConfig
     /// The backend state store connection.
     /// </summary>
     public StateConfig State { get; init; } = new();
-
-    /// <summary>
-    /// The desired schema configuration.
-    /// </summary>
-    public SchemaConfig Schema { get; init; } = new();
 }

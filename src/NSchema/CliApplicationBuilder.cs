@@ -1,27 +1,31 @@
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration.Provider;
-using NSchema.Configuration.Schema;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
+using NSchema.Schema;
+using NSchema.Schema.Serialization.Ddl;
+using NSchema.Scripts.Model;
 using NSchema.Services;
-using NSchema.Yaml;
 using Spectre.Console;
 
 namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
+
+    private const string PreScriptSuffix = ".pre.sql";
+    private const string PostScriptSuffix = ".post.sql";
+    private static readonly EnumerationOptions _sqlEnumeration = new() { RecurseSubdirectories = true, IgnoreInaccessible = true };
+
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
         .CreateBuilder(new NSchemaApplicationOptions
         {
             ExceptionBehavior = ExceptionBehavior.Throw,
             Reporter = SpectreOperationReporter.ReporterName
         })
-        .AddYamlSchemaSerializer()
         // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
         // would be re-escaped by Spectre. The reporter then frames and colors it.
         .UseTerraformRenderer(o => o.IncludeColour = false)
@@ -42,21 +46,57 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema(SchemaConfig schema)
+    public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var root = Path.GetFullPath(schema.Directory, Directory.GetCurrentDirectory());
-        var pattern = string.IsNullOrWhiteSpace(schema.Pattern) ? schema.Format.DefaultPattern() : schema.Pattern;
-        var glob = $"{root}/{pattern}";
+        var root = Directory.GetCurrentDirectory();
+        var schemaFiles = SqlFiles(root).Where(IsSchemaFile).ToList();
 
-        switch (schema.Format)
+        // Guard the empty-glob footgun: with no schema files the desired schema would be empty, and a forward plan or
+        // apply would read that as "drop everything". A clear error beats a surprising teardown.
+        if (schemaFiles.Count == 0)
         {
-            case SchemaFormat.Yaml: _builder.AddYamlSchemasFromGlob(glob); break;
-            case SchemaFormat.Json: _builder.AddJsonSchemasFromGlob(glob); break;
-            default: throw new UnreachableException();
+            throw new InvalidOperationException(
+                $"No schema files (*.sql) found under \"{root}\". Add a .sql schema file, or point at your project directory with --directory.");
+        }
+
+        foreach (var file in schemaFiles)
+        {
+            _builder.AddSchema(_ => new FileSchemaProvider(file, DdlSchemaSerializer.Instance));
         }
 
         return this;
     }
+
+    public CliApplicationBuilder ConfigureScripts()
+    {
+        foreach (var file in SqlFiles(Directory.GetCurrentDirectory()))
+        {
+            if (file.EndsWith(PreScriptSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                _builder.AddScriptFromFile(ScriptType.PreDeployment, file, ScriptName(file, PreScriptSuffix));
+            }
+            else if (file.EndsWith(PostScriptSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                _builder.AddScriptFromFile(ScriptType.PostDeployment, file, ScriptName(file, PostScriptSuffix));
+            }
+        }
+
+        return this;
+    }
+
+    private static List<string> SqlFiles(string root) =>
+        Directory.EnumerateFiles(root, "*.sql", _sqlEnumeration).OrderBy(path => path, StringComparer.Ordinal).ToList();
+
+    // The plan/log name drops the whole .pre.sql/.post.sql suffix, so "001_extensions.pre.sql" reads as "001_extensions".
+    private static string ScriptName(string path, string suffix)
+    {
+        var fileName = Path.GetFileName(path);
+        return fileName[..^suffix.Length];
+    }
+
+    private static bool IsSchemaFile(string path) =>
+        !path.EndsWith(PreScriptSuffix, StringComparison.OrdinalIgnoreCase) &&
+        !path.EndsWith(PostScriptSuffix, StringComparison.OrdinalIgnoreCase);
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig state)
     {

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 framework — a declarative database schema migration engine ("Terraform for database schemas"). The CLI's job is to
 resolve configuration, translate it into a core `NSchemaApplication`, and run one operation.
 
-The core and providers (`NSchema`, `NSchema.Postgres`, `NSchema.Aws`, `NSchema.Yaml`) are consumed as **NuGet
+The core and providers (`NSchema`, `NSchema.Postgres`, `NSchema.Aws`) are consumed as **NuGet
 packages**, not project references (versions pinned in `Directory.Packages.props`). Their source lives in sibling repos
 under `../` (e.g. `../NSchema`). Changing core behavior therefore requires publishing a new core package and bumping the
 pinned version here — it cannot be done from this repo alone.
@@ -73,26 +73,29 @@ command's own option bindings), and its `*ConfigurationValidator`. The handler's
 `ConfigurationFactory.Load<TConfiguration>`, runs the validator via `ValidateOrThrow`, and hands the validated model to
 the builder. A command's `Bind` is the composition root and owns **every** binding itself: it resolves each option
 through its command-local `*Options` and writes the result straight onto the model (e.g.
-`ApplyOptions.Scope.Bind(result, s => Scope = s)`, `ApplyOptions.SchemaDirectory.Bind(result, d => Schema.Directory = d)`).
-The slices (`SchemaConfig`, `ProviderConfig`, `StateConfig`, `ImportTargetConfig`) are **plain data** — the shared,
+`ApplyOptions.Scope.Bind(result, s => Scope = s)`, `ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a)`).
+The slices (`ProviderConfig`, `StateConfig`, `ImportTargetConfig`) are **plain data** — the shared,
 reusable vocabulary the command writes into; they no longer bind themselves. Where a flat input must materialize a nested
 section, the slice exposes a small accessor (`ProviderConfig.EnsurePostgres()`) the command calls, rather than the command
 reaching in. A command never sees a config field it has no use for.
 
-Each command validator (**FluentValidation**) *composes the slice validators* (`SchemaConfigValidator`,
-`ProviderConfigValidator`, `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
-command's **presence** rules on top: `apply` requires a desired schema **and** a provider; `plan` requires a desired schema
-**and** a current-schema source — a provider (live) **or** a state store (offline); `refresh` requires a provider **and** a
-state store (it snapshots the **whole** live schema, so it takes no desired-schema or scope). Presence is expressed via each
-config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). The projection runs
+Each command validator (**FluentValidation**) *composes the slice validators* (`ProviderConfigValidator`,
+`StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
+command's **presence** rules on top: `apply` requires a provider; `plan` requires a current-schema source — a provider
+(live) **or** a state store (offline); `refresh` requires a provider **and** a state store (it snapshots the **whole**
+live schema, so it takes no scope). The **desired schema is not a config concern** — it is always the `*.sql` files under
+the project directory, so no command validates its presence (the builder guards the zero-files case instead; see below).
+Presence is expressed via each config's `ConfiguredSectionCount` (the leaf validators reuse it for the "at most one section" rule). The projection runs
 the validator through `ValidateOrThrow`, which throws a `ValidationException` with the joined `ErrorMessage`s — so an
 invalid run fails before any builder call, and a future `validate` command can reuse the same per-command validators.
 
 `CliApplicationBuilder` is a fluent wrapper around the core `NSchemaApplicationBuilder` that **trusts its inputs** — it no
-longer validates. Each `Configure*` method takes exactly the slice it applies (`ConfigureDesiredSchema(SchemaConfig)`,
-`ConfigureScope(string[]?)`, `ConfigurePolicies(DestructiveActionPolicy?)`, `ConfigureDatabaseProvider(ProviderConfig)`,
-`ConfigureBackendState(StateConfig)`, `ConfigureConfirmation(bool)`); the command handler passes the corresponding field
-off its validated model. There is no shared "configure everything" method, so adding a slice to one command does not affect
+longer validates config. Each `Configure*` method takes exactly the slice it applies (`ConfigurePolicies(DestructiveActionPolicy?)`,
+`ConfigureDatabaseProvider(ProviderConfig)`, `ConfigureBackendState(StateConfig)`, `ConfigureConfirmation(bool)`); the
+command handler passes the corresponding field off its validated model. The lone exception is `ConfigureDesiredSchema()`
+— it takes no slice (the desired schema is always the recursive `*.sql` glob of the working directory) and throws if
+**no** schema files are found, since an empty desired schema would otherwise read as "drop everything". There is no
+shared "configure everything" method, so adding a slice to one command does not affect
 another. `ConfigureDatabaseProvider`/`ConfigureBackendState` dispatch on **which nested section is populated**
 (`ProviderConfig.Postgres`, `StateConfig.File`/`S3`) rather than a discriminator enum, and bind through **property
 patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-forgiving operators — the command validator
@@ -130,9 +133,17 @@ stay centralized in `Configuration/EnvironmentVariables` as the auditable surfac
 
 ## Desired-schema files
 
-The files under `schema.dir` are **`DatabaseSchema` documents** (YAML by default, or JSON). Column `type` is a
-**compact string** (`bigint`, `text`, `varchar(255)`), not the `{ "kind": ... }` object form — that object form is the
-state-snapshot serialization, which is a different thing. See `README.md` for a worked example.
+The desired schema is every `*.sql` file found recursively under the project directory (the `--directory` root),
+written in **NSchema DDL** — the core's canonical, SQL-flavoured `DatabaseSchema` serialization (format key `"sql"`,
+registered by the core; the CLI no longer offers YAML or JSON). Column types are canonical compact strings (`bigint`,
+`text`, `varchar(255)`). There is no format, directory, or glob to configure. See `README.md` for a worked example.
+
+**Deployment scripts** are raw SQL files distinguished by suffix: `*.pre.sql` runs before the migration, `*.post.sql`
+after (both in filename order, registered via the core's `AddScriptFromFile`/`ScriptType`). They are the imperative
+escape hatch (extensions, backfills, grants NSchema doesn't model) and are deliberately **excluded** from the desired
+schema by `ConfigureDesiredSchema` (so the DSL parser never sees them). `ConfigureScripts` registers them, and is
+called only by the deployment commands — `apply` and forward `plan` — not by `validate`, `destroy`, or `plan --destroy`.
+They run on every apply, so they must be idempotent.
 
 ## Test conventions
 

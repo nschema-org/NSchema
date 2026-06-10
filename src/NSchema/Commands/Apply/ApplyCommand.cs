@@ -28,7 +28,8 @@ internal static class ApplyCommand
     {
         var configuration = Resolve(parseResult);
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Schema)
+            .ConfigureDesiredSchema()
+            .ConfigureScripts()
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)

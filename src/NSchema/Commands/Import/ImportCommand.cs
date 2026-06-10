@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Schema;
 using NSchema.Operations.Import;
+using NSchema.Schema.Serialization.Ddl;
 
 namespace NSchema.Commands.Import;
 
@@ -33,7 +33,7 @@ internal static class ImportCommand
             Schemas = configuration.Scope,
             Tables = configuration.Tables,
             Partition = configuration.Target.Partition,
-            Format = configuration.Target.Format.FormatName(),
+            Format = DdlSchemaSerializer.FormatName,
             OutputFile = configuration.Target.OutputFile == null ? null : Path.GetFullPath(configuration.Target.OutputFile, cwd),
             OutputDirectory = configuration.Target.OutputDirectory == null ? null : Path.GetFullPath(configuration.Target.OutputDirectory, cwd)
         };
