@@ -19,9 +19,6 @@ internal sealed class ImportTargetConfigValidator : AbstractValidator<ImportTarg
                 .WithMessage("Output directory is not used when partition is None.");
         }).Otherwise(() =>
         {
-            RuleFor(x => x.OutputDirectory)
-                .NotEmpty()
-                .WithMessage("Output directory is required when partition is Schema or Table.");
             RuleFor(x => x.OutputFile)
                 .Empty()
                 .WithMessage("Output file is not used when partition is Schema or Table; pass output directory instead.");

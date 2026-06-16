@@ -22,7 +22,7 @@ internal static class ImportOptions
 
     public static readonly OptionBinding<string> OutputDirectory = OptionBinding.Create<string>()
         .FromOption("--out-dir")
-        .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table.");
+        .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table. Defaults to the current directory.");
 
     public static readonly OptionBinding<ImportPartitionMode> Partition = OptionBinding.Create<ImportPartitionMode>()
         .FromOption("--partition")
