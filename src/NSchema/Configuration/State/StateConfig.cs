@@ -22,4 +22,13 @@ internal sealed class StateConfig
     /// </summary>
     [JsonIgnore]
     public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
+
+    /// <summary>
+    /// Copies the populated sections from <paramref name="other"/> onto this instance.
+    /// </summary>
+    public void CopyFrom(StateConfig other)
+    {
+        File = other.File;
+        S3 = other.S3;
+    }
 }

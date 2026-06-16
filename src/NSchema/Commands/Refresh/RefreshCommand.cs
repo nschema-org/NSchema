@@ -10,22 +10,20 @@ internal static class RefreshCommand
     {
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
 
-        command.Options.Add(CommonOptions.Config.Option);
-
         command.SetAction(Run);
         return command;
     }
 
-    private static RefreshConfiguration Resolve(ParseResult result)
+    private static async ValueTask<RefreshConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
     {
-        var config = ConfigurationFactory.Load<RefreshConfiguration>(result);
+        var config = await ConfigurationFactory.Load<RefreshConfiguration>(result, cancellationToken);
         new RefreshConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = await Resolve(parseResult, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)

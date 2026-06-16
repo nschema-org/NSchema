@@ -11,7 +11,6 @@ internal static class ImportCommand
     {
         var command = new Command("import", "Read the live database schema and write it as desired-schema source files.");
 
-        command.Options.Add(CommonOptions.Config.Option);
         command.Options.AddRange(ImportOptions.All);
 
         command.SetAction(Run);
@@ -20,7 +19,7 @@ internal static class ImportCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = ConfigurationFactory.Load<ImportConfiguration>(parseResult);
+        var configuration = await ConfigurationFactory.Load<ImportConfiguration>(parseResult, cancellationToken);
         new ImportConfigurationValidator().ValidateOrThrow(configuration);
 
         using var app = CliApplicationBuilder.Create()

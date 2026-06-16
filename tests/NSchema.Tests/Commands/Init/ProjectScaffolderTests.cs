@@ -1,86 +1,66 @@
-using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Commands.Init;
-using NSchema.Commands.Plan;
-using NSchema.Configuration;
-using NSchema.Resolution;
-using NSchema.Schema.Serialization;
+using NSchema.Configuration.Dsl;
+using NSchema.Schema.Serialization.Ddl;
 
 namespace NSchema.Tests.Commands.Init;
 
 public sealed class ProjectScaffolderTests : IDisposable
 {
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-init-").FullName;
-    private readonly NSchemaApplication _app = CliApplicationBuilder.Create().Build();
 
-    private IKeyedResolver<ISchemaSerializer> Serializers => _app.Services.GetRequiredService<IKeyedResolver<ISchemaSerializer>>();
+    public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    public void Dispose()
-    {
-        _app.Dispose();
-        Directory.Delete(_directory, recursive: true);
-    }
+    private Task<IReadOnlyList<string>> Scaffold(bool force = false) =>
+        ProjectScaffolder.Scaffold(_directory, force, TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task Scaffold_CreatesConfigAndSqlSample()
     {
-        // Act
-        var created = await ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        var created = await Scaffold();
 
-        // Assert
-        created.ShouldBe(["nschema.json", Path.Combine("schemas", "example.sql")]);
-        File.Exists(Path.Combine(_directory, "nschema.json")).ShouldBeTrue();
+        created.ShouldBe(["config.sql", Path.Combine("schemas", "example.sql")]);
+        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
         File.Exists(Path.Combine(_directory, "schemas", "example.sql")).ShouldBeTrue();
     }
 
     [Fact]
     public async Task Scaffold_SqlSample_ContainsDdl()
     {
-        // Act
-        await ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        await Scaffold();
 
-        // Assert
         var sample = await File.ReadAllTextAsync(Path.Combine(_directory, "schemas", "example.sql"), TestContext.Current.CancellationToken);
         sample.ShouldContain("CREATE TABLE app.widgets");
     }
 
     [Fact]
-    public async Task Scaffold_GeneratedConfig_RoundTripsThroughTheLoader()
+    public async Task Scaffold_Config_ContainsProviderAndBackendBlocks()
     {
-        // Act
-        await ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        await Scaffold();
 
-        // Assert
-        var config = LoadGeneratedConfig();
-        config.Provider.Postgres.ShouldNotBeNull();
-        config.State.File.ShouldNotBeNull();
-        config.State.File!.Path.ShouldBe("./nschema.state.json");
+        var config = await File.ReadAllTextAsync(Path.Combine(_directory, "config.sql"), TestContext.Current.CancellationToken);
+        config.ShouldContain("PROVIDER postgres");
+        config.ShouldContain("BACKEND file");
     }
 
     [Fact]
-    public async Task Scaffold_GeneratedConfig_OmitsUnsetDefaults()
+    public async Task Scaffold_GeneratedConfig_RoundTripsThroughTheReader()
     {
-        // Act
-        await ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        await Scaffold();
 
-        // Assert
-        var json = File.ReadAllText(Path.Combine(_directory, "nschema.json"));
-        json.ShouldNotContain("autoApprove");
-        json.ShouldNotContain("scope");
-        json.ShouldNotContain("format");
+        var config = await DslProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        config.Provider!.Postgres.ShouldNotBeNull();
+        config.State!.File.ShouldNotBeNull();
+        config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
 
     [Fact]
     public async Task Scaffold_SampleSchema_RoundTripsThroughTheSerializer()
     {
-        // Arrange
-        await ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        await Scaffold();
 
-        // Act
         await using var stream = File.OpenRead(Path.Combine(_directory, "schemas", "example.sql"));
-        var schema = await Serializers.Resolve("sql").Read(stream, TestContext.Current.CancellationToken);
+        var schema = await DdlSchemaSerializer.Instance.Read(stream, TestContext.Current.CancellationToken);
 
-        // Assert
         var table = schema.Schemas.ShouldHaveSingleItem().Tables.ShouldHaveSingleItem();
         table.Name.ShouldBe("widgets");
         table.PrimaryKey!.ColumnNames.ShouldBe(["id"]);
@@ -88,35 +68,21 @@ public sealed class ProjectScaffolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Scaffold_Throws_WhenConfigExists_AndNotForced()
+    public async Task Scaffold_Throws_WhenDirectoryNotEmpty_AndNotForced()
     {
-        // Arrange
-        File.WriteAllText(Path.Combine(_directory, "nschema.json"), "{}");
+        await File.WriteAllTextAsync(Path.Combine(_directory, "existing.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
 
-        // Act
-        var act = () => ProjectScaffolder.Scaffold(_directory, force: false, Serializers, TestContext.Current.CancellationToken);
+        var act = () => Scaffold(force: false);
 
-        // Assert
         (await Should.ThrowAsync<InvalidOperationException>(act)).Message.ShouldContain("--force");
     }
 
     [Fact]
     public async Task Scaffold_Overwrites_WhenForced()
     {
-        // Arrange
-        File.WriteAllText(Path.Combine(_directory, "nschema.json"), "stale");
+        await File.WriteAllTextAsync(Path.Combine(_directory, "existing.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
 
-        // Act
-        var act = () => ProjectScaffolder.Scaffold(_directory, force: true, Serializers, TestContext.Current.CancellationToken);
-
-        // Assert
-        await Should.NotThrowAsync(act);
-        LoadGeneratedConfig().Provider.Postgres.ShouldNotBeNull();
-    }
-
-    private PlanConfiguration LoadGeneratedConfig()
-    {
-        var json = File.ReadAllText(Path.Combine(_directory, "nschema.json"));
-        return JsonSerializer.Deserialize<PlanConfiguration>(json, ConfigurationFactory.JsonOptions)!;
+        await Should.NotThrowAsync(() => Scaffold(force: true));
+        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
     }
 }

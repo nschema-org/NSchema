@@ -1,10 +1,14 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.State;
 
 namespace NSchema.Commands.ForceUnlock;
 
 internal static class ForceUnlockOptions
 {
+    public static readonly OptionBinding<StateConfig> State = OptionBinding.Create<StateConfig>()
+        .FromProjectConfig(c => c.State);
+
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force")
         .WithDescription("Skip the interactive confirmation prompt and release the lock immediately.");

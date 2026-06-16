@@ -17,16 +17,35 @@ public sealed class ConfigurationFactoryTests : IDisposable
     }
 
     [Fact]
-    public void Load_HonorsDirectory_ForConfigDiscovery()
+    public async Task Load_HonorsDirectory_ForConfigDiscovery()
     {
-        // Arrange — a project whose nschema.json lives in its own directory, not the shell's.
-        File.WriteAllText(Path.Combine(_projectDirectory, "nschema.json"), """{ "state": { "file": { "path": "./custom.state.json" } } }""");
+        // Arrange — a project whose config blocks live in its own directory, not the shell's.
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "BACKEND file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
-        var config = ConfigurationFactory.Load<PlanConfiguration>(parseResult);
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
 
         // Assert — the config was discovered under --directory (an empty config would have left state unset).
         config.State.File!.Path.ShouldBe("./custom.state.json");
+    }
+
+    [Fact]
+    public async Task Load_EnvironmentVariable_OverridesDslConnectionString()
+    {
+        // The DSL config block is the lowest layer; the environment variable wins.
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "PROVIDER postgres ( connection_string = 'from-dsl' );", TestContext.Current.CancellationToken);
+        var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, "from-env");
+            var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
+            config.Provider.Postgres!.ConnectionString.ShouldBe("from-env");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
+        }
     }
 }

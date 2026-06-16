@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -20,8 +21,10 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public StateConfig State { get; init; } = new();
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        RefreshOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        RefreshOptions.State.Bind(project, cli, s => State.CopyFrom(s));
+        RefreshOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        RefreshOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
     }
 }

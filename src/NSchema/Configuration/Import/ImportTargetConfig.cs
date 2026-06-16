@@ -10,7 +10,7 @@ internal sealed class ImportTargetConfig
     public string? OutputFile { get; set; }
 
     /// <summary>
-    /// The directory to write into when <see cref="Partition"/> is <see cref="ImportPartitionMode.Schema"/> or <see cref="ImportPartitionMode.Table"/>.
+    /// The directory to write into when <see cref="Partition"/> is <see cref="ImportPartitionMode.Schema"/> or <see cref="ImportPartitionMode.Object"/>.
     /// </summary>
     public string? OutputDirectory { get; set; }
 

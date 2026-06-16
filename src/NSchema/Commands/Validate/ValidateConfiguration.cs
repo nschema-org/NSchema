@@ -1,15 +1,16 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 
 namespace NSchema.Commands.Validate;
 
 /// <summary>
-/// Configuration for the validate command. The desired schema is always the <c>*.sql</c> files under the working
-/// directory, so there is nothing to configure — the type exists only so the loader can resolve <c>--directory</c>.
+/// Configuration for the validate command. Currently just a placeholder.
 /// </summary>
 internal sealed class ValidateConfiguration : IBindable
 {
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
+        // Nothing to bind.
     }
 }

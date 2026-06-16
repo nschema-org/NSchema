@@ -1,5 +1,8 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Provider;
+using NSchema.Diff.Policies;
 using NSchema.Operations.Import;
 
 namespace NSchema.Tests.Configuration.Binding;
@@ -7,6 +10,7 @@ namespace NSchema.Tests.Configuration.Binding;
 public sealed class OptionBindingTests : IDisposable
 {
     private const string EnvVar = "NSCHEMA_TEST_OPTION_BINDING";
+    private static readonly DslProjectConfig Empty = new();
 
     public OptionBindingTests() => Environment.SetEnvironmentVariable(EnvVar, null);
 
@@ -29,7 +33,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         string? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe("cli");
@@ -45,7 +49,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         string? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe("from-env");
@@ -61,7 +65,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         string? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe("cli");
@@ -76,9 +80,80 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         var called = false;
-        binding.Bind(result, _ => called = true);
+        binding.Bind(Empty, result, _ => called = true);
 
         // Assert
+        called.ShouldBeFalse();
+    }
+
+    // ── Project config layer (lowest precedence) ────────────────────────────
+
+    private static DslProjectConfig ProjectWithConnectionString(string value) =>
+        new() { Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = value } } };
+
+    [Fact]
+    public void Bind_AppliesProjectValue_WhenSet()
+    {
+        var binding = OptionBinding.Create<string>().FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+
+        string? captured = null;
+        binding.Bind(ProjectWithConnectionString("from-project"), new Command("test").Parse([]), v => captured = v);
+
+        captured.ShouldBe("from-project");
+    }
+
+    [Fact]
+    public void Bind_EnvironmentOverridesProject()
+    {
+        Environment.SetEnvironmentVariable(EnvVar, "from-env");
+        var binding = OptionBinding.Create<string>()
+            .FromEnvironmentVariable(EnvVar)
+            .FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+
+        string? captured = null;
+        binding.Bind(ProjectWithConnectionString("from-project"), new Command("test").Parse([]), v => captured = v);
+
+        captured.ShouldBe("from-env");
+    }
+
+    [Fact]
+    public void Bind_CliOverridesProject()
+    {
+        var binding = OptionBinding.Create<string>()
+            .FromOption("--opt")
+            .FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+        var result = Parse(binding, "--opt", "cli");
+
+        string? captured = null;
+        binding.Bind(ProjectWithConnectionString("from-project"), result, v => captured = v);
+
+        captured.ShouldBe("cli");
+    }
+
+    [Fact]
+    public void Bind_AppliesProjectValue_ForNullableValueType()
+    {
+        // A nullable value-type binding reads the project value through the single selector.
+        var binding = OptionBinding.Create<DestructiveActionPolicy?>()
+            .FromProjectConfig(c => c.DestructiveActionPolicy);
+        var project = new DslProjectConfig { DestructiveActionPolicy = DestructiveActionPolicy.Warn };
+
+        DestructiveActionPolicy? captured = null;
+        binding.Bind(project, new Command("test").Parse([]), v => captured = v);
+
+        captured.ShouldBe(DestructiveActionPolicy.Warn);
+    }
+
+    [Fact]
+    public void Bind_DoesNotApplyProjectValue_WhenNullableValueTypeAbsent()
+    {
+        // Empty project: the nullable selector yields null, so the action is never invoked.
+        var binding = OptionBinding.Create<DestructiveActionPolicy?>()
+            .FromProjectConfig(c => c.DestructiveActionPolicy);
+
+        var called = false;
+        binding.Bind(Empty, new Command("test").Parse([]), _ => called = true);
+
         called.ShouldBeFalse();
     }
 
@@ -90,7 +165,7 @@ public sealed class OptionBindingTests : IDisposable
         var result = Parse(binding);
 
         // Act
-        var found = binding.TryGetValue(result, out var value);
+        var found = binding.TryGetValue(Empty, result, out var value);
 
         // Assert
         found.ShouldBeFalse();
@@ -105,7 +180,7 @@ public sealed class OptionBindingTests : IDisposable
         var result = Parse(binding);
 
         // Act
-        var value = binding.GetValueOrDefault(result, "fallback");
+        var value = binding.GetValueOrDefault(Empty, result, "fallback");
 
         // Assert
         value.ShouldBe("fallback");
@@ -119,7 +194,7 @@ public sealed class OptionBindingTests : IDisposable
         var result = Parse(binding, "--opt", "cli");
 
         // Act
-        var value = binding.GetValueOrDefault(result, "fallback");
+        var value = binding.GetValueOrDefault(Empty, result, "fallback");
 
         // Assert
         value.ShouldBe("cli");
@@ -135,7 +210,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         ImportPartitionMode? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe(ImportPartitionMode.Schema);
@@ -151,7 +226,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         int? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe(42);
@@ -166,7 +241,7 @@ public sealed class OptionBindingTests : IDisposable
         var result = Parse(binding);
 
         // Act / Assert
-        Should.Throw<InvalidOperationException>(() => binding.Bind(result, _ => { }));
+        Should.Throw<InvalidOperationException>(() => binding.Bind(Empty, result, _ => { }));
     }
 
     [Fact]
@@ -179,7 +254,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         string? captured = null;
-        binding.Bind(result, value => captured = value);
+        binding.Bind(Empty, result, value => captured = value);
 
         // Assert
         captured.ShouldBe("from-env");
@@ -194,7 +269,7 @@ public sealed class OptionBindingTests : IDisposable
 
         // Act
         var called = false;
-        binding.Bind(result, _ => called = true);
+        binding.Bind(Empty, result, _ => called = true);
 
         // Assert
         called.ShouldBeFalse();

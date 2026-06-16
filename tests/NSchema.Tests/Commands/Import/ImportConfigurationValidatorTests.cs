@@ -31,7 +31,7 @@ public sealed class ImportConfigurationValidatorTests
 
     [Theory]
     [InlineData(ImportPartitionMode.Schema)]
-    [InlineData(ImportPartitionMode.Table)]
+    [InlineData(ImportPartitionMode.Object)]
     public void Valid_WithDirectoryOutput_ForPartitionedModes(ImportPartitionMode partition)
     {
         // Arrange
@@ -127,7 +127,12 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = AProvider(),
-            Target = new ImportTargetConfig { OutputDirectory = "./schemas", OutputFile = "./schema.yaml", Partition = ImportPartitionMode.Table },
+            Target = new ImportTargetConfig
+            {
+                OutputDirectory = "./schemas",
+                OutputFile = "./schema.yaml",
+                Partition = ImportPartitionMode.Object
+            },
         };
 
         // Act

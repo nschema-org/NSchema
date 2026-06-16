@@ -11,7 +11,7 @@ internal sealed class ShowConfigurationValidator : AbstractValidator<ShowConfigu
         // and is mandatory.
         RuleFor(x => x.State.ConfiguredSectionCount)
             .Equal(1)
-            .WithMessage("A state store is required for show: the recorded schema is read from there. Configure state.file or state.s3 in nschema.json.");
+            .WithMessage("A state store is required for show: the recorded schema is read from there. Add a BACKEND file or BACKEND s3 block to a .sql file.");
         RuleFor(x => x.State).SetValidator(new StateConfigValidator());
     }
 }

@@ -8,7 +8,11 @@ namespace NSchema.Commands.Import;
 internal static class ImportOptions
 {
     public static readonly OptionBinding<string> PostgresConnectionString = OptionBinding.Create<string>()
-        .FromEnvironmentVariable(EnvironmentVariables.PostgresConnectionString);
+        .FromEnvironmentVariable(EnvironmentVariables.PostgresConnectionString)
+        .FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+
+    public static readonly OptionBinding<int?> CommandTimeout = OptionBinding.Create<int?>()
+        .FromProjectConfig(c => c.Provider?.Postgres?.CommandTimeout!);
 
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")

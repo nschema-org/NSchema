@@ -29,14 +29,17 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 
 ## Configuration resolution (the heart of the CLI)
 
-A command's config is resolved in three layers, **lowest to highest precedence**: the loaded **`nschema.json`**, then
-**environment variables**, then **command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it first
-honors **`--directory`** (the recursive root option; it `SetCurrentDirectory`s so the config file and every relative path
-inside it resolve against the project dir, Terraform-`-chdir`-style — done here, the one chokepoint every command funnels
-through, so it holds whether the CLI runs via `Program` or is invoked directly in a test), then deserializes the file into
-`T` (if any; the default `nschema.json` is optional, an explicit `--config` must exist), then calls `T.Bind(ParseResult)`
-to layer env + CLI over it. `T` is the command's own `IBindable` config model (see below); the factory is generic and
-knows nothing about commands or slices.
+A command's config is resolved in three layers, **lowest to highest precedence**: the project's **DSL configuration
+blocks** (`NSCHEMA` / `PROVIDER` / `BACKEND`, declared in the `.sql` files), then **environment variables**, then
+**command-line options**. `ConfigurationFactory.Load<T>(ParseResult)` drives it — it first honors **`--directory`** (the
+recursive root option; it `SetCurrentDirectory`s so the project's `.sql` files and every relative path declared in them
+resolve against the project dir, Terraform-`-chdir`-style — done here, the one chokepoint every command funnels through,
+so it holds whether the CLI runs via `Program` or is invoked directly in a test). Then, **if `T` implements
+`IDslConfigurable`**, it reads the project's config blocks (`DslProjectConfigReader` globs the `.sql` files, the core's
+`DslConfigReader` captures the blocks, and `DslProjectConfigParser` maps them to a typed `DslProjectConfig`) and calls
+`T.ApplyDsl(config)` to seed the model. Finally it calls `T.Bind(ParseResult)` to layer env + CLI over it. `T` is the
+command's own `IBindable` config model (see below); the factory is generic and knows nothing about commands or slices.
+There is **no `nschema.json` and no `--config`** — project configuration lives in the `.sql` files.
 
 The unit of resolution is **`Configuration/Binding/OptionBinding<T>`** — one object owning a single binding: an optional
 System.CommandLine `Option<T>`, an optional environment variable, and a parser. It is built fluently
@@ -52,20 +55,23 @@ no parser throws).
 wins over the environment variable, which wins over whatever value is already on the model (the file/base value) — when
 neither CLI nor env is set, `apply` is **not** called, so an unspecified flag never clobbers a config value.
 (`TryGetValue`/`GetValueOrDefault` expose the same resolution without a setter, for consumers like `ConfigurationFactory`
-reading `--config` and `ConsoleFactory`/`Program` reading `--no-color`.) Environment lookups are an allow-list: a binding
+reading `--directory` and `ConsoleFactory`/`Program` reading `--no-color`.) Environment lookups are an allow-list: a binding
 reads only the one variable it was given, named from the `EnvironmentVariables` constants — never raw strings.
 
-This project deliberately does **not** use `Microsoft.Extensions.Configuration` — config is plain STJ so the loader and
-`init`'s writer share one format (`JsonOptions`) and one set of attributes (`[JsonPropertyName]`). Don't reintroduce the
-config binder. `nschema.json` keys are camelCase; `schema.dir` maps to `SchemaConfig.Directory` via `[JsonPropertyName]`.
+Project configuration is **not** `Microsoft.Extensions.Configuration` and is **not** JSON. It is the DSL config blocks
+the core captures (`DslConfigReader` → generic `ConfigBlock`s) and `DslProjectConfigParser` maps to typed slices —
+strictly: unknown block types, labels, or attributes are errors, so typos surface rather than being silently ignored.
+`init` scaffolds a `config.sql` with the starter `PROVIDER`/`BACKEND` blocks. Don't reintroduce a JSON config file or the
+`Microsoft.Extensions.Configuration` binder.
 
 ## From config to a run
 
 There is **no single superset config type**. Each command owns its own `*Configuration` model that implements
 `IBindable` (`Configuration/Binding/IBindable` — one `void Bind(ParseResult)` method) and composes only the slices it
-needs. The model **is** both the on-disk shape (STJ deserializes `nschema.json` into it) and the runtime shape: `Bind`
-layers env + CLI on top. The dependency points one way (commands → factory), so adding or changing a command never
-touches `ConfigurationFactory`.
+needs. A command that draws provider/state/policy from the project also implements `IDslConfigurable` (one `void
+ApplyDsl(DslProjectConfig)` method): `ApplyDsl` seeds the model from the config blocks (via the `DslConfigApply` helpers
+for the shared `Provider`/`State` slices), then `Bind` layers env + CLI on top. The dependency points one way
+(commands → factory), so adding or changing a command never touches `ConfigurationFactory`.
 
 Resolution is **vertically sliced into the command**: every command lives in its own `Commands/<Name>/` folder holding
 the System.CommandLine `*Command` (option registration + handler), its `*Configuration` model, its `*Options` (the
@@ -102,13 +108,14 @@ patterns** (`{ Postgres: { ConnectionString: { } cs } }`) so there are no null-f
 already guaranteed the shape. A zero-section provider/state is valid at the builder and means offline; it is the command
 validators (not the builder) that reject it where a section is required.
 
-The provider and state store are **defined in `nschema.json`**, not via CLI flags — they describe where the schema
-lives, like a Terraform backend, so there are no `--provider`/`--state-*` options. The lone exception is the secret
-connection string, which has an environment override: `NSCHEMA_POSTGRES_CONNECTION_STRING` is a self-identifying,
-environment-only binding that fills `provider.postgres.connectionString` (via `ProviderConfig.EnsurePostgres()`, creating
-the section if the file omitted it) — it names the Postgres provider on its own, just as `state.s3.*` names the S3 store,
-so no discriminator flag is needed. Everything else about a section (e.g. `commandTimeout`, the chosen state store) is
-file-only.
+The provider and state store are **declared in `PROVIDER` / `BACKEND` config blocks** in the `.sql` files, not via CLI
+flags — they describe where the schema lives, like a Terraform backend, so there are no `--provider`/`--state-*` options.
+The connection string also has an environment override: `NSCHEMA_POSTGRES_CONNECTION_STRING` is a self-identifying,
+environment-only binding that fills the Postgres connection string (via `ProviderConfig.EnsurePostgres()`, creating the
+section if the block omitted it) and **overrides** a `connection_string` set in the block — it names the Postgres provider
+on its own, just as `BACKEND s3` names the S3 store, so no discriminator flag is needed. Everything else about a section
+(e.g. `command_timeout`, the chosen state store) comes from the config block. A `connection_string` **is** allowed in a
+`PROVIDER` block (for local/single-file setups); the env var is preferred for real secrets.
 
 ## Error handling and output
 
@@ -124,11 +131,11 @@ Options are **owned by the command, not the slice**: each command has a `Command
 `OptionBinding` for every flag (and env-only binding) it resolves, with the description tailored to that command.
 Duplication across commands — both `apply` and `plan` declare their own `--scope`, etc. — is the deliberate cost of
 per-command ownership and contextual help; there are no shared slice-level option classes. `Configuration/CommonOptions`
-holds only the two harness-level flags that are **not** bound to any config slice: `Config` (read by
-`ConfigurationFactory`) and `NoColor` (read at the root). Each `*Options` exposes `All` (an `IEnumerable<Option>` of its
+holds only the harness-level flags that are **not** bound to any config slice: `Directory` and `NoColor`, both read
+recursively at the root. Each `*Options` exposes `All` (an `IEnumerable<Option>` of its
 **CLI** bindings — env-only bindings like `PostgresConnectionString` are excluded); `*Command.Create` registers it with
-`command.Options.AddRange(<Name>Options.All)` (the `AddRange` extension lives in `Extensions/CommandExtensions`) plus
-`CommonOptions.Config.Option`, while the root command adds `CommonOptions.NoColor.Option` recursively. Env-var **names**
+`command.Options.AddRange(<Name>Options.All)` (the `AddRange` extension lives in `Extensions/CommandExtensions`), while
+the root command adds `CommonOptions.NoColor.Option` and `CommonOptions.Directory.Option` recursively. Env-var **names**
 stay centralized in `Configuration/EnvironmentVariables` as the auditable surface; the bindings reference those constants.
 
 ## Desired-schema files

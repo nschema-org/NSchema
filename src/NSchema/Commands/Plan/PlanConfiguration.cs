@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
@@ -50,12 +51,14 @@ internal sealed class PlanConfiguration : IBindable
     // internal set: bound via Bind, but paired with the Destroy toggle in tests, so they set it directly.
     public string? OutFile { get; internal set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        PlanOptions.Scope.Bind(result, s => Scope = s);
-        PlanOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
-        PlanOptions.Destroy.Bind(result, d => Destroy = d);
-        PlanOptions.Out.Bind(result, o => OutFile = o);
-        PlanOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        PlanOptions.State.Bind(project, cli, s => State.CopyFrom(s));
+        PlanOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        PlanOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        PlanOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
+        PlanOptions.Scope.Bind(project, cli, s => Scope = s);
+        PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);
+        PlanOptions.Out.Bind(project, cli, o => OutFile = o);
     }
 }

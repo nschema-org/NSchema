@@ -7,7 +7,7 @@ internal static class InitOptions
 {
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force")
-        .WithDescription("Overwrite an existing nschema.json.");
+        .WithDescription("Init even in a non-empty directory, overwriting any files.");
 
     public static IEnumerable<Option> All => [Force.Option];
 }
