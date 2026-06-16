@@ -140,7 +140,21 @@ internal sealed class OptionBinding<T>
     private Option<T> BuildOption()
     {
         var name = _optionName ?? throw new InvalidOperationException("Option name not set; call FromOption first.");
-        return new Option<T>(name) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
+        var option = new Option<T>(name) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
+
+        // Enum options parse case-insensitively already; override the completions so help renders the
+        // accepted values (the <a|b|c> list) in lower case rather than the PascalCase member names.
+        var underlying = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        if (underlying.IsEnum)
+        {
+            option.CompletionSources.Clear();
+            foreach (var memberName in Enum.GetNames(underlying))
+            {
+                option.CompletionSources.Add(memberName.ToLowerInvariant());
+            }
+        }
+
+        return option;
     }
 
     private T Parse(string raw)
