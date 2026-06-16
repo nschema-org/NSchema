@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Text.Json.Serialization;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Import;
@@ -20,7 +19,6 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// Where and how to write the imported schema files.
     /// </summary>
-    [JsonIgnore]
     public ImportTargetConfig Target { get; init; } = new();
 
     /// <summary>
@@ -35,8 +33,7 @@ internal sealed class ImportConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ImportOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        ImportOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
         ImportOptions.Scope.Bind(project, cli, s => Scope = s);
         ImportOptions.Tables.Bind(project, cli, t => Tables = t);
         ImportOptions.OutputFile.Bind(project, cli, o => Target.OutputFile = o);

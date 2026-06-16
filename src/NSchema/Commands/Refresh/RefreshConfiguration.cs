@@ -23,8 +23,7 @@ internal sealed class RefreshConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        RefreshOptions.State.Bind(project, cli, s => State.CopyFrom(s));
-        RefreshOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        RefreshOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
     }
 }

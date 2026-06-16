@@ -67,23 +67,29 @@ strictly: unknown block types, labels, or attributes are errors, so typos surfac
 ## From config to a run
 
 There is **no single superset config type**. Each command owns its own `*Configuration` model that implements
-`IBindable` (`Configuration/Binding/IBindable` — one `void Bind(ParseResult)` method) and composes only the slices it
-needs. A command that draws provider/state/policy from the project also implements `IDslConfigurable` (one `void
-ApplyDsl(DslProjectConfig)` method): `ApplyDsl` seeds the model from the config blocks (via the `DslConfigApply` helpers
-for the shared `Provider`/`State` slices), then `Bind` layers env + CLI on top. The dependency points one way
-(commands → factory), so adding or changing a command never touches `ConfigurationFactory`.
+`IBindable` (`Configuration/Binding/IBindable` — one `void Bind(DslProjectConfig, ParseResult)` method) and composes only
+the slices it needs. `ConfigurationFactory.Load<T>` reads the project's config blocks into a `DslProjectConfig`,
+constructs `T`, and calls `T.Bind(project, cli)`; the binding layers the three sources — project config (lowest),
+environment, then CLI (highest) — through `OptionBinding`s. The dependency points one way (commands → factory), so adding
+or changing a command never touches `ConfigurationFactory`.
 
 Resolution is **vertically sliced into the command**: every command lives in its own `Commands/<Name>/` folder holding
 the System.CommandLine `*Command` (option registration + handler), its `*Configuration` model, its `*Options` (the
 command's own option bindings), and its `*ConfigurationValidator`. The handler's private `Resolve` calls
 `ConfigurationFactory.Load<TConfiguration>`, runs the validator via `ValidateOrThrow`, and hands the validated model to
-the builder. A command's `Bind` is the composition root and owns **every** binding itself: it resolves each option
-through its command-local `*Options` and writes the result straight onto the model (e.g.
-`ApplyOptions.Scope.Bind(result, s => Scope = s)`, `ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a)`).
-The slices (`ProviderConfig`, `StateConfig`, `ImportTargetConfig`) are **plain data** — the shared,
-reusable vocabulary the command writes into; they no longer bind themselves. Where a flat input must materialize a nested
-section, the slice exposes a small accessor (`ProviderConfig.EnsurePostgres()`) the command calls, rather than the command
-reaching in. A command never sees a config field it has no use for.
+the builder. A command's `Bind` is the composition root: it **composes the shared slices** (`Provider.Bind(project, cli)`,
+`State.Bind(project, cli)`) and binds its **own** leaf flags through its command-local `*Options` straight onto the model
+(e.g. `ApplyOptions.Scope.Bind(project, cli, s => Scope = s)`).
+
+The shared slices `ProviderConfig` and `StateConfig` **bind themselves**: each implements `IBindable` and owns its
+`OptionBinding`s as private statics co-located with the model, so a binding sourced purely from the project/env (the
+Postgres connection string, the command timeout, the whole state store) is declared **once** rather than duplicated in
+every command's `*Options`. This mirrors validation — a command's `Bind` recurses the slice tree exactly as its validator
+composes the slice validators via `SetValidator`. A slice is `IBindable` only when its values come from that shared
+project/env vocabulary; `ImportTargetConfig` stays **plain data** because its fields (`--output-file`, `--partition`, …)
+are command-owned CLI flags that `ImportConfiguration` binds into it. Where a flat input must materialize a nested
+section, the slice exposes a small accessor (`ProviderConfig.EnsurePostgres()`) its own `Bind` calls. A command never sees
+a config field it has no use for.
 
 Each command validator (**FluentValidation**) *composes the slice validators* (`ProviderConfigValidator`,
 `StateConfigValidator`, and their per-section leaf validators via `SetValidator`) and adds the
@@ -127,13 +133,17 @@ is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does *
 
 ## Options layout
 
-Options are **owned by the command, not the slice**: each command has a `Commands/<Name>/<Name>Options` class holding an
-`OptionBinding` for every flag (and env-only binding) it resolves, with the description tailored to that command.
-Duplication across commands — both `apply` and `plan` declare their own `--scope`, etc. — is the deliberate cost of
-per-command ownership and contextual help; there are no shared slice-level option classes. `Configuration/CommonOptions`
+Options split by **source**, not just by command. A command's own CLI **flags** — `--scope`, `--auto-approve`,
+`--destructive-actions`, etc. — are owned by its `Commands/<Name>/<Name>Options` class, one `OptionBinding` each, with the
+description tailored to that command. Duplication of a flag across commands (both `apply` and `plan` declare their own
+`--scope`) is the deliberate cost of per-command contextual help. Bindings whose value comes purely from the project
+config / environment and carry **no** CLI option or description — the Postgres connection string and command timeout, the
+state store — are **not** duplicated per command: they live once on the shared slice that owns them (`ProviderConfig`,
+`StateConfig`) as private statics, and the slice binds itself (see above). The rule: co-locate the binding on the slice
+when there is no per-command contextual help to lose; keep it per-command when there is. `Configuration/CommonOptions`
 holds only the harness-level flags that are **not** bound to any config slice: `Directory` and `NoColor`, both read
-recursively at the root. Each `*Options` exposes `All` (an `IEnumerable<Option>` of its
-**CLI** bindings — env-only bindings like `PostgresConnectionString` are excluded); `*Command.Create` registers it with
+recursively at the root. Each `*Options` exposes `All` (an `IEnumerable<Option>` of its **CLI** bindings — a slice's
+self-bound project/env bindings register no CLI option at all); `*Command.Create` registers it with
 `command.Options.AddRange(<Name>Options.All)` (the `AddRange` extension lives in `Extensions/CommandExtensions`), while
 the root command adds `CommonOptions.NoColor.Option` and `CommonOptions.Directory.Option` recursively. Env-var **names**
 stay centralized in `Configuration/EnvironmentVariables` as the auditable surface; the bindings reference those constants.

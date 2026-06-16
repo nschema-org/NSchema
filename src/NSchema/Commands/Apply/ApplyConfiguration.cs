@@ -44,9 +44,8 @@ internal sealed class ApplyConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ApplyOptions.State.Bind(project, cli, s => State.CopyFrom(s));
-        ApplyOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        ApplyOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
         ApplyOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
         ApplyOptions.Scope.Bind(project, cli, s => Scope = s);
         ApplyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);

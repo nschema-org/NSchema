@@ -23,7 +23,7 @@ internal sealed class ForceUnlockConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ForceUnlockOptions.State.Bind(project, cli, s => State.CopyFrom(s));
+        State.Bind(project, cli);
         ForceUnlockOptions.Force.Bind(project, cli, f => Force = f);
     }
 }

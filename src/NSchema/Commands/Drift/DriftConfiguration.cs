@@ -28,10 +28,8 @@ internal sealed class DriftConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        DriftOptions.State.Bind(project, cli, s => State.CopyFrom(s));
-
-        DriftOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        DriftOptions.PostgresCommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
         DriftOptions.Scope.Bind(project, cli, s => Scope = s);
     }
 }

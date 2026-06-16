@@ -53,9 +53,8 @@ internal sealed class PlanConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        PlanOptions.State.Bind(project, cli, s => State.CopyFrom(s));
-        PlanOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        PlanOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
         PlanOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
         PlanOptions.Scope.Bind(project, cli, s => Scope = s);
         PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);

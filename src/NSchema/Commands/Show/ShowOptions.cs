@@ -1,14 +1,10 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Show;
 
 internal static class ShowOptions
 {
-    public static readonly OptionBinding<StateConfig> State = OptionBinding.Create<StateConfig>()
-        .FromProjectConfig(c => c.State);
-
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope")
         .AllowMultipleArguments()

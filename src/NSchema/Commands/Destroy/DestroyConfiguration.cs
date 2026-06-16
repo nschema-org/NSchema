@@ -35,9 +35,8 @@ internal sealed class DestroyConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        DestroyOptions.State.Bind(project, cli, s => State.CopyFrom(s));
-        DestroyOptions.PostgresConnectionString.Bind(project, cli, cs => Provider.EnsurePostgres().ConnectionString = cs);
-        DestroyOptions.CommandTimeout.Bind(project, cli, t => Provider.EnsurePostgres().CommandTimeout = t);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
         DestroyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
     }
 }

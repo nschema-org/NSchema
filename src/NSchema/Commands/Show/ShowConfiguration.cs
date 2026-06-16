@@ -22,7 +22,7 @@ internal sealed class ShowConfiguration : IBindable
 
     public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ShowOptions.State.Bind(project, cli, s => State.CopyFrom(s));
+        State.Bind(project, cli);
         ShowOptions.Scope.Bind(project, cli, s => Scope = s);
     }
 }
