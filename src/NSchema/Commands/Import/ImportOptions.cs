@@ -17,11 +17,11 @@ internal static class ImportOptions
         .WithDescription("Limit the import to specific database tables. May be specified multiple times.");
 
     public static readonly OptionBinding<string> OutputFile = OptionBinding.Create<string>()
-        .FromOption("--output-file")
+        .FromOption("--out-file")
         .WithDescription("File to write the imported schema to. Use with --partition None (the default), which writes the whole schema as one document.");
 
     public static readonly OptionBinding<string> OutputDirectory = OptionBinding.Create<string>()
-        .FromOption("--output-dir")
+        .FromOption("--out-dir")
         .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table.");
 
     public static readonly OptionBinding<ImportPartitionMode> Partition = OptionBinding.Create<ImportPartitionMode>()
