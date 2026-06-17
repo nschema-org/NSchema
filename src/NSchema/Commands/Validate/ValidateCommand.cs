@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Validate;
+using Spectre.Console;
 
 namespace NSchema.Commands.Validate;
 
@@ -29,6 +31,7 @@ internal static class ValidateCommand
             .ConfigureDesiredSchema(configuration.Environment)
             .Build();
 
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
         await app.Validate(new ValidateArguments(), cancellationToken);
     }
 }

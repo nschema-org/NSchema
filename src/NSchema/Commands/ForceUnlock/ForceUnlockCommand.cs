@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.ForceUnlock;
+using Spectre.Console;
 
 namespace NSchema.Commands.ForceUnlock;
 
@@ -30,6 +32,7 @@ internal static class ForceUnlockCommand
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.Force)
             .Build();
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
         await app.ForceUnlock(new ForceUnlockArguments(), cancellationToken);
     }
 }

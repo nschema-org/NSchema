@@ -45,7 +45,7 @@ internal static class AnsiConsoleExtensions
         }
 
         /// <summary>
-        /// Prints which environment a run is targeting, so a `plan`/`apply`/`destroy` against (say) production is unmistakable.
+        /// Prints which environment a run is targeting, so a command run against (say) production is unmistakable.
         /// </summary>
         public void ReportEnvironment(string? environment)
         {

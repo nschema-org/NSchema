@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Show;
+using Spectre.Console;
 
 namespace NSchema.Commands.Show;
 
@@ -29,6 +31,7 @@ internal static class ShowCommand
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .Build();
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
         await app.Show(new ShowArguments { Schemas = configuration.Scope }, cancellationToken);
     }
 }

@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Import;
+using Spectre.Console;
 
 namespace NSchema.Commands.Import;
 
@@ -24,6 +26,8 @@ internal static class ImportCommand
         using var app = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
+
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
 
         var args = new ImportArguments
         {

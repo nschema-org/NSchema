@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
@@ -25,10 +26,16 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
+    /// <summary>
+    /// The selected environment, if any.
+    /// </summary>
+    public string? Environment { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         ImportOptions.Scope.Bind(project, cli, s => Scope = s);
         ImportOptions.OutputDirectory.Bind(project, cli, o => OutputDirectory = o);
+        CommonOptions.Environment.Bind(project, cli, e => Environment = e);
     }
 }
