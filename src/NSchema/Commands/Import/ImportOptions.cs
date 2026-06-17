@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Operations.Import;
 
 namespace NSchema.Commands.Import;
 
@@ -11,29 +10,13 @@ internal static class ImportOptions
         .AllowMultipleArguments()
         .WithDescription("Limit the import to specific database schema namespaces. May be specified multiple times.");
 
-    public static readonly OptionBinding<string[]> Tables = OptionBinding.Create<string[]>()
-        .FromOption("--tables")
-        .AllowMultipleArguments()
-        .WithDescription("Limit the import to specific database tables. May be specified multiple times.");
-
-    public static readonly OptionBinding<string> OutputFile = OptionBinding.Create<string>()
-        .FromOption("--out-file")
-        .WithDescription("File to write the imported schema to. Use with --partition None (the default), which writes the whole schema as one document.");
-
     public static readonly OptionBinding<string> OutputDirectory = OptionBinding.Create<string>()
         .FromOption("--out-dir")
-        .WithDescription("Directory to write the imported schema files into. Use with --partition Schema or Table. Defaults to the current directory.");
-
-    public static readonly OptionBinding<ImportPartitionMode> Partition = OptionBinding.Create<ImportPartitionMode>()
-        .FromOption("--partition")
-        .WithDescription("How to split the imported schema across files: None (single file, default), Schema (one per namespace), Table (one per table).");
+        .WithDescription("Directory to write the imported SQL files into. Defaults to the current directory.");
 
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
-        Tables.Option,
-        OutputFile.Option,
         OutputDirectory.Option,
-        Partition.Option,
     ];
 }

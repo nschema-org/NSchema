@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Commands.Init;
 
@@ -14,7 +14,7 @@ internal sealed class InitConfiguration : IBindable
     /// </summary>
     public bool Force { get; set; }
 
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         InitOptions.Force.Bind(project, cli, f => Force = f);
     }

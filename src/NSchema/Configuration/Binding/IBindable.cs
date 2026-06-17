@@ -1,5 +1,5 @@
 using System.CommandLine;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration.Binding;
 
@@ -13,5 +13,5 @@ internal interface IBindable
     /// </summary>
     /// <param name="project">The project config to bind.</param>
     /// <param name="cli">The args to bind.</param>
-    void Bind(DslProjectConfig project, ParseResult cli);
+    void Bind(DdlProjectConfig project, ParseResult cli);
 }

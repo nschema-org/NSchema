@@ -4,6 +4,8 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
 using NSchema.Resolution;
+using NSchema.Schema;
+using NSchema.Schema.Model;
 using NSchema.Scripts;
 using NSchema.Scripts.Model;
 using NSchema.Services;
@@ -84,25 +86,7 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void ConfigureDesiredSchema_WhenNoSqlFiles_Throws()
-    {
-        var original = Directory.GetCurrentDirectory();
-        var directory = Directory.CreateTempSubdirectory("nschema-noschema-").FullName;
-        try
-        {
-            Directory.SetCurrentDirectory(directory);
-            Should.Throw<InvalidOperationException>(() => _sut.ConfigureDesiredSchema())
-                .Message.ShouldContain("No schema files");
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(original);
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void ConfigureDesiredSchema_FindsSqlFilesRecursively()
+    public async Task ConfigureDesiredSchema_FindsSqlFilesRecursively()
     {
         var original = Directory.GetCurrentDirectory();
         var directory = Directory.CreateTempSubdirectory("nschema-schema-").FullName;
@@ -112,7 +96,10 @@ public sealed class CliApplicationBuilderTests
             File.WriteAllText(Path.Combine(nested.FullName, "example.sql"), "CREATE SCHEMA app;");
             Directory.SetCurrentDirectory(directory);
 
-            Should.NotThrow(() => _sut.ConfigureDesiredSchema());
+            using var app = _sut.ConfigureDesiredSchema().Build();
+
+            var schema = await ResolveDesiredSchema(app);
+            schema.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
         }
         finally
         {
@@ -122,24 +109,38 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void ConfigureDesiredSchema_ExcludesDeploymentScripts()
+    public async Task ConfigureDesiredSchema_ExcludesDeploymentScripts()
     {
         var original = Directory.GetCurrentDirectory();
         var directory = Directory.CreateTempSubdirectory("nschema-onlyscripts-").FullName;
         try
         {
-            // Only a deployment script, no declarative schema — the script must not count as a schema file.
+            // Only deployment scripts, no declarative schema. The exclude globs must keep them out of the desired
+            // schema, leaving nothing to resolve — so the core schema provider reports no matching DDL files rather
+            // than treating a script as schema. (An empty desired schema would otherwise read as "drop everything".)
             File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
+            File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
             Directory.SetCurrentDirectory(directory);
 
-            Should.Throw<InvalidOperationException>(() => _sut.ConfigureDesiredSchema())
-                .Message.ShouldContain("No schema files");
+            using var app = _sut.ConfigureDesiredSchema().Build();
+
+            var act = () => ResolveDesiredSchema(app);
+
+            (await Should.ThrowAsync<FileNotFoundException>(act)).Message.ShouldContain("No SQL DDL files matched");
         }
         finally
         {
             Directory.SetCurrentDirectory(original);
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    // Resolves the aggregated desired schema the way the core does at run time. With only ConfigureDesiredSchema
+    // applied, the single registered provider is the DDL glob provider, so this exercises the matcher's selection.
+    private static async Task<DatabaseSchema> ResolveDesiredSchema(NSchemaApplication app)
+    {
+        var provider = app.Services.GetServices<ISchemaProvider>().ShouldHaveSingleItem();
+        return await provider.GetSchema([], TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -162,8 +163,9 @@ public sealed class CliApplicationBuilderTests
                 scripts.AddRange(await provider.GetScripts(TestContext.Current.CancellationToken));
             }
 
+            // The script name is core-supplied from the file name (sans the .sql extension).
             scripts.Select(s => (s.Name, s.Type)).ShouldBe(
-                [("001_extensions", ScriptType.PreDeployment), ("010_backfill", ScriptType.PostDeployment)],
+                [("001_extensions.pre", ScriptType.PreDeployment), ("010_backfill.post", ScriptType.PostDeployment)],
                 ignoreOrder: true);
         }
         finally

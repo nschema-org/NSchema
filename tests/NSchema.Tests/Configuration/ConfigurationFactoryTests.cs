@@ -31,10 +31,10 @@ public sealed class ConfigurationFactoryTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_EnvironmentVariable_OverridesDslConnectionString()
+    public async Task Load_EnvironmentVariable_OverridesDdlConnectionString()
     {
-        // The DSL config block is the lowest layer; the environment variable wins.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "PROVIDER postgres ( connection_string = 'from-dsl' );", TestContext.Current.CancellationToken);
+        // The DDL config block is the lowest layer; the environment variable wins.
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "PROVIDER postgres ( connection_string = 'from-ddl' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         try

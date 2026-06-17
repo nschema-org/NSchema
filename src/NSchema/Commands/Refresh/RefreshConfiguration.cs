@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -21,7 +21,7 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public StateConfig State { get; init; } = new();
 
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);

@@ -1,5 +1,4 @@
 using FluentValidation;
-using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
 
 namespace NSchema.Commands.Import;
@@ -14,6 +13,5 @@ internal sealed class ImportConfigurationValidator : AbstractValidator<ImportCon
             .WithMessage($"A database provider is required for import.");
 
         RuleFor(x => x.Provider).SetValidator(new ProviderConfigValidator());
-        RuleFor(x => x.Target).SetValidator(new ImportTargetConfigValidator());
     }
 }

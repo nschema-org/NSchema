@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations.Import;
-using NSchema.Schema.Serialization.Ddl;
 
 namespace NSchema.Commands.Import;
 
@@ -26,16 +25,10 @@ internal static class ImportCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
 
-        var cwd = Directory.GetCurrentDirectory();
-        var target = configuration.Target;
         var args = new ImportArguments
         {
             Schemas = configuration.Scope,
-            Tables = configuration.Tables,
-            Partition = target.Partition,
-            Format = DdlSchemaSerializer.FormatName,
-            OutputFile = target.OutputFile == null ? null : Path.GetFullPath(target.OutputFile, cwd),
-            OutputDirectory = target.Partition == ImportPartitionMode.None ? null : Path.GetFullPath(target.OutputDirectory ?? cwd, cwd)
+            OutputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory())
         };
 
         await app.Import(args, cancellationToken);

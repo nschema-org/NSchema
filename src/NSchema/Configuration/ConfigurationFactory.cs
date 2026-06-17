@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration;
 
@@ -11,7 +11,7 @@ internal static class ConfigurationFactory
         ApplyWorkingDirectory(args);
 
         var currentDirectory = Directory.GetCurrentDirectory();
-        var projectConfig = await DslProjectConfigReader.Read(currentDirectory, cancellationToken);
+        var projectConfig = await DdlProjectConfigReader.Read(currentDirectory, cancellationToken);
         var config = new T();
         config.Bind(projectConfig, args);
         return config;
