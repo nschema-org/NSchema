@@ -18,16 +18,17 @@ internal static class DestroyCommand
         return command;
     }
 
-    private static async ValueTask<DestroyConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
+    private static async ValueTask<DestroyConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
     {
-        var config = await ConfigurationFactory.Load<DestroyConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<DestroyConfiguration>(result, environment, cancellationToken);
         new DestroyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
         var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
@@ -37,11 +38,11 @@ internal static class DestroyCommand
         // it so we don't glob for schema files that aren't needed.
         if (!configuration.HasStateStore)
         {
-            builder.ConfigureDesiredSchema(configuration.Environment);
+            builder.ConfigureDesiredSchema(environment);
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Destroy(new DestroyArguments(), cancellationToken);
     }
 }

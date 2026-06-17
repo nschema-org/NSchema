@@ -18,21 +18,22 @@ internal static class DriftCommand
         return command;
     }
 
-    private static async ValueTask<DriftConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
+    private static async ValueTask<DriftConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
     {
-        var config = await ConfigurationFactory.Load<DriftConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<DriftConfiguration>(result, environment, cancellationToken);
         new DriftConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
     }
 }

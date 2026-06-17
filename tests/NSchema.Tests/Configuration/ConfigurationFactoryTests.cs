@@ -24,7 +24,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         // Assert — the config was discovered under --directory (an empty config would have left state unset).
         config.State.File!.Path.ShouldBe("./custom.state.json");
@@ -40,7 +40,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
         try
         {
             Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, "from-env");
-            var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
+            var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
             config.Provider.Postgres!.ConnectionString.ShouldBe("from-env");
         }
         finally
@@ -59,7 +59,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
             "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory, "--environment", "prod"]);
 
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         config.State.File.ShouldBeNull();
         config.State.S3!.Bucket.ShouldBe("prod-bucket");

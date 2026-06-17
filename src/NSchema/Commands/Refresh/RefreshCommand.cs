@@ -16,21 +16,22 @@ internal static class RefreshCommand
         return command;
     }
 
-    private static async ValueTask<RefreshConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
+    private static async ValueTask<RefreshConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<RefreshConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<RefreshConfiguration>(result, environment, cancellationToken);
         new RefreshConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Refresh(new RefreshArguments(), cancellationToken);
     }
 }

@@ -16,22 +16,17 @@ internal static class ValidateCommand
         return command;
     }
 
-    private static async ValueTask<ValidateConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
-    {
-        var config = await ConfigurationFactory.Load<ValidateConfiguration>(result, cancellationToken);
-        //new ValidateConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        // Loading resolves --directory (chdir) and verifies the environment exists; validate has no config of its own.
+        await ConfigurationFactory.Load<ValidateConfiguration>(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Environment)
+            .ConfigureDesiredSchema(environment)
             .Build();
 
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Validate(new ValidateArguments(), cancellationToken);
     }
 }

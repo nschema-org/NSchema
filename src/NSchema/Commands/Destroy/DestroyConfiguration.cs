@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
@@ -12,11 +11,6 @@ namespace NSchema.Commands.Destroy;
 /// </summary>
 internal sealed class DestroyConfiguration : IBindable
 {
-    /// <summary>
-    /// The environment to destroy, if any.
-    /// </summary>
-    public string? Environment { get; set; }
-
     /// <summary>
     /// The database provider the teardown is generated and executed against.
     /// </summary>
@@ -42,7 +36,6 @@ internal sealed class DestroyConfiguration : IBindable
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);
-        CommonOptions.Environment.Bind(project, cli, e => Environment = e);
         DestroyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
     }
 }

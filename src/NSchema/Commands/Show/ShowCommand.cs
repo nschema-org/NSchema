@@ -18,20 +18,21 @@ internal static class ShowCommand
         return command;
     }
 
-    private static async ValueTask<ShowConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
+    private static async ValueTask<ShowConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<ShowConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<ShowConfiguration>(result, environment, cancellationToken);
         new ShowConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Show(new ShowArguments { Schemas = configuration.Scope }, cancellationToken);
     }
 }

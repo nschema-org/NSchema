@@ -19,34 +19,35 @@ internal static class PlanCommand
         return command;
     }
 
-    private static async ValueTask<PlanConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
+    private static async ValueTask<PlanConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(result, environment, cancellationToken);
         new PlanConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         if (configuration.Destroy)
         {
-            await RunDestroy(configuration, cancellationToken);
+            await RunDestroy(configuration, environment, cancellationToken);
             return;
         }
 
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema(configuration.Environment)
+            .ConfigureDesiredSchema(environment)
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
     }
 
-    private static async Task RunDestroy(PlanConfiguration configuration, CancellationToken cancellationToken)
+    private static async Task RunDestroy(PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
     {
         var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
@@ -56,11 +57,11 @@ internal static class PlanCommand
         // it so we don't glob for schema files that aren't needed.
         if (!configuration.HasStateStore)
         {
-            builder.ConfigureDesiredSchema(configuration.Environment);
+            builder.ConfigureDesiredSchema(environment);
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
     }
 }
