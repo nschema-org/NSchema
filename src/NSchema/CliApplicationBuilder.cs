@@ -58,19 +58,9 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureScripts()
     {
-        // TODO: This is silly. Scripts should be glob supporting like schemas (the core has no bulk-script API yet).
-        AddScripts(PreScriptGlob, ScriptType.PreDeployment);
-        AddScripts(PostScriptGlob, ScriptType.PostDeployment);
+        _builder.AddSqlScripts(ScriptType.PreDeployment, Directory.GetCurrentDirectory(), PreScriptGlob);
+        _builder.AddSqlScripts(ScriptType.PostDeployment, Directory.GetCurrentDirectory(), PostScriptGlob);
         return this;
-    }
-
-    private void AddScripts(string glob, ScriptType type)
-    {
-        var matcher = new Matcher().AddInclude(glob);
-        foreach (var file in matcher.GetResultsInFullPath(Directory.GetCurrentDirectory()))
-        {
-            _builder.AddScriptFromFile(type, file);
-        }
     }
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig state)
