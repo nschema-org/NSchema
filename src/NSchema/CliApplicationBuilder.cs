@@ -6,7 +6,6 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
-using NSchema.Scripts.Model;
 using NSchema.Services;
 using Spectre.Console;
 
@@ -43,22 +42,14 @@ internal sealed class CliApplicationBuilder
     public CliApplicationBuilder ConfigureDesiredSchema(string? environment)
     {
         var root = Directory.GetCurrentDirectory();
-        _builder.AddSqlSchemas(root, ProjectGlobs.BaseSchema());
+        _builder.AddDdlSchemas(root, ProjectGlobs.BaseSchema());
 
         // Layer the selected environment's overlay files on top.
         if (environment is not null)
         {
-            _builder.AddSqlSchemas(root, ProjectGlobs.EnvironmentSchema(environment));
+            _builder.AddDdlSchemas(root, ProjectGlobs.EnvironmentSchema(environment));
         }
 
-        return this;
-    }
-
-    public CliApplicationBuilder ConfigureScripts()
-    {
-        var root = Directory.GetCurrentDirectory();
-        _builder.AddSqlScripts(ScriptType.PreDeployment, root, ProjectGlobs.Scripts(ProjectGlobs.PreScripts));
-        _builder.AddSqlScripts(ScriptType.PostDeployment, root, ProjectGlobs.Scripts(ProjectGlobs.PostScripts));
         return this;
     }
 

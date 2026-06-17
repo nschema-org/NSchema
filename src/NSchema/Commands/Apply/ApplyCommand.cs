@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
+using Spectre.Console;
 
 namespace NSchema.Commands.Apply;
 
@@ -39,11 +41,11 @@ internal static class ApplyCommand
         {
             builder
                 .ConfigureDesiredSchema(configuration.Environment)
-                .ConfigureScripts()
                 .ConfigurePolicies(configuration.DestructiveActionPolicy);
         }
 
         using var app = builder.Build();
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(configuration.Environment);
         await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile }, cancellationToken);
     }
 }

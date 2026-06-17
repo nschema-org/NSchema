@@ -14,16 +14,6 @@ internal static class ProjectGlobs
     public const string AllSql = "**/*.sql";
 
     /// <summary>
-    /// Pre-deployment scripts.
-    /// </summary>
-    public const string PreScripts = "**/*.pre.sql";
-
-    /// <summary>
-    /// Post-deployment scripts.
-    /// </summary>
-    public const string PostScripts = "**/*.post.sql";
-
-    /// <summary>
     /// Any environment overlay, for any environment.
     /// </summary>
     public const string AnyEnvironmentOverlay = "**/*.env.*.sql";
@@ -34,12 +24,10 @@ internal static class ProjectGlobs
     public static string EnvironmentOverlay(string environment) => $"**/*.env.{environment}.sql";
 
     /// <summary>
-    /// Matches the base schema/config files: every <c>.sql</c> file except deployment scripts and environment overlays.
+    /// Matches the base schema/config files: every <c>.sql</c> file except environment overlays.
     /// </summary>
     public static Matcher BaseSchema() => new Matcher()
         .AddInclude(AllSql)
-        .AddExclude(PreScripts)
-        .AddExclude(PostScripts)
         .AddExclude(AnyEnvironmentOverlay);
 
     /// <summary>
@@ -49,11 +37,19 @@ internal static class ProjectGlobs
         .AddInclude(EnvironmentOverlay(environment));
 
     /// <summary>
-    /// Matches a deployment-script glob, excluding any environment overlay so an overlay never runs as a script.
+    /// The distinct environment names declared under <paramref name="root"/>.
     /// </summary>
-    public static Matcher Scripts(string scriptGlob) => new Matcher()
-        .AddInclude(scriptGlob)
-        .AddExclude(AnyEnvironmentOverlay);
+    public static IReadOnlyList<string> EnvironmentNames(string root)
+    {
+        var matcher = new Matcher().AddInclude(AnyEnvironmentOverlay);
+        return Match(root, matcher)
+            .Select(path => Path.GetFileName(path).Split('.'))
+            .Where(parts => parts is [.., _, "env", _, "sql"])
+            .Select(parts => parts[^2])
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+    }
 
     /// <summary>
     /// Runs <paramref name="matcher"/> against <paramref name="root"/> and returns the matched files as sorted absolute paths.
