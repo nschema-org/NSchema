@@ -20,7 +20,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 - Schema support for JSON and YAML files.
 - Provider support for Postgres.
 - Backend store support for files and Amazon S3.
-- Configuration from multiple sources, including `nschema.json`, environment variables, and CLI args.
+- Project configuration declared in the `.sql` files as `NSCHEMA` / `PROVIDER` / `BACKEND` config blocks, overridable by environment variables and CLI args (config blocks < env < CLI).
 - `--scope` to limit a migration to specific database schemas.
 - `--destructive-actions` to control the policy for destructive changes `<error|warn|allow>`.
 - `--auto-approve` to skip the confirmation prompt on `apply` and `destroy`.

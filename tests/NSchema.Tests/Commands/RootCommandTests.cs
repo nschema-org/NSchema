@@ -25,8 +25,9 @@ public sealed class RootCommandTests
     [InlineData("drift")]
     public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {
-        // The live database (provider.postgres) and state store are defined in nschema.json — with the connection
-        // string supplied via the NSCHEMA_POSTGRES_CONNECTION_STRING env var — so these are rejected as unknown flags.
+        // The live database (PROVIDER block) and state store (BACKEND block) are defined in the project's .sql config
+        // blocks — with the connection string overridable via NSCHEMA_POSTGRES_CONNECTION_STRING — so these are
+        // rejected as unknown flags.
         var result = _sut.Parse([command, "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
@@ -188,10 +189,10 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void Validate_AcceptsConfigAndDirectory()
+    public void Validate_AcceptsDirectory()
     {
-        // Act — validate reads the schema from config; it exposes no schema flags of its own.
-        var result = _sut.Parse(["validate", "--config", "c", "--directory", "."]);
+        // Act — validate reads the schema from the project's .sql files; it exposes no schema flags of its own.
+        var result = _sut.Parse(["validate", "--directory", "."]);
 
         // Assert
         result.Errors.ShouldBeEmpty();

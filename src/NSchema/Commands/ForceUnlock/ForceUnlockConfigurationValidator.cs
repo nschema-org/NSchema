@@ -10,7 +10,7 @@ internal sealed class ForceUnlockConfigurationValidator : AbstractValidator<Forc
         // The lock lives with the state store, so a configured store is the only thing force-unlock needs.
         RuleFor(x => x.State.ConfiguredSectionCount)
             .Equal(1)
-            .WithMessage("A state store is required for force-unlock: the lock is held there. Configure state.file or state.s3 in nschema.json.");
+            .WithMessage("A state store is required for force-unlock: the lock is held there.");
         RuleFor(x => x.State).SetValidator(new StateConfigValidator());
     }
 }

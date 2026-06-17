@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.Text.Json.Serialization;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Import;
 using NSchema.Configuration.Provider;
 
@@ -19,7 +19,6 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// Where and how to write the imported schema files.
     /// </summary>
-    [JsonIgnore]
     public ImportTargetConfig Target { get; init; } = new();
 
     /// <summary>
@@ -32,14 +31,13 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public string[]? Tables { get; private set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ImportOptions.Scope.Bind(result, s => Scope = s);
-        ImportOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
-
-        ImportOptions.Tables.Bind(result, t => Tables = t);
-        ImportOptions.OutputFile.Bind(result, o => Target.OutputFile = o);
-        ImportOptions.OutputDirectory.Bind(result, o => Target.OutputDirectory = o);
-        ImportOptions.Partition.Bind(result, p => Target.Partition = p);
+        Provider.Bind(project, cli);
+        ImportOptions.Scope.Bind(project, cli, s => Scope = s);
+        ImportOptions.Tables.Bind(project, cli, t => Tables = t);
+        ImportOptions.OutputFile.Bind(project, cli, o => Target.OutputFile = o);
+        ImportOptions.OutputDirectory.Bind(project, cli, o => Target.OutputDirectory = o);
+        ImportOptions.Partition.Bind(project, cli, p => Target.Partition = p);
     }
 }

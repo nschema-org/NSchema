@@ -1,5 +1,4 @@
 using FluentValidation;
-using NSchema.Configuration;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -27,7 +26,7 @@ internal sealed class PlanConfigurationValidator : AbstractValidator<PlanConfigu
         {
             RuleFor(x => x.Provider.ConfiguredSectionCount)
                 .GreaterThanOrEqualTo(1)
-                .WithMessage($"A database provider is required for plan --destroy: the teardown SQL is rendered against it. Configure provider.postgres in nschema.json, or set {EnvironmentVariables.PostgresConnectionString}.");
+                .WithMessage($"A database provider is required for plan --destroy: the teardown SQL is rendered against it.");
         });
     }
 }

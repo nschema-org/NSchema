@@ -10,23 +10,22 @@ internal static class ApplyCommand
     {
         var command = new Command("apply", "Compute the plan and apply it to the target database.");
 
-        command.Options.Add(CommonOptions.Config.Option);
         command.Options.AddRange(ApplyOptions.All);
 
         command.SetAction(Run);
         return command;
     }
 
-    private static ApplyConfiguration Resolve(ParseResult result)
+    private static async ValueTask<ApplyConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
     {
-        var config = ConfigurationFactory.Load<ApplyConfiguration>(result);
+        var config = await ConfigurationFactory.Load<ApplyConfiguration>(result, cancellationToken);
         new ApplyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = await Resolve(parseResult, cancellationToken);
 
         var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)

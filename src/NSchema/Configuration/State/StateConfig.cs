@@ -1,12 +1,17 @@
-using System.Text.Json.Serialization;
+using System.CommandLine;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 
 namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures a backend store used to keep state snapshots.
 /// </summary>
-internal sealed class StateConfig
+internal sealed class StateConfig : IBindable
 {
+    private static readonly OptionBinding<StateConfig> StateBinding = OptionBinding.Create<StateConfig>()
+        .FromProjectConfig(c => c.State);
+
     /// <summary>
     /// Local-file state store settings.
     /// </summary>
@@ -20,6 +25,19 @@ internal sealed class StateConfig
     /// <summary>
     /// The number of state store sections populated. Zero means online-only (no state store).
     /// </summary>
-    [JsonIgnore]
     public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
+
+    /// <summary>
+    /// Resolves the state store from the project config (it has no environment or command-line override today).
+    /// </summary>
+    public void Bind(DslProjectConfig project, ParseResult cli) => StateBinding.Bind(project, cli, CopyFrom);
+
+    /// <summary>
+    /// Copies the populated sections from <paramref name="other"/> onto this instance.
+    /// </summary>
+    private void CopyFrom(StateConfig other)
+    {
+        File = other.File;
+        S3 = other.S3;
+    }
 }

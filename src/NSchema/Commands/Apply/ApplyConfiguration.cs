@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
@@ -41,12 +42,13 @@ internal sealed class ApplyConfiguration : IBindable
     /// </summary>
     public string? PlanFile { get; private set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ApplyOptions.Scope.Bind(result, s => Scope = s);
-        ApplyOptions.Destructive.Bind(result, p => DestructiveActionPolicy = p);
-        ApplyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
-        ApplyOptions.PlanFile.Bind(result, p => PlanFile = p);
-        ApplyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
+        ApplyOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
+        ApplyOptions.Scope.Bind(project, cli, s => Scope = s);
+        ApplyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
+        ApplyOptions.PlanFile.Bind(project, cli, p => PlanFile = p);
     }
 }

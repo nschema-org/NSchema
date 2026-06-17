@@ -11,23 +11,22 @@ internal static class PlanCommand
     {
         var command = new Command("plan", "Compute and show the migration plan without applying it. Use --destroy to preview a teardown instead.");
 
-        command.Options.Add(CommonOptions.Config.Option);
         command.Options.AddRange(PlanOptions.All);
 
         command.SetAction(Run);
         return command;
     }
 
-    private static PlanConfiguration Resolve(ParseResult result)
+    private static async ValueTask<PlanConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
     {
-        var config = ConfigurationFactory.Load<PlanConfiguration>(result);
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(result, cancellationToken);
         new PlanConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = await Resolve(parseResult, cancellationToken);
 
         if (configuration.Destroy)
         {

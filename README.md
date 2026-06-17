@@ -26,8 +26,7 @@ This installs the `nschema` command.
    nschema init
    ```
 
-   This writes `nschema.json` and `schemas/example.sql`. Edit the sample to describe your desired schema, written in
-   NSchema DDL — a declarative, SQL-flavoured schema language:
+   This writes `config.sql` (the project's provider/state configuration, as `PROVIDER`/`BACKEND` blocks) and `schemas/example.sql`. Edit the sample to describe your desired schema, written in NSchema DDL — a declarative, SQL-flavoured schema language:
 
    ```sql
    -- schemas/example.sql
@@ -46,7 +45,7 @@ This installs the `nschema` command.
    export NSCHEMA_POSTGRES_CONNECTION_STRING="Host=localhost;Database=app;Username=postgres;Password=postgres"
    ```
 
-3. Preview the migration, then apply it (`nschema.json` already has the provider, and the desired schema is just your `*.sql` files, so no flags are needed):
+3. Preview the migration, then apply it:
 
    ```sh
    nschema validate   # optional: check the schema files are well-formed first
@@ -54,17 +53,17 @@ This installs the `nschema` command.
    nschema apply
    ```
 
-`nschema init` is the easiest way to get a valid `nschema.json` — see [Configuration](#configuration) for everything it can hold.
+`nschema init` is the easiest way to scaffold a project — see [Configuration](#configuration) for everything the config blocks can hold.
 
 ## Commands
 
-The `plan`, `apply`, `refresh`, `import`, `destroy`, `show`, `drift`, and `force-unlock` commands all talk to a database or state store. **Those two — the provider and the state store — are defined in `nschema.json`, not via CLI flags** (with the connection string supplied through the environment); see [Database and state](#database-and-state). The CLI options each command takes are the *workflow* options listed below. `init` (which only writes files) and `validate` (which only reads your schema files) connect to no database or state store.
+Here are the commands available in the CLI:
 
 ### `nschema init`
 
-Scaffold an `nschema.json` and a sample schema in the current directory, to get a new project going. It connects to nothing.
+Scaffold a simple project in the current directory, to get a new project going. It connects to nothing.
 
-- `--force` — overwrite an existing `nschema.json`.
+- `--force` forces the initialization even if the directory is not empty.
 
 ```sh
 nschema init
@@ -90,27 +89,26 @@ nschema validate --directory ./my-project
 
 ### Database and state
 
-The live database (`provider`) and the state store (`state`) describe *where* your schema lives, so — like a Terraform backend — they're defined in [`nschema.json`](#nschemajson) rather than passed as flags each run. There is no `--provider` or `--state-*` option. The one value that doesn't belong in a committed file is the database password, so the connection string has an environment override:
+The live database (`PROVIDER`) and the state store (`BACKEND`) describe *where* your schema lives, so — like a Terraform backend — they're declared in [config blocks](#configuration) in your `.sql` files rather than passed as flags each run. There is no `--provider` or `--state-*` option. The connection string has an environment override so the password needn't be committed:
 
-- **Connection string** — `provider.postgres.connectionString` in `nschema.json`, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The variable names the Postgres provider on its own — just as `state.s3.*` names the S3 store — so no separate provider selector is needed.
+- **Connection string** — `connection_string` in a `PROVIDER postgres` block, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The block names the Postgres provider on its own — just as `BACKEND s3` names the S3 store — so no separate provider selector is needed.
 
-The desired schema needs no config at all — it's every `*.sql` file under the project directory. So a project's *where* (database and state) lives in `nschema.json`, the schema lives in your `*.sql` files, and the CLI flags are just the per-run workflow knobs.
+The desired schema needs no config at all — it's every `*.sql` file under the project directory. So a project's *where* (database and state) lives in config blocks, the schema lives in your `*.sql` files, and the CLI flags are just the per-run workflow knobs.
 
 Every command also accepts:
 
-- `--directory <dir>` — the project directory to run in; `nschema.json` and the relative paths inside it resolve here (like `terraform -chdir`). Defaults to the current directory.
-- `--config <path>` — config file path, relative to `--directory`. Defaults to `nschema.json`.
+- `--directory <dir>` — the project directory to run in; the `.sql` files and the relative paths declared in them resolve here (like `terraform -chdir`). Defaults to the current directory.
 - `--no-color` — disable colored output. _(env `NO_COLOR`)_
 
 ### `nschema plan`
 
 Compute and show the migration plan, without changing anything.
 
-**Needs:** a desired schema (your `*.sql` files) and a current-state source — either a live database (configured
-`provider.postgres`) or, for offline planning, a state store (configured `state`). See [Database and state](#database-and-state).
+**Needs:** a desired schema (your `*.sql` files) and a current-state source — either a live database (a `PROVIDER
+postgres` block) or, for offline planning, a state store (a `BACKEND` block). See [Database and state](#database-and-state).
 
-- `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated. _(config `scope`)_
-- `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(config `destructiveActionPolicy`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
+- `--scope <name>` — limit the migration to specific database schemas (namespaces). May be repeated.
+- `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(NSCHEMA `destructive_action`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 - `--destroy` — preview the SQL that [`destroy`](#nschema-destroy) would run to tear the managed schema down, instead of a forward plan (Terraform's `plan -destroy`).
 - `--out <path>` — write the computed plan to a file so it can be replayed later by [`apply --plan-file`](#nschema-apply) (Terraform's `plan -out`). Works with `--destroy` too, saving the teardown plan.
 
@@ -120,7 +118,7 @@ nschema plan --out tonight.nplan   # save it to apply later
 ```
 
 With `--destroy` the command previews a teardown rather than a forward migration. It takes the same inputs as
-[`destroy`](#nschema-destroy) — a live database (configured `provider.postgres`) the teardown SQL is rendered against,
+[`destroy`](#nschema-destroy) — a live database (a `PROVIDER postgres` block) the teardown SQL is rendered against,
 and a managed-schema source (a configured state store, or a desired schema to fall back on) — but only **shows** the SQL;
 it never connects to apply it, prompts, or writes state. `--scope` and `--destructive-actions` don't apply to a teardown
 and are ignored.
@@ -150,9 +148,9 @@ nschema apply --plan-file tonight.nplan   # apply exactly what plan --out saved
 
 Read the live schema and write it to the state store. Use this to seed or repair state.
 
-**Needs:** a live database (configured `provider.postgres`) and a state store to write to (configured `state.file` or
-`state.s3`). It captures the **whole** schema and so takes no desired-schema or `--scope` options — with both inputs in
-`nschema.json`, it runs with no flags at all.
+**Needs:** a live database (a `PROVIDER postgres` block) and a state store to write to (a `BACKEND file` or `BACKEND s3`
+block). It captures the **whole** schema and so takes no desired-schema or `--scope` options — with both inputs in config
+blocks, it runs with no flags at all.
 
 ```sh
 nschema refresh
@@ -163,7 +161,7 @@ nschema refresh
 Read the live database schema and write it out as desired-schema source files. Use this to adopt an existing database
 into NSchema: import it, then check the generated files into source control and manage further changes with `plan`/`apply`.
 
-**Needs:** a live database (configured `provider.postgres`) and an output path (`--output`).
+**Needs:** a live database (a `PROVIDER postgres` block) and an output path (`--output`).
 
 - `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
 - `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
@@ -180,8 +178,8 @@ Drop all managed schema objects from the target database. Prompts for confirmati
 `--auto-approve` is given. This is purely destructive and is exempt from the destructive-action policy — it's the
 intended escape hatch for tearing a managed schema back down.
 
-**Needs:** a live database (configured `provider.postgres`) the tool can write to, and a source for the schema to tear
-down — a configured state store (`state.file` or `state.s3`), or, with no store, your `*.sql` files to fall back on.
+**Needs:** a live database (a `PROVIDER postgres` block) the tool can write to, and a source for the schema to tear
+down — a configured state store (`BACKEND file` or `BACKEND s3`), or, with no store, your `*.sql` files to fall back on.
 When a state store is configured it is refreshed after the teardown. Accepts `--scope` to limit the teardown to specific
 namespaces, and `--auto-approve` to skip the prompt.
 
@@ -194,7 +192,7 @@ nschema destroy
 Print the schema recorded in the state store as human-readable text. The live database is never contacted — this is a
 read of what NSchema last recorded, useful for inspecting state or diffing it against `import` output.
 
-**Needs:** a state store (configured `state.file` or `state.s3`). Accepts `--scope` to limit the output to specific
+**Needs:** a state store (a `BACKEND file` or `BACKEND s3` block). Accepts `--scope` to limit the output to specific
 namespaces.
 
 ```sh
@@ -207,8 +205,8 @@ Check whether the live database has drifted from the recorded state, reporting t
 live, so an out-of-band change appears as an add and a manual drop as a remove). This is a pure observation: no
 transformers or policies run, so it never fails on a policy violation.
 
-**Needs:** a live database (configured `provider.postgres`) and a state store to compare against (configured
-`state.file` or `state.s3`). Accepts `--scope` to limit the check to specific namespaces.
+**Needs:** a live database (a `PROVIDER postgres` block) and a state store to compare against (a `BACKEND file` or
+`BACKEND s3` block). Accepts `--scope` to limit the check to specific namespaces.
 
 ```sh
 nschema drift
@@ -221,7 +219,7 @@ Forcibly release a stale lock on the state store. NSchema locks the state during
 currently held — use it only once you're sure no operation is still running, Terraform's `force-unlock` style. Because
 overriding a live lock can corrupt shared state, it prompts for confirmation first; pass `--force` to skip the prompt.
 
-**Needs:** a state store (configured `state.file` or `state.s3`); the lock lives with it. The live database is never
+**Needs:** a state store (a `BACKEND file` or `BACKEND s3` block); the lock lives with it. The live database is never
 contacted. Accepts `--force` to skip the confirmation prompt.
 
 ```sh
@@ -232,23 +230,33 @@ nschema force-unlock
 
 Settings come from three sources, in increasing order of precedence:
 
-1. The `nschema.json` config file — discovered in the `--directory` (default: the current directory), or the file passed to `--config`. Relative paths inside it (e.g. `state.file.path`) resolve against that directory.
+1. **Config blocks** in your `.sql` files — `NSCHEMA`, `PROVIDER`, and `BACKEND` declarations. Relative paths in them (e.g. a `BACKEND file` path) resolve against the project directory (`--directory`, default: the current directory).
 2. `NSCHEMA_*` environment variables.
 3. Command-line options.
 
-### `nschema.json`
+### Config blocks
 
-```json
-{
-  "provider": { "postgres": { "connectionString": "Host=localhost;Database=app;..." } },
-  "state":    { "file": { "path": "./nschema.state.json" } },
-  "scope": ["app"],
-  "destructiveActionPolicy": "Error"
-}
+Project configuration lives in the `.sql` files alongside the schema, in SQL-statement-shaped blocks (à la Terraform's `terraform`/`provider` blocks, but in SQL). They can live in any `.sql` file; `nschema init` puts them in a dedicated `config.sql`:
+
+```sql
+-- which database to connect to (the connection string is best supplied via the environment, below)
+PROVIDER postgres (
+  connection_string = '',
+  command_timeout = 30
+);
+
+-- where to keep state
+BACKEND file (
+  path = './nschema.state.json'
+);
+
+-- optional project settings
+NSCHEMA (
+  destructive_action = 'error'
+);
 ```
 
-`nschema.json` configures only *where* your schema lives (the database and state store). The desired schema itself is
-not configured — it's every `*.sql` file found recursively under the project directory.
+The `BACKEND` block may instead select S3: `BACKEND s3 ( bucket = 'my-bucket', key = 'env/state.json' );`. Config blocks configure only *where* your schema lives (the database and state store) and project-level policy; the desired schema itself is not configured — it's every `*.sql` file found recursively under the project directory.
 
 ### Connection string
 
@@ -258,7 +266,7 @@ The database connection string is a secret. Supply it through the environment:
 export NSCHEMA_POSTGRES_CONNECTION_STRING="..."
 ```
 
-It can also be set in `nschema.json` under `provider.postgres.connectionString` (handy for a local throwaway database), but _please_ don't commit secrets to source control. The environment variable takes precedence when both are present.
+It can also be set in a `PROVIDER postgres` block via `connection_string` (handy for a local throwaway database), but _please_ don't commit secrets to source control. The environment variable takes precedence when both are present.
 
 ## Desired schema files
 

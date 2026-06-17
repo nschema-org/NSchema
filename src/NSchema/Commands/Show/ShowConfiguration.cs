@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Show;
@@ -19,8 +20,9 @@ internal sealed class ShowConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        ShowOptions.Scope.Bind(result, s => Scope = s);
+        State.Bind(project, cli);
+        ShowOptions.Scope.Bind(project, cli, s => Scope = s);
     }
 }

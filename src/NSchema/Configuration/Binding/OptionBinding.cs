@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
+using NSchema.Configuration.Dsl;
 
 namespace NSchema.Configuration.Binding;
 
@@ -11,13 +12,13 @@ internal static class OptionBinding
     /// <summary>
     /// Starts building a binding whose resolved value is of type <typeparamref name="T"/>.
     /// </summary>
-    public static OptionBinding<T> Create<T>() where T : notnull => new();
+    public static OptionBinding<T> Create<T>() => new();
 }
 
 /// <summary>
-/// A single configuration binding to a CLI option and/or an environment variable, applied with CLI &gt; environment precedence.
+/// Represents a binding to a single configuration value from any combination of project config, environment variable or CLI option.
 /// </summary>
-internal sealed class OptionBinding<T> where T : notnull
+internal sealed class OptionBinding<T>
 {
     private string? _optionName;
     private string? _description;
@@ -25,7 +26,8 @@ internal sealed class OptionBinding<T> where T : notnull
     private bool _recursive;
 
     private string? _envVar;
-    private Func<string, T>? _parser;
+    private Func<string, T>? _envParser;
+    private Func<DslProjectConfig, T?>? _projectSelector;
 
     /// <summary>
     /// The underlying System.CommandLine option, built on first access and exposed so commands can register it.
@@ -47,7 +49,16 @@ internal sealed class OptionBinding<T> where T : notnull
     public OptionBinding<T> FromEnvironmentVariable(string envVar, Func<string, T>? parser = null)
     {
         _envVar = envVar;
-        _parser = parser;
+        _envParser = parser;
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a binding from a project config field.
+    /// </summary>
+    public OptionBinding<T> FromProjectConfig(Func<DslProjectConfig, T?> selector)
+    {
+        _projectSelector = selector;
         return this;
     }
 
@@ -79,63 +90,78 @@ internal sealed class OptionBinding<T> where T : notnull
     }
 
     /// <summary>
-    /// Resolves this binding against the parsed command line and, if a value is present (CLI &gt; environment), passes
-    /// it to <paramref name="apply"/>. When neither source is set, <paramref name="apply"/> is not called, leaving the
-    /// caller's file/base value intact.
+    /// Resolves this binding against the project config, environment, and parsed command line.
     /// </summary>
-    public void Bind(ParseResult result, Action<T> apply)
+    public void Bind(DslProjectConfig project, ParseResult cli, Action<T> apply)
     {
-        if (_optionName is not null && result.GetResult(Option) is { Implicit: false } argument)
+        if (TryGetValue(project, cli, out var value))
         {
-            apply(argument.GetRequiredValue(Option));
-            return;
-        }
-
-        if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
-        {
-            apply(Parse(raw));
+            apply(value);
         }
     }
 
-    public T GetValueOrDefault(ParseResult result, T defaultValue)
+    public T GetValueOrDefault(DslProjectConfig? project, ParseResult cli, T defaultValue) =>
+        TryGetValue(project, cli, out var value) ? value : defaultValue;
+
+    public bool TryGetValue(DslProjectConfig? project, ParseResult cli, [NotNullWhen(true)] out T? value)
     {
-        return TryGetValue(result, out var value) ? value : defaultValue;
-    }
-
-    public bool TryGetValue(ParseResult result, [NotNullWhen(true)] out T? value)
-    {
-        if (_optionName is not null && result.GetResult(Option) is { Implicit: false } argument)
-        {
-            value = argument.GetRequiredValue(Option);
-            return true;
-        }
-
-        if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
-        {
-            value = Parse(raw);
-            return true;
-        }
-
         value = default;
-        return false;
+
+        if (project != null && _projectSelector is not null)
+        {
+            var projectValue = _projectSelector(project);
+            if (projectValue is not null)
+            {
+                value = projectValue;
+            }
+        }
+
+        if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
+        {
+            var envValue = Parse(raw);
+            if (envValue is not null)
+            {
+                value = envValue;
+            }
+        }
+
+        if (_optionName is not null && cli.GetResult(Option) is { Implicit: false } argument)
+        {
+            var cliValue = argument.GetRequiredValue(Option);
+            if (cliValue is not null)
+            {
+                value = cliValue;
+            }
+        }
+
+        return value is not null;
     }
 
     private Option<T> BuildOption()
     {
         var name = _optionName ?? throw new InvalidOperationException("Option name not set; call FromOption first.");
-        return new Option<T>(name)
+        var option = new Option<T>(name) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
+
+        // Enum options parse case-insensitively already; override the completions so help renders the
+        // accepted values (the <a|b|c> list) in lower case rather than the PascalCase member names.
+        var underlying = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        if (underlying.IsEnum)
         {
-            Description = _description,
-            AllowMultipleArgumentsPerToken = _allowMultipleArguments,
-            Recursive = _recursive,
-        };
+            option.CompletionSources.Clear();
+            foreach (var memberName in Enum.GetNames(underlying))
+            {
+                option.CompletionSources.Add(memberName.ToLowerInvariant());
+            }
+        }
+
+        return option;
     }
 
     private T Parse(string raw)
     {
-        if (_parser is not null)
+        if (_envParser is not null)
         {
-            return _parser(raw);
+            return _envParser(raw);
         }
 
         if (typeof(T).IsEnum)

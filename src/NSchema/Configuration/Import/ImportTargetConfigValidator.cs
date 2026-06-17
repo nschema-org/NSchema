@@ -13,18 +13,15 @@ internal sealed class ImportTargetConfigValidator : AbstractValidator<ImportTarg
         {
             RuleFor(x => x.OutputFile)
                 .NotEmpty()
-                .WithMessage("An output file is required when --partition is None (the schema is written as a single file). Set --output-file.");
+                .WithMessage("An output file is required when partition is None.");
             RuleFor(x => x.OutputDirectory)
                 .Empty()
-                .WithMessage("--output-dir is not used when --partition is None; pass --output-file instead.");
+                .WithMessage("Output directory is not used when partition is None.");
         }).Otherwise(() =>
         {
-            RuleFor(x => x.OutputDirectory)
-                .NotEmpty()
-                .WithMessage("An output directory is required when --partition is Schema or Table (one file is written per namespace/table). Set --output-dir.");
             RuleFor(x => x.OutputFile)
                 .Empty()
-                .WithMessage("--output-file is not used when --partition is Schema or Table; pass --output-dir instead.");
+                .WithMessage("Output file is not used when partition is Schema or Table; pass output directory instead.");
         });
     }
 }

@@ -31,7 +31,7 @@ public sealed class ImportConfigurationValidatorTests
 
     [Theory]
     [InlineData(ImportPartitionMode.Schema)]
-    [InlineData(ImportPartitionMode.Table)]
+    [InlineData(ImportPartitionMode.Object)]
     public void Valid_WithDirectoryOutput_ForPartitionedModes(ImportPartitionMode partition)
     {
         // Arrange
@@ -81,7 +81,7 @@ public sealed class ImportConfigurationValidatorTests
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("--output-file"));
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("output file is required"));
     }
 
     [Fact]
@@ -99,11 +99,11 @@ public sealed class ImportConfigurationValidatorTests
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("--output-dir is not used"));
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("Output directory is not used"));
     }
 
     [Fact]
-    public void Invalid_WhenPartitionedMode_HasNoOutputDirectory()
+    public void Valid_WhenPartitionedMode_HasNoOutputDirectory()
     {
         // Arrange
         var config = new ImportConfiguration
@@ -116,8 +116,7 @@ public sealed class ImportConfigurationValidatorTests
         var result = _sut.Validate(config);
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("--output-dir"));
+        result.IsValid.ShouldBeTrue();
     }
 
     [Fact]
@@ -127,7 +126,12 @@ public sealed class ImportConfigurationValidatorTests
         var config = new ImportConfiguration
         {
             Provider = AProvider(),
-            Target = new ImportTargetConfig { OutputDirectory = "./schemas", OutputFile = "./schema.yaml", Partition = ImportPartitionMode.Table },
+            Target = new ImportTargetConfig
+            {
+                OutputDirectory = "./schemas",
+                OutputFile = "./schema.yaml",
+                Partition = ImportPartitionMode.Object
+            },
         };
 
         // Act
@@ -135,6 +139,6 @@ public sealed class ImportConfigurationValidatorTests
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("--output-file is not used"));
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("Output file is not used"));
     }
 }

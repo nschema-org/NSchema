@@ -10,23 +10,22 @@ internal static class DestroyCommand
     {
         var command = new Command("destroy", "Drop all managed schema objects from the target database.");
 
-        command.Options.Add(CommonOptions.Config.Option);
         command.Options.AddRange(DestroyOptions.All);
 
         command.SetAction(Run);
         return command;
     }
 
-    private static DestroyConfiguration Resolve(ParseResult result)
+    private static async ValueTask<DestroyConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
     {
-        var config = ConfigurationFactory.Load<DestroyConfiguration>(result);
+        var config = await ConfigurationFactory.Load<DestroyConfiguration>(result, cancellationToken);
         new DestroyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = await Resolve(parseResult, cancellationToken);
         var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)

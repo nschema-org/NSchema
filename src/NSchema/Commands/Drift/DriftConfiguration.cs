@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -25,9 +26,10 @@ internal sealed class DriftConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        DriftOptions.Scope.Bind(result, s => Scope = s);
-        DriftOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
+        DriftOptions.Scope.Bind(project, cli, s => Scope = s);
     }
 }

@@ -1,5 +1,4 @@
 using FluentValidation;
-using NSchema.Configuration;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -12,7 +11,7 @@ internal sealed class RefreshConfigurationValidator : AbstractValidator<RefreshC
         // Refresh reads the live schema, so a provider is mandatory.
         RuleFor(x => x.Provider.ConfiguredSectionCount)
             .Equal(1)
-            .WithMessage($"A database provider is required for refresh. Configure provider.postgres in nschema.json, or set {EnvironmentVariables.PostgresConnectionString}.");
+            .WithMessage($"A database provider is required for refresh.");
         RuleFor(x => x.Provider).SetValidator(new ProviderConfigValidator());
 
         // Refresh writes the snapshot to the state store, so a store is mandatory.

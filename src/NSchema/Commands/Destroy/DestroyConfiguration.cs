@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -32,9 +33,10 @@ internal sealed class DestroyConfiguration : IBindable
     /// </summary>
     public bool HasStateStore => State.ConfiguredSectionCount >= 1;
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        DestroyOptions.AutoApprove.Bind(result, a => AutoApprove = a);
-        DestroyOptions.PostgresConnectionString.Bind(result, cs => Provider.EnsurePostgres().ConnectionString = cs);
+        Provider.Bind(project, cli);
+        State.Bind(project, cli);
+        DestroyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
     }
 }

@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.Text.Json.Serialization;
 using NSchema.Configuration.Binding;
+using NSchema.Configuration.Dsl;
 
 namespace NSchema.Commands.Init;
 
@@ -10,13 +10,12 @@ namespace NSchema.Commands.Init;
 internal sealed class InitConfiguration : IBindable
 {
     /// <summary>
-    /// Whether to overwrite an existing nschema.json.
+    /// Whether to init the project even if the directory isn't empty.
     /// </summary>
-    [JsonIgnore]
     public bool Force { get; set; }
 
-    public void Bind(ParseResult result)
+    public void Bind(DslProjectConfig project, ParseResult cli)
     {
-        InitOptions.Force.Bind(result, f => Force = f);
+        InitOptions.Force.Bind(project, cli, f => Force = f);
     }
 }

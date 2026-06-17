@@ -10,23 +10,22 @@ internal static class ShowCommand
     {
         var command = new Command("show", "Show the schema recorded in the state store, without contacting the live database.");
 
-        command.Options.Add(CommonOptions.Config.Option);
         command.Options.AddRange(ShowOptions.All);
 
         command.SetAction(Run);
         return command;
     }
 
-    private static ShowConfiguration Resolve(ParseResult result)
+    private static async ValueTask<ShowConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken)
     {
-        var config = ConfigurationFactory.Load<ShowConfiguration>(result);
+        var config = await ConfigurationFactory.Load<ShowConfiguration>(result, cancellationToken);
         new ShowConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = Resolve(parseResult);
+        var configuration = await Resolve(parseResult, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .Build();

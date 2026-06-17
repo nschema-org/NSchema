@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Text.Json;
 using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
 using Spectre.Console;
@@ -33,10 +32,6 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         """;
 
         File.WriteAllText(Path.Combine(_schemaDirectory, "schema.sql"), schemaDocument);
-
-        // The project's nschema.json lives in the run directory; commands find it via --directory, the way real usage
-        // does — no per-command schema flags. Provider/state are configured per test.
-        File.WriteAllText(Path.Combine(_schemaDirectory, "nschema.json"), "{ }");
         return ValueTask.CompletedTask;
     }
 
@@ -73,14 +68,14 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     public async Task Refresh_WritesTheLiveSchemaToTheStateFile()
     {
         // Arrange
-        // Refresh reads the live database, so it needs no desired-schema options. The state store is defined in
-        // config (state stores are config-only), so we point refresh at a config file declaring the file store.
+        // Refresh reads the live database, so it needs no desired-schema options. The state store is declared in a
+        // BACKEND config block in the project's .sql files.
         await RunCli("apply", "--auto-approve");
         var stateFile = Path.Combine(_schemaDirectory, "state.json");
-        var configFile = WriteConfig("refresh.json", new { state = new { file = new { path = stateFile } } });
+        WriteStateConfig("state.json");
 
         // Act
-        var (exitCode, _) = await RunCli("refresh", "--config", configFile);
+        var (exitCode, _) = await RunCli("refresh");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -124,12 +119,11 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     {
         // Arrange — apply, then refresh to record the live schema into the state store.
         await RunCli("apply", "--auto-approve");
-        var stateFile = Path.Combine(_schemaDirectory, "state.json");
-        var configFile = WriteConfig("state.json.config", new { state = new { file = new { path = stateFile } } });
-        await RunCli("refresh", "--config", configFile);
+        WriteStateConfig("state.json");
+        await RunCli("refresh");
 
         // Act — show reads only the recorded state (it never contacts the live database).
-        var (exitCode, output) = await RunCli("show", "--config", configFile);
+        var (exitCode, output) = await RunCli("show");
 
         // Assert
         exitCode.ShouldBe(0);
@@ -141,13 +135,12 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     {
         // Arrange — record state matching the live schema, then change the live database behind NSchema's back.
         await RunCli("apply", "--auto-approve");
-        var stateFile = Path.Combine(_schemaDirectory, "state.json");
-        var configFile = WriteConfig("drift.json", new { state = new { file = new { path = stateFile } } });
-        await RunCli("refresh", "--config", configFile);
+        WriteStateConfig("state.json");
+        await RunCli("refresh");
         await ExecuteSql($"ALTER TABLE \"{_schema}\".widgets DROP COLUMN name");
 
         // Act — drift compares the recorded state (which still has the column) against the live database.
-        var (exitCode, output) = await RunCli("drift", "--config", configFile);
+        var (exitCode, output) = await RunCli("drift");
 
         // Assert — drift is a pure observation, so it succeeds, and it reports the dropped column.
         exitCode.ShouldBe(0);
@@ -201,7 +194,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
 
     private async Task<(int ExitCode, string Output)> RunCli(string command, params string[] commandArguments)
     {
-        // --directory points every command at the project dir; nschema.json and its relative paths resolve there.
+        // --directory points every command at the project dir; the .sql files and their relative paths resolve there.
         string[] args = [command, "--directory", _schemaDirectory, .. commandArguments];
 
         // The live database is supplied the way real usage does it: via the connection-string environment variable.
@@ -239,11 +232,11 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         }
     }
 
-    private string WriteConfig(string name, object config)
+    // Declares a file state backend in a config.sql, so the state-aware commands (refresh/show/drift) pick it up the
+    // way real usage does — config blocks alongside the schema, no per-command flags.
+    private void WriteStateConfig(string stateFileName)
     {
-        var path = Path.Combine(_schemaDirectory, name);
-        File.WriteAllText(path, JsonSerializer.Serialize(config));
-        return path;
+        File.WriteAllText(Path.Combine(_schemaDirectory, "config.sql"), $"BACKEND file ( path = '{stateFileName}' );");
     }
 
     private async Task<bool> TableExists(string table)
