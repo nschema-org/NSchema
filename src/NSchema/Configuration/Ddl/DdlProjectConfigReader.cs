@@ -1,14 +1,14 @@
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
-using NSchema.Schema.Serialization.Ddl;
+using NSchema.Schema.Ddl;
 
-namespace NSchema.Configuration.Dsl;
+namespace NSchema.Configuration.Ddl;
 
 /// <summary>
 /// Reads project configuration from the <c>.sql</c> files under a directory.
 /// </summary>
-internal static class DslProjectConfigReader
+internal static class DdlProjectConfigReader
 {
     private const string PreScriptSuffix = ".pre.sql";
     private const string PostScriptSuffix = ".post.sql";
@@ -18,11 +18,11 @@ internal static class DslProjectConfigReader
         IgnoreInaccessible = true
     };
 
-    public static async ValueTask<DslProjectConfig> Read(string root, CancellationToken cancellationToken = default)
+    public static async ValueTask<DdlProjectConfig> Read(string root, CancellationToken cancellationToken = default)
     {
         var schemaFiles = SchemaFiles(root).Select(f => File.ReadAllTextAsync(f, cancellationToken));
         var schemaContents = await Task.WhenAll(schemaFiles);
-        var blocks = schemaContents.SelectMany(DslConfigReader.Read).ToList();
+        var blocks = schemaContents.Select(DdlReader.Instance.Read).SelectMany(d => d.Config).ToList();
         var config = Parse(blocks);
         return config;
     }
@@ -35,7 +35,7 @@ internal static class DslProjectConfigReader
             )
             .OrderBy(path => path, StringComparer.Ordinal);
 
-    private static DslProjectConfig Parse(IReadOnlyList<ConfigBlock> blocks)
+    private static DdlProjectConfig Parse(IReadOnlyList<ConfigBlock> blocks)
     {
         ProviderConfig? provider = null;
         StateConfig? state = null;
@@ -74,7 +74,7 @@ internal static class DslProjectConfigReader
             }
         }
 
-        return new DslProjectConfig { Provider = provider, State = state, DestructiveActionPolicy = destructiveAction };
+        return new DdlProjectConfig { Provider = provider, State = state, DestructiveActionPolicy = destructiveAction };
     }
 
     private static ProviderConfig ParseProvider(ConfigBlock block)

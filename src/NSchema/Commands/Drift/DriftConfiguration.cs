@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
@@ -26,7 +26,7 @@ internal sealed class DriftConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);

@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration.State;
 
@@ -30,7 +30,7 @@ internal sealed class StateConfig : IBindable
     /// <summary>
     /// Resolves the state store from the project config (it has no environment or command-line override today).
     /// </summary>
-    public void Bind(DslProjectConfig project, ParseResult cli) => StateBinding.Bind(project, cli, CopyFrom);
+    public void Bind(DdlProjectConfig project, ParseResult cli) => StateBinding.Bind(project, cli, CopyFrom);
 
     /// <summary>
     /// Copies the populated sections from <paramref name="other"/> onto this instance.

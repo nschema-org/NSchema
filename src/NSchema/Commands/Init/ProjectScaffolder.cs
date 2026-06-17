@@ -1,5 +1,5 @@
+using NSchema.Schema.Ddl;
 using NSchema.Schema.Model;
-using NSchema.Schema.Serialization.Ddl;
 
 namespace NSchema.Commands.Init;
 
@@ -11,7 +11,7 @@ internal sealed class ProjectScaffolder
     private const string ConfigFileName = "config.sql";
     private const string SchemaDirectoryName = "schemas";
 
-    // The project's provider/state configuration, declared as DSL config blocks. Config blocks may live in any .sql
+    // The project's provider/state configuration, declared as DDL config blocks. Config blocks may live in any .sql
     // file; a dedicated config.sql keeps them separate from the schema objects.
     private const string ConfigTemplate =
         """
@@ -53,9 +53,8 @@ internal sealed class ProjectScaffolder
         var samplePath = Path.Combine(directory, sampleRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
 
-        var serializer = new DdlSchemaSerializer();
-        await using var stream = File.Create(samplePath);
-        await serializer.Write(SampleSchema, stream, cancellationToken);
+        var ddl = DdlWriter.Instance.Write(SampleSchema);
+        await File.WriteAllTextAsync(samplePath, ddl, cancellationToken);
 
         return [ConfigFileName, sampleRelativePath];
     }

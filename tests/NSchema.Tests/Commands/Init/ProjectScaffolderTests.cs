@@ -1,6 +1,6 @@
 using NSchema.Commands.Init;
-using NSchema.Configuration.Dsl;
-using NSchema.Schema.Serialization.Ddl;
+using NSchema.Configuration.Ddl;
+using NSchema.Schema.Ddl;
 
 namespace NSchema.Tests.Commands.Init;
 
@@ -47,19 +47,19 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         await Scaffold();
 
-        var config = await DslProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        var config = await DdlProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
         config.Provider!.Postgres.ShouldNotBeNull();
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
 
     [Fact]
-    public async Task Scaffold_SampleSchema_RoundTripsThroughTheSerializer()
+    public async Task Scaffold_SampleSchema_RoundTripsThroughTheReader()
     {
         await Scaffold();
 
-        await using var stream = File.OpenRead(Path.Combine(_directory, "schemas", "example.sql"));
-        var schema = await DdlSchemaSerializer.Instance.Read(stream, TestContext.Current.CancellationToken);
+        var ddl = await File.ReadAllTextAsync(Path.Combine(_directory, "schemas", "example.sql"), TestContext.Current.CancellationToken);
+        var schema = DdlReader.Instance.Read(ddl).Schema;
 
         var table = schema.Schemas.ShouldHaveSingleItem().Tables.ShouldHaveSingleItem();
         table.Name.ShouldBe("widgets");

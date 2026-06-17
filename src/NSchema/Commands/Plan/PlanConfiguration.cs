@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
@@ -51,7 +51,7 @@ internal sealed class PlanConfiguration : IBindable
     // internal set: bound via Bind, but paired with the Destroy toggle in tests, so they set it directly.
     public string? OutFile { get; internal set; }
 
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);

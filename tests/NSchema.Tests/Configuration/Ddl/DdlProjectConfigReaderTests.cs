@@ -1,18 +1,18 @@
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Diff.Policies;
 
-namespace NSchema.Tests.Configuration.Dsl;
+namespace NSchema.Tests.Configuration.Ddl;
 
-public sealed class DslProjectConfigReaderTests : IDisposable
+public sealed class DdlProjectConfigReaderTests : IDisposable
 {
-    private readonly string _directory = Directory.CreateTempSubdirectory("nschema-dslcfg-").FullName;
+    private readonly string _directory = Directory.CreateTempSubdirectory("nschema-ddlcfg-").FullName;
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private async Task<DslProjectConfig> Read(string sql)
+    private async Task<DdlProjectConfig> Read(string sql)
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), sql, TestContext.Current.CancellationToken);
-        return await DslProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        return await DdlProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
     }
 
     [Fact]

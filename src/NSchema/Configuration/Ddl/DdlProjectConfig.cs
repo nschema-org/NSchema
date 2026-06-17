@@ -2,12 +2,12 @@ using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 
-namespace NSchema.Configuration.Dsl;
+namespace NSchema.Configuration.Ddl;
 
 /// <summary>
 /// Configuration read from the blocks in the project's <c>.sql</c> files.
 /// </summary>
-internal sealed class DslProjectConfig
+internal sealed class DdlProjectConfig
 {
     /// <summary>
     /// The live-database provider. Null when none is declared.

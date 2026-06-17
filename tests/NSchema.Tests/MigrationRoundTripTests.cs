@@ -153,7 +153,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // Arrange — a schema exercising unique and check constraints (with constraint comments), which the Postgres
         // provider both generates (as separate ALTER TABLE ADD CONSTRAINT statements) and introspects. Applying then
         // re-planning must round-trip cleanly: what we read back out of the database has to match what we declared,
-        // or the second plan would show spurious changes. The `integer` spelling exercises the DSL's alias to the
+        // or the second plan would show spurious changes. The `integer` spelling exercises the DDL's alias to the
         // canonical `int`, which introspection reports — without it, the re-plan would drift on the column type.
         var schemaDocument = $"""
         CREATE SCHEMA {_schema};

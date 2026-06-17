@@ -51,7 +51,25 @@ internal sealed class SpectreOperationReporter : IOperationReporter
         _sqlPlanRenderer = sqlPlanRenderer;
     }
 
-    public void Info(string message) => _out.MarkupLineInterpolated($"{message}");
+    public void Report(MessageKind kind, string message)
+    {
+        switch (kind)
+        {
+            case MessageKind.Success:
+                _out.MarkupLineInterpolated($"[green]:check_mark: {message}[/]");
+                break;
+            case MessageKind.Warning:
+                _error.MarkupLineInterpolated($"[yellow]:warning: {message}[/]");
+                break;
+            case MessageKind.Progress:
+                _out.MarkupLineInterpolated($"[grey]{message}[/]");
+                break;
+            case MessageKind.Announcement:
+            default:
+                _out.MarkupLineInterpolated($"{message}");
+                break;
+        }
+    }
 
     public void ReportException(Exception exception)
     {

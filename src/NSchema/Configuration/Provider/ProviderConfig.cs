@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration.Provider;
 
@@ -29,7 +29,7 @@ internal sealed class ProviderConfig : IBindable
     /// <summary>
     /// Resolves the provider's connection settings from the project config, environment, and command line.
     /// </summary>
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         ConnectionStringBinding.Bind(project, cli, cs => EnsurePostgres().ConnectionString = cs);
         CommandTimeoutBinding.Bind(project, cli, t => EnsurePostgres().CommandTimeout = t);

@@ -1,5 +1,6 @@
 using NSchema.Diff;
 using NSchema.Diff.Model;
+using NSchema.Operations;
 using NSchema.Plan.Model;
 using NSchema.Policies;
 using NSchema.Schema;
@@ -28,15 +29,39 @@ public sealed class SpectreOperationReporterTests
         _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer);
     }
 
-    [Fact]
-    public void Info_WritesMessageToOutput()
+    [Theory]
+    [InlineData(MessageKind.Announcement)]
+    [InlineData(MessageKind.Progress)]
+    [InlineData(MessageKind.Success)]
+    public void Report_WritesNonWarningMessagesToOutput(MessageKind kind)
     {
         // Act
-        _sut.Info("Planning complete.");
+        _sut.Report(kind, "Planning complete.");
 
         // Assert
         _out.Output.ShouldContain("Planning complete.");
         _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_RoutesWarningsToErrorConsole()
+    {
+        // Act
+        _sut.Report(MessageKind.Warning, "State store is stale.");
+
+        // Assert — warnings go to stderr, matching the diagnostics routing.
+        _error.Output.ShouldContain("State store is stale.");
+        _out.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_DoesNotThrow_WhenMessageContainsMarkupCharacters()
+    {
+        // Arrange — object names with array types contain square brackets, which are Spectre markup delimiters.
+        _sut.Report(MessageKind.Success, "Imported app.events [text[]].");
+
+        // Assert
+        _out.Output.ShouldContain("app.events [text[]].");
     }
 
     [Fact]

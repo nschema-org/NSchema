@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.ForceUnlock;
@@ -21,7 +21,7 @@ internal sealed class ForceUnlockConfiguration : IBindable
     /// </summary>
     public bool Force { get; private set; }
 
-    public void Bind(DslProjectConfig project, ParseResult cli)
+    public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         State.Bind(project, cli);
         ForceUnlockOptions.Force.Bind(project, cli, f => Force = f);

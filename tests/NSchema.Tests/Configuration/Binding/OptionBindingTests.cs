@@ -1,16 +1,15 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
 using NSchema.Diff.Policies;
-using NSchema.Operations.Import;
 
 namespace NSchema.Tests.Configuration.Binding;
 
 public sealed class OptionBindingTests : IDisposable
 {
     private const string EnvVar = "NSCHEMA_TEST_OPTION_BINDING";
-    private static readonly DslProjectConfig Empty = new();
+    private static readonly DdlProjectConfig Empty = new();
 
     public OptionBindingTests() => Environment.SetEnvironmentVariable(EnvVar, null);
 
@@ -88,7 +87,7 @@ public sealed class OptionBindingTests : IDisposable
 
     // ── Project config layer (lowest precedence) ────────────────────────────
 
-    private static DslProjectConfig ProjectWithConnectionString(string value) =>
+    private static DdlProjectConfig ProjectWithConnectionString(string value) =>
         new() { Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = value } } };
 
     [Fact]
@@ -136,7 +135,7 @@ public sealed class OptionBindingTests : IDisposable
         // A nullable value-type binding reads the project value through the single selector.
         var binding = OptionBinding.Create<DestructiveActionPolicy?>()
             .FromProjectConfig(c => c.DestructiveActionPolicy);
-        var project = new DslProjectConfig { DestructiveActionPolicy = DestructiveActionPolicy.Warn };
+        var project = new DdlProjectConfig { DestructiveActionPolicy = DestructiveActionPolicy.Warn };
 
         DestructiveActionPolicy? captured = null;
         binding.Bind(project, new Command("test").Parse([]), v => captured = v);
@@ -204,16 +203,16 @@ public sealed class OptionBindingTests : IDisposable
     public void Bind_ParsesEnumFromEnvironment_CaseInsensitively()
     {
         // Arrange
-        Environment.SetEnvironmentVariable(EnvVar, "schema");
-        var binding = OptionBinding.Create<ImportPartitionMode>().FromOption("--partition").FromEnvironmentVariable(EnvVar);
+        Environment.SetEnvironmentVariable(EnvVar, "warn");
+        var binding = OptionBinding.Create<DestructiveActionPolicy>().FromOption("--destructive-actions").FromEnvironmentVariable(EnvVar);
         var result = Parse(binding);
 
         // Act
-        ImportPartitionMode? captured = null;
+        DestructiveActionPolicy? captured = null;
         binding.Bind(Empty, result, value => captured = value);
 
         // Assert
-        captured.ShouldBe(ImportPartitionMode.Schema);
+        captured.ShouldBe(DestructiveActionPolicy.Warn);
     }
 
     [Fact]

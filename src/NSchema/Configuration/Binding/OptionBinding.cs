@@ -1,6 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
-using NSchema.Configuration.Dsl;
+using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration.Binding;
 
@@ -27,7 +27,7 @@ internal sealed class OptionBinding<T>
 
     private string? _envVar;
     private Func<string, T>? _envParser;
-    private Func<DslProjectConfig, T?>? _projectSelector;
+    private Func<DdlProjectConfig, T?>? _projectSelector;
 
     /// <summary>
     /// The underlying System.CommandLine option, built on first access and exposed so commands can register it.
@@ -56,7 +56,7 @@ internal sealed class OptionBinding<T>
     /// <summary>
     /// Adds a binding from a project config field.
     /// </summary>
-    public OptionBinding<T> FromProjectConfig(Func<DslProjectConfig, T?> selector)
+    public OptionBinding<T> FromProjectConfig(Func<DdlProjectConfig, T?> selector)
     {
         _projectSelector = selector;
         return this;
@@ -92,7 +92,7 @@ internal sealed class OptionBinding<T>
     /// <summary>
     /// Resolves this binding against the project config, environment, and parsed command line.
     /// </summary>
-    public void Bind(DslProjectConfig project, ParseResult cli, Action<T> apply)
+    public void Bind(DdlProjectConfig project, ParseResult cli, Action<T> apply)
     {
         if (TryGetValue(project, cli, out var value))
         {
@@ -100,10 +100,10 @@ internal sealed class OptionBinding<T>
         }
     }
 
-    public T GetValueOrDefault(DslProjectConfig? project, ParseResult cli, T defaultValue) =>
+    public T GetValueOrDefault(DdlProjectConfig? project, ParseResult cli, T defaultValue) =>
         TryGetValue(project, cli, out var value) ? value : defaultValue;
 
-    public bool TryGetValue(DslProjectConfig? project, ParseResult cli, [NotNullWhen(true)] out T? value)
+    public bool TryGetValue(DdlProjectConfig? project, ParseResult cli, [NotNullWhen(true)] out T? value)
     {
         value = default;
 

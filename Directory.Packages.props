@@ -8,7 +8,7 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
     <PackageVersion Include="NSchema.Aws" Version="3.0.0-alpha.6" />
-    <PackageVersion Include="NSchema.Core" Version="3.0.0-alpha.34" />
+    <PackageVersion Include="NSchema.Core" Version="3.0.0-alpha.35" />
     <PackageVersion Include="NSchema.Postgres" Version="3.0.0-alpha.9" />
     <PackageVersion Include="System.CommandLine" Version="2.0.8" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
