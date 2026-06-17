@@ -96,7 +96,7 @@ public sealed class CliApplicationBuilderTests
             File.WriteAllText(Path.Combine(nested.FullName, "example.sql"), "CREATE SCHEMA app;");
             Directory.SetCurrentDirectory(directory);
 
-            using var app = _sut.ConfigureDesiredSchema().Build();
+            using var app = _sut.ConfigureDesiredSchema(null).Build();
 
             var schema = await ResolveDesiredSchema(app);
             schema.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
@@ -122,7 +122,7 @@ public sealed class CliApplicationBuilderTests
             File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
             Directory.SetCurrentDirectory(directory);
 
-            using var app = _sut.ConfigureDesiredSchema().Build();
+            using var app = _sut.ConfigureDesiredSchema(null).Build();
 
             var act = () => ResolveDesiredSchema(app);
 
@@ -155,7 +155,7 @@ public sealed class CliApplicationBuilderTests
             File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
             Directory.SetCurrentDirectory(directory);
 
-            using var app = _sut.ConfigureDesiredSchema().ConfigureScripts().Build();
+            using var app = _sut.ConfigureDesiredSchema(null).ConfigureScripts().Build();
 
             var scripts = new List<Script>();
             foreach (var provider in app.Services.GetServices<IScriptProvider>())
@@ -163,10 +163,74 @@ public sealed class CliApplicationBuilderTests
                 scripts.AddRange(await provider.GetScripts(TestContext.Current.CancellationToken));
             }
 
-            // The script name is core-supplied from the file name (sans the .sql extension).
+            // The script name is core-supplied: the file name as-is, including the extension.
             scripts.Select(s => (s.Name, s.Type)).ShouldBe(
-                [("001_extensions.pre", ScriptType.PreDeployment), ("010_backfill.post", ScriptType.PostDeployment)],
+                [("001_extensions.pre.sql", ScriptType.PreDeployment), ("010_backfill.post.sql", ScriptType.PostDeployment)],
                 ignoreOrder: true);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureDesiredSchema_WithEnvironment_LayersOverlayOverBase()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-env-").FullName;
+        try
+        {
+            // Base schema, plus a prod overlay adding an object. The plain base file is read; the overlay is only
+            // pulled in because prod is selected. A dev overlay must stay out.
+            File.WriteAllText(Path.Combine(directory, "schema.sql"), "CREATE SCHEMA app;");
+            File.WriteAllText(Path.Combine(directory, "audit.env.prod.sql"), "CREATE SCHEMA audit;");
+            File.WriteAllText(Path.Combine(directory, "scratch.env.dev.sql"), "CREATE SCHEMA scratch;");
+            Directory.SetCurrentDirectory(directory);
+
+            using var app = _sut.ConfigureDesiredSchema("prod").Build();
+
+            // Two providers now: the base glob and the prod overlay glob. Their schemas combine.
+            var providers = app.Services.GetServices<ISchemaProvider>();
+            var names = new List<string>();
+            foreach (var provider in providers)
+            {
+                names.AddRange((await provider.GetSchema([], TestContext.Current.CancellationToken)).Schemas.Select(s => s.Name));
+            }
+
+            names.ShouldBe(["app", "audit"], ignoreOrder: true);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureScripts_ExcludesEnvironmentOverlays()
+    {
+        var original = Directory.GetCurrentDirectory();
+        var directory = Directory.CreateTempSubdirectory("nschema-envscripts-").FullName;
+        try
+        {
+            // A normal pre-script is picked up; an env-marked file that happens to end in .pre.sql must not leak in
+            // as a global script (it would otherwise run in every environment).
+            File.WriteAllText(Path.Combine(directory, "schema.sql"), "CREATE SCHEMA app;");
+            File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
+            File.WriteAllText(Path.Combine(directory, "seed.env.prod.pre.sql"), "INSERT INTO app.t VALUES (1);");
+            Directory.SetCurrentDirectory(directory);
+
+            using var app = _sut.ConfigureDesiredSchema(null).ConfigureScripts().Build();
+
+            var scripts = new List<Script>();
+            foreach (var provider in app.Services.GetServices<IScriptProvider>())
+            {
+                scripts.AddRange(await provider.GetScripts(TestContext.Current.CancellationToken));
+            }
+
+            scripts.Select(s => s.Name).ShouldBe(["001_extensions.pre.sql"]);
         }
         finally
         {

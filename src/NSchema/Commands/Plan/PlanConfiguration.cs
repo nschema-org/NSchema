@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
@@ -12,6 +13,11 @@ namespace NSchema.Commands.Plan;
 /// </summary>
 internal sealed class PlanConfiguration : IBindable
 {
+    /// <summary>
+    /// The environment to plan against, if any.
+    /// </summary>
+    public string? Environment { get; set; }
+
     /// <summary>
     /// The database provider supplying the live schema; offline when no section is populated.
     /// </summary>
@@ -55,6 +61,7 @@ internal sealed class PlanConfiguration : IBindable
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);
+        CommonOptions.Environment.Bind(project, cli, e => Environment = e);
         PlanOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
         PlanOptions.Scope.Bind(project, cli, s => Scope = s);
         PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);

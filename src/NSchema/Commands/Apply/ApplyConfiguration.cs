@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Provider;
@@ -12,6 +13,11 @@ namespace NSchema.Commands.Apply;
 /// </summary>
 internal sealed class ApplyConfiguration : IBindable
 {
+    /// <summary>
+    /// The environment to apply changes to, if any.
+    /// </summary>
+    public string? Environment { get; set; }
+
     /// <summary>
     /// The database provider the plan is applied against.
     /// </summary>
@@ -46,6 +52,7 @@ internal sealed class ApplyConfiguration : IBindable
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);
+        CommonOptions.Environment.Bind(project, cli, e => Environment = e);
         ApplyOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
         ApplyOptions.Scope.Bind(project, cli, s => Scope = s);
         ApplyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);

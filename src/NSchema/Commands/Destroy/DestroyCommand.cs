@@ -35,7 +35,7 @@ internal static class DestroyCommand
         // it so we don't glob for schema files that aren't needed.
         if (!configuration.HasStateStore)
         {
-            builder.ConfigureDesiredSchema();
+            builder.ConfigureDesiredSchema(configuration.Environment);
         }
 
         using var app = builder.Build();

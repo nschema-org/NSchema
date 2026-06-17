@@ -48,4 +48,20 @@ public sealed class ConfigurationFactoryTests : IDisposable
             Environment.SetEnvironmentVariable(EnvironmentVariables.PostgresConnectionString, null);
         }
     }
+
+    [Fact]
+    public async Task Load_Environment_LayersOverlayOverBase()
+    {
+        // Base config picks a file backend; the prod overlay (selected via --environment) replaces it with S3.
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"),
+            "BACKEND file ( path = './state.json' );", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.prod.sql"),
+            "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
+        var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory, "--environment", "prod"]);
+
+        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, TestContext.Current.CancellationToken);
+
+        config.State.File.ShouldBeNull();
+        config.State.S3!.Bucket.ShouldBe("prod-bucket");
+    }
 }

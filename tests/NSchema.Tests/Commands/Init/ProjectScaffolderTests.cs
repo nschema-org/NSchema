@@ -47,7 +47,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         await Scaffold();
 
-        var config = await DdlProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
         config.Provider!.Postgres.ShouldNotBeNull();
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");

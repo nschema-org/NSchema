@@ -35,7 +35,7 @@ internal static class PlanCommand
         }
 
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema()
+            .ConfigureDesiredSchema(configuration.Environment)
             .ConfigureScripts()
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
@@ -54,7 +54,7 @@ internal static class PlanCommand
         // it so we don't glob for schema files that aren't needed.
         if (!configuration.HasStateStore)
         {
-            builder.ConfigureDesiredSchema();
+            builder.ConfigureDesiredSchema(configuration.Environment);
         }
 
         using var app = builder.Build();

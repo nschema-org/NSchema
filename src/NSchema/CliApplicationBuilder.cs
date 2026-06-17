@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileSystemGlobbing;
 using NSchema.Aws;
+using NSchema.Configuration;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
@@ -14,10 +14,6 @@ namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
-    private const string ScriptGlob = "**/*.sql";
-    private const string PreScriptGlob = "**/*.pre.sql";
-    private const string PostScriptGlob = "**/*.post.sql";
-
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
         .CreateBuilder(new NSchemaApplicationOptions
         {
@@ -44,22 +40,25 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema()
+    public CliApplicationBuilder ConfigureDesiredSchema(string? environment)
     {
         var root = Directory.GetCurrentDirectory();
-        var matcher = new Matcher()
-            .AddInclude(ScriptGlob)
-            .AddExclude(PreScriptGlob)
-            .AddExclude(PostScriptGlob);
+        _builder.AddSqlSchemas(root, ProjectGlobs.BaseSchema());
 
-        _builder.AddSqlSchemas(root, matcher);
+        // Layer the selected environment's overlay files on top.
+        if (environment is not null)
+        {
+            _builder.AddSqlSchemas(root, ProjectGlobs.EnvironmentSchema(environment));
+        }
+
         return this;
     }
 
     public CliApplicationBuilder ConfigureScripts()
     {
-        _builder.AddSqlScripts(ScriptType.PreDeployment, Directory.GetCurrentDirectory(), PreScriptGlob);
-        _builder.AddSqlScripts(ScriptType.PostDeployment, Directory.GetCurrentDirectory(), PostScriptGlob);
+        var root = Directory.GetCurrentDirectory();
+        _builder.AddSqlScripts(ScriptType.PreDeployment, root, ProjectGlobs.Scripts(ProjectGlobs.PreScripts));
+        _builder.AddSqlScripts(ScriptType.PostDeployment, root, ProjectGlobs.Scripts(ProjectGlobs.PostScripts));
         return this;
     }
 

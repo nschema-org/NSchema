@@ -12,7 +12,14 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     private async Task<DdlProjectConfig> Read(string sql)
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), sql, TestContext.Current.CancellationToken);
-        return await DdlProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        return await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<DdlProjectConfig> ReadEnvironment(string baseSql, string environment, string overlaySql)
+    {
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), baseSql, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_directory, $"config.env.{environment}.sql"), overlaySql, TestContext.Current.CancellationToken);
+        return await DdlProjectConfigReader.Read(_directory, environment, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -101,4 +108,54 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     public async Task InvalidDestructiveAction_Throws()
         => (await Should.ThrowAsync<InvalidOperationException>(() => Read("NSCHEMA ( destructive_action = 'nope' );")))
             .Message.ShouldContain("destructive_action");
+
+    // ── Environment overlays ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Environment_OverlayReplacesBaseSlice()
+    {
+        // The base uses a file backend; the prod overlay switches it to S3, replacing the slice wholesale.
+        var config = await ReadEnvironment(
+            "BACKEND file ( path = './state.json' );",
+            "prod",
+            "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );");
+
+        config.State!.File.ShouldBeNull();
+        config.State.S3!.Bucket.ShouldBe("prod-bucket");
+    }
+
+    [Fact]
+    public async Task Environment_BaseSliceSurvivesWhenOverlayOmitsIt()
+    {
+        // The overlay only sets the policy; the base provider carries through unchanged.
+        var config = await ReadEnvironment(
+            "PROVIDER postgres ( connection_string = 'host=base' );",
+            "prod",
+            "NSCHEMA ( destructive_action = 'error' );");
+
+        config.Provider!.Postgres!.ConnectionString.ShouldBe("host=base");
+        config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Error);
+    }
+
+    [Fact]
+    public async Task Environment_NotFound_Throws()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
+
+        (await Should.ThrowAsync<InvalidOperationException>(
+                () => DdlProjectConfigReader.Read(_directory, "prod", TestContext.Current.CancellationToken).AsTask()))
+            .Message.ShouldContain("environment 'prod'");
+    }
+
+    [Fact]
+    public async Task Environment_Null_IgnoresOverlayFiles()
+    {
+        // An overlay file is present, but with no environment selected the base config must not read its blocks.
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.env.prod.sql"),
+            "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
+
+        var config = await Read("CREATE SCHEMA app;");
+
+        config.State.ShouldBeNull();
+    }
 }

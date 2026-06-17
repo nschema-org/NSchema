@@ -11,7 +11,8 @@ internal static class ConfigurationFactory
         ApplyWorkingDirectory(args);
 
         var currentDirectory = Directory.GetCurrentDirectory();
-        var projectConfig = await DdlProjectConfigReader.Read(currentDirectory, cancellationToken);
+        var environment = CommonOptions.Environment.GetValueOrDefault(null, args, null);
+        var projectConfig = await DdlProjectConfigReader.Read(currentDirectory, environment, cancellationToken);
         var config = new T();
         config.Bind(projectConfig, args);
         return config;

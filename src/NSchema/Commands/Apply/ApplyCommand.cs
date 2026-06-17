@@ -38,7 +38,7 @@ internal static class ApplyCommand
         if (configuration.PlanFile is null)
         {
             builder
-                .ConfigureDesiredSchema()
+                .ConfigureDesiredSchema(configuration.Environment)
                 .ConfigureScripts()
                 .ConfigurePolicies(configuration.DestructiveActionPolicy);
         }
