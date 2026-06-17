@@ -24,3 +24,4 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 - `--scope` to limit a migration to specific database schemas.
 - `--destructive-actions` to control the policy for destructive changes `<error|warn|allow>`.
 - `--auto-approve` to skip the confirmation prompt on `apply` and `destroy`.
+- Environments. `--environment <name>` (or `NSCHEMA_ENVIRONMENT`) layers per-environment overlay files named `<name>.env.<environment>.sql` over the base configuration: their `NSCHEMA` / `PROVIDER` / `BACKEND` blocks override the base per slice (so an overlay `BACKEND s3` cleanly replaces a base `BACKEND file`), and their schema is added on top. Overlays are excluded from the base schema and from deployment scripts; selecting an environment with no matching files is an error. Selection is per-invocation only (never persisted).

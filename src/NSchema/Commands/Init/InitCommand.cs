@@ -17,7 +17,7 @@ internal static class InitCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await ConfigurationFactory.Load<InitConfiguration>(parseResult, cancellationToken);
+        var configuration = await ConfigurationFactory.Load<InitConfiguration>(parseResult, environment: null, cancellationToken);
 
         using var app = CliApplicationBuilder.Create().Build();
         var console = app.Services.GetRequiredService<IAnsiConsole>();

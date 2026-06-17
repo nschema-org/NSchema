@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Validate;
+using Spectre.Console;
 
 namespace NSchema.Commands.Validate;
 
@@ -16,14 +18,15 @@ internal static class ValidateCommand
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        // Loading resolves --directory (chdir) so the recursive *.sql glob runs against the project root.
-        // There is nothing else to configure for validate, so the loaded model is discarded.
-        // Keeping the pattern is just nice for consistency, and makes it easier if we add validate options later.
-        await ConfigurationFactory.Load<ValidateConfiguration>(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        // Loading resolves --directory (chdir) and verifies the environment exists; validate has no config of its own.
+        await ConfigurationFactory.Load<ValidateConfiguration>(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create()
-            .ConfigureDesiredSchema()
+            .ConfigureDesiredSchema(environment)
             .Build();
+
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Validate(new ValidateArguments(), cancellationToken);
     }
 }

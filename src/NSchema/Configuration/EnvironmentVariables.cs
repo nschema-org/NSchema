@@ -17,6 +17,11 @@ internal static class EnvironmentVariables
     public const string DestructiveActionPolicy = "NSCHEMA_DESTRUCTIVE_ACTION_POLICY";
 
     /// <summary>
+    /// The environment to target. Selects the <c>*.env.&lt;name&gt;.sql</c> overlay files layered over the base configuration.
+    /// </summary>
+    public const string Environment = "NSCHEMA_ENVIRONMENT";
+
+    /// <summary>
     /// The well-known <c>NO_COLOR</c> convention (https://no-color.org).
     /// </summary>
     public const string NoColor = "NO_COLOR";

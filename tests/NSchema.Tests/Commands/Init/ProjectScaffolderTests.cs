@@ -18,8 +18,9 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         var created = await Scaffold();
 
-        created.ShouldBe(["config.sql", Path.Combine("schemas", "example.sql")]);
+        created.ShouldBe(["config.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql")]);
         File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
+        File.Exists(Path.Combine(_directory, "config.env.prod.sql")).ShouldBeTrue();
         File.Exists(Path.Combine(_directory, "schemas", "example.sql")).ShouldBeTrue();
     }
 
@@ -47,7 +48,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         await Scaffold();
 
-        var config = await DdlProjectConfigReader.Read(_directory, TestContext.Current.CancellationToken);
+        var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
         config.Provider!.Postgres.ShouldNotBeNull();
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");

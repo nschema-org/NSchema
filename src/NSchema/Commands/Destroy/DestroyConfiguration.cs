@@ -11,7 +11,6 @@ namespace NSchema.Commands.Destroy;
 /// </summary>
 internal sealed class DestroyConfiguration : IBindable
 {
-
     /// <summary>
     /// The database provider the teardown is generated and executed against.
     /// </summary>

@@ -9,7 +9,20 @@ namespace NSchema.Commands.Init;
 internal sealed class ProjectScaffolder
 {
     private const string ConfigFileName = "config.sql";
+    private const string EnvironmentOverlayFileName = "config.env.prod.sql";
     private const string SchemaDirectoryName = "schemas";
+
+    private const string EnvironmentOverlayTemplate =
+        """
+        -- Overlay for the 'prod' environment. Select it with:
+        --   nschema plan --environment prod
+        -- Any base block you don't override here still applies.
+
+        BACKEND file (
+          path = './nschema.prod.state.json'
+        );
+
+        """;
 
     // The project's provider/state configuration, declared as DDL config blocks. Config blocks may live in any .sql
     // file; a dedicated config.sql keeps them separate from the schema objects.
@@ -49,6 +62,9 @@ internal sealed class ProjectScaffolder
         // but the parser ignores comments, so it's not very helpful for outputting instructive boilerplate.
         await File.WriteAllTextAsync(configPath, ConfigTemplate, cancellationToken);
 
+        var overlayPath = Path.Combine(directory, EnvironmentOverlayFileName);
+        await File.WriteAllTextAsync(overlayPath, EnvironmentOverlayTemplate, cancellationToken);
+
         var sampleRelativePath = Path.Combine(SchemaDirectoryName, "example.sql");
         var samplePath = Path.Combine(directory, sampleRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
@@ -56,7 +72,7 @@ internal sealed class ProjectScaffolder
         var ddl = DdlWriter.Instance.Write(SampleSchema);
         await File.WriteAllTextAsync(samplePath, ddl, cancellationToken);
 
-        return [ConfigFileName, sampleRelativePath];
+        return [ConfigFileName, EnvironmentOverlayFileName, sampleRelativePath];
     }
 
     private static DatabaseSchema SampleSchema { get; } = new DatabaseSchema(

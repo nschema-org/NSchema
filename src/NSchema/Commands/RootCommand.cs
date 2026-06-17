@@ -20,6 +20,7 @@ internal static class RootCommand
 
         root.Options.Add(CommonOptions.NoColor.Option);
         root.Options.Add(CommonOptions.Directory.Option);
+        root.Options.Add(CommonOptions.Environment.Option);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(ValidateCommand.Create());

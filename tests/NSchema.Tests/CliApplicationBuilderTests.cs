@@ -4,10 +4,6 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
 using NSchema.Resolution;
-using NSchema.Schema;
-using NSchema.Schema.Model;
-using NSchema.Scripts;
-using NSchema.Scripts.Model;
 using NSchema.Services;
 using NSchema.State;
 using Spectre.Console;
@@ -85,93 +81,6 @@ public sealed class CliApplicationBuilderTests
         reporter.ShouldBeOfType<SpectreOperationReporter>();
     }
 
-    [Fact]
-    public async Task ConfigureDesiredSchema_FindsSqlFilesRecursively()
-    {
-        var original = Directory.GetCurrentDirectory();
-        var directory = Directory.CreateTempSubdirectory("nschema-schema-").FullName;
-        try
-        {
-            var nested = Directory.CreateDirectory(Path.Combine(directory, "schemas"));
-            File.WriteAllText(Path.Combine(nested.FullName, "example.sql"), "CREATE SCHEMA app;");
-            Directory.SetCurrentDirectory(directory);
-
-            using var app = _sut.ConfigureDesiredSchema().Build();
-
-            var schema = await ResolveDesiredSchema(app);
-            schema.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(original);
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task ConfigureDesiredSchema_ExcludesDeploymentScripts()
-    {
-        var original = Directory.GetCurrentDirectory();
-        var directory = Directory.CreateTempSubdirectory("nschema-onlyscripts-").FullName;
-        try
-        {
-            // Only deployment scripts, no declarative schema. The exclude globs must keep them out of the desired
-            // schema, leaving nothing to resolve — so the core schema provider reports no matching DDL files rather
-            // than treating a script as schema. (An empty desired schema would otherwise read as "drop everything".)
-            File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
-            File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
-            Directory.SetCurrentDirectory(directory);
-
-            using var app = _sut.ConfigureDesiredSchema().Build();
-
-            var act = () => ResolveDesiredSchema(app);
-
-            (await Should.ThrowAsync<FileNotFoundException>(act)).Message.ShouldContain("No SQL DDL files matched");
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(original);
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    // Resolves the aggregated desired schema the way the core does at run time. With only ConfigureDesiredSchema
-    // applied, the single registered provider is the DDL glob provider, so this exercises the matcher's selection.
-    private static async Task<DatabaseSchema> ResolveDesiredSchema(NSchemaApplication app)
-    {
-        var provider = app.Services.GetServices<ISchemaProvider>().ShouldHaveSingleItem();
-        return await provider.GetSchema([], TestContext.Current.CancellationToken);
-    }
-
-    [Fact]
-    public async Task ConfigureScripts_RegistersPreAndPostDeploymentScriptsBySuffix()
-    {
-        var original = Directory.GetCurrentDirectory();
-        var directory = Directory.CreateTempSubdirectory("nschema-scripts-").FullName;
-        try
-        {
-            File.WriteAllText(Path.Combine(directory, "schema.sql"), "CREATE SCHEMA app;");
-            File.WriteAllText(Path.Combine(directory, "001_extensions.pre.sql"), "CREATE EXTENSION IF NOT EXISTS citext;");
-            File.WriteAllText(Path.Combine(directory, "010_backfill.post.sql"), "UPDATE app.widgets SET name = '';");
-            Directory.SetCurrentDirectory(directory);
-
-            using var app = _sut.ConfigureDesiredSchema().ConfigureScripts().Build();
-
-            var scripts = new List<Script>();
-            foreach (var provider in app.Services.GetServices<IScriptProvider>())
-            {
-                scripts.AddRange(await provider.GetScripts(TestContext.Current.CancellationToken));
-            }
-
-            // The script name is core-supplied from the file name (sans the .sql extension).
-            scripts.Select(s => (s.Name, s.Type)).ShouldBe(
-                [("001_extensions.pre", ScriptType.PreDeployment), ("010_backfill.post", ScriptType.PostDeployment)],
-                ignoreOrder: true);
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(original);
-            Directory.Delete(directory, recursive: true);
-        }
-    }
+    // ConfigureDesiredSchema is a thin delegation to the core's AddDdlSchemas (which the core tests cover end to end);
+    // the CLI-specific logic is which files each glob selects — exercised by ProjectGlobsTests.
 }

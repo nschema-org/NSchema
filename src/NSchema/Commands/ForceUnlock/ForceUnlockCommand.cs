@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.ForceUnlock;
+using Spectre.Console;
 
 namespace NSchema.Commands.ForceUnlock;
 
@@ -16,20 +18,22 @@ internal static class ForceUnlockCommand
         return command;
     }
 
-    private static async ValueTask<ForceUnlockConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
+    private static async ValueTask<ForceUnlockConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
     {
-        var config = await ConfigurationFactory.Load<ForceUnlockConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<ForceUnlockConfiguration>(result, environment, cancellationToken);
         new ForceUnlockConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create()
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.Force)
             .Build();
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.ForceUnlock(new ForceUnlockArguments(), cancellationToken);
     }
 }

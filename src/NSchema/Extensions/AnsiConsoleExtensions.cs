@@ -43,6 +43,20 @@ internal static class AnsiConsoleExtensions
             console.Write(table);
             console.WriteLine();
         }
+
+        /// <summary>
+        /// Prints which environment a run is targeting, so a command run against (say) production is unmistakable.
+        /// </summary>
+        public void ReportEnvironment(string? environment)
+        {
+            if (environment is null)
+            {
+                return;
+            }
+
+            console.MarkupLineInterpolated($"[bold]Environment:[/] [yellow]{environment}[/]");
+            console.WriteLine();
+        }
     }
 
     private static string SeverityLabel(PolicyDiagnosticSeverity severity) => severity switch

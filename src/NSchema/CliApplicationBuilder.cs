@@ -1,12 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileSystemGlobbing;
 using NSchema.Aws;
+using NSchema.Configuration;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
-using NSchema.Scripts.Model;
 using NSchema.Services;
 using Spectre.Console;
 
@@ -14,10 +13,6 @@ namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
-    private const string ScriptGlob = "**/*.sql";
-    private const string PreScriptGlob = "**/*.pre.sql";
-    private const string PostScriptGlob = "**/*.post.sql";
-
     private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
         .CreateBuilder(new NSchemaApplicationOptions
         {
@@ -44,33 +39,18 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema()
+    public CliApplicationBuilder ConfigureDesiredSchema(string? environment)
     {
         var root = Directory.GetCurrentDirectory();
-        var matcher = new Matcher()
-            .AddInclude(ScriptGlob)
-            .AddExclude(PreScriptGlob)
-            .AddExclude(PostScriptGlob);
+        _builder.AddDdlSchemas(root, ProjectGlobs.BaseSchema());
 
-        _builder.AddSqlSchemas(root, matcher);
-        return this;
-    }
-
-    public CliApplicationBuilder ConfigureScripts()
-    {
-        // TODO: This is silly. Scripts should be glob supporting like schemas (the core has no bulk-script API yet).
-        AddScripts(PreScriptGlob, ScriptType.PreDeployment);
-        AddScripts(PostScriptGlob, ScriptType.PostDeployment);
-        return this;
-    }
-
-    private void AddScripts(string glob, ScriptType type)
-    {
-        var matcher = new Matcher().AddInclude(glob);
-        foreach (var file in matcher.GetResultsInFullPath(Directory.GetCurrentDirectory()))
+        // Layer the selected environment's overlay files on top.
+        if (environment is not null)
         {
-            _builder.AddScriptFromFile(type, file);
+            _builder.AddDdlSchemas(root, ProjectGlobs.EnvironmentSchema(environment));
         }
+
+        return this;
     }
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig state)

@@ -188,6 +188,26 @@ public sealed class RootCommandTests
         result.Errors.ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("validate")]
+    [InlineData("plan")]
+    [InlineData("apply")]
+    [InlineData("refresh")]
+    [InlineData("import")]
+    [InlineData("destroy")]
+    [InlineData("show")]
+    [InlineData("drift")]
+    [InlineData("force-unlock")]
+    public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
+    {
+        // --environment selects the per-environment overlay config; it's a recursive root option, so it follows any
+        // command. (init is excluded — it scaffolds a project rather than acting on an environment.)
+        var result = _sut.Parse([command, "--environment", "prod"]);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
+    }
+
     [Fact]
     public void Validate_AcceptsDirectory()
     {

@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
+using Spectre.Console;
 
 namespace NSchema.Commands.Apply;
 
@@ -16,16 +18,17 @@ internal static class ApplyCommand
         return command;
     }
 
-    private static async ValueTask<ApplyConfiguration> Resolve(ParseResult result, CancellationToken cancellationToken = default)
+    private static async ValueTask<ApplyConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
     {
-        var config = await ConfigurationFactory.Load<ApplyConfiguration>(result, cancellationToken);
+        var config = await ConfigurationFactory.Load<ApplyConfiguration>(result, environment, cancellationToken);
         new ApplyConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await Resolve(parseResult, cancellationToken);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+        var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         var builder = CliApplicationBuilder.Create()
             .ConfigureDatabaseProvider(configuration.Provider)
@@ -38,12 +41,12 @@ internal static class ApplyCommand
         if (configuration.PlanFile is null)
         {
             builder
-                .ConfigureDesiredSchema()
-                .ConfigureScripts()
+                .ConfigureDesiredSchema(environment)
                 .ConfigurePolicies(configuration.DestructiveActionPolicy);
         }
 
         using var app = builder.Build();
+        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile }, cancellationToken);
     }
 }
