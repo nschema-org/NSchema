@@ -22,7 +22,7 @@ internal static class ValidateCommand
         // Loading resolves --directory (chdir) and verifies the environment exists; validate has no config of its own.
         await ConfigurationFactory.Load<ValidateConfiguration>(parseResult, environment, cancellationToken);
 
-        using var app = CliApplicationBuilder.Create()
+        using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDesiredSchema(environment)
             .Build();
 

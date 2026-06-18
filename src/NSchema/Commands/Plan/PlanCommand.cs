@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Plan;
 using NSchema.Operations.PlanDestroy;
+using NSchema.Services;
 using Spectre.Console;
 
 namespace NSchema.Commands.Plan;
@@ -26,18 +27,17 @@ internal static class PlanCommand
         return config;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         if (configuration.Destroy)
         {
-            await RunDestroy(configuration, environment, cancellationToken);
-            return;
+            return await RunDestroy(parseResult, configuration, environment, cancellationToken);
         }
 
-        using var app = CliApplicationBuilder.Create()
+        using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDesiredSchema(environment)
             .ConfigurePolicies(configuration.DestructiveActionPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
@@ -45,11 +45,12 @@ internal static class PlanCommand
             .Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(app);
     }
 
-    private static async Task RunDestroy(PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
+    private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
     {
-        var builder = CliApplicationBuilder.Create()
+        var builder = CliApplicationBuilder.Create(parseResult)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State);
 
@@ -63,5 +64,9 @@ internal static class PlanCommand
         using var app = builder.Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(app);
     }
+
+    private static int ExitCode(NSchemaApplication app) =>
+        app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
 }

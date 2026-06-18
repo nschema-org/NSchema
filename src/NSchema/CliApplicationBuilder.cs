@@ -1,3 +1,4 @@
+using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration;
@@ -13,20 +14,23 @@ namespace NSchema;
 
 internal sealed class CliApplicationBuilder
 {
-    private readonly NSchemaApplicationBuilder _builder = NSchemaApplication
-        .CreateBuilder(new NSchemaApplicationOptions
+    private readonly NSchemaApplicationBuilder _builder;
+
+    private CliApplicationBuilder(bool json)
+    {
+        _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
         {
             ExceptionBehavior = ExceptionBehavior.Throw,
-            Reporter = SpectreOperationReporter.ReporterName
-        })
-        // Render the diff as plain text so the Spectre reporter owns all color; otherwise the core's raw ANSI
-        // would be re-escaped by Spectre. The reporter then frames and colors it.
-        .UseTerraformRenderer(o => o.IncludeColour = false)
-        .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName);
+            Reporter = json ? JsonOperationReporter.ReporterName : SpectreOperationReporter.ReporterName,
+        });
 
-    private CliApplicationBuilder()
-    {
+        _builder
+            .UseTerraformRenderer(o => o.IncludeColour = false)
+            .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName)
+            .AddReporter<JsonOperationReporter>(JsonOperationReporter.ReporterName);
+
         _builder.Services.AddSingleton(AnsiConsole.Console);
+        _builder.Services.AddSingleton<RunOutcome>();
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
@@ -94,5 +98,10 @@ internal sealed class CliApplicationBuilder
 
     public NSchemaApplication Build() => _builder.Build();
 
-    public static CliApplicationBuilder Create() => new();
+    /// <summary>Creates a builder rendering formatted (text) output.</summary>
+    public static CliApplicationBuilder Create() => new(json: false);
+
+    /// <summary>Creates a builder whose output format follows the <c>--json</c> flag on the command line.</summary>
+    public static CliApplicationBuilder Create(ParseResult parseResult) =>
+        new(CommonOptions.Json.GetValueOrDefault(null, parseResult, false));
 }

@@ -29,7 +29,7 @@ internal static class ShowCommand
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
-        using var app = CliApplicationBuilder.Create()
+        using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
