@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
-using NSchema.Resolution;
 using NSchema.Services;
 using NSchema.State;
 using Spectre.Console;
@@ -77,7 +76,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.Build();
 
         // Assert
-        var reporter = app.Services.GetRequiredService<IKeyedResolver<IOperationReporter>>().Current;
+        var reporter = app.Services.GetRequiredService<IOperationReporter>();
         reporter.ShouldBeOfType<SpectreOperationReporter>();
     }
 

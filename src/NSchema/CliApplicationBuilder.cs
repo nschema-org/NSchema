@@ -21,13 +21,18 @@ internal sealed class CliApplicationBuilder
         _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
         {
             ExceptionBehavior = ExceptionBehavior.Throw,
-            Reporter = json ? JsonOperationReporter.ReporterName : SpectreOperationReporter.ReporterName,
         });
 
-        _builder
-            .UseTerraformRenderer(o => o.IncludeColour = false)
-            .AddReporter<SpectreOperationReporter>(SpectreOperationReporter.ReporterName)
-            .AddReporter<JsonOperationReporter>(JsonOperationReporter.ReporterName);
+        _builder.UseTerraformRenderer(o => o.IncludeColour = false);
+
+        if (json)
+        {
+            _builder.UseReporter<JsonOperationReporter>();
+        }
+        else
+        {
+            _builder.UseReporter<SpectreOperationReporter>();
+        }
 
         _builder.Services.AddSingleton(AnsiConsole.Console);
         _builder.Services.AddSingleton<RunOutcome>();
