@@ -28,26 +28,30 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     private readonly IDiffRenderer _diffRenderer;
     private readonly ISchemaRenderer _schemaRenderer;
     private readonly ISqlPlanRenderer _sqlPlanRenderer;
+    private readonly RunOutcome _outcome;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
-        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer) { }
+    /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
+    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome)
+        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer, outcome) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
+    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome)
     {
         _out = output;
         _error = error;
         _diffRenderer = diffRenderer;
         _schemaRenderer = schemaRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
+        _outcome = outcome;
     }
 
     public void Report(MessageKind kind, string message)
@@ -84,6 +88,7 @@ internal sealed class SpectreOperationReporter : IOperationReporter
 
     public void ReportDiff(DatabaseDiff diff)
     {
+        _outcome.HasChanges = !diff.IsEmpty;
         var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
         WriteSection("Plan", body);
     }

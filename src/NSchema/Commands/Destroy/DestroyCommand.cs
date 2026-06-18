@@ -29,7 +29,7 @@ internal static class DestroyCommand
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
-        var builder = CliApplicationBuilder.Create()
+        var builder = CliApplicationBuilder.Create(parseResult)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.AutoApprove);

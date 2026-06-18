@@ -24,7 +24,7 @@ internal static class ImportCommand
         var configuration = await ConfigurationFactory.Load<ImportConfiguration>(parseResult, environment, cancellationToken);
         new ImportConfigurationValidator().ValidateOrThrow(configuration);
 
-        using var app = CliApplicationBuilder.Create()
+        using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
 

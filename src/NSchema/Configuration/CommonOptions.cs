@@ -23,4 +23,9 @@ internal static class CommonOptions
         .FromEnvironmentVariable(EnvironmentVariables.NoColor)
         .Recursive()
         .WithDescription("Disable colored output.");
+
+    public static readonly OptionBinding<bool> Json = OptionBinding.Create<bool>()
+        .FromOption("--json")
+        .Recursive()
+        .WithDescription("Emit machine-readable NDJSON output instead of formatted text.");
 }

@@ -29,7 +29,7 @@ internal static class ForceUnlockCommand
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
-        using var app = CliApplicationBuilder.Create()
+        using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .ConfigureConfirmation(configuration.Force)
             .Build();

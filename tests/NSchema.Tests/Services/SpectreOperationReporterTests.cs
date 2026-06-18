@@ -19,13 +19,14 @@ public sealed class SpectreOperationReporterTests
     private readonly IDiffRenderer _diffRenderer = Substitute.For<IDiffRenderer>();
     private readonly ISchemaRenderer _schemaRenderer = Substitute.For<ISchemaRenderer>();
     private readonly ISqlPlanRenderer _sqlPlanRenderer = Substitute.For<ISqlPlanRenderer>();
+    private readonly RunOutcome _outcome = new();
     private readonly SpectreOperationReporter _sut;
 
     public SpectreOperationReporterTests()
     {
         _out.Profile.Width = 200;
         _error.Profile.Width = 200;
-        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer);
+        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, _outcome);
     }
 
     [Theory]
@@ -85,12 +86,32 @@ public sealed class SpectreOperationReporterTests
             "+ table app.widgets\n    + id bigint not null\nPlan: 1 to add, 0 to change, 0 to destroy.");
 
         // Act
-        _sut.ReportDiff(diff: null!);
+        _sut.ReportDiff(new DatabaseDiff());
 
         // Assert
         _out.Output.ShouldContain("Plan");
         _out.Output.ShouldContain("table app.widgets");
         _out.Output.ShouldContain("1 to add");
+    }
+
+    [Fact]
+    public void ReportDiff_RecordsChangesOnTheOutcome()
+    {
+        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("+ schema app");
+
+        _sut.ReportDiff(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]));
+
+        _outcome.HasChanges.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ReportDiff_EmptyDiff_RecordsNoChanges()
+    {
+        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("Plan: no changes.");
+
+        _sut.ReportDiff(new DatabaseDiff());
+
+        _outcome.HasChanges.ShouldBeFalse();
     }
 
     [Fact]
@@ -100,7 +121,7 @@ public sealed class SpectreOperationReporterTests
         _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("~ tags type: text → text[]");
 
         // Act
-        _sut.ReportDiff(diff: null!);
+        _sut.ReportDiff(new DatabaseDiff());
 
         // Assert
         _out.Output.ShouldContain("text[]");
