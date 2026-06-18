@@ -1,4 +1,5 @@
 using NSchema.Commands.Apply;
+using NSchema.Commands.Completion;
 using NSchema.Commands.Destroy;
 using NSchema.Commands.Drift;
 using NSchema.Commands.ForceUnlock;
@@ -33,6 +34,11 @@ internal static class RootCommand
         root.Subcommands.Add(ShowCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(ForceUnlockCommand.Create());
+        root.Subcommands.Add(CompletionCommand.Create());
+
+        // Backs `nschema [suggest:<pos>] "<command line>"`, which the shell-completion scripts call to compute
+        // candidates for the current word. The `completion <shell>` command emits those scripts.
+        root.Add(new System.CommandLine.Completions.SuggestDirective());
 
         return root;
     }
