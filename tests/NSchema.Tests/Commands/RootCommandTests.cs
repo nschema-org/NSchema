@@ -254,4 +254,14 @@ public sealed class RootCommandTests
         // Assert
         result.Errors.ShouldNotBeEmpty();
     }
+
+    [Fact]
+    public void Show_AcceptsAPositionalPlanFile()
+        // show <planfile> renders a saved plan instead of the recorded state (Terraform's show <planfile>).
+        => _sut.Parse(["show", "plan.nschema"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void Show_PlanFileArgumentIsOptional()
+        // Bare `show` still reads the recorded state, so the positional must be optional.
+        => _sut.Parse(["show"]).Errors.ShouldBeEmpty();
 }
