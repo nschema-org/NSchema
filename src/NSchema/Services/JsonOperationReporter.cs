@@ -15,8 +15,6 @@ namespace NSchema.Services;
 /// </summary>
 internal sealed class JsonOperationReporter : IOperationReporter
 {
-    public const string ReporterName = "json";
-
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

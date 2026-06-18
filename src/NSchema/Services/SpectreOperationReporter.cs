@@ -18,11 +18,6 @@ namespace NSchema.Services;
 /// </summary>
 internal sealed class SpectreOperationReporter : IOperationReporter
 {
-    /// <summary>
-    /// The output format this reporter is registered under.
-    /// </summary>
-    public const string ReporterName = "fancy";
-
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _error;
     private readonly IDiffRenderer _diffRenderer;
