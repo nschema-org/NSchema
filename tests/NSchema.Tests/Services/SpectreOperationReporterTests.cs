@@ -5,6 +5,7 @@ using NSchema.Plan.Model;
 using NSchema.Policies;
 using NSchema.Schema;
 using NSchema.Schema.Model;
+using NSchema.Schema.Model.Scripts;
 using NSchema.Services;
 using NSchema.Sql;
 using NSchema.Sql.Model;
