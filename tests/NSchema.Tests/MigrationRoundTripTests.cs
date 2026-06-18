@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Commands;
 using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
 using Spectre.Console;
@@ -49,7 +50,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var (exitCode, _) = await RunCli("apply", "--auto-approve");
 
         // Assert
-        exitCode.ShouldBe(0);
+        exitCode.ShouldBe(ExitCodes.NoChanges);
         (await TableExists("widgets")).ShouldBeTrue();
     }
 
@@ -59,8 +60,9 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // Act
         var (exitCode, _) = await RunCli("plan");
 
-        // Assert
-        exitCode.ShouldBe(0);
+        // Assert — the empty database differs from the desired schema, so plan signals pending changes with the
+        // detailed exit code (2) without touching the database.
+        exitCode.ShouldBe(ExitCodes.HasChanges);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
@@ -78,7 +80,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var (exitCode, _) = await RunCli("refresh");
 
         // Assert
-        exitCode.ShouldBe(0);
+        exitCode.ShouldBe(ExitCodes.NoChanges);
         File.Exists(stateFile).ShouldBeTrue();
         (await File.ReadAllTextAsync(stateFile, TestContext.Current.CancellationToken)).ShouldContain("widgets");
     }
@@ -95,7 +97,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var (exitCode, _) = await RunCli("destroy", "--auto-approve");
 
         // Assert
-        exitCode.ShouldBe(0);
+        exitCode.ShouldBe(ExitCodes.NoChanges);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
@@ -109,8 +111,9 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // Act
         var (exitCode, _) = await RunCli("plan", "--destroy");
 
-        // Assert — the teardown is only previewed: the command succeeds, but the table is left in place.
-        exitCode.ShouldBe(0);
+        // Assert — the teardown is only previewed: the table is left in place, and the pending teardown is signalled
+        // with the detailed exit code (2).
+        exitCode.ShouldBe(ExitCodes.HasChanges);
         (await TableExists("widgets")).ShouldBeTrue();
     }
 
@@ -126,7 +129,7 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var (exitCode, output) = await RunCli("show");
 
         // Assert
-        exitCode.ShouldBe(0);
+        exitCode.ShouldBe(ExitCodes.NoChanges);
         output.ShouldContain("widgets");
     }
 
@@ -142,8 +145,9 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         // Act — drift compares the recorded state (which still has the column) against the live database.
         var (exitCode, output) = await RunCli("drift");
 
-        // Assert — drift is a pure observation, so it succeeds, and it reports the dropped column.
-        exitCode.ShouldBe(0);
+        // Assert — drift never modifies anything, but a detected divergence is signalled with the detailed exit
+        // code (2), and the dropped column is reported.
+        exitCode.ShouldBe(ExitCodes.HasChanges);
         output.ShouldContain("name");
     }
 
@@ -176,10 +180,10 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         var (planExit, planOutput) = await RunCli("plan");
 
         // Assert — the apply succeeds, both constraints land with their comments, and the re-plan finds nothing to do.
-        applyExit.ShouldBe(0);
+        applyExit.ShouldBe(ExitCodes.NoChanges);
         (await ConstraintComment("accounts_email_key")).ShouldBe("one account per email address");
         (await ConstraintComment("accounts_balance_check")).ShouldBe("balances may never go negative");
-        planExit.ShouldBe(0);
+        planExit.ShouldBe(ExitCodes.NoChanges);
         planOutput.ShouldContain("No changes detected.");
     }
 
