@@ -30,12 +30,28 @@ internal static class ImportCommand
 
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
 
+        var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
+        GuardAgainstOverwrite(outputDirectory, configuration.Force);
+
         var args = new ImportArguments
         {
             Schemas = configuration.Scope,
-            OutputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory())
+            OutputDirectory = outputDirectory
         };
 
         await app.Import(args, cancellationToken);
+    }
+
+    private static void GuardAgainstOverwrite(string outputDirectory, bool force)
+    {
+        if (force || !Directory.Exists(outputDirectory))
+        {
+            return;
+        }
+
+        if (Directory.EnumerateFiles(outputDirectory, "*.sql", SearchOption.AllDirectories).Any())
+        {
+            throw new InvalidOperationException($"{outputDirectory} already contains .sql files that import would overwrite. Re-run with --force to overwrite.");
+        }
     }
 }

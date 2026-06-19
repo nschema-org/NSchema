@@ -1,6 +1,6 @@
-using System.Text.Json;
 using NSchema.Commands;
 using NSchema.Configuration;
+using NSchema.Services;
 using Spectre.Console;
 
 var root = RootCommand.Create();
@@ -23,13 +23,24 @@ catch (OperationCanceledException)
     error.MarkupLine("[yellow]Operation cancelled.[/]");
     return ExitCodes.OperationCanceled;
 }
-catch (Exception ex)
+catch (ConfirmationDeclinedException ex)
 {
-    // In --json mode keep stderr machine-readable too, so a consumer never has to parse a formatted exception.
     if (json)
     {
-        // It's not gross, it's efficient.
-        Console.Error.WriteLine($$"""{"type":"error","message":{{JsonSerializer.Serialize(ex.Message)}}}""");
+        JsonOutput.Write(Console.Error, new ErrorEvent(ex.Message));
+    }
+    else
+    {
+        error.MarkupLineInterpolated($"[yellow]{ex.Message}[/]");
+    }
+
+    return ExitCodes.Error;
+}
+catch (Exception ex)
+{
+    if (json)
+    {
+        JsonOutput.Write(Console.Error, new ErrorEvent(ex.Message));
     }
     else
     {

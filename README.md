@@ -130,10 +130,12 @@ postgres` block) or, for offline planning, a state store (a `BACKEND` block). Se
 - `--destructive-actions <error|warn|allow>` — policy for destructive changes. Defaults to `error`. _(NSCHEMA `destructive_action`, env `NSCHEMA_DESTRUCTIVE_ACTION_POLICY`)_
 - `--destroy` — preview the SQL that [`destroy`](#nschema-destroy) would run to tear the managed schema down, instead of a forward plan (Terraform's `plan -destroy`).
 - `--out <path>` — write the computed plan to a file so it can be replayed later by [`apply --plan-file`](#nschema-apply) (Terraform's `plan -out`). Works with `--destroy` too, saving the teardown plan.
+- `--detailed-exitcode` — return a [detailed exit code](#exit-codes): `0` when there are no changes, `2` when the plan has changes (errors stay `1`), so CI can gate on "does this change the schema?" without parsing output (Terraform's `plan -detailed-exitcode`). Without it, `plan` exits `0` even when there are changes.
 
 ```sh
 nschema plan
-nschema plan --out tonight.nplan   # save it to apply later
+nschema plan --out tonight.nplan       # save it to apply later
+nschema plan --detailed-exitcode       # CI: exit 2 if the schema would change
 ```
 
 With `--destroy` the command previews a teardown rather than a forward migration. It takes the same inputs as
@@ -149,13 +151,15 @@ nschema plan --destroy
 ### `nschema apply`
 
 Compute the plan and apply it to the target database. Prompts for confirmation before making changes unless
-`--auto-approve` is given.
+`--auto-approve` is given. A declined apply — answering anything but `yes`, or running without a terminal to prompt on
+(CI, a container) and without `--auto-approve` — makes **no** changes and exits non-zero (`1`), so an automated apply
+that forgets `--auto-approve` fails loudly rather than silently doing nothing and reporting success.
 
 **Needs:** the same inputs as `plan`, against a live database the tool can write to.
 
 Accepts every [`plan`](#nschema-plan) option, plus:
 
-- `--auto-approve` — skip the confirmation prompt and apply immediately.
+- `--auto-approve` — skip the confirmation prompt and apply immediately. Required for non-interactive runs (CI, ECS tasks).
 - `--plan-file <path>` — replay a plan saved by [`plan --out`](#nschema-plan), executing exactly that plan instead of computing a fresh one (Terraform's `apply <planfile>`). The saved plan already fixes its scope, desired schema, and destructive-action policy, so those inputs are ignored — and the `*.sql` files need not be present. A live database to write to is still required, and you're still prompted for confirmation unless `--auto-approve` is given.
 
 ```sh
@@ -180,15 +184,14 @@ nschema refresh
 Read the live database schema and write it out as desired-schema source files. Use this to adopt an existing database
 into NSchema: import it, then check the generated files into source control and manage further changes with `plan`/`apply`.
 
-**Needs:** a live database (a `PROVIDER postgres` block) and an output path (`--output`).
+**Needs:** a live database (a `PROVIDER postgres` block).
 
-- `--output <path>` _(required)_ — where to write the generated files. A file path for `--partition None`; a directory root for `Schema` or `Table`.
-- `--partition <none|schema|table>` — how to split the imported schema across files: `None` (a single file, the default), `Schema` (one file per namespace), or `Table` (one file per table).
-- `--tables <name>` — limit the import to specific tables. May be repeated.
+- `--out-dir <path>` — directory to write the imported SQL files into. Defaults to the current directory.
 - `--scope <name>` — limit the import to specific database schemas (namespaces). May be repeated.
+- `--force` — overwrite existing `.sql` files in the output directory. Without it, `import` refuses to run against a directory that already contains `.sql` files, so a re-import can't silently clobber hand-edited schema (the same guard `init` applies to a non-empty directory).
 
 ```sh
-nschema import --output ./schemas --partition Table
+nschema import --out-dir ./schemas
 ```
 
 ### `nschema destroy`
@@ -227,8 +230,11 @@ transformers or policies run, so it never fails on a policy violation.
 **Needs:** a live database (a `PROVIDER postgres` block) and a state store to compare against (a `BACKEND file` or
 `BACKEND s3` block). Accepts `--scope` to limit the check to specific namespaces.
 
+- `--detailed-exitcode` — return a [detailed exit code](#exit-codes): `0` when there is no drift, `2` when the live database has drifted (errors stay `1`), so a monitoring job can gate on it. Without it, `drift` exits `0` and you read the diff it prints.
+
 ```sh
 nschema drift
+nschema drift --detailed-exitcode   # CI/monitoring: exit 2 if the database has drifted
 ```
 
 ### `nschema force-unlock`
@@ -244,6 +250,22 @@ contacted. Accepts `--force` to skip the confirmation prompt.
 ```sh
 nschema force-unlock
 ```
+
+## Exit codes
+
+Every command follows the same contract, so scripts and CI can branch on the result without parsing output:
+
+| Code | Meaning |
+| ---- | ------- |
+| `0`  | Success. The command did what it set out to do. |
+| `1`  | Error. Something failed — a bad config, a connection failure, a policy violation, or a **declined** `apply`/`destroy`/`force-unlock` (see below). |
+| `2`  | Changes present. Only from the **opt-in** checks: `plan`/`drift` with `--detailed-exitcode` (changes / drift detected) and `fmt --check` (files need formatting). Never returned without opting in. |
+| `130`| Cancelled with Ctrl-C (`SIGINT`). |
+
+Two things worth calling out for automation:
+
+- **`plan` and `drift` exit `0` by default, even when there are changes.** The `2` signal is opt-in via `--detailed-exitcode`, so `nschema plan && nschema apply` and pipelines that fail on any non-zero code work as expected. Add the flag only where you *want* to gate on "would this change anything?".
+- **A declined `apply`/`destroy` exits `1`, not `0`.** Answering anything but `yes`, or running with no interactive terminal (CI, a container) and without `--auto-approve`, makes no changes and exits non-zero — so a forgotten `--auto-approve` fails the step instead of looking like a successful no-op. Always pass `--auto-approve` for unattended runs.
 
 ## Configuration
 

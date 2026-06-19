@@ -22,18 +22,21 @@ internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsol
             return ValueTask.FromResult(true);
         }
 
-        // Without an interactive terminal (redirected stdin / CI) there is nothing to read; decline rather than
-        // block or throw, preserving the previous Console.ReadLine() behavior where EOF declined.
+        // Without an interactive terminal (redirected stdin / CI / a container) there is nothing to read.
         if (!console.Profile.Capabilities.Interactive)
         {
-            console.MarkupLineInterpolated($"[grey]No interactive terminal; declining. Use {skipFlag} to proceed non-interactively.[/]");
-            return ValueTask.FromResult(false);
+            throw new ConfirmationDeclinedException($"This operation needs confirmation, but there is no interactive terminal. Re-run with {skipFlag} to proceed non-interactively.");
         }
 
         var response = console.Prompt(new TextPrompt<string>(question).AllowEmpty());
 
-        var approved = string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
-        return ValueTask.FromResult(approved);
+        // Any answer other than "yes" cancels.
+        if (!string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConfirmationDeclinedException("Cancelled by operator. No changes were made.");
+        }
+
+        return ValueTask.FromResult(true);
     }
 
     private static (string Summary, string Question, string SkipFlag) Describe(OperationConfirmationRequest request) =>

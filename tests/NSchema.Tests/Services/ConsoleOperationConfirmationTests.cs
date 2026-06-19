@@ -43,19 +43,17 @@ public sealed class ConsoleOperationConfirmationTests
     }
 
     [Fact]
-    public async Task Confirm_ReturnsFalse_WhenUserTypesAnythingElse()
+    public async Task Confirm_Throws_WhenUserTypesAnythingElse()
     {
-        // Arrange
+        // Arrange — declining at the prompt is a non-zero exit, so a wrapping script can't mistake "no" for success.
         var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
         _console.Interactive();
         _console.Input.PushTextWithEnter("no");
         var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
-        // Act
-        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
-
-        // Assert
-        approved.ShouldBeFalse();
+        // Act / Assert
+        await Should.ThrowAsync<ConfirmationDeclinedException>(async () =>
+            await sut.Confirm(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -94,33 +92,31 @@ public sealed class ConsoleOperationConfirmationTests
     }
 
     [Fact]
-    public async Task Confirm_HintsTheForceFlag_WhenForceUnlockIsNotInteractive()
+    public async Task Confirm_ThrowsHintingTheForceFlag_WhenForceUnlockIsNotInteractive()
     {
-        // Arrange — force-unlock skips its prompt with --force, not --auto-approve, so the non-interactive hint
+        // Arrange — force-unlock skips its prompt with --force, not --auto-approve, so the non-interactive error
         // names the right flag.
         var request = new ForceUnlockConfirmationRequest();
         var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
-        // Act
-        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
-
-        // Assert
-        approved.ShouldBeFalse();
-        _console.Output.ShouldContain("--force");
+        // Act / Assert
+        var ex = await Should.ThrowAsync<ConfirmationDeclinedException>(async () =>
+            await sut.Confirm(request, TestContext.Current.CancellationToken));
+        ex.Message.ShouldContain("--force");
     }
 
     [Fact]
-    public async Task Confirm_DeclinesWithoutPrompting_WhenNotInteractive()
+    public async Task Confirm_Throws_WhenNotInteractive()
     {
-        // Arrange — a non-interactive console (redirected stdin / CI) has no input to read.
+        // Arrange — a non-interactive console (redirected stdin / CI / a container) has no input to read. Declining
+        // silently would exit 0 and look like a successful no-op, so it must fail loudly instead.
         var request = new ApplyConfirmationRequest(new MigrationPlan([], [], []));
         var sut = new ConsoleOperationConfirmation(autoApprove: false, _console);
 
-        // Act
-        var approved = await sut.Confirm(request, TestContext.Current.CancellationToken);
-
-        // Assert
-        approved.ShouldBeFalse();
-        _console.Output.ShouldContain("No interactive terminal");
+        // Act / Assert
+        var ex = await Should.ThrowAsync<ConfirmationDeclinedException>(async () =>
+            await sut.Confirm(request, TestContext.Current.CancellationToken));
+        ex.Message.ShouldContain("no interactive terminal");
+        ex.Message.ShouldContain("--auto-approve");
     }
 }

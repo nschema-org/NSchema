@@ -26,10 +26,16 @@ internal sealed class DriftConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
+    /// <summary>
+    /// Whether to return the detailed exit code (<c>2</c> when drift is detected).
+    /// </summary>
+    public bool DetailedExitCode { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         State.Bind(project, cli);
         DriftOptions.Scope.Bind(project, cli, s => Scope = s);
+        DriftOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
     }
 }
