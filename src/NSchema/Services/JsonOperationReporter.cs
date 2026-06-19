@@ -1,6 +1,3 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using NSchema.Diff.Model;
 using NSchema.Operations;
 using NSchema.Plan.Model;
@@ -16,16 +13,6 @@ namespace NSchema.Services;
 /// </summary>
 internal sealed class JsonOperationReporter : IOperationReporter
 {
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        // SQL bodies contain quotes and angle brackets; relaxed escaping keeps them readable (\" not ") — this is
-        // CLI output, not HTML, so the extra-cautious default encoder isn't needed.
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
-
     private readonly RunOutcome _outcome;
     private readonly OutputVerbosity _verbosity;
     private readonly TextWriter _out;
@@ -88,9 +75,9 @@ internal sealed class JsonOperationReporter : IOperationReporter
         Write(_error, new { type = "log", level = kind, message });
     }
 
-    public void ReportException(Exception exception) => Write(_error, new { type = "error", message = exception.Message });
+    public void ReportException(Exception exception) => Write(_error, new ErrorEvent(exception.Message));
 
     private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction };
 
-    private static void Write(TextWriter writer, object @event) => writer.WriteLine(JsonSerializer.Serialize(@event, Options));
+    private static void Write(TextWriter writer, object @event) => JsonOutput.Write(writer, @event);
 }
