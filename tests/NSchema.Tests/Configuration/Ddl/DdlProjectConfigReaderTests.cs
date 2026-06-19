@@ -108,6 +108,12 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
             .Message.ShouldContain("Unknown attribute");
 
     [Fact]
+    public async Task UnknownBackendAttribute_Throws()
+        // Each section model rejects its own unknowns; the message names the BACKEND section it came from.
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("BACKEND s3 ( bukket = 'x' );")))
+            .Message.ShouldContain("Unknown attribute 'bukket' in a BACKEND s3 block");
+
+    [Fact]
     public async Task DuplicateProvider_Throws()
         => (await Should.ThrowAsync<InvalidOperationException>(() =>
                 Read("PROVIDER postgres ( connection_string = 'a' ); PROVIDER postgres ( connection_string = 'b' );")))
