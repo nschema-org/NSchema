@@ -15,5 +15,7 @@ internal static class ConsoleFactory
         {
             Out = new AnsiConsoleOutput(writer),
             ColorSystem = colorDisabled ? ColorSystemSupport.NoColors : ColorSystemSupport.Detect,
+            Ansi = colorDisabled ? AnsiSupport.No : AnsiSupport.Detect,
+            Enrichment = colorDisabled ? new ProfileEnrichment { UseDefaultEnrichers = false } : new ProfileEnrichment(),
         });
 }
