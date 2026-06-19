@@ -86,6 +86,14 @@ internal sealed class CliApplicationBuilder
             _builder.UseCurrentSchemaPostgres(dataSource =>
             {
                 dataSource.ConnectionStringBuilder.ConnectionString = postgres.ConnectionString;
+                if (postgres.Username is { } username)
+                {
+                    dataSource.ConnectionStringBuilder.Username = username;
+                }
+                if (postgres.Password is { } password)
+                {
+                    dataSource.ConnectionStringBuilder.Password = password;
+                }
                 if (postgres.CommandTimeout is { } commandTimeout)
                 {
                     dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;

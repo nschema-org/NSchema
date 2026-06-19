@@ -110,6 +110,7 @@ cat users.sql | nschema fmt -     # format stdin to stdout
 The live database (`PROVIDER`) and the state store (`BACKEND`) describe *where* your schema lives, so — like a Terraform backend — they're declared in [config blocks](#configuration) in your `.sql` files rather than passed as flags each run. There is no `--provider` or `--state-*` option. The connection string has an environment override so the password needn't be committed:
 
 - **Connection string** — `connection_string` in a `PROVIDER postgres` block, or the `NSCHEMA_POSTGRES_CONNECTION_STRING` environment variable (which takes precedence). The block names the Postgres provider on its own — just as `BACKEND s3` names the S3 store — so no separate provider selector is needed.
+- **Credentials, separately** — `NSCHEMA_POSTGRES_USERNAME` / `NSCHEMA_POSTGRES_PASSWORD` (or `username` / `password` block attributes) supply the credentials apart from the connection string, overriding any user/password embedded in it. Useful where a secret store (e.g. AWS Secrets Manager) injects the credentials out of band while the connection string carries only the non-secret host/port/database.
 
 The desired schema needs no config at all — it's every `*.sql` file under the project directory. So a project's *where* (database and state) lives in config blocks, the schema lives in your `*.sql` files, and the CLI flags are just the per-run workflow knobs.
 
@@ -285,6 +286,16 @@ export NSCHEMA_POSTGRES_CONNECTION_STRING="..."
 ```
 
 It can also be set in a `PROVIDER postgres` block via `connection_string` (handy for a local throwaway database), but _please_ don't commit secrets to source control. The environment variable takes precedence when both are present.
+
+When your platform manages the credentials separately from the rest of the connection (e.g. AWS Secrets Manager injecting a database username and password), supply them out of band and keep only the non-secret host in the connection string:
+
+```sh
+export NSCHEMA_POSTGRES_CONNECTION_STRING="Host=db.internal;Port=5432;Database=app"
+export NSCHEMA_POSTGRES_USERNAME="$DB_USER"
+export NSCHEMA_POSTGRES_PASSWORD="$DB_PASSWORD"
+```
+
+`NSCHEMA_POSTGRES_USERNAME` / `NSCHEMA_POSTGRES_PASSWORD` (also settable as `username` / `password` in the `PROVIDER postgres` block) override any user/password embedded in the connection string, so you no longer need to recombine the pieces into a single string yourself.
 
 ## Desired schema files
 

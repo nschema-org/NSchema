@@ -123,6 +123,23 @@ on its own, just as `BACKEND s3` names the S3 store, so no discriminator flag is
 (e.g. `command_timeout`, the chosen state store) comes from the config block. A `connection_string` **is** allowed in a
 `PROVIDER` block (for local/single-file setups); the env var is preferred for real secrets.
 
+**Credentials may be supplied separately from the connection string.** `NSCHEMA_POSTGRES_USERNAME` /
+`NSCHEMA_POSTGRES_PASSWORD` (also expressible as `username` / `password` block attributes) are discrete overrides that
+layer onto the base connection string — for secret stores (e.g. AWS Secrets Manager) that inject credentials out of band
+while the block carries only the non-secret host/port/database. This works because the core hands
+`ConfigureDatabaseProvider` an Npgsql `NpgsqlConnectionStringBuilder`, whose typed properties (`Username`, `Password`,
+`CommandTimeout`, …) each override the corresponding key parsed from `ConnectionString`. **Order matters:** the builder
+sets `.ConnectionString` *first*, then the individual properties — assigning `.ConnectionString` re-parses the whole
+string, so it must precede the discrete overrides or it would clobber them. This is the convention for any new
+provider's settings: **secrets → env-overridable named bindings; structural config → the DDL block** (both expressible
+either way, but steer secrets to env), and **base config set first, discrete overrides layered after**. A connection
+parameter earns a separate env override only when a real environment splits it out — don't add `host`/`port`/etc.
+speculatively, since each env var is permanent API surface. Adding a *new* provider is a vertical slice touching its
+config model, `ProviderConfig.Bind`, `DdlProjectConfigReader.ParseProvider`, the leaf validator,
+`ConfigureDatabaseProvider`, and the `EnvironmentVariables` constants — deliberately, the same slice-over-abstraction
+trade made elsewhere; resist extracting a shared provider abstraction until a second provider makes the real seam
+concrete.
+
 ## Error handling and output
 
 The CLI is the **single** presenter of errors. `Program.cs` disables System.CommandLine's default exception handler

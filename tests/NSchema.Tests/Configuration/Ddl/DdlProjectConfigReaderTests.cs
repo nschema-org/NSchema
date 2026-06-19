@@ -32,6 +32,15 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Provider_Postgres_MapsUsernameAndPassword()
+    {
+        var config = await Read("PROVIDER postgres ( connection_string = 'host=db', username = 'app', password = 'secret' );");
+
+        config.Provider!.Postgres!.Username.ShouldBe("app");
+        config.Provider.Postgres.Password.ShouldBe("secret");
+    }
+
+    [Fact]
     public async Task Backend_File_MapsPath()
         => (await Read("BACKEND file ( path = './state.json' );")).State!.File!.Path.ShouldBe("./state.json");
 

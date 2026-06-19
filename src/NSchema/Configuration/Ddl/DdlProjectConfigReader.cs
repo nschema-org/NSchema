@@ -108,6 +108,12 @@ internal static class DdlProjectConfigReader
                 case "connection_string":
                     postgres.ConnectionString = value.AsString();
                     break;
+                case "username":
+                    postgres.Username = value.AsString();
+                    break;
+                case "password":
+                    postgres.Password = value.AsString();
+                    break;
                 case "command_timeout":
                     postgres.CommandTimeout = (int)value.AsInteger();
                     break;

@@ -12,6 +12,16 @@ internal static class EnvironmentVariables
     public const string PostgresConnectionString = "NSCHEMA_POSTGRES_CONNECTION_STRING";
 
     /// <summary>
+    /// The username for the PostgreSQL provider.
+    /// </summary>
+    public const string PostgresUsername = "NSCHEMA_POSTGRES_USERNAME";
+
+    /// <summary>
+    /// The password for the PostgreSQL provider`.
+    /// </summary>
+    public const string PostgresPassword = "NSCHEMA_POSTGRES_PASSWORD";
+
+    /// <summary>
     /// The policy applied when the plan contains destructive actions.
     /// </summary>
     public const string DestructiveActionPolicy = "NSCHEMA_DESTRUCTIVE_ACTION_POLICY";
