@@ -25,14 +25,16 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     private readonly ISchemaRenderer _schemaRenderer;
     private readonly ISqlPlanRenderer _sqlPlanRenderer;
     private readonly RunOutcome _outcome;
+    private readonly OutputVerbosity _verbosity;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
     /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
-    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome)
-        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer, outcome) { }
+    /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
+    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
+        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer, outcome, verbosity) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
@@ -40,7 +42,8 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
     /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
-    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome)
+    /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
+    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
     {
         _out = output;
         _error = error;
@@ -48,10 +51,16 @@ internal sealed class SpectreOperationReporter : IOperationReporter
         _schemaRenderer = schemaRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
         _outcome = outcome;
+        _verbosity = verbosity;
     }
 
     public void Report(MessageKind kind, string message)
     {
+        if (!_verbosity.ShouldShow(kind))
+        {
+            return;
+        }
+
         switch (kind)
         {
             case MessageKind.Success:
@@ -62,6 +71,10 @@ internal sealed class SpectreOperationReporter : IOperationReporter
                 break;
             case MessageKind.Progress:
                 _out.MarkupLineInterpolated($"[grey]{message}[/]");
+                break;
+            case MessageKind.Verbose:
+                // Dimmed and italicised so verbose detail reads as secondary to the run narration.
+                _out.MarkupLineInterpolated($"[grey italic]{message}[/]");
                 break;
             case MessageKind.Announcement:
             default:

@@ -24,6 +24,8 @@ internal static class RootCommand
         root.Options.Add(CommonOptions.Directory.Option);
         root.Options.Add(CommonOptions.Environment.Option);
         root.Options.Add(CommonOptions.Json.Option);
+        root.Options.Add(CommonOptions.Verbose.Option);
+        root.Options.Add(CommonOptions.Quiet.Option);
 
         root.Subcommands.Add(InitCommand.Create());
         root.Subcommands.Add(ValidateCommand.Create());

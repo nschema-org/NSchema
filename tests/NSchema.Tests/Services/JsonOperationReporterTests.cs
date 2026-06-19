@@ -14,7 +14,15 @@ public sealed class JsonOperationReporterTests
     private readonly RunOutcome _outcome = new();
     private readonly JsonOperationReporter _sut;
 
-    public JsonOperationReporterTests() => _sut = new JsonOperationReporter(_outcome, _out, _error);
+    public JsonOperationReporterTests() => _sut = Build(Verbosity.Normal);
+
+    private JsonOperationReporter Build(Verbosity verbosity) =>
+        new(_outcome, new OutputVerbosity(verbosity), _out, _error);
+
+    private List<JsonElement> StderrEvents() => _error.ToString()
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(line => JsonDocument.Parse(line).RootElement)
+        .ToList();
 
     private List<JsonElement> StdoutEvents() => _out.ToString()
         .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -68,6 +76,36 @@ public sealed class JsonOperationReporterTests
 
         _out.ToString().ShouldBeEmpty();
         _error.ToString().ShouldContain("\"type\":\"log\"");
+    }
+
+    [Fact]
+    public void Report_NormalVerbosity_SuppressesVerboseLogEvents()
+    {
+        _sut.Report(MessageKind.Verbose, "Read 2 DDL files.");
+
+        _error.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_VerboseVerbosity_EmitsVerboseLogEventWithLevel()
+    {
+        Build(Verbosity.Verbose).Report(MessageKind.Verbose, "Read 2 DDL files.");
+
+        var evt = StderrEvents().ShouldHaveSingleItem();
+        evt.GetProperty("type").GetString().ShouldBe("log");
+        evt.GetProperty("level").GetString().ShouldBe("verbose");
+    }
+
+    [Fact]
+    public void Report_QuietVerbosity_SuppressesProgressButKeepsStructuredResults()
+    {
+        var quiet = Build(Verbosity.Quiet);
+
+        quiet.Report(MessageKind.Progress, "Loading desired schema...");
+        quiet.ReportDiff(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]));
+
+        _error.ToString().ShouldBeEmpty();
+        StdoutEvents().ShouldHaveSingleItem().GetProperty("type").GetString().ShouldBe("diff");
     }
 
     [Fact]
