@@ -35,4 +35,9 @@ internal static class EnvironmentVariables
     /// The well-known <c>NO_COLOR</c> convention (https://no-color.org).
     /// </summary>
     public const string NoColor = "NO_COLOR";
+
+    /// <summary>
+    /// The conventional <c>COLUMNS</c> terminal width.
+    /// </summary>
+    public const string Columns = "COLUMNS";
 }

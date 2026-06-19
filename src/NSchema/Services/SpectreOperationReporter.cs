@@ -146,11 +146,11 @@ internal sealed class SpectreOperationReporter : IOperationReporter
         console.ReportDiagnostics(diagnostics);
     }
 
-    // A single-line rule header rather than a Panel: it gives the section visual separation without prefixing
-    // every body line with a border character, so the diff/SQL underneath stays cleanly selectable and copyable.
+    // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)
     {
-        _out.Write(new Rule(title).LeftJustified());
+        _out.MarkupLineInterpolated($"[bold]{title}[/]");
+        _out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
         _out.Write(body);
         _out.WriteLine();
         _out.WriteLine();
