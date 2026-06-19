@@ -123,6 +123,36 @@ on its own, just as `BACKEND s3` names the S3 store, so no discriminator flag is
 (e.g. `command_timeout`, the chosen state store) comes from the config block. A `connection_string` **is** allowed in a
 `PROVIDER` block (for local/single-file setups); the env var is preferred for real secrets.
 
+**Credentials may be supplied separately from the connection string.** `NSCHEMA_POSTGRES_USERNAME` /
+`NSCHEMA_POSTGRES_PASSWORD` (also expressible as `username` / `password` block attributes) are discrete overrides that
+layer onto the base connection string — for secret stores (e.g. AWS Secrets Manager) that inject credentials out of band
+while the block carries only the non-secret host/port/database. This works because the core hands
+`ConfigureDatabaseProvider` an Npgsql `NpgsqlConnectionStringBuilder`, whose typed properties (`Username`, `Password`,
+`CommandTimeout`, …) each override the corresponding key parsed from `ConnectionString`. **Order matters:** the builder
+sets `.ConnectionString` *first*, then the individual properties — assigning `.ConnectionString` re-parses the whole
+string, so it must precede the discrete overrides or it would clobber them. This is the convention for any new
+provider's settings: **secrets → env-overridable named bindings; structural config → the DDL block** (both expressible
+either way, but steer secrets to env), and **base config set first, discrete overrides layered after**. A connection
+parameter earns a separate env override only when a real environment splits it out — don't add `host`/`port`/etc.
+speculatively, since each env var is permanent API surface.
+
+**Config-block parsing is colocated on the section models, not centralised.** Each section model owns a static
+`FromBlock(ConfigBlock)` factory holding its attribute vocabulary beside the properties it fills and rejecting unknown
+attributes there (`PostgresProviderConfig.FromBlock`, `FileStateConfig`/`S3StateConfig.FromBlock`); the
+discriminator-bearing slice owns the **label dispatch** (`ProviderConfig.FromBlock` maps `postgres → …`,
+`StateConfig.FromBlock` maps `file`/`s3 → …`). `DdlProjectConfigReader` is a thin dispatcher: it globs the `.sql` files,
+enforces one-block-per-type (`Conflict`), and routes each block to the right `FromBlock` — it knows no attribute names.
+The shared `ConfigBlockExtensions.UnknownAttribute` keeps the "typos surface" error identical across sections. The
+`NSCHEMA` block is the lone exception (parsed inline in the reader) because it maps to a top-level scalar, not a
+composable slice. So a section model owns *both* halves of its lifecycle — `FromBlock` (read the block) and `Bind`
+(layer env/CLI) — while the strict, command-agnostic typed `DdlProjectConfig` intermediate still stands between raw
+blocks and the per-command bind target, keeping the binding selectors pure navigation.
+
+Adding a *new* provider is therefore a vertical slice: a new section model with its own `FromBlock`, a case in
+`ProviderConfig.FromBlock`/`Bind` and the leaf validator, a branch in `ConfigureDatabaseProvider`, and any
+`EnvironmentVariables` constants — deliberately the same slice-over-abstraction trade made elsewhere. Resist extracting
+a shared provider abstraction until a second provider makes the real seam concrete.
+
 ## Error handling and output
 
 The CLI is the **single** presenter of errors. `Program.cs` disables System.CommandLine's default exception handler

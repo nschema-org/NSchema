@@ -32,6 +32,15 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Provider_Postgres_MapsUsernameAndPassword()
+    {
+        var config = await Read("PROVIDER postgres ( connection_string = 'host=db', username = 'app', password = 'secret' );");
+
+        config.Provider!.Postgres!.Username.ShouldBe("app");
+        config.Provider.Postgres.Password.ShouldBe("secret");
+    }
+
+    [Fact]
     public async Task Backend_File_MapsPath()
         => (await Read("BACKEND file ( path = './state.json' );")).State!.File!.Path.ShouldBe("./state.json");
 
@@ -97,6 +106,12 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     public async Task UnknownAttribute_Throws()
         => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PROVIDER postgres ( hostname = 'x' );")))
             .Message.ShouldContain("Unknown attribute");
+
+    [Fact]
+    public async Task UnknownBackendAttribute_Throws()
+        // Each section model rejects its own unknowns; the message names the BACKEND section it came from.
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("BACKEND s3 ( bukket = 'x' );")))
+            .Message.ShouldContain("Unknown attribute 'bukket' in a BACKEND s3 block");
 
     [Fact]
     public async Task DuplicateProvider_Throws()
