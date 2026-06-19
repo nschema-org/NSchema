@@ -55,14 +55,26 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
     }
 
     [Fact]
-    public async Task Plan_DoesNotModifyTheDatabase()
+    public async Task Plan_WithDetailedExitCode_SignalsPendingChangesWithoutModifyingTheDatabase()
     {
         // Act
+        var (exitCode, _) = await RunCli("plan", "--detailed-exitcode");
+
+        // Assert — the empty database differs from the desired schema, so with --detailed-exitcode plan signals
+        // pending changes (2) without touching the database.
+        exitCode.ShouldBe(ExitCodes.HasChanges);
+        (await TableExists("widgets")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Plan_WithoutDetailedExitCode_ReturnsZeroEvenWithPendingChanges()
+    {
+        // Act — the same pending-change scenario, but without opting into the detailed exit code.
         var (exitCode, _) = await RunCli("plan");
 
-        // Assert — the empty database differs from the desired schema, so plan signals pending changes with the
-        // detailed exit code (2) without touching the database.
-        exitCode.ShouldBe(ExitCodes.HasChanges);
+        // Assert — a plain plan exits 0 even with changes (Terraform's default), so it never trips a pipeline that
+        // fails on non-zero or breaks a `plan && apply` chain.
+        exitCode.ShouldBe(ExitCodes.NoChanges);
         (await TableExists("widgets")).ShouldBeFalse();
     }
 
@@ -109,10 +121,10 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         await RunCli("apply", "--auto-approve");
 
         // Act
-        var (exitCode, _) = await RunCli("plan", "--destroy");
+        var (exitCode, _) = await RunCli("plan", "--destroy", "--detailed-exitcode");
 
-        // Assert — the teardown is only previewed: the table is left in place, and the pending teardown is signalled
-        // with the detailed exit code (2).
+        // Assert — the teardown is only previewed: the table is left in place, and with --detailed-exitcode the
+        // pending teardown is signalled (2).
         exitCode.ShouldBe(ExitCodes.HasChanges);
         (await TableExists("widgets")).ShouldBeTrue();
     }
@@ -143,10 +155,10 @@ public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : 
         await ExecuteSql($"ALTER TABLE \"{_schema}\".widgets DROP COLUMN name");
 
         // Act — drift compares the recorded state (which still has the column) against the live database.
-        var (exitCode, output) = await RunCli("drift");
+        var (exitCode, output) = await RunCli("drift", "--detailed-exitcode");
 
-        // Assert — drift never modifies anything, but a detected divergence is signalled with the detailed exit
-        // code (2), and the dropped column is reported.
+        // Assert — drift never modifies anything, but with --detailed-exitcode a detected divergence is signalled
+        // (2), and the dropped column is reported.
         exitCode.ShouldBe(ExitCodes.HasChanges);
         output.ShouldContain("name");
     }

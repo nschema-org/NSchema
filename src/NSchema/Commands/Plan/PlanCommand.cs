@@ -45,7 +45,7 @@ internal static class PlanCommand
             .Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app);
+        return ExitCode(app, configuration.DetailedExitCode);
     }
 
     private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
@@ -64,9 +64,9 @@ internal static class PlanCommand
         using var app = builder.Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app);
+        return ExitCode(app, configuration.DetailedExitCode);
     }
 
-    private static int ExitCode(NSchemaApplication app) =>
-        app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+    private static int ExitCode(NSchemaApplication app, bool detailed) =>
+        detailed && app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
 }

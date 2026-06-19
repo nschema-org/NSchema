@@ -37,6 +37,8 @@ internal static class DriftCommand
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         await app.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
 
-        return app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+        return configuration.DetailedExitCode && app.Services.GetRequiredService<RunOutcome>().HasChanges
+            ? ExitCodes.HasChanges
+            : ExitCodes.NoChanges;
     }
 }

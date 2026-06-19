@@ -51,6 +51,11 @@ internal sealed class PlanConfiguration : IBindable
     // internal set: bound via Bind, but paired with the Destroy toggle in tests, so they set it directly.
     public string? OutFile { get; internal set; }
 
+    /// <summary>
+    /// Whether to return the detailed exit code (<c>2</c> when the plan has changes).
+    /// </summary>
+    public bool DetailedExitCode { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
@@ -59,5 +64,6 @@ internal sealed class PlanConfiguration : IBindable
         PlanOptions.Scope.Bind(project, cli, s => Scope = s);
         PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);
         PlanOptions.Out.Bind(project, cli, o => OutFile = o);
+        PlanOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
     }
 }

@@ -25,10 +25,16 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
+    /// <summary>
+    /// Whether to overwrite existing <c>.sql</c> files in the output directory.
+    /// </summary>
+    public bool Force { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider.Bind(project, cli);
         ImportOptions.Scope.Bind(project, cli, s => Scope = s);
         ImportOptions.OutputDirectory.Bind(project, cli, o => OutputDirectory = o);
+        ImportOptions.Force.Bind(project, cli, f => Force = f);
     }
 }

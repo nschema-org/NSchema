@@ -14,9 +14,14 @@ internal static class ImportOptions
         .FromOption("--out-dir")
         .WithDescription("Directory to write the imported SQL files into. Defaults to the current directory.");
 
+    public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
+        .FromOption("--force")
+        .WithDescription("Overwrite existing .sql files in the output directory.");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
         OutputDirectory.Option,
+        Force.Option,
     ];
 }

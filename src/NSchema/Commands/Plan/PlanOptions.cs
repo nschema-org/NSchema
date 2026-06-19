@@ -26,11 +26,16 @@ internal static class PlanOptions
         .FromOption("--out")
         .WithDescription("Write the computed plan to this file so it can be replayed later with apply --plan-file.");
 
+    public static readonly OptionBinding<bool> DetailedExitCode = OptionBinding.Create<bool>()
+        .FromOption("--detailed-exitcode")
+        .WithDescription("Return a detailed exit code: 0 = no changes, 2 = changes present (errors remain 1). For CI gating.");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
         Destructive.Option,
         Destroy.Option,
         Out.Option,
+        DetailedExitCode.Option,
     ];
 }
