@@ -20,4 +20,20 @@ public sealed class ConsoleFactoryTests : IDisposable
         // Assert
         console.Profile.Capabilities.ColorSystem.ShouldBe(ColorSystem.NoColors);
     }
+
+    [Fact]
+    public void Create_EmitsNoEscapeSequencesForDecorations_WhenColorDisabled()
+    {
+        // Arrange
+        var writer = new StringWriter();
+        var console = ConsoleFactory.Create(writer, colorDisabled: true);
+
+        // Act — [bold] is a decoration, not a colour, so NoColors alone would still emit ESC[1m.
+        console.MarkupLine("[bold]Environment:[/] production");
+
+        // Assert
+        var output = writer.ToString();
+        output.ShouldNotContain("\u001b");
+        output.ShouldContain("Environment:");
+    }
 }
