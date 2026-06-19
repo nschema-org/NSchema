@@ -1,6 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
+using NSchema.Schema.Ddl;
 
 namespace NSchema.Configuration.State;
 
@@ -26,6 +27,17 @@ internal sealed class StateConfig : IBindable
     /// The number of state store sections populated. Zero means online-only (no state store).
     /// </summary>
     public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
+
+    /// <summary>
+    /// Maps a <c>BACKEND</c> block onto a typed config, selecting the section from the block's label.
+    /// </summary>
+    public static StateConfig FromBlock(ConfigBlock block) =>
+        block.Label?.ToLowerInvariant() switch
+        {
+            "file" => new StateConfig { File = FileStateConfig.FromBlock(block) },
+            "s3" => new StateConfig { S3 = S3StateConfig.FromBlock(block) },
+            _ => throw new InvalidOperationException($"Unknown or missing backend '{block.Label}' in a BACKEND block. Expected 'file' or 's3'."),
+        };
 
     /// <summary>
     /// Resolves the state store from the project config (it has no environment or command-line override today).

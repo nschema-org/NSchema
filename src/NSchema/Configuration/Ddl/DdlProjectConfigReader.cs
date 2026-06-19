@@ -67,14 +67,14 @@ internal static class DdlProjectConfigReader
                     {
                         throw Conflict("PROVIDER");
                     }
-                    provider = ParseProvider(block);
+                    provider = ProviderConfig.FromBlock(block);
                     break;
                 case "backend":
                     if (state is not null)
                     {
                         throw Conflict("BACKEND");
                     }
-                    state = ParseBackend(block);
+                    state = StateConfig.FromBlock(block);
                     break;
                 case "nschema":
                     if (nschemaSeen)
@@ -93,81 +93,6 @@ internal static class DdlProjectConfigReader
         return new DdlProjectConfig { Provider = provider, State = state, DestructiveActionPolicy = destructiveAction };
     }
 
-    private static ProviderConfig ParseProvider(ConfigBlock block)
-    {
-        if (!string.Equals(block.Label, "postgres", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException($"Unknown or missing provider '{block.Label}' in a PROVIDER block.");
-        }
-
-        var postgres = new PostgresProviderConfig();
-        foreach (var (key, value) in block.Attributes)
-        {
-            switch (key.ToLowerInvariant())
-            {
-                case "connection_string":
-                    postgres.ConnectionString = value.AsString();
-                    break;
-                case "username":
-                    postgres.Username = value.AsString();
-                    break;
-                case "password":
-                    postgres.Password = value.AsString();
-                    break;
-                case "command_timeout":
-                    postgres.CommandTimeout = (int)value.AsInteger();
-                    break;
-                default:
-                    throw UnknownAttribute(key, "PROVIDER postgres");
-            }
-        }
-
-        return new ProviderConfig { Postgres = postgres };
-    }
-
-    private static StateConfig ParseBackend(ConfigBlock block)
-    {
-        switch (block.Label?.ToLowerInvariant())
-        {
-            case "file":
-                var file = new FileStateConfig();
-                foreach (var (key, value) in block.Attributes)
-                {
-                    switch (key.ToLowerInvariant())
-                    {
-                        case "path":
-                            file.Path = value.AsString();
-                            break;
-                        default:
-                            throw UnknownAttribute(key, "BACKEND file");
-                    }
-                }
-                return new StateConfig { File = file };
-
-            case "s3":
-                var s3 = new S3StateConfig();
-                foreach (var (key, value) in block.Attributes)
-                {
-                    switch (key.ToLowerInvariant())
-                    {
-                        case "bucket":
-                            s3.Bucket = value.AsString();
-                            break;
-                        case "key":
-                            s3.Key = value.AsString();
-                            break;
-                        default:
-                            throw UnknownAttribute(key, "BACKEND s3");
-                    }
-                }
-                return new StateConfig { S3 = s3 };
-
-            default:
-                throw new InvalidOperationException(
-                    $"Unknown or missing backend '{block.Label}' in a BACKEND block. Expected 'file' or 's3'.");
-        }
-    }
-
     private static DestructiveActionPolicy? ParseNschema(ConfigBlock block)
     {
         DestructiveActionPolicy? destructiveAction = null;
@@ -184,7 +109,7 @@ internal static class DdlProjectConfigReader
                 case "transaction_mode":
                     break;
                 default:
-                    throw UnknownAttribute(key, "NSCHEMA");
+                    throw block.UnknownAttribute(key);
             }
         }
 
@@ -199,7 +124,4 @@ internal static class DdlProjectConfigReader
 
     private static InvalidOperationException Conflict(string blockType) =>
         new($"More than one {blockType} block is declared; specify exactly one across the project's .sql files.");
-
-    private static InvalidOperationException UnknownAttribute(string attribute, string blockDescription) =>
-        new($"Unknown attribute '{attribute}' in a {blockDescription} block.");
 }

@@ -134,11 +134,24 @@ string, so it must precede the discrete overrides or it would clobber them. This
 provider's settings: **secrets → env-overridable named bindings; structural config → the DDL block** (both expressible
 either way, but steer secrets to env), and **base config set first, discrete overrides layered after**. A connection
 parameter earns a separate env override only when a real environment splits it out — don't add `host`/`port`/etc.
-speculatively, since each env var is permanent API surface. Adding a *new* provider is a vertical slice touching its
-config model, `ProviderConfig.Bind`, `DdlProjectConfigReader.ParseProvider`, the leaf validator,
-`ConfigureDatabaseProvider`, and the `EnvironmentVariables` constants — deliberately, the same slice-over-abstraction
-trade made elsewhere; resist extracting a shared provider abstraction until a second provider makes the real seam
-concrete.
+speculatively, since each env var is permanent API surface.
+
+**Config-block parsing is colocated on the section models, not centralised.** Each section model owns a static
+`FromBlock(ConfigBlock)` factory holding its attribute vocabulary beside the properties it fills and rejecting unknown
+attributes there (`PostgresProviderConfig.FromBlock`, `FileStateConfig`/`S3StateConfig.FromBlock`); the
+discriminator-bearing slice owns the **label dispatch** (`ProviderConfig.FromBlock` maps `postgres → …`,
+`StateConfig.FromBlock` maps `file`/`s3 → …`). `DdlProjectConfigReader` is a thin dispatcher: it globs the `.sql` files,
+enforces one-block-per-type (`Conflict`), and routes each block to the right `FromBlock` — it knows no attribute names.
+The shared `ConfigBlockExtensions.UnknownAttribute` keeps the "typos surface" error identical across sections. The
+`NSCHEMA` block is the lone exception (parsed inline in the reader) because it maps to a top-level scalar, not a
+composable slice. So a section model owns *both* halves of its lifecycle — `FromBlock` (read the block) and `Bind`
+(layer env/CLI) — while the strict, command-agnostic typed `DdlProjectConfig` intermediate still stands between raw
+blocks and the per-command bind target, keeping the binding selectors pure navigation.
+
+Adding a *new* provider is therefore a vertical slice: a new section model with its own `FromBlock`, a case in
+`ProviderConfig.FromBlock`/`Bind` and the leaf validator, a branch in `ConfigureDatabaseProvider`, and any
+`EnvironmentVariables` constants — deliberately the same slice-over-abstraction trade made elsewhere. Resist extracting
+a shared provider abstraction until a second provider makes the real seam concrete.
 
 ## Error handling and output
 
