@@ -87,6 +87,24 @@ The desired schema is every `*.sql` file found recursively under the project dir
 nschema validate --directory ./my-project
 ```
 
+### `nschema fmt`
+
+Reformat your `.sql` DDL files to a canonical layout — the analogue of `terraform fmt`. Formatting is **gentle**: it normalises layout (one blank line between statements, one member per line indented two spaces inside `CREATE TABLE` and config blocks, canonical `(`/`)` placement) while preserving your content verbatim — keyword casing, member order, expression spelling, multi-line view/routine/script bodies, and every comment. It is idempotent, and deliberately does *not* rewrite content the way `import` canonicalises it.
+
+**Needs:** nothing — it only reads and writes files.
+
+`nschema fmt [path]` rewrites a single `.sql` file, or every `.sql` file found recursively under a directory, in place, and lists the files it changed. `path` defaults to the current directory.
+
+- `--check` — write nothing; list the files that need formatting and exit `2` if any do (errors exit `1`). For CI.
+- `nschema fmt -` — read DDL from stdin and write the formatted result to stdout, for editor integration.
+
+```sh
+nschema fmt                       # format every .sql file under the current directory
+nschema fmt ./schemas/users.sql   # format a single file
+nschema fmt --check               # CI: fail if anything is unformatted
+cat users.sql | nschema fmt -     # format stdin to stdout
+```
+
 ### Database and state
 
 The live database (`PROVIDER`) and the state store (`BACKEND`) describe *where* your schema lives, so — like a Terraform backend — they're declared in [config blocks](#configuration) in your `.sql` files rather than passed as flags each run. There is no `--provider` or `--state-*` option. The connection string has an environment override so the password needn't be committed:

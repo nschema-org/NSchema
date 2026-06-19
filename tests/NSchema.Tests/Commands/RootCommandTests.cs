@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock", "completion"], ignoreOrder: true);
     }
 
     [Theory]
@@ -264,4 +264,14 @@ public sealed class RootCommandTests
     public void Show_PlanFileArgumentIsOptional()
         // Bare `show` still reads the recorded state, so the positional must be optional.
         => _sut.Parse(["show"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void Fmt_AcceptsAPositionalPathAndCheck()
+        // fmt <path> --check formats (or checks) the .sql files under a file/dir (Terraform's fmt -check).
+        => _sut.Parse(["fmt", "schema.sql", "--check"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void Fmt_PathArgumentIsOptional()
+        // Bare `fmt` formats the current directory, so the positional must be optional.
+        => _sut.Parse(["fmt"]).Errors.ShouldBeEmpty();
 }
