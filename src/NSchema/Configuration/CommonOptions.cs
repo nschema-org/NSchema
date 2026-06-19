@@ -28,4 +28,14 @@ internal static class CommonOptions
         .FromOption("--json")
         .Recursive()
         .WithDescription("Emit machine-readable NDJSON output instead of formatted text.");
+
+    public static readonly OptionBinding<bool> Verbose = OptionBinding.Create<bool>()
+        .FromOption("--verbose")
+        .Recursive()
+        .WithDescription("Show verbose diagnostic detail (files read, object counts, per-run internals).");
+
+    public static readonly OptionBinding<bool> Quiet = OptionBinding.Create<bool>()
+        .FromOption("--quiet")
+        .Recursive()
+        .WithDescription("Suppress progress narration; show only outcomes, warnings, and results.");
 }

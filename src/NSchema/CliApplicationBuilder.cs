@@ -16,7 +16,7 @@ internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder;
 
-    private CliApplicationBuilder(bool json)
+    private CliApplicationBuilder(bool json, Verbosity verbosity)
     {
         _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
         {
@@ -36,6 +36,7 @@ internal sealed class CliApplicationBuilder
 
         _builder.Services.AddSingleton(AnsiConsole.Console);
         _builder.Services.AddSingleton<RunOutcome>();
+        _builder.Services.AddSingleton(new OutputVerbosity(verbosity));
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
@@ -103,10 +104,27 @@ internal sealed class CliApplicationBuilder
 
     public NSchemaApplication Build() => _builder.Build();
 
-    /// <summary>Creates a builder rendering formatted (text) output.</summary>
-    public static CliApplicationBuilder Create() => new(json: false);
+    /// <summary>Creates a builder rendering formatted (text) output at the default verbosity.</summary>
+    public static CliApplicationBuilder Create() => new(json: false, Verbosity.Normal);
 
-    /// <summary>Creates a builder whose output format follows the <c>--json</c> flag on the command line.</summary>
+    /// <summary>Creates a builder whose output format and verbosity follow the command-line flags.</summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(null, parseResult, false));
+        new(CommonOptions.Json.GetValueOrDefault(null, parseResult, false), ResolveVerbosity(parseResult));
+
+    /// <summary>
+    /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single <see cref="Verbosity"/>. The two flags are mutually
+    /// exclusive: passing both is a usage error rather than a silent precedence.
+    /// </summary>
+    private static Verbosity ResolveVerbosity(ParseResult parseResult)
+    {
+        var quiet = CommonOptions.Quiet.GetValueOrDefault(null, parseResult, false);
+        var verbose = CommonOptions.Verbose.GetValueOrDefault(null, parseResult, false);
+
+        if (quiet && verbose)
+        {
+            throw new InvalidOperationException("--quiet and --verbose cannot be used together.");
+        }
+
+        return verbose ? Verbosity.Verbose : quiet ? Verbosity.Quiet : Verbosity.Normal;
+    }
 }

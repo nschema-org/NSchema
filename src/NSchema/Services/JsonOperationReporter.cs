@@ -27,14 +27,16 @@ internal sealed class JsonOperationReporter : IOperationReporter
     };
 
     private readonly RunOutcome _outcome;
+    private readonly OutputVerbosity _verbosity;
     private readonly TextWriter _out;
     private readonly TextWriter _error;
 
-    public JsonOperationReporter(RunOutcome outcome) : this(outcome, Console.Out, Console.Error) { }
+    public JsonOperationReporter(RunOutcome outcome, OutputVerbosity verbosity) : this(outcome, verbosity, Console.Out, Console.Error) { }
 
-    internal JsonOperationReporter(RunOutcome outcome, TextWriter output, TextWriter error)
+    internal JsonOperationReporter(RunOutcome outcome, OutputVerbosity verbosity, TextWriter output, TextWriter error)
     {
         _outcome = outcome;
+        _verbosity = verbosity;
         _out = output;
         _error = error;
     }
@@ -74,7 +76,17 @@ internal sealed class JsonOperationReporter : IOperationReporter
         Write(_out, new { type = "diagnostics", diagnostics = diagnostics.ToList() });
     }
 
-    public void Report(MessageKind kind, string message) => Write(_error, new { type = "log", level = kind, message });
+    public void Report(MessageKind kind, string message)
+    {
+        // Gate the log stream by verbosity too, so --quiet / --verbose mean the same thing in NDJSON mode.
+        // The structured events (diff, sqlPlan, schema, diagnostics) are the results and are never gated.
+        if (!_verbosity.ShouldShow(kind))
+        {
+            return;
+        }
+
+        Write(_error, new { type = "log", level = kind, message });
+    }
 
     public void ReportException(Exception exception) => Write(_error, new { type = "error", message = exception.Message });
 

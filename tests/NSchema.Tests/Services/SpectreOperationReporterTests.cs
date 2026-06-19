@@ -27,8 +27,11 @@ public sealed class SpectreOperationReporterTests
     {
         _out.Profile.Width = 200;
         _error.Profile.Width = 200;
-        _sut = new SpectreOperationReporter(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, _outcome);
+        _sut = Build(Verbosity.Normal);
     }
+
+    private SpectreOperationReporter Build(Verbosity verbosity) =>
+        new(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, _outcome, new OutputVerbosity(verbosity));
 
     [Theory]
     [InlineData(MessageKind.Announcement)]
@@ -53,6 +56,47 @@ public sealed class SpectreOperationReporterTests
         // Assert — warnings go to stderr, matching the diagnostics routing.
         _error.Output.ShouldContain("State store is stale.");
         _out.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_NormalVerbosity_SuppressesVerboseDetail()
+    {
+        _sut.Report(MessageKind.Verbose, "Read 2 DDL files.");
+
+        _out.Output.ShouldBeEmpty();
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_VerboseVerbosity_ShowsVerboseDetail()
+    {
+        Build(Verbosity.Verbose).Report(MessageKind.Verbose, "Read 2 DDL files.");
+
+        _out.Output.ShouldContain("Read 2 DDL files.");
+    }
+
+    [Theory]
+    [InlineData(MessageKind.Verbose)]
+    [InlineData(MessageKind.Announcement)]
+    [InlineData(MessageKind.Progress)]
+    public void Report_QuietVerbosity_SuppressesNarration(MessageKind kind)
+    {
+        Build(Verbosity.Quiet).Report(kind, "chatter");
+
+        _out.Output.ShouldBeEmpty();
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Report_QuietVerbosity_StillShowsOutcomesAndWarnings()
+    {
+        var quiet = Build(Verbosity.Quiet);
+
+        quiet.Report(MessageKind.Success, "Apply complete.");
+        quiet.Report(MessageKind.Warning, "Drift detected.");
+
+        _out.Output.ShouldContain("Apply complete.");
+        _error.Output.ShouldContain("Drift detected.");
     }
 
     [Fact]

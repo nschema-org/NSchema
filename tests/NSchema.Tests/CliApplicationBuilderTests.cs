@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSchema.Commands;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
@@ -12,6 +13,42 @@ namespace NSchema.Tests;
 public sealed class CliApplicationBuilderTests
 {
     private readonly CliApplicationBuilder _sut = CliApplicationBuilder.Create();
+
+    private static Verbosity ResolvedVerbosity(params string[] args)
+    {
+        var parseResult = RootCommand.Create().Parse(args);
+        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        return app.Services.GetRequiredService<OutputVerbosity>().Level;
+    }
+
+    [Fact]
+    public void Create_DefaultsToNormalVerbosity() =>
+        ResolvedVerbosity("plan").ShouldBe(Verbosity.Normal);
+
+    [Fact]
+    public void Create_Verbose_ResolvesVerboseVerbosity() =>
+        ResolvedVerbosity("plan", "--verbose").ShouldBe(Verbosity.Verbose);
+
+    [Fact]
+    public void Create_Quiet_ResolvesQuietVerbosity() =>
+        ResolvedVerbosity("plan", "--quiet").ShouldBe(Verbosity.Quiet);
+
+    [Fact]
+    public void Create_QuietAndVerboseTogether_Throws()
+    {
+        var parseResult = RootCommand.Create().Parse(["plan", "--quiet", "--verbose"]);
+
+        var ex = Should.Throw<InvalidOperationException>(() => CliApplicationBuilder.Create(parseResult));
+        ex.Message.ShouldContain("--quiet and --verbose cannot be used together");
+    }
+
+    [Fact]
+    public void Create_NoArg_DefaultsToNormalVerbosity()
+    {
+        using var app = CliApplicationBuilder.Create().Build();
+
+        app.Services.GetRequiredService<OutputVerbosity>().Level.ShouldBe(Verbosity.Normal);
+    }
 
     [Fact]
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
