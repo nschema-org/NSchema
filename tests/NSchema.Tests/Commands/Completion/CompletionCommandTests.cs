@@ -23,6 +23,12 @@ public sealed class CompletionCommandTests
     public void Completion_RequiresAShellArgument()
         => _sut.Parse(["completion"]).Errors.ShouldNotBeEmpty();
 
+    [Theory]
+    [InlineData("--install-autocomplete")]
+    [InlineData("--uninstall-autocomplete")]
+    public void Completion_AcceptsTheInstallFlags(string flag)
+        => _sut.Parse(["completion", "bash", flag]).Errors.ShouldBeEmpty();
+
     [Fact]
     public void Root_RegistersTheSuggestDirective()
         // The shell scripts call `nschema [suggest:…]`; that directive must be wired on the root.

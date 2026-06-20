@@ -20,6 +20,7 @@ internal static class CompletionScripts
     private const string Bash =
         "# nschema bash completion.\n" +
         "# Enable for the current shell:  source <(nschema completion bash)\n" +
+        "# Install automatically:         nschema completion bash --install-autocomplete\n" +
         "# Or install permanently:        nschema completion bash > /etc/bash_completion.d/nschema\n" +
         "_nschema_complete()\n" +
         "{\n" +
@@ -33,6 +34,7 @@ internal static class CompletionScripts
     private const string Zsh =
         "# nschema zsh completion.\n" +
         "# Enable for the current shell:  source <(nschema completion zsh)\n" +
+        "# Install automatically:         nschema completion zsh --install-autocomplete\n" +
         "# Or install permanently:        nschema completion zsh > \"${fpath[1]}/_nschema\"\n" +
         "_nschema_complete()\n" +
         "{\n" +
@@ -44,6 +46,7 @@ internal static class CompletionScripts
     private const string Fish =
         "# nschema fish completion.\n" +
         "# Enable for the current shell:  nschema completion fish | source\n" +
+        "# Install automatically:         nschema completion fish --install-autocomplete\n" +
         "# Or install permanently:        nschema completion fish > ~/.config/fish/completions/nschema.fish\n" +
         "function __nschema_complete\n" +
         "    set -l line (commandline -cp)\n" +
@@ -54,6 +57,7 @@ internal static class CompletionScripts
     private const string Pwsh =
         "# nschema PowerShell completion.\n" +
         "# Enable for the current session:  nschema completion pwsh | Out-String | Invoke-Expression\n" +
+        "# Install automatically:           nschema completion pwsh --install-autocomplete\n" +
         "# Or add that line to your $PROFILE to install permanently.\n" +
         "Register-ArgumentCompleter -Native -CommandName nschema -ScriptBlock {\n" +
         "    param($wordToComplete, $commandAst, $cursorPosition)\n" +
