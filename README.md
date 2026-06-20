@@ -2,10 +2,6 @@
 
 [![NSchema](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml/badge.svg)](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml)
 
-> [!WARNING]
-> This project is still very new, and although I'm making great headway, there's no stable release just yet.
-> Feel free to follow my progress though, or ask questions if you're interested. Just know it's not production ready just yet.
-
 # NSchema
 
 A declarative database schema migration tool. You describe the schema you want, and NSchema computes and applies the migration to get there — think *Terraform for your database schema*.
