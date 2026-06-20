@@ -10,25 +10,10 @@ This package uses **lockstep major versioning** with the core NSchema package: `
 
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than a major one, and called out explicitly in this changelog.
 
-## [Unreleased]
+## [3.0.0] - 2026-06-20
 
 Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
-### Added
+See https://nschema.dev for full documentation.
 
-- `init`, `plan`, `apply`, `refresh`, `import`, `destroy` and `validate` commands.
-- Schema support for JSON and YAML files.
-- Provider support for Postgres.
-- Backend store support for files and Amazon S3.
-- Project configuration declared in the `.sql` files as `NSCHEMA` / `PROVIDER` / `BACKEND` config blocks, overridable by environment variables and CLI args (config blocks < env < CLI).
-- `--scope` to limit a migration to specific database schemas.
-- `--destructive-actions` to control the policy for destructive changes `<error|warn|allow>`.
-- `--auto-approve` to skip the confirmation prompt on `apply` and `destroy`.
-- Environments. `--environment <name>` (or `NSCHEMA_ENVIRONMENT`) layers per-environment overlay files named `<name>.env.<environment>.sql` over the base configuration: their `NSCHEMA` / `PROVIDER` / `BACKEND` blocks override the base per slice (so an overlay `BACKEND s3` cleanly replaces a base `BACKEND file`), and their schema is added on top. Overlays are excluded from the base schema and from deployment scripts; selecting an environment with no matching files is an error. Selection is per-invocation only (never persisted).
-- Machine-readable output. `--json` emits newline-delimited JSON (NDJSON) instead of formatted text — one typed object per artifact on stdout (`{"type":"diff",…}`, `{"type":"sqlPlan",…}`, `{"type":"schema",…}`, `{"type":"diagnostics",…}`), with progress on stderr, so a run can be piped to `jq` (e.g. `nschema plan --json | jq -c 'select(.type=="diff")'`). Works on every command.
-- Detailed exit codes. `plan` and `drift` take `--detailed-exitcode`, which returns `0` when there are no changes / no drift and `2` when there are (errors remain `1`), so CI can gate on "does this change the schema?" / "has the database drifted?" without parsing output — the analogue of Terraform's `plan -detailed-exitcode`. The flag is **opt-in**: without it `plan`/`drift` exit `0` even when there are changes, so `plan && apply` chains and pipelines that fail on any non-zero code keep working.
-- A declined `apply`/`destroy`/`force-unlock` exits non-zero (`1`). Answering anything but `yes`, or running with no interactive terminal (CI, a container) and without the skip flag (`--auto-approve` / `--force`), makes no changes and fails — so an unattended run that forgets the skip flag fails loudly instead of silently doing nothing and reporting success.
-- `import` refuses to overwrite a directory that already contains `.sql` files unless `--force` is given, so a re-import can't silently clobber hand-edited schema (the same guard `init` applies to a non-empty directory).
-- `fmt` reformats `.sql` DDL files to a canonical layout — the analogue of `terraform fmt`. `nschema fmt [path]` rewrites a file or every `.sql` file under a directory (recursively) in place and lists what it changed; `--check` writes nothing and exits `2` if any file needs formatting (errors remain `1`), for CI; `nschema fmt -` reads stdin and writes stdout for editor integration. Formatting is **gentle** — it normalises layout (one blank line between statements, one member per line indented two spaces inside `CREATE TABLE` and config blocks, canonical `(`/`)` placement) while preserving your keyword casing, member order, expression spelling, multi-line view/routine/script bodies, and all comments. It is idempotent.
-- Shell tab-completion. `nschema completion <bash|zsh|fish|pwsh>` prints a completion script for your shell (e.g. `source <(nschema completion bash)`). Completions are dynamic — subcommands, options, and option values come straight from the command tree via System.CommandLine's `[suggest]` directive, so they never drift from the CLI — and self-contained (no `dotnet-suggest` or other external tool required).
-- `show <planfile>`. `show` now takes an optional saved plan file (from `plan --out`): given one, it renders that plan's diff, plan, and SQL — the same view the plan produced — instead of the recorded state, and needs no state store or database. The analogue of Terraform's `show <planfile>`, and the read-only counterpart of `apply --plan-file`.
+[3.0.0]: https://github.com/nschema-org/NSchema/releases/tag/v3.0.0
