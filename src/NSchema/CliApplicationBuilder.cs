@@ -104,10 +104,7 @@ internal sealed class CliApplicationBuilder
         }
         else if (provider is { Sqlite: { ConnectionString: { } connectionString } })
         {
-            // UseSqliteSchema registers introspection + DDL generation; the core's SqlExecutor needs a DbDataSource to
-            // apply the plan, which Microsoft.Data.Sqlite doesn't provide, so register the adapter for it.
             _builder.UseSqliteSchema(connectionString);
-            _builder.Services.AddSingleton<DbDataSource>(new SqliteDataSource(connectionString));
         }
 
         return this;
