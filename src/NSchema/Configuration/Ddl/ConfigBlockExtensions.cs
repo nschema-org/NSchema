@@ -1,5 +1,3 @@
-using NSchema.Schema.Ddl;
-
 namespace NSchema.Configuration.Ddl;
 
 /// <summary>

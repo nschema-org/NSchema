@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Schema.Ddl;
 
 namespace NSchema.Configuration.State;
 

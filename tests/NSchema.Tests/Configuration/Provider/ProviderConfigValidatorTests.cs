@@ -62,4 +62,49 @@ public sealed class ProviderConfigValidatorTests
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("commandTimeout"));
     }
+
+    [Fact]
+    public void Valid_ForSqliteWithConnectionString()
+    {
+        // Arrange
+        var config = new ProviderConfig { Sqlite = new SqliteProviderConfig { ConnectionString = "Data Source=app.db" } };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Invalid_WhenSqliteConnectionStringMissing()
+    {
+        // Arrange
+        var config = new ProviderConfig { Sqlite = new SqliteProviderConfig() };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("connectionString"));
+    }
+
+    [Fact]
+    public void Invalid_WhenMoreThanOneProviderConfigured()
+    {
+        // Arrange — a project may declare exactly one provider; Postgres and SQLite together is a misconfiguration.
+        var config = new ProviderConfig
+        {
+            Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" },
+            Sqlite = new SqliteProviderConfig { ConnectionString = "Data Source=app.db" },
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("More than one database provider"));
+    }
 }

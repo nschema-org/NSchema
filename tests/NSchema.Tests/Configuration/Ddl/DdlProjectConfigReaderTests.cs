@@ -41,6 +41,15 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Provider_Sqlite_MapsConnectionString()
+    {
+        var config = await Read("PROVIDER sqlite ( connection_string = 'Data Source=app.db' );");
+
+        config.Provider!.Sqlite!.ConnectionString.ShouldBe("Data Source=app.db");
+        config.Provider.Postgres.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Backend_File_MapsPath()
         => (await Read("BACKEND file ( path = './state.json' );")).State!.File!.Path.ShouldBe("./state.json");
 

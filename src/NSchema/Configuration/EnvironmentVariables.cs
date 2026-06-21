@@ -22,6 +22,11 @@ internal static class EnvironmentVariables
     public const string PostgresPassword = "NSCHEMA_POSTGRES_PASSWORD";
 
     /// <summary>
+    /// The connection string for the SQLite provider, e.g. <c>Data Source=app.db</c>.
+    /// </summary>
+    public const string SqliteConnectionString = "NSCHEMA_SQLITE_CONNECTION_STRING";
+
+    /// <summary>
     /// The policy applied when the plan contains destructive actions.
     /// </summary>
     public const string DestructiveActionPolicy = "NSCHEMA_DESTRUCTIVE_ACTION_POLICY";

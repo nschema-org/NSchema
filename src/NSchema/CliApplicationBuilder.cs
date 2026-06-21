@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration;
@@ -8,6 +9,7 @@ using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Services;
+using NSchema.SQLite;
 using Spectre.Console;
 
 namespace NSchema;
@@ -99,6 +101,13 @@ internal sealed class CliApplicationBuilder
                     dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;
                 }
             });
+        }
+        else if (provider is { Sqlite: { ConnectionString: { } connectionString } })
+        {
+            // UseSqliteSchema registers introspection + DDL generation; the core's SqlExecutor needs a DbDataSource to
+            // apply the plan, which Microsoft.Data.Sqlite doesn't provide, so register the adapter for it.
+            _builder.UseSqliteSchema(connectionString);
+            _builder.Services.AddSingleton<DbDataSource>(new SqliteDataSource(connectionString));
         }
 
         return this;

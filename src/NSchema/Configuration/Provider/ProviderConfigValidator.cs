@@ -12,5 +12,8 @@ internal sealed class ProviderConfigValidator : AbstractValidator<ProviderConfig
 
         RuleFor(x => x.Postgres)
             .SetNonNullableValidator(new PostgresProviderConfigValidator());
+
+        RuleFor(x => x.Sqlite)
+            .SetNonNullableValidator(new SqliteProviderConfigValidator());
     }
 }
