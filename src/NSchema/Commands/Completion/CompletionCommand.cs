@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Extensions;
 using Spectre.Console;
 
 namespace NSchema.Commands.Completion;

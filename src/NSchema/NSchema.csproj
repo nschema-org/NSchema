@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>3.0.1-alpha.1</Version>
+    <Version>3.1.0-alpha.1</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -53,6 +53,7 @@
     <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Core" />
     <PackageReference Include="NSchema.Postgres" />
+    <PackageReference Include="NSchema.SQLite" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>

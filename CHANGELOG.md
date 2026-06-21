@@ -12,7 +12,14 @@ As a consequence, breaking changes that are specific to this provider (rather th
 
 ## [Unreleased]
 
-Nothing yet! Just documentation updates.
+### Added
+
+- Added support `sqlite` databases. Use:
+  ```sql
+  PROVIDER 'sqlite' (
+    connection_string = 'Data Source=app.db'
+  )
+  ```
 
 ## [3.0.0] - 2026-06-20
 
@@ -20,4 +27,5 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
+[3.1.0]: https://github.com/nschema-org/NSchema/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/nschema-org/NSchema/releases/tag/v3.0.0

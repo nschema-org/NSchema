@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Schema.Ddl;
 
 namespace NSchema.Configuration.Provider;
 
@@ -25,15 +24,24 @@ internal sealed class ProviderConfig : IBindable
     private static readonly OptionBinding<int?> CommandTimeoutBinding = OptionBinding.Create<int?>()
         .FromProjectConfig(c => c.Provider?.Postgres?.CommandTimeout);
 
+    private static readonly OptionBinding<string> SqliteConnectionStringBinding = OptionBinding.Create<string>()
+        .FromEnvironmentVariable(EnvironmentVariables.SqliteConnectionString)
+        .FromProjectConfig(c => c.Provider?.Sqlite?.ConnectionString);
+
     /// <summary>
     /// PostgreSQL provider settings.
     /// </summary>
     public PostgresProviderConfig? Postgres { get; set; }
 
     /// <summary>
+    /// SQLite provider settings.
+    /// </summary>
+    public SqliteProviderConfig? Sqlite { get; set; }
+
+    /// <summary>
     /// The number of provider sections populated. Zero means offline (no live schema source).
     /// </summary>
-    public int ConfiguredSectionCount => Postgres is not null ? 1 : 0;
+    public int ConfiguredSectionCount => (Postgres is not null ? 1 : 0) + (Sqlite is not null ? 1 : 0);
 
     /// <summary>
     /// Maps a <c>PROVIDER</c> block onto a typed config, selecting the section from the block's label.
@@ -42,7 +50,8 @@ internal sealed class ProviderConfig : IBindable
         block.Label?.ToLowerInvariant() switch
         {
             "postgres" => new ProviderConfig { Postgres = PostgresProviderConfig.FromBlock(block) },
-            _ => throw new InvalidOperationException($"Unknown or missing provider '{block.Label}' in a PROVIDER block."),
+            "sqlite" => new ProviderConfig { Sqlite = SqliteProviderConfig.FromBlock(block) },
+            _ => throw new InvalidOperationException($"Unknown or missing provider '{block.Label}' in a PROVIDER block. Expected 'postgres' or 'sqlite'."),
         };
 
     /// <summary>
@@ -54,7 +63,10 @@ internal sealed class ProviderConfig : IBindable
         UsernameBinding.Bind(project, cli, u => EnsurePostgres().Username = u);
         PasswordBinding.Bind(project, cli, p => EnsurePostgres().Password = p);
         CommandTimeoutBinding.Bind(project, cli, t => EnsurePostgres().CommandTimeout = t);
+        SqliteConnectionStringBinding.Bind(project, cli, cs => EnsureSqlite().ConnectionString = cs);
     }
 
     private PostgresProviderConfig EnsurePostgres() => Postgres ??= new PostgresProviderConfig();
+
+    private SqliteProviderConfig EnsureSqlite() => Sqlite ??= new SqliteProviderConfig();
 }
