@@ -27,6 +27,21 @@ internal static class EnvironmentVariables
     public const string SqliteConnectionString = "NSCHEMA_SQLITE_CONNECTION_STRING";
 
     /// <summary>
+    /// The connection string for the SQL Server provider.
+    /// </summary>
+    public const string SqlServerConnectionString = "NSCHEMA_SQLSERVER_CONNECTION_STRING";
+
+    /// <summary>
+    /// The username for the SQL Server provider.
+    /// </summary>
+    public const string SqlServerUsername = "NSCHEMA_SQLSERVER_USERNAME";
+
+    /// <summary>
+    /// The password for the SQL Server provider.
+    /// </summary>
+    public const string SqlServerPassword = "NSCHEMA_SQLSERVER_PASSWORD";
+
+    /// <summary>
     /// The policy applied when the plan contains destructive actions.
     /// </summary>
     public const string DestructiveActionPolicy = "NSCHEMA_DESTRUCTIVE_ACTION_POLICY";

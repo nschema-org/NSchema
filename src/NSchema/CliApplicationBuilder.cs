@@ -9,6 +9,7 @@ using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Services;
 using NSchema.Sqlite;
+using NSchema.SqlServer;
 using Spectre.Console;
 
 namespace NSchema;
@@ -105,6 +106,25 @@ internal sealed class CliApplicationBuilder
         {
             _builder.UseSqliteSchema(connectionString);
         }
+        else if (provider is { SqlServer: { } sqlServer })
+        {
+            _builder.UseSqlServerSchema(connectionStringBuilder =>
+            {
+                connectionStringBuilder.ConnectionString = sqlServer.ConnectionString;
+                if (sqlServer.Username is { } username)
+                {
+                    connectionStringBuilder.UserID = username;
+                }
+                if (sqlServer.Password is { } password)
+                {
+                    connectionStringBuilder.Password = password;
+                }
+                if (sqlServer.CommandTimeout is { } commandTimeout)
+                {
+                    connectionStringBuilder.CommandTimeout = commandTimeout;
+                }
+            });
+        }
 
         return this;
     }
@@ -117,10 +137,14 @@ internal sealed class CliApplicationBuilder
 
     public NSchemaApplication Build() => _builder.Build();
 
-    /// <summary>Creates a builder rendering formatted (text) output at the default verbosity.</summary>
+    /// <summary>
+    /// Creates a builder rendering formatted (text) output at the default verbosity.
+    /// </summary>
     public static CliApplicationBuilder Create() => new(json: false, Verbosity.Normal);
 
-    /// <summary>Creates a builder whose output format and verbosity follow the command-line flags.</summary>
+    /// <summary>
+    /// Creates a builder whose output format and verbosity follow the command-line flags.
+    /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
         new(CommonOptions.Json.GetValueOrDefault(null, parseResult, false), ResolveVerbosity(parseResult));
 

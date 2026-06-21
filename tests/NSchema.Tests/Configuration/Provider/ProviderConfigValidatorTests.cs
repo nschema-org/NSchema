@@ -91,6 +91,50 @@ public sealed class ProviderConfigValidatorTests
     }
 
     [Fact]
+    public void Valid_ForSqlServerWithConnectionString()
+    {
+        // Arrange
+        var config = new ProviderConfig { SqlServer = new SqlServerProviderConfig { ConnectionString = "Server=localhost" } };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Invalid_WhenSqlServerConnectionStringMissing()
+    {
+        // Arrange
+        var config = new ProviderConfig { SqlServer = new SqlServerProviderConfig() };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("connectionString"));
+    }
+
+    [Fact]
+    public void Invalid_WhenSqlServerCommandTimeoutNegative()
+    {
+        // Arrange
+        var config = new ProviderConfig
+        {
+            SqlServer = new SqlServerProviderConfig { ConnectionString = "Server=localhost", CommandTimeout = -1 },
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("commandTimeout"));
+    }
+
+    [Fact]
     public void Invalid_WhenMoreThanOneProviderConfigured()
     {
         // Arrange — a project may declare exactly one provider; Postgres and SQLite together is a misconfiguration.

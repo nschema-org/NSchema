@@ -6,20 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## Versioning policy
 
-This package uses **lockstep major versioning** with the core NSchema package: `NSchema X.*.*` is built on `NSchema.Core X.*.*`, so version compatibility is always clear.
+This package uses **lockstep major versioning** with the core NSchema package: `NSchema X.*.*` is built on `NSchema.Core X.*.*`, so version
+compatibility is always clear.
 
-As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than a major one, and called out explicitly in this changelog.
+As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
+a major one, and called out explicitly in this changelog.
 
-## [Unreleased]
+## [3.1.0] - 2026-06-21
 
 ### Added
 
-- Added support `sqlite` databases. Use:
+- **SQLite Support.** Use:
   ```sql
   PROVIDER sqlite (
     connection_string = 'Data Source=app.db'
   )
   ```
+  Connection string may also be supplied separately via the `NSCHEMA_SQLITE_CONNECTION_STRING` environment variable.
+-  **SQL Server Support.** Use:
+  ```sql
+  PROVIDER sqlserver (
+    connection_string = 'Server=localhost;Database=app'
+  )
+  ```
+  Credentials and command timeout may also be supplied separately, via the `username` / `password` /`command_timeout` block attributes or the
+  `NSCHEMA_SQLSERVER_CONNECTION_STRING` / `NSCHEMA_SQLSERVER_USERNAME` / `NSCHEMA_SQLSERVER_PASSWORD` environment variables.
 
 ## [3.0.0] - 2026-06-20
 

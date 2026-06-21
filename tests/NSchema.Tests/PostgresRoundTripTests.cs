@@ -13,7 +13,7 @@ namespace NSchema.Tests;
 /// schema for isolation.
 /// </summary>
 [Collection("postgres")]
-public sealed class MigrationRoundTripTests(PostgresContainerFixture fixture) : IAsyncLifetime
+public sealed class PostgresRoundTripTests(PostgresContainerFixture fixture) : IAsyncLifetime
 {
     private readonly string _schema = $"test_{Guid.NewGuid():N}";
     private readonly string _schemaDirectory = Directory.CreateTempSubdirectory("nschema-int-").FullName;

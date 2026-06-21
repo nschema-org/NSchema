@@ -50,6 +50,25 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Provider_SqlServer_MapsConnectionStringAndTimeout()
+    {
+        var config = await Read("PROVIDER sqlserver ( connection_string = 'Server=db', command_timeout = 30 );");
+
+        config.Provider!.SqlServer!.ConnectionString.ShouldBe("Server=db");
+        config.Provider.SqlServer.CommandTimeout.ShouldBe(30);
+        config.Provider.Postgres.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Provider_SqlServer_MapsUsernameAndPassword()
+    {
+        var config = await Read("PROVIDER sqlserver ( connection_string = 'Server=db', username = 'app', password = 'secret' );");
+
+        config.Provider!.SqlServer!.Username.ShouldBe("app");
+        config.Provider.SqlServer.Password.ShouldBe("secret");
+    }
+
+    [Fact]
     public async Task Backend_File_MapsPath()
         => (await Read("BACKEND file ( path = './state.json' );")).State!.File!.Path.ShouldBe("./state.json");
 
