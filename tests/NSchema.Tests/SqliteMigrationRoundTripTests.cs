@@ -8,7 +8,7 @@ namespace NSchema.Tests;
 
 /// <summary>
 /// Drives the real CLI pipeline (parse → configure → run) against a live SQLite database file to prove the SQLite
-/// provider is wired in end to end. Unlike <see cref="MigrationRoundTripTests"/> this needs no Docker — SQLite is an
+/// provider is wired in end to end. Unlike <see cref="PostgresRoundTripTests"/> this needs no Docker — SQLite is an
 /// in-process file database — so it also exercises the native SQLite binary the provider loads.
 /// </summary>
 public sealed class SqliteMigrationRoundTripTests : IDisposable

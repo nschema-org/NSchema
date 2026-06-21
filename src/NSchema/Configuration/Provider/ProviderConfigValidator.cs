@@ -15,5 +15,8 @@ internal sealed class ProviderConfigValidator : AbstractValidator<ProviderConfig
 
         RuleFor(x => x.Sqlite)
             .SetNonNullableValidator(new SqliteProviderConfigValidator());
+
+        RuleFor(x => x.SqlServer)
+            .SetNonNullableValidator(new SqlServerProviderConfigValidator());
     }
 }
