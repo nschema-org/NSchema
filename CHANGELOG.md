@@ -16,7 +16,7 @@ As a consequence, breaking changes that are specific to this provider (rather th
 
 - Added support `sqlite` databases. Use:
   ```sql
-  PROVIDER 'sqlite' (
+  PROVIDER sqlite (
     connection_string = 'Data Source=app.db'
   )
   ```
