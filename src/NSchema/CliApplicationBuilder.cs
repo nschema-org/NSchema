@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Aws;
 using NSchema.Configuration;
@@ -9,7 +8,7 @@ using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
 using NSchema.Postgres;
 using NSchema.Services;
-using NSchema.SQLite;
+using NSchema.Sqlite;
 using Spectre.Console;
 
 namespace NSchema;

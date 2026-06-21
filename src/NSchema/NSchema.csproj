@@ -53,7 +53,7 @@
     <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Core" />
     <PackageReference Include="NSchema.Postgres" />
-    <PackageReference Include="NSchema.SQLite" />
+    <PackageReference Include="NSchema.Sqlite" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
