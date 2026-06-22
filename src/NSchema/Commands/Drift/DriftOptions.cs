@@ -6,7 +6,7 @@ namespace NSchema.Commands.Drift;
 internal static class DriftOptions
 {
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
-        .FromOption("--scope")
+        .FromOption("--scope", "-s")
         .AllowMultipleArguments()
         .WithDescription("Limit the drift check to specific database schemas (namespaces). May be specified multiple times.");
 

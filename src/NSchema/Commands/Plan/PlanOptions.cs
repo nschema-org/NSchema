@@ -8,7 +8,7 @@ namespace NSchema.Commands.Plan;
 internal static class PlanOptions
 {
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
-        .FromOption("--scope")
+        .FromOption("--scope", "-s")
         .AllowMultipleArguments()
         .WithDescription("Limit the plan to specific database schemas (namespaces). May be specified multiple times.");
 
@@ -23,7 +23,7 @@ internal static class PlanOptions
         .WithDescription("Preview the plan that \"destroy\" would run to tear the managed schema down, without applying it.");
 
     public static readonly OptionBinding<string> Out = OptionBinding.Create<string>()
-        .FromOption("--out")
+        .FromOption("--out", "-o")
         .WithDescription("Write the computed plan to this file so it can be replayed later with apply --plan-file.");
 
     public static readonly OptionBinding<bool> DetailedExitCode = OptionBinding.Create<bool>()

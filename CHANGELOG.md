@@ -12,6 +12,14 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [3.2.0] - 2026-06-22
+
+### Added
+
+- **Short option aliases.** Common flags now have single-character forms: `-C` (`--directory`), `-e` (`--environment`), `-v` (`--verbose`), `-q` (`--quiet`),
+  `-s` (`--scope`), `-y` (`--auto-approve`), `-f` (`--force`), `-o` (`--out` / `--out-dir`), and `-p` (`--plan-file`).
+- **Tab-completion for environment names.** `--environment <TAB>` now completes the environment names discovered from the project's `*.env.<name>.sql` files.
+
 ## [3.1.0] - 2026-06-21
 
 ### Added
@@ -23,7 +31,7 @@ a major one, and called out explicitly in this changelog.
   )
   ```
   Connection string may also be supplied separately via the `NSCHEMA_SQLITE_CONNECTION_STRING` environment variable.
--  **SQL Server Support.** Use:
+- **SQL Server Support.** Use:
   ```sql
   PROVIDER sqlserver (
     connection_string = 'Server=localhost;Database=app'
@@ -38,5 +46,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/nschema-org/NSchema/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/nschema-org/NSchema/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/nschema-org/NSchema/releases/tag/v3.0.0

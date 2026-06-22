@@ -6,7 +6,7 @@ namespace NSchema.Commands.Show;
 internal static class ShowOptions
 {
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
-        .FromOption("--scope")
+        .FromOption("--scope", "-s")
         .AllowMultipleArguments()
         .WithDescription("Limit the output to specific database schemas (namespaces). May be specified multiple times.");
 
