@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Completions;
 using System.Diagnostics.CodeAnalysis;
 using NSchema.Configuration.Ddl;
 
@@ -29,6 +30,7 @@ internal sealed class OptionBinding<T>
     private string? _envVar;
     private Func<string, T>? _envParser;
     private Func<DdlProjectConfig, T?>? _projectSelector;
+    private Func<CompletionContext, IEnumerable<string>>? _completions;
 
     /// <summary>
     /// The underlying System.CommandLine option, built on first access and exposed so commands can register it.
@@ -70,6 +72,16 @@ internal sealed class OptionBinding<T>
     public OptionBinding<T> WithDescription(string description)
     {
         _description = description;
+        return this;
+    }
+
+    /// <summary>
+    /// Supplies dynamic tab-completion candidates, computed from the parsed command line at completion time
+    /// (e.g. environment names globbed from the project directory). Replaces the option's default completions.
+    /// </summary>
+    public OptionBinding<T> WithCompletions(Func<CompletionContext, IEnumerable<string>> completions)
+    {
+        _completions = completions;
         return this;
     }
 
@@ -143,6 +155,13 @@ internal sealed class OptionBinding<T>
     {
         var name = _optionName ?? throw new InvalidOperationException("Option name not set; call FromOption first.");
         var option = new Option<T>(name, _optionAliases) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
+
+        // A dynamic completion source (e.g. environment names globbed at completion time) replaces the defaults.
+        if (_completions is not null)
+        {
+            option.CompletionSources.Clear();
+            option.CompletionSources.Add(_completions);
+        }
 
         // Enum options parse case-insensitively already; override the completions so help renders the
         // accepted values (the <a|b|c> list) in lower case rather than the PascalCase member names.

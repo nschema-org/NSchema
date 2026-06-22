@@ -1,3 +1,4 @@
+using System.CommandLine.Completions;
 using NSchema.Configuration.Binding;
 
 namespace NSchema.Configuration;
@@ -16,6 +17,7 @@ internal static class CommonOptions
         .FromOption("--environment", "-e")
         .FromEnvironmentVariable(EnvironmentVariables.Environment)
         .Recursive()
+        .WithCompletions(CompleteEnvironmentNames)
         .WithDescription("Target environment. Layers the matching *.env.<name>.sql overlay files over the base configuration.");
 
     public static readonly OptionBinding<bool> NoColor = OptionBinding.Create<bool>()
@@ -38,4 +40,17 @@ internal static class CommonOptions
         .FromOption("--quiet", "-q")
         .Recursive()
         .WithDescription("Suppress progress narration; show only outcomes, warnings, and results.");
+
+    private static IEnumerable<string> CompleteEnvironmentNames(CompletionContext context)
+    {
+        try
+        {
+            var root = Directory.GetValueOrDefault(null, context.ParseResult, System.IO.Directory.GetCurrentDirectory());
+            return ProjectGlobs.EnvironmentNames(root);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return [];
+        }
+    }
 }
