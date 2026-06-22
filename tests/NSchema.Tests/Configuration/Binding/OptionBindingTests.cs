@@ -305,6 +305,20 @@ public sealed class OptionBindingTests : IDisposable
     }
 
     [Fact]
+    public void Option_ExposesShortAliases()
+    {
+        // Arrange
+        var binding = OptionBinding.Create<string[]>().FromOption("--scope", "-s");
+
+        // Act
+        var option = binding.Option;
+
+        // Assert
+        option.Name.ShouldBe("--scope");
+        option.Aliases.ShouldContain("-s");
+    }
+
+    [Fact]
     public void Option_IsBuiltOnceAndCached()
     {
         // Arrange

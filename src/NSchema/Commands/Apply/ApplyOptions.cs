@@ -8,7 +8,7 @@ namespace NSchema.Commands.Apply;
 internal static class ApplyOptions
 {
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
-        .FromOption("--scope")
+        .FromOption("--scope", "-s")
         .AllowMultipleArguments()
         .WithDescription("Limit the migration to specific database schemas (namespaces). May be specified multiple times.");
 
@@ -19,11 +19,11 @@ internal static class ApplyOptions
         .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, or Allow.");
 
     public static readonly OptionBinding<bool> AutoApprove = OptionBinding.Create<bool>()
-        .FromOption("--auto-approve")
+        .FromOption("--auto-approve", "-y")
         .WithDescription("Skip the interactive confirmation prompt and apply the plan immediately.");
 
     public static readonly OptionBinding<string> PlanFile = OptionBinding.Create<string>()
-        .FromOption("--plan-file")
+        .FromOption("--plan-file", "-p")
         .WithDescription("Apply a plan previously saved with plan --out, replaying exactly that plan instead of computing a fresh one.");
 
     public static IEnumerable<Option> All =>

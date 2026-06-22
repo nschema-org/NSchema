@@ -8,12 +8,12 @@ namespace NSchema.Configuration;
 internal static class CommonOptions
 {
     public static readonly OptionBinding<string> Directory = OptionBinding.Create<string>()
-        .FromOption("--directory")
+        .FromOption("--directory", "-C")
         .Recursive()
         .WithDescription("Project directory to run in. Defaults to the current directory.");
 
     public static readonly OptionBinding<string?> Environment = OptionBinding.Create<string?>()
-        .FromOption("--environment")
+        .FromOption("--environment", "-e")
         .FromEnvironmentVariable(EnvironmentVariables.Environment)
         .Recursive()
         .WithDescription("Target environment. Layers the matching *.env.<name>.sql overlay files over the base configuration.");
@@ -30,12 +30,12 @@ internal static class CommonOptions
         .WithDescription("Emit machine-readable NDJSON output instead of formatted text.");
 
     public static readonly OptionBinding<bool> Verbose = OptionBinding.Create<bool>()
-        .FromOption("--verbose")
+        .FromOption("--verbose", "-v")
         .Recursive()
         .WithDescription("Show verbose diagnostic detail (files read, object counts, per-run internals).");
 
     public static readonly OptionBinding<bool> Quiet = OptionBinding.Create<bool>()
-        .FromOption("--quiet")
+        .FromOption("--quiet", "-q")
         .Recursive()
         .WithDescription("Suppress progress narration; show only outcomes, warnings, and results.");
 }

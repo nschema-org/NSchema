@@ -21,6 +21,7 @@ internal static class OptionBinding
 internal sealed class OptionBinding<T>
 {
     private string? _optionName;
+    private string[] _optionAliases = [];
     private string? _description;
     private bool _allowMultipleArguments;
     private bool _recursive;
@@ -35,11 +36,12 @@ internal sealed class OptionBinding<T>
     public Option<T> Option => field ??= BuildOption();
 
     /// <summary>
-    /// Names the CLI option (e.g. <c>--scope</c>).
+    /// Names the CLI option (e.g. <c>--scope</c>), with optional short aliases (e.g. <c>-s</c>).
     /// </summary>
-    public OptionBinding<T> FromOption(string name)
+    public OptionBinding<T> FromOption(string name, params string[] aliases)
     {
         _optionName = name;
+        _optionAliases = aliases;
         return this;
     }
 
@@ -140,7 +142,7 @@ internal sealed class OptionBinding<T>
     private Option<T> BuildOption()
     {
         var name = _optionName ?? throw new InvalidOperationException("Option name not set; call FromOption first.");
-        var option = new Option<T>(name) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
+        var option = new Option<T>(name, _optionAliases) { Description = _description, AllowMultipleArgumentsPerToken = _allowMultipleArguments, Recursive = _recursive, };
 
         // Enum options parse case-insensitively already; override the completions so help renders the
         // accepted values (the <a|b|c> list) in lower case rather than the PascalCase member names.
