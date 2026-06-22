@@ -23,7 +23,7 @@ a major one, and called out explicitly in this changelog.
   )
   ```
   Connection string may also be supplied separately via the `NSCHEMA_SQLITE_CONNECTION_STRING` environment variable.
--  **SQL Server Support.** Use:
+- **SQL Server Support.** Use:
   ```sql
   PROVIDER sqlserver (
     connection_string = 'Server=localhost;Database=app'
