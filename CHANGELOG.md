@@ -12,6 +12,13 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [Unreleased]
+
+### Added
+
+- **Short option aliases.** Common flags now have single-character forms: `-C` (`--directory`), `-e` (`--environment`), `-v` (`--verbose`), `-q` (`--quiet`),
+  `-s` (`--scope`), `-y` (`--auto-approve`), `-f` (`--force`), `-o` (`--out` / `--out-dir`), and `-p` (`--plan-file`).
+
 ## [3.1.0] - 2026-06-21
 
 ### Added
@@ -38,5 +45,6 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v3.1.0...HEAD
 [3.1.0]: https://github.com/nschema-org/NSchema/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/nschema-org/NSchema/releases/tag/v3.0.0
