@@ -12,9 +12,15 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [Unreleased]
+## [3.3.0]
 
-Just documentation changes.
+### Added
+
+- **Init options.** The `init` command now accepts `--provider` and `--backend` options to specify the provider and backend to use.
+
+### Fixed
+
+- Updated to `NSchema.Core 3.2.1` to fix a a bug with formatting DDL.
 
 ## [3.2.0] - 2026-06-22
 

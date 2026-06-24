@@ -145,4 +145,23 @@ public sealed class ProjectScaffolderTests : IDisposable
         definition.Name.ShouldBe(expectedSchema);
         definition.Tables.ShouldHaveSingleItem().Name.ShouldBe("widgets");
     }
+
+    public static IEnumerable<object[]> ScaffoldResourceNames() =>
+        typeof(ProjectScaffolder).Assembly.GetManifestResourceNames()
+            .Where(name => name.Contains(".Scaffold.", StringComparison.Ordinal))
+            .Select(name => new object[] { name });
+
+    // The scaffold templates are committed already formatter-canonical, so `nschema init` followed by `nschema fmt`
+    // (or `fmt --check`) is a no-op. If the formatter changes how it lays out these constructs, this fails — re-run
+    // `nschema fmt` over the Resources/Scaffold directory and commit the result.
+    [Theory]
+    [MemberData(nameof(ScaffoldResourceNames))]
+    public void ScaffoldTemplate_IsAlreadyFormatterCanonical(string resourceName)
+    {
+        using var stream = typeof(ProjectScaffolder).Assembly.GetManifestResourceStream(resourceName).ShouldNotBeNull();
+        using var reader = new StreamReader(stream);
+        var content = reader.ReadToEnd();
+
+        DdlFormatter.Instance.Format(content).ShouldBe(content);
+    }
 }
