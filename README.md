@@ -4,7 +4,11 @@
 
 # NSchema
 
-A declarative database schema migration tool. You describe the schema you want, and NSchema computes and applies the migration to get there — think *Terraform for your database schema*.
+NSchema is a declarative database schema migration tool. Write the schema you want in plain SQL, point NSchema at your database, and it will compute and apply the migration to get there.
+
+It borrows the same `plan`, `apply` pattern from Terraform, and includes a lot of similar features like backend state, providers, and saved plan files.
+
+Full documentation and provider support is available at **[nschema.dev](https://nschema.dev)**.
 
 ## Installation
 
