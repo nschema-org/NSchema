@@ -11,7 +11,10 @@ public sealed class ProjectScaffolderTests : IDisposable
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
     private Task<IReadOnlyList<string>> Scaffold(bool force = false) =>
-        ProjectScaffolder.Scaffold(_directory, force, TestContext.Current.CancellationToken);
+        ProjectScaffolder.Scaffold(_directory, force, cancellationToken: TestContext.Current.CancellationToken);
+
+    private Task<IReadOnlyList<string>> Scaffold(ProviderKind provider, BackendKind backend) =>
+        ProjectScaffolder.Scaffold(_directory, force: false, provider, backend, TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task Scaffold_CreatesConfigAndSqlSample()
@@ -85,5 +88,61 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         await Should.NotThrowAsync(() => Scaffold(force: true));
         File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
+    }
+
+    // InlineData carries the enum names as strings: the enums are internal, so a public test method can't name them in
+    // its signature. They're parsed back to the internal enums in the body, where internal types are fine.
+    [Theory]
+    [InlineData("postgres", "file")]
+    [InlineData("postgres", "s3")]
+    [InlineData("sqlite", "file")]
+    [InlineData("sqlite", "s3")]
+    [InlineData("sqlserver", "file")]
+    [InlineData("sqlserver", "s3")]
+    public async Task Scaffold_GeneratedConfig_RoundTripsForEveryProviderBackendCombination(string providerName, string backendName)
+    {
+        var provider = Enum.Parse<ProviderKind>(providerName, ignoreCase: true);
+        var backend = Enum.Parse<BackendKind>(backendName, ignoreCase: true);
+
+        await Scaffold(provider, backend);
+
+        var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+
+        // Exactly the selected provider section is populated.
+        config.Provider.ShouldNotBeNull();
+        config.Provider!.ConfiguredSectionCount.ShouldBe(1);
+        (provider switch
+        {
+            ProviderKind.Postgres => config.Provider.Postgres is not null,
+            ProviderKind.Sqlite => config.Provider.Sqlite is not null,
+            ProviderKind.SqlServer => config.Provider.SqlServer is not null,
+            _ => false,
+        }).ShouldBeTrue();
+
+        // Exactly the selected backend section is populated.
+        config.State.ShouldNotBeNull();
+        config.State!.ConfiguredSectionCount.ShouldBe(1);
+        (backend switch
+        {
+            BackendKind.File => config.State.File is not null,
+            BackendKind.S3 => config.State.S3 is not null,
+            _ => false,
+        }).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("postgres", "app")]
+    [InlineData("sqlserver", "app")]
+    [InlineData("sqlite", "main")]
+    public async Task Scaffold_SampleSchema_TargetsTheProvidersSchema_AndRoundTrips(string providerName, string expectedSchema)
+    {
+        await Scaffold(Enum.Parse<ProviderKind>(providerName, ignoreCase: true), BackendKind.File);
+
+        var ddl = await File.ReadAllTextAsync(Path.Combine(_directory, "schemas", "example.sql"), TestContext.Current.CancellationToken);
+        var schema = DdlReader.Instance.Read(ddl).Schema;
+
+        var definition = schema.Schemas.ShouldHaveSingleItem();
+        definition.Name.ShouldBe(expectedSchema);
+        definition.Tables.ShouldHaveSingleItem().Name.ShouldBe("widgets");
     }
 }

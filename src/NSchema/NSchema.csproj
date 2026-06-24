@@ -45,6 +45,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Starter project files written verbatim by `nschema init`, one per provider/backend combination. -->
+    <EmbeddedResource Include="Commands\Init\Resources\Scaffold\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="NSchema.Tests" />
   </ItemGroup>
 

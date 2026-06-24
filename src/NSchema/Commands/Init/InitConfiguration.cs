@@ -14,8 +14,20 @@ internal sealed class InitConfiguration : IBindable
     /// </summary>
     public bool Force { get; set; }
 
+    /// <summary>
+    /// The database provider to scaffold configuration and a sample schema for.
+    /// </summary>
+    public ProviderKind Provider { get; set; } = ProviderKind.Postgres;
+
+    /// <summary>
+    /// The state backend to scaffold configuration for.
+    /// </summary>
+    public BackendKind Backend { get; set; } = BackendKind.File;
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         InitOptions.Force.Bind(project, cli, f => Force = f);
+        InitOptions.Provider.Bind(project, cli, p => Provider = p);
+        InitOptions.Backend.Bind(project, cli, b => Backend = b);
     }
 }
