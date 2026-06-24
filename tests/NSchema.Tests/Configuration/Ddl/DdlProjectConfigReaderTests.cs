@@ -79,6 +79,15 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
 
         state.S3!.Bucket.ShouldBe("my-bucket");
         state.S3.Key.ShouldBe("env/state.json");
+        state.S3.ForcePathStyle.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Backend_S3_MapsForcePathStyle()
+    {
+        var state = (await Read("BACKEND s3 ( bucket = 'b', key = 'k', force_path_style = true );")).State!;
+
+        state.S3!.ForcePathStyle.ShouldBeTrue();
     }
 
     [Fact]

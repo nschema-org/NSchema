@@ -73,7 +73,7 @@ internal sealed class CliApplicationBuilder
                 _builder.UseFileStateStore(file.Path);
                 break;
             case { S3: { } s3 }:
-                _builder.UseS3StateStore(s3.Bucket, s3.Key);
+                _builder.UseS3StateStore(s3.Bucket, s3.Key, config => config.ForcePathStyle = s3.ForcePathStyle);
                 break;
         }
 
