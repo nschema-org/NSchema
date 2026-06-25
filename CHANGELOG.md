@@ -12,9 +12,23 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [Unreleased]
+## [3.3.0] - 2026-06-25
 
-Just documentation changes.
+### Added
+
+- **Init options.** The `init` command now accepts `--provider` (`postgres`, `sqlite`, `sqlserver`) and `--backend` (`file`, `s3`) options to scaffold
+  configuration for a specific provider/backend combination.
+- **S3-compatible state stores.** The `BACKEND s3` block accepts a `force_path_style` attribute for S3-compatible stores (such as MinIO) that require
+  path-style addressing. The endpoint, region, and credentials continue to come from the ambient AWS configuration (`AWS_ENDPOINT_URL_S3`, `AWS_REGION`,
+  and the credential chain).
+- Updated to `NSchema.Core 3.3.0` and the latest provider packages.
+
+### Fixed
+
+- **`destroy` now tears down SQL Server and SQLite projects.** Teardown previously failed for these providers because SQL Server's `DROP SCHEMA` does
+  not cascade, and SQLite cannot drop its implicit `main` schema. The migration engine now drops a schema's contained objects before the schema itself.
+- **DDL formatting (`fmt`).** Fixed two formatting bugs: comments following the last attribute in a block were flattened onto a single line, and a
+  blank line between a leading comment and its statement was removed.
 
 ## [3.2.0] - 2026-06-22
 

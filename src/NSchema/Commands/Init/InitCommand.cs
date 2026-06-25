@@ -22,7 +22,13 @@ internal static class InitCommand
         using var app = CliApplicationBuilder.Create().Build();
         var console = app.Services.GetRequiredService<IAnsiConsole>();
 
-        var created = await ProjectScaffolder.Scaffold(Directory.GetCurrentDirectory(), configuration.Force, cancellationToken);
+        var created = await ProjectScaffolder.Scaffold(
+            Directory.GetCurrentDirectory(),
+            configuration.Force,
+            configuration.Provider,
+            configuration.Backend,
+            cancellationToken
+        );
 
         var tree = new Tree("[bold]Created[/]");
         foreach (var file in created)
@@ -32,6 +38,24 @@ internal static class InitCommand
 
         console.Write(tree);
         console.WriteLine();
-        console.MarkupLineInterpolated($"Set [yellow]{EnvironmentVariables.PostgresConnectionString}[/], then run [green]nschema plan[/].");
+
+        // SQLite's connection string (a local file path) is already filled in; the others need a secret supplied out of
+        // band, so point the user at the right environment variable.
+        if (configuration.Provider == ProviderKind.Sqlite)
+        {
+            console.MarkupLineInterpolated($"Edit [yellow]connection_string[/] in [yellow]config.sql[/], then run [green]nschema plan[/].");
+        }
+        else
+        {
+            console.MarkupLineInterpolated($"Set [yellow]{ConnectionStringEnvVar(configuration.Provider)}[/], then run [green]nschema plan[/].");
+        }
     }
+
+    private static string ConnectionStringEnvVar(ProviderKind provider) => provider switch
+    {
+        ProviderKind.Postgres => EnvironmentVariables.PostgresConnectionString,
+        ProviderKind.SqlServer => EnvironmentVariables.SqlServerConnectionString,
+        ProviderKind.Sqlite => EnvironmentVariables.SqliteConnectionString,
+        _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown provider."),
+    };
 }

@@ -18,6 +18,11 @@ internal sealed class S3StateConfig
     public string Key { get; set; } = "";
 
     /// <summary>
+    /// Whether to address the bucket in the request path (<c>endpoint/bucket/key</c>) rather than the host (<c>bucket.endpoint/key</c>).
+    /// </summary>
+    public bool ForcePathStyle { get; set; }
+
+    /// <summary>
     /// Maps a <c>BACKEND s3</c> block's attributes onto a new config, rejecting any it doesn't recognise.
     /// </summary>
     public static S3StateConfig FromBlock(ConfigBlock block)
@@ -32,6 +37,9 @@ internal sealed class S3StateConfig
                     break;
                 case "key":
                     config.Key = value.AsString();
+                    break;
+                case "force_path_style":
+                    config.ForcePathStyle = value.AsBoolean();
                     break;
                 default:
                     throw block.UnknownAttribute(key);

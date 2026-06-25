@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>3.2.1-alpha.1</Version>
+    <Version>3.3.0</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -42,6 +42,11 @@
     <None Include="..\..\icon.png" Pack="true" PackagePath="/">
       <Link>icon.png</Link>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Starter project files written verbatim by `nschema init`, one per provider/backend combination. -->
+    <EmbeddedResource Include="Commands\Init\Resources\Scaffold\*.sql" />
   </ItemGroup>
 
   <ItemGroup>
