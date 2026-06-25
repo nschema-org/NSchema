@@ -8,10 +8,19 @@ namespace NSchema.Commands.ForceUnlock;
 
 internal static class ForceUnlockCommand
 {
+    private static readonly Argument<string?> LockIdArgument = new("lock-id")
+    {
+        Description = "The id of the lock to release, taken from the error of the blocked operation. When given, the " +
+                      "unlock is refused if it no longer matches the held lock (a safety check). Omit to release " +
+                      "whatever lock is held.",
+        Arity = ArgumentArity.ZeroOrOne,
+    };
+
     public static Command Create()
     {
         var command = new Command("force-unlock", "Forcibly release a stale lock on the state store.");
 
+        command.Arguments.Add(LockIdArgument);
         command.Options.AddRange(ForceUnlockOptions.All);
 
         command.SetAction(Run);
@@ -34,6 +43,6 @@ internal static class ForceUnlockCommand
             .ConfigureConfirmation(configuration.Force)
             .Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.ForceUnlock(new ForceUnlockArguments(), cancellationToken);
+        await app.ForceUnlock(new ForceUnlockArguments { ExpectedLockId = parseResult.GetValue(LockIdArgument) }, cancellationToken);
     }
 }

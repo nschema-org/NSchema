@@ -65,13 +65,25 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void AutoApprove_IsRejectedByForceUnlock()
+    public void ForceUnlock_AcceptsAPositionalLockId()
+        // force-unlock <lock-id> releases a specific lock (compare-and-swap), Terraform's force-unlock LOCK_ID.
+        => _sut.Parse(["force-unlock", "9f8e7d6c"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void ForceUnlock_LockIdArgumentIsOptional()
+        // Bare `force-unlock` still releases whatever lock is held, so the positional must be optional.
+        => _sut.Parse(["force-unlock"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void ForceUnlock_TakesAnOptionLikeTokenAsTheLockId()
     {
-        // Act — force-unlock uses --force, not the apply/destroy --auto-approve flag.
+        // force-unlock has no --auto-approve flag (it uses --force). Because the lock-id is a free-form positional,
+        // an option-like token in that position is taken literally as the lock id rather than erroring as an unknown
+        // option — so the prompt is never skipped this way. (--force is covered by Force_IsAcceptedByForceUnlock.)
         var result = _sut.Parse(["force-unlock", "--auto-approve"]);
 
         // Assert
-        result.Errors.ShouldNotBeEmpty();
+        result.Errors.ShouldBeEmpty();
     }
 
     [Fact]
