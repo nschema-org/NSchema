@@ -12,6 +12,13 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [3.4.0] - 2026-06-25
+
+### Added
+
+- **`doctor` command.** A new `nschema doctor` command runs read-only health checks against your declared infrastructure, including database connectivity,
+  state-store reachability, and the state lock. It exits `1` when any configured check fails, for gating in CI.
+
 ## [3.3.0] - 2026-06-25
 
 ### Added

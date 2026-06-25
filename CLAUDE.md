@@ -13,6 +13,24 @@ packages**, not project references (versions pinned in `Directory.Packages.props
 under `../` (e.g. `../NSchema`). Changing core behavior therefore requires publishing a new core package and bumping the
 pinned version here — it cannot be done from this repo alone.
 
+## Where an operation lives: Core vs CLI
+
+A command's *logic* lives in `NSchema.Core` (invoked via a public `NSchemaApplication.X(...)` method that resolves an
+`IXOperation` from DI) or in this CLI repo (a self-contained `*Command`). The dividing test, applied **in order**:
+
+1. **Does it read or mutate the live database, or the state store / lock?** → **Core operation.** Only Core can — the
+   provider/state/lock types are `internal` to Core — and the behaviour must stay provider-agnostic and reusable by any
+   front-end. *(apply, plan, plan --destroy, drift, refresh, destroy, import, show, force-unlock, doctor.)*
+2. **Else, does it interpret the `DatabaseSchema` domain model — parsing/diffing/validating its *semantics*?** → **Core
+   operation.** *(validate — Core despite touching no infrastructure.)*
+3. **Else it is local developer plumbing** — filesystem scaffolding, source-text formatting, shell integration,
+   config/IO/rendering. It may *consume* a pure public Core primitive (e.g. `DdlFormatter`) but defines no domain verb.
+   → **CLI command.** *(init, fmt, completion.)*
+
+Reporting corollary: Core operations narrate through `IOperationReporter`; CLI commands render directly via
+`IAnsiConsole` / `Console`. When in doubt, ask whether a non-CLI front-end (GUI, CI library) would need identical
+behaviour — if yes, it belongs in Core.
+
 ## Commands
 
 ```sh

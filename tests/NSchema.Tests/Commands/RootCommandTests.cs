@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "completion"], ignoreOrder: true);
     }
 
     [Theory]
@@ -178,6 +178,7 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("doctor")]
     [InlineData("force-unlock")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
@@ -197,6 +198,7 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("doctor")]
     [InlineData("force-unlock")]
     public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
     {
@@ -264,6 +266,18 @@ public sealed class RootCommandTests
     public void Show_PlanFileArgumentIsOptional()
         // Bare `show` still reads the recorded state, so the positional must be optional.
         => _sut.Parse(["show"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("--scope", "public")]
+    [InlineData("--destructive-actions", "Warn")]
+    public void DoctorRejects_MigrationOptions(string option, string value)
+    {
+        // Act — doctor is a bare health check; it produces no migration, so it exposes no scope/policy knobs.
+        var result = _sut.Parse(["doctor", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
 
     [Fact]
     public void Fmt_AcceptsAPositionalPathAndCheck()

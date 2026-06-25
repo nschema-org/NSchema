@@ -8,7 +8,7 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
     <PackageVersion Include="NSchema.Aws" Version="3.1.0" />
-    <PackageVersion Include="NSchema.Core" Version="3.3.0" />
+    <PackageVersion Include="NSchema.Core" Version="3.4.0" />
     <PackageVersion Include="NSchema.Postgres" Version="3.0.1" />
     <PackageVersion Include="NSchema.Sqlite" Version="3.2.1" />
     <PackageVersion Include="NSchema.SqlServer" Version="3.0.1" />
