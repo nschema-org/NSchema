@@ -21,6 +21,8 @@ a major one, and called out explicitly in this changelog.
 - **`force-unlock <lock-id>`.** `force-unlock` now accepts the lock id (shown in the blocked operation's error) and refuses if it no longer matches the held
   lock — a safety guard against breaking a lock that changed under you. Bare `force-unlock` still releases whatever lock is held. Requires `NSchema.Core 3.4.0`
   and `NSchema.Aws 3.2.0`.
+- **`lock-status` command.** A new `nschema lock-status` reports whether the state store is locked. Supports `--json` for structured output and
+  `--detailed-exitcode` (exit `2` when locked) for CI gating.
 
 ## [3.3.0] - 2026-06-25
 

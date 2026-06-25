@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "lock-status", "completion"], ignoreOrder: true);
     }
 
     [Theory]
@@ -192,6 +192,7 @@ public sealed class RootCommandTests
     [InlineData("drift")]
     [InlineData("doctor")]
     [InlineData("force-unlock")]
+    [InlineData("lock-status")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.
@@ -212,6 +213,7 @@ public sealed class RootCommandTests
     [InlineData("drift")]
     [InlineData("doctor")]
     [InlineData("force-unlock")]
+    [InlineData("lock-status")]
     public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
     {
         // --environment selects the per-environment overlay config; it's a recursive root option, so it follows any
@@ -286,6 +288,23 @@ public sealed class RootCommandTests
     {
         // Act — doctor is a bare health check; it produces no migration, so it exposes no scope/policy knobs.
         var result = _sut.Parse(["doctor", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void DetailedExitCode_IsAcceptedByLockStatus()
+        // lock-status --detailed-exitcode opts into exit 2 when the state is locked, for CI gating.
+        => _sut.Parse(["lock-status", "--detailed-exitcode"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("--scope", "public")]
+    [InlineData("--destructive-actions", "Warn")]
+    public void LockStatusRejects_MigrationOptions(string option, string value)
+    {
+        // Act — lock-status only reads the lock; it produces no migration, so it exposes no scope/policy knobs.
+        var result = _sut.Parse(["lock-status", option, value]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();

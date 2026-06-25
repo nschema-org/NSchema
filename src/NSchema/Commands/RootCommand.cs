@@ -7,6 +7,7 @@ using NSchema.Commands.Fmt;
 using NSchema.Commands.ForceUnlock;
 using NSchema.Commands.Import;
 using NSchema.Commands.Init;
+using NSchema.Commands.LockStatus;
 using NSchema.Commands.Plan;
 using NSchema.Commands.Refresh;
 using NSchema.Commands.Show;
@@ -40,6 +41,7 @@ internal static class RootCommand
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
         root.Subcommands.Add(ForceUnlockCommand.Create());
+        root.Subcommands.Add(LockStatusCommand.Create());
         root.Subcommands.Add(CompletionCommand.Create());
 
         // Backs `nschema [suggest:<pos>] "<command line>"`, which the shell-completion scripts call to compute

@@ -1,4 +1,3 @@
-using Microsoft.Data.SqlClient;
 using NSchema.Configuration;
 using NSchema.Tests.Fixtures;
 
