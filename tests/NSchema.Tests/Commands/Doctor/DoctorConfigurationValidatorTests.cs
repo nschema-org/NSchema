@@ -1,0 +1,79 @@
+using NSchema.Commands.Doctor;
+using NSchema.Configuration.Provider;
+using NSchema.Configuration.State;
+
+namespace NSchema.Tests.Commands.Doctor;
+
+public sealed class DoctorConfigurationValidatorTests
+{
+    private readonly DoctorConfigurationValidator _sut = new();
+
+    [Fact]
+    public void Valid_WithProviderAndState()
+    {
+        // Arrange
+        var config = new DoctorConfiguration
+        {
+            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Valid_WithProviderOnly()
+    {
+        // Arrange — doctor can check just the database when no state store is declared.
+        var config = new DoctorConfiguration
+        {
+            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            State = new StateConfig(),
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Valid_WithStateOnly()
+    {
+        // Arrange — doctor can check just the state store when no provider is declared (offline project).
+        var config = new DoctorConfiguration
+        {
+            Provider = new ProviderConfig(),
+            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Invalid_WhenNothingConfigured()
+    {
+        // Arrange — neither a provider nor a state store means there is nothing for doctor to probe.
+        var config = new DoctorConfiguration
+        {
+            Provider = new ProviderConfig(),
+            State = new StateConfig(),
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("Nothing to check"));
+    }
+}

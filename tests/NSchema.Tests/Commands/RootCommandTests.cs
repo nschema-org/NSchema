@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "force-unlock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "lock-status", "completion"], ignoreOrder: true);
     }
 
     [Theory]
@@ -65,13 +65,25 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void AutoApprove_IsRejectedByForceUnlock()
+    public void ForceUnlock_AcceptsAPositionalLockId()
+        // force-unlock <lock-id> releases a specific lock (compare-and-swap), Terraform's force-unlock LOCK_ID.
+        => _sut.Parse(["force-unlock", "9f8e7d6c"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void ForceUnlock_LockIdArgumentIsOptional()
+        // Bare `force-unlock` still releases whatever lock is held, so the positional must be optional.
+        => _sut.Parse(["force-unlock"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void ForceUnlock_TakesAnOptionLikeTokenAsTheLockId()
     {
-        // Act — force-unlock uses --force, not the apply/destroy --auto-approve flag.
+        // force-unlock has no --auto-approve flag (it uses --force). Because the lock-id is a free-form positional,
+        // an option-like token in that position is taken literally as the lock id rather than erroring as an unknown
+        // option — so the prompt is never skipped this way. (--force is covered by Force_IsAcceptedByForceUnlock.)
         var result = _sut.Parse(["force-unlock", "--auto-approve"]);
 
         // Assert
-        result.Errors.ShouldNotBeEmpty();
+        result.Errors.ShouldBeEmpty();
     }
 
     [Fact]
@@ -178,7 +190,9 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("doctor")]
     [InlineData("force-unlock")]
+    [InlineData("lock-status")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.
@@ -197,7 +211,9 @@ public sealed class RootCommandTests
     [InlineData("destroy")]
     [InlineData("show")]
     [InlineData("drift")]
+    [InlineData("doctor")]
     [InlineData("force-unlock")]
+    [InlineData("lock-status")]
     public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
     {
         // --environment selects the per-environment overlay config; it's a recursive root option, so it follows any
@@ -264,6 +280,35 @@ public sealed class RootCommandTests
     public void Show_PlanFileArgumentIsOptional()
         // Bare `show` still reads the recorded state, so the positional must be optional.
         => _sut.Parse(["show"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("--scope", "public")]
+    [InlineData("--destructive-actions", "Warn")]
+    public void DoctorRejects_MigrationOptions(string option, string value)
+    {
+        // Act — doctor is a bare health check; it produces no migration, so it exposes no scope/policy knobs.
+        var result = _sut.Parse(["doctor", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void DetailedExitCode_IsAcceptedByLockStatus()
+        // lock-status --detailed-exitcode opts into exit 2 when the state is locked, for CI gating.
+        => _sut.Parse(["lock-status", "--detailed-exitcode"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("--scope", "public")]
+    [InlineData("--destructive-actions", "Warn")]
+    public void LockStatusRejects_MigrationOptions(string option, string value)
+    {
+        // Act — lock-status only reads the lock; it produces no migration, so it exposes no scope/policy knobs.
+        var result = _sut.Parse(["lock-status", option, value]);
+
+        // Assert
+        result.Errors.ShouldNotBeEmpty();
+    }
 
     [Fact]
     public void Fmt_AcceptsAPositionalPathAndCheck()

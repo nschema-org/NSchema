@@ -12,6 +12,18 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [3.4.0] - 2026-06-25
+
+### Added
+
+- **`doctor` command.** A new `nschema doctor` command runs read-only health checks against your declared infrastructure, including database connectivity,
+  state-store reachability, and the state lock. It exits `1` when any configured check fails, for gating in CI.
+- **`force-unlock <lock-id>`.** `force-unlock` now accepts the lock id (shown in the blocked operation's error) and refuses if it no longer matches the held
+  lock — a safety guard against breaking a lock that changed under you. Bare `force-unlock` still releases whatever lock is held. Requires `NSchema.Core 3.4.0`
+  and `NSchema.Aws 3.2.0`.
+- **`lock-status` command.** A new `nschema lock-status` reports whether the state store is locked. Supports `--json` for structured output and
+  `--detailed-exitcode` (exit `2` when locked) for CI gating.
+
 ## [3.3.0] - 2026-06-25
 
 ### Added
