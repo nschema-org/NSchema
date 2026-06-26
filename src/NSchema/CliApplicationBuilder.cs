@@ -1,15 +1,13 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Aws;
 using NSchema.Configuration;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
-using NSchema.Postgres;
+using NSchema.Plugins;
 using NSchema.Services;
-using NSchema.Sqlite;
-using NSchema.SqlServer;
 using Spectre.Console;
 
 namespace NSchema;
@@ -17,6 +15,7 @@ namespace NSchema;
 internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder;
+    private readonly PluginLoader _plugins = new();
 
     private CliApplicationBuilder(bool json, Verbosity verbosity)
     {
@@ -67,14 +66,15 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig state)
     {
-        switch (state)
+        // The local-file store is built into the core and always available; every other backend is a plugin.
+        if (state.File is { } file)
         {
-            case { File: { } file }:
-                _builder.UseFileStateStore(file.Path);
-                break;
-            case { S3: { } s3 }:
-                _builder.UseS3StateStore(s3.Bucket, s3.Key, config => config.ForcePathStyle = s3.ForcePathStyle);
-                break;
+            _builder.UseFileStateStore(file.Path);
+        }
+        else if (state.Plugin is { } reference)
+        {
+            var plugin = ResolvePlugin<INSchemaBackendPlugin>(reference);
+            ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);
         }
 
         return this;
@@ -82,51 +82,31 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabaseProvider(ProviderConfig provider)
     {
-        // The property pattern binds non-null locals; the command validator guarantees it matches when required.
-        if (provider is { Postgres: { } postgres })
+        // A null plugin is a valid offline configuration (e.g. planning from recorded state).
+        if (provider.Plugin is { } reference)
         {
-            _builder.UseCurrentSchemaPostgres(dataSource =>
-            {
-                dataSource.ConnectionStringBuilder.ConnectionString = postgres.ConnectionString;
-                if (postgres.Username is { } username)
-                {
-                    dataSource.ConnectionStringBuilder.Username = username;
-                }
-                if (postgres.Password is { } password)
-                {
-                    dataSource.ConnectionStringBuilder.Password = password;
-                }
-                if (postgres.CommandTimeout is { } commandTimeout)
-                {
-                    dataSource.ConnectionStringBuilder.CommandTimeout = commandTimeout;
-                }
-            });
-        }
-        else if (provider is { Sqlite: { ConnectionString: { } connectionString } })
-        {
-            _builder.UseSqliteSchema(connectionString);
-        }
-        else if (provider is { SqlServer: { } sqlServer })
-        {
-            _builder.UseSqlServerSchema(connectionStringBuilder =>
-            {
-                connectionStringBuilder.ConnectionString = sqlServer.ConnectionString;
-                if (sqlServer.Username is { } username)
-                {
-                    connectionStringBuilder.UserID = username;
-                }
-                if (sqlServer.Password is { } password)
-                {
-                    connectionStringBuilder.Password = password;
-                }
-                if (sqlServer.CommandTimeout is { } commandTimeout)
-                {
-                    connectionStringBuilder.CommandTimeout = commandTimeout;
-                }
-            });
+            var plugin = ResolvePlugin<INSchemaProviderPlugin>(reference);
+            ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);
         }
 
         return this;
+    }
+
+    private TPlugin ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
+    {
+        var plugins = _plugins.Load(reference.PackageId, reference.Version);
+        return plugins.OfType<TPlugin>().FirstOrDefault(p => string.Equals(p.Label, reference.Label, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException(
+                $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
+    }
+
+    private static void ThrowIfFailed(PluginConfigureResult result, PluginReference reference)
+    {
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"The '{reference.Label}' plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, result.Errors)}");
+        }
     }
 
     public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)

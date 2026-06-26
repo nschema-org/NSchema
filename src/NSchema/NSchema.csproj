@@ -55,11 +55,7 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Core" />
-    <PackageReference Include="NSchema.Postgres" />
-    <PackageReference Include="NSchema.Sqlite" />
-    <PackageReference Include="NSchema.SqlServer" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>

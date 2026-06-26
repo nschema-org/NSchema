@@ -12,8 +12,5 @@ internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
 
         RuleFor(x => x.File)
             .SetNonNullableValidator(new FileStateConfigValidator());
-
-        RuleFor(x => x.S3)
-            .SetNonNullableValidator(new S3StateConfigValidator());
     }
 }
