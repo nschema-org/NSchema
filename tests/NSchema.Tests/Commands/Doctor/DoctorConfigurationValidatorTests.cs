@@ -14,7 +14,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -31,7 +31,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — doctor can check just the database when no state store is declared.
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
         };
 

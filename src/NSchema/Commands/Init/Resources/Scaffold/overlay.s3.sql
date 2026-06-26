@@ -3,6 +3,7 @@
 -- Any base block you don't override here still applies.
 
 BACKEND s3 (
-  bucket = 'my-nschema-state',
-  key    = 'prod/nschema.state.json'
+  version = '4.0.0-alpha.1',
+  bucket  = 'my-nschema-state',
+  key     = 'prod/nschema.state.json'
 );

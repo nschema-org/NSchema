@@ -7,8 +7,7 @@ public sealed class ImportConfigurationValidatorTests
 {
     private readonly ImportConfigurationValidator _sut = new();
 
-    private static ProviderConfig AProvider() =>
-        new() { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } };
+    private static ProviderConfig AProvider() => TestConfigs.Provider();
 
     [Fact]
     public void Valid_WithProvider()

@@ -14,7 +14,7 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange
         var config = new DestroyConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -32,7 +32,7 @@ public sealed class DestroyConfigurationValidatorTests
         // provider alone is sufficient.
         var config = new DestroyConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
         };
 
         // Act

@@ -14,7 +14,7 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -49,7 +49,7 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
         };
 

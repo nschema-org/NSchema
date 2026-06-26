@@ -2,6 +2,7 @@
 -- connect to and where to keep state. Config blocks may live in any .sql file.
 
 PROVIDER postgres (
+  version           = '4.0.0-alpha.1',
   -- Prefer the NSCHEMA_POSTGRES_CONNECTION_STRING environment variable, which
   -- overrides the value below.
   connection_string = ''

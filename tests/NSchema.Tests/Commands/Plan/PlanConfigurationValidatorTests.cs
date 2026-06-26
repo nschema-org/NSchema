@@ -14,7 +14,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange
         var config = new PlanConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
         };
 
@@ -67,7 +67,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -85,7 +85,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
         };
 
@@ -102,7 +102,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange — a forward plan can be saved for later replay.
         var config = new PlanConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
             OutFile = "plan.nschema",
         };
@@ -121,7 +121,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
             OutFile = "plan.nschema",
         };

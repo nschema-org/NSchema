@@ -52,7 +52,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
-        config.Provider!.Postgres.ShouldNotBeNull();
+        config.Provider!.Plugin.ShouldNotBeNull();
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
@@ -108,24 +108,18 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
 
-        // Exactly the selected provider section is populated.
+        // Exactly the selected provider is populated, resolved to the matching plugin label.
         config.Provider.ShouldNotBeNull();
         config.Provider!.ConfiguredSectionCount.ShouldBe(1);
-        (provider switch
-        {
-            ProviderKind.Postgres => config.Provider.Postgres is not null,
-            ProviderKind.Sqlite => config.Provider.Sqlite is not null,
-            ProviderKind.SqlServer => config.Provider.SqlServer is not null,
-            _ => false,
-        }).ShouldBeTrue();
+        config.Provider.Plugin!.Label.ShouldBe(providerName);
 
-        // Exactly the selected backend section is populated.
+        // Exactly the selected backend is populated.
         config.State.ShouldNotBeNull();
         config.State!.ConfiguredSectionCount.ShouldBe(1);
         (backend switch
         {
             BackendKind.File => config.State.File is not null,
-            BackendKind.S3 => config.State.S3 is not null,
+            BackendKind.S3 => config.State.Plugin is not null,
             _ => false,
         }).ShouldBeTrue();
     }

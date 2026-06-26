@@ -14,7 +14,7 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange
         var config = new ApplyConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig(),
         };
 

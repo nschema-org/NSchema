@@ -87,16 +87,16 @@ public sealed class OptionBindingTests : IDisposable
 
     // ── Project config layer (lowest precedence) ────────────────────────────
 
-    private static DdlProjectConfig ProjectWithConnectionString(string value) =>
-        new() { Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = value } } };
+    private static DdlProjectConfig ProjectWithProviderVersion(string version) =>
+        new() { Provider = new ProviderConfig { Plugin = TestConfigs.Provider().Plugin! with { Version = version } } };
 
     [Fact]
     public void Bind_AppliesProjectValue_WhenSet()
     {
-        var binding = OptionBinding.Create<string>().FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+        var binding = OptionBinding.Create<string>().FromProjectConfig(c => c.Provider?.Plugin?.Version);
 
         string? captured = null;
-        binding.Bind(ProjectWithConnectionString("from-project"), new Command("test").Parse([]), v => captured = v);
+        binding.Bind(ProjectWithProviderVersion("from-project"), new Command("test").Parse([]), v => captured = v);
 
         captured.ShouldBe("from-project");
     }
@@ -107,10 +107,10 @@ public sealed class OptionBindingTests : IDisposable
         Environment.SetEnvironmentVariable(EnvVar, "from-env");
         var binding = OptionBinding.Create<string>()
             .FromEnvironmentVariable(EnvVar)
-            .FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+            .FromProjectConfig(c => c.Provider?.Plugin?.Version);
 
         string? captured = null;
-        binding.Bind(ProjectWithConnectionString("from-project"), new Command("test").Parse([]), v => captured = v);
+        binding.Bind(ProjectWithProviderVersion("from-project"), new Command("test").Parse([]), v => captured = v);
 
         captured.ShouldBe("from-env");
     }
@@ -120,11 +120,11 @@ public sealed class OptionBindingTests : IDisposable
     {
         var binding = OptionBinding.Create<string>()
             .FromOption("--opt")
-            .FromProjectConfig(c => c.Provider?.Postgres?.ConnectionString);
+            .FromProjectConfig(c => c.Provider?.Plugin?.Version);
         var result = Parse(binding, "--opt", "cli");
 
         string? captured = null;
-        binding.Bind(ProjectWithConnectionString("from-project"), result, v => captured = v);
+        binding.Bind(ProjectWithProviderVersion("from-project"), result, v => captured = v);
 
         captured.ShouldBe("cli");
     }

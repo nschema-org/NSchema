@@ -2,6 +2,7 @@
 -- connect to and where to keep state. Config blocks may live in any .sql file.
 
 PROVIDER sqlserver (
+  version           = '4.0.0-alpha.1',
   -- Prefer the NSCHEMA_SQLSERVER_CONNECTION_STRING environment variable, which
   -- overrides the value below.
   connection_string = ''
@@ -11,8 +12,9 @@ PROVIDER sqlserver (
 );
 
 BACKEND s3 (
+  version = '4.0.0-alpha.1',
   -- Credentials come from the standard AWS chain (environment, shared profile, or
   -- instance role), not from this block.
-  bucket = 'my-nschema-state',
-  key    = 'nschema.state.json'
+  bucket  = 'my-nschema-state',
+  key     = 'nschema.state.json'
 );
