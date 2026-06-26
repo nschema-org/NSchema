@@ -24,6 +24,14 @@ a major one, and called out explicitly in this changelog.
 - **`lock-status` command.** A new `nschema lock-status` reports whether the state store is locked. Supports `--json` for structured output and
   `--detailed-exitcode` (exit `2` when locked) for CI gating.
 
+## [Unreleased]
+
+Version 4.0.0 is currently in development, the main focus of which is around supporting dynamic backends and providers using NuGet as a package manager.
+
+### Changed
+
+- **Plugin registration.** Providers and backends are now registered using the `NSchema.Core.Plugins` API.
+
 ## [3.3.0] - 2026-06-25
 
 ### Added
