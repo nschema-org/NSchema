@@ -43,6 +43,6 @@ internal static class DestroyCommand
 
         using var app = builder.Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Destroy(new DestroyArguments(), cancellationToken);
+        await app.Destroy(new DestroyArguments { SkipLock = configuration.NoLock }, cancellationToken);
     }
 }
