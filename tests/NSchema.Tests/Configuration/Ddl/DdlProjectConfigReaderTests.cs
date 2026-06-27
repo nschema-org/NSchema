@@ -1,5 +1,4 @@
 using NSchema.Configuration.Ddl;
-using NSchema.Diff.Policies;
 
 namespace NSchema.Tests.Configuration.Ddl;
 
@@ -86,24 +85,17 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
             .Message.ShouldContain("Unknown attribute");
 
     [Fact]
-    public async Task Nschema_DestructiveAction_MapsPolicy()
-        => (await Read("NSCHEMA ( destructive_action = 'warn' );")).DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Warn);
+    public async Task Nschema_Block_IsRejected()
+        // The NSCHEMA config block was removed: dialect is the provider's, transaction_mode isn't wired, and the
+        // destructive-action policy is a flag / env var — so an NSCHEMA block is now just an unknown block.
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("NSCHEMA ( dialect = 'postgres' );")))
+            .Message.ShouldContain("Unknown configuration block");
 
     [Fact]
-    public async Task Nschema_ReservedKeys_AreAcceptedAndIgnored()
-    {
-        // dialect (provider-driven) and transaction_mode are reserved for forward-compat with the core grammar.
-        var config = await Read("NSCHEMA ( dialect = 'postgres', transaction_mode = 'single' );");
-
-        config.DestructiveActionPolicy.ShouldBeNull();
-    }
-
-    [Fact]
-    public async Task AllThreeBlocks_Compose()
+    public async Task ProviderAndBackend_Compose()
     {
         var config = await Read(
             """
-            NSCHEMA ( destructive_action = 'allow' );
             PROVIDER postgres ( version = '4.0.0', connection_string = 'host=db' );
             BACKEND file ( path = './state.json' );
             CREATE SCHEMA app;
@@ -111,7 +103,6 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
 
         config.Provider!.Label.ShouldBe("postgres");
         config.State!.File!.Path.ShouldBe("./state.json");
-        config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Allow);
     }
 
     [Fact]
@@ -121,7 +112,6 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
 
         config.Provider.ShouldBeNull();
         config.State.ShouldBeNull();
-        config.DestructiveActionPolicy.ShouldBeNull();
     }
 
     [Fact]
@@ -134,11 +124,6 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
         => (await Should.ThrowAsync<InvalidOperationException>(() =>
                 Read("PROVIDER postgres ( version = '4.0.0' ); PROVIDER postgres ( version = '4.0.0' );")))
             .Message.ShouldContain("More than one");
-
-    [Fact]
-    public async Task InvalidDestructiveAction_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("NSCHEMA ( destructive_action = 'nope' );")))
-            .Message.ShouldContain("destructive_action");
 
     // ── Environment overlays ──────────────────────────────────────────────────
 
@@ -158,14 +143,14 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     [Fact]
     public async Task Environment_BaseSliceSurvivesWhenOverlayOmitsIt()
     {
-        // The overlay only sets the policy; the base provider carries through unchanged.
+        // The overlay only declares a backend; the base provider carries through unchanged.
         var config = await ReadEnvironment(
             "PROVIDER postgres ( version = '4.0.0', connection_string = 'host=base' );",
             "prod",
-            "NSCHEMA ( destructive_action = 'error' );");
+            "BACKEND file ( path = './prod.state.json' );");
 
         config.Provider!.Block.Attribute("connection_string")!.AsString().ShouldBe("host=base");
-        config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Error);
+        config.State!.File!.Path.ShouldBe("./prod.state.json");
     }
 
     [Fact]

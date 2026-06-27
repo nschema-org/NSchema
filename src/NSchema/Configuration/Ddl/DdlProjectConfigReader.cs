@@ -1,6 +1,5 @@
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
 using NSchema.Schema.Ddl;
 
 namespace NSchema.Configuration.Ddl;
@@ -48,15 +47,12 @@ internal static class DdlProjectConfigReader
     {
         Provider = overlay.Provider ?? @base.Provider,
         State = overlay.State ?? @base.State,
-        DestructiveActionPolicy = overlay.DestructiveActionPolicy ?? @base.DestructiveActionPolicy,
     };
 
     private static DdlProjectConfig Parse(IReadOnlyList<ConfigBlock> blocks)
     {
         PluginReference? provider = null;
         StateConfig? state = null;
-        DestructiveActionPolicy? destructiveAction = null;
-        var nschemaSeen = false;
 
         foreach (var block in blocks)
         {
@@ -76,51 +72,14 @@ internal static class DdlProjectConfigReader
                     }
                     state = StateConfig.FromBlock(block);
                     break;
-                case "nschema":
-                    if (nschemaSeen)
-                    {
-                        throw Conflict("NSCHEMA");
-                    }
-                    nschemaSeen = true;
-                    destructiveAction = ParseNschema(block);
-                    break;
                 default:
                     throw new InvalidOperationException(
-                        $"Unknown configuration block '{block.Type.ToUpperInvariant()}'. Expected NSCHEMA, PROVIDER, or BACKEND.");
+                        $"Unknown configuration block '{block.Type.ToUpperInvariant()}'. Expected PROVIDER or BACKEND.");
             }
         }
 
-        return new DdlProjectConfig { Provider = provider, State = state, DestructiveActionPolicy = destructiveAction };
+        return new DdlProjectConfig { Provider = provider, State = state };
     }
-
-    private static DestructiveActionPolicy? ParseNschema(ConfigBlock block)
-    {
-        DestructiveActionPolicy? destructiveAction = null;
-        foreach (var (key, value) in block.Attributes)
-        {
-            switch (key.ToLowerInvariant())
-            {
-                case "destructive_action":
-                    destructiveAction = ParseDestructiveAction(value.AsString());
-                    break;
-                // Reserved, accepted for forward-compatibility with the core grammar but not yet wired in the CLI:
-                // the dialect is determined by the provider, and transaction mode is not yet a CLI setting.
-                case "dialect":
-                case "transaction_mode":
-                    break;
-                default:
-                    throw block.UnknownAttribute(key);
-            }
-        }
-
-        return destructiveAction;
-    }
-
-    private static DestructiveActionPolicy ParseDestructiveAction(string value) =>
-        Enum.TryParse<DestructiveActionPolicy>(value, ignoreCase: true, out var policy)
-            ? policy
-            : throw new InvalidOperationException(
-                $"Invalid destructive_action '{value}'. Expected Error, Warn, or Allow.");
 
     private static InvalidOperationException Conflict(string blockType) =>
         new($"More than one {blockType} block is declared; specify exactly one across the project's .sql files.");
