@@ -29,16 +29,18 @@ internal sealed class CliApplicationBuilder
 
         if (json)
         {
-            _builder.UseReporter<JsonOperationReporter>();
+            _builder.Services.AddSingleton<IConsolePresenter, JsonConsolePresenter>();
         }
         else
         {
-            _builder.UseReporter<SpectreOperationReporter>();
+            _builder.Services.AddSingleton<IConsolePresenter, SpectreConsolePresenter>();
         }
 
+        // Re-register the presenter as the reporter as well.
+        _builder.UseReporter(sp => sp.GetRequiredService<IConsolePresenter>());
+
         _builder.Services.AddSingleton(AnsiConsole.Console);
-        _builder.Services.AddSingleton<RunOutcome>();
-        _builder.Services.AddSingleton(new OutputVerbosity(verbosity));
+        _builder.Services.AddSingleton(verbosity);
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
@@ -159,23 +161,6 @@ internal sealed class CliApplicationBuilder
     /// Creates a builder whose output format and verbosity follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult),
+        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ConsoleMessenger.ResolveVerbosity(parseResult),
             allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false));
-
-    /// <summary>
-    /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single <see cref="Verbosity"/>. The two flags are mutually
-    /// exclusive: passing both is a usage error rather than a silent precedence.
-    /// </summary>
-    private static Verbosity ResolveVerbosity(ParseResult parseResult)
-    {
-        var quiet = CommonOptions.Quiet.GetValueOrDefault(parseResult, false);
-        var verbose = CommonOptions.Verbose.GetValueOrDefault(parseResult, false);
-
-        if (quiet && verbose)
-        {
-            throw new InvalidOperationException("--quiet and --verbose cannot be used together.");
-        }
-
-        return verbose ? Verbosity.Verbose : quiet ? Verbosity.Quiet : Verbosity.Normal;
-    }
 }

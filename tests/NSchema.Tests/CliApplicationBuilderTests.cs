@@ -20,7 +20,7 @@ public sealed class CliApplicationBuilderTests
     {
         var parseResult = RootCommand.Create().Parse(args);
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        return app.Services.GetRequiredService<OutputVerbosity>().Level;
+        return app.Services.GetRequiredService<Verbosity>();
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class CliApplicationBuilderTests
     {
         using var app = CliApplicationBuilder.Create().Build();
 
-        app.Services.GetRequiredService<OutputVerbosity>().Level.ShouldBe(Verbosity.Normal);
+        app.Services.GetRequiredService<Verbosity>().ShouldBe(Verbosity.Normal);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class CliApplicationBuilderTests
 
         // Assert
         var reporter = app.Services.GetRequiredService<IOperationReporter>();
-        reporter.ShouldBeOfType<SpectreOperationReporter>();
+        reporter.ShouldBeOfType<SpectreConsolePresenter>();
     }
 
     [Fact]

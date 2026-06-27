@@ -42,6 +42,11 @@ internal sealed class ApplyConfiguration : IBindable
     /// </summary>
     public string? PlanFile { get; private set; }
 
+    /// <summary>
+    /// Whether to apply without acquiring the state lock (<c>--no-lock</c>).
+    /// </summary>
+    public bool NoLock { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
@@ -50,5 +55,6 @@ internal sealed class ApplyConfiguration : IBindable
         ApplyOptions.Scope.Bind(cli, s => Scope = s);
         ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
+        ApplyOptions.NoLock.Bind(cli, n => NoLock = n);
     }
 }

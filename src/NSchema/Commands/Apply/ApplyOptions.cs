@@ -25,11 +25,16 @@ internal static class ApplyOptions
         .FromOption("--plan-file", "-p")
         .WithDescription("Apply a plan previously saved with plan --out, replaying exactly that plan instead of computing a fresh one.");
 
+    public static readonly OptionBinding<bool> NoLock = OptionBinding.Create<bool>()
+        .FromOption("--no-lock")
+        .WithDescription("Apply without acquiring the state lock. You take responsibility for preventing concurrent runs (e.g. when operating under a manually-held lock).");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
         Destructive.Option,
         AutoApprove.Option,
         PlanFile.Option,
+        NoLock.Option,
     ];
 }

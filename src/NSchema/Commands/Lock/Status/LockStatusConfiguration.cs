@@ -1,0 +1,28 @@
+using System.CommandLine;
+using NSchema.Configuration.Binding;
+using NSchema.Configuration.Ddl;
+using NSchema.Configuration.State;
+
+namespace NSchema.Commands.Lock.Status;
+
+/// <summary>
+/// Configuration for the <c>lock status</c> command.
+/// </summary>
+internal sealed class LockStatusConfiguration : IBindable
+{
+    /// <summary>
+    /// The state store whose lock is inspected.
+    /// </summary>
+    public StateConfig? State { get; set; }
+
+    /// <summary>
+    /// Whether to return the detailed exit code (<c>2</c> when the state is locked).
+    /// </summary>
+    public bool DetailedExitCode { get; private set; }
+
+    public void Bind(DdlProjectConfig project, ParseResult cli)
+    {
+        State = project.State;
+        LockStatusOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
+    }
+}

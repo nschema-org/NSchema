@@ -4,7 +4,6 @@ using NSchema.Configuration;
 using NSchema.Operations.Plan;
 using NSchema.Operations.PlanDestroy;
 using NSchema.Services;
-using Spectre.Console;
 
 namespace NSchema.Commands.Plan;
 
@@ -15,6 +14,7 @@ internal static class PlanCommand
         var command = new Command("plan", "Compute and show the migration plan without applying it. Use --destroy to preview a teardown instead.");
 
         command.Options.AddRange(PlanOptions.All);
+        command.Subcommands.Add(PlanShowCommand.Create());
 
         command.SetAction(Run);
         return command;
@@ -43,9 +43,9 @@ internal static class PlanCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app, configuration.DetailedExitCode);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
+        var result = await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(result, configuration.DetailedExitCode);
     }
 
     private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
@@ -62,11 +62,11 @@ internal static class PlanCommand
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app, configuration.DetailedExitCode);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
+        var result = await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(result, configuration.DetailedExitCode);
     }
 
-    private static int ExitCode(NSchemaApplication app, bool detailed) =>
-        detailed && app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+    private static int ExitCode(PlanResult result, bool detailed) =>
+        detailed && result.HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
 }

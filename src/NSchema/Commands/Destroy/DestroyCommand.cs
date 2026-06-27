@@ -2,7 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Destroy;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Destroy;
 
@@ -42,7 +42,7 @@ internal static class DestroyCommand
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Destroy(new DestroyArguments(), cancellationToken);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
+        await app.Destroy(new DestroyArguments { SkipLock = configuration.NoLock }, cancellationToken);
     }
 }

@@ -32,10 +32,16 @@ internal sealed class DestroyConfiguration : IBindable
     /// </summary>
     public bool HasStateStore => State is not null;
 
+    /// <summary>
+    /// Whether to tear down without acquiring the state lock (<c>--no-lock</c>).
+    /// </summary>
+    public bool NoLock { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
         DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
+        DestroyOptions.NoLock.Bind(cli, n => NoLock = n);
     }
 }

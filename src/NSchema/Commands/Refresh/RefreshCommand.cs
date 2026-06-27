@@ -2,7 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Refresh;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Refresh;
 
@@ -11,6 +11,8 @@ internal static class RefreshCommand
     public static Command Create()
     {
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
+
+        command.Options.AddRange(RefreshOptions.All);
 
         command.SetAction(Run);
         return command;
@@ -31,7 +33,7 @@ internal static class RefreshCommand
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Refresh(new RefreshArguments(), cancellationToken);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
+        await app.Refresh(new RefreshArguments { SkipLock = configuration.NoLock }, cancellationToken);
     }
 }

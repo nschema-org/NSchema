@@ -4,7 +4,7 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Operations;
 using NSchema.Operations.Doctor;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Doctor;
 
@@ -40,7 +40,7 @@ internal static class DoctorCommand
         }.OfType<PluginDiagnostic>().ToList();
         using var app = builder.Build();
 
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
 
         if (diagnostics.Count > 0)
         {

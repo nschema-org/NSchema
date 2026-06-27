@@ -17,20 +17,30 @@ bumping the pinned version here.
 ## Where an operation lives: Core vs CLI
 
 A command's *logic* lives in `NSchema.Core` (invoked via a public `NSchemaApplication.X(...)` method that resolves an
-`IXOperation` from DI) or in this CLI repo (a self-contained `*Command`). The dividing test, applied **in order**:
+`IXOperation` from DI) or in this CLI repo (a self-contained `*Command`). The dividing axis is **orchestration
+complexity, not whether it touches live infrastructure** — taking a lock touches infra but is a one-call primitive,
+while `validate` touches no infra yet orchestrates parse+diff. Applied **in order**:
 
-1. **Does it read or mutate the live database, or the state store / lock?** → **Core operation.** Only Core can — the
-   state/lock types are `internal` to Core, and the provider runs through the core builder — and the behaviour must stay
-   provider-agnostic and reusable by any front-end. *(apply, plan, plan --destroy, drift, refresh, destroy, import, show,
-   force-unlock, doctor.)*
-2. **Else, does it interpret the `DatabaseSchema` domain model — parsing/diffing/validating its *semantics*?** → **Core
-   operation.** *(validate — Core despite touching no infrastructure.)*
-3. **Else it is local developer plumbing** — filesystem scaffolding, source-text formatting, shell integration,
-   config/IO/rendering, **plugin resolution**. → **CLI command.** *(init, fmt, completion.)*
+1. **Does it orchestrate a reusable multi-step sequence** — composing the provider, planner, and/or state store into a
+   pipeline whose result any front-end (GUI, CI library) must reproduce identically? → **Core operation.** *(apply,
+   plan, plan --destroy, drift, refresh, destroy, import, doctor; and validate, which parses+diffs the
+   `DatabaseSchema` despite touching no infrastructure.)*
+2. **Else, is it a thin pass-through to an existing Core primitive** — a single public interface call (e.g.
+   `IStateLock.Acquire`/`Peek`/`Release`, `ICurrentSchemaProvider.GetSchema`, `IPlanFileWriter.Read`) plus presentation
+   — **or local developer plumbing** (filesystem scaffolding, source-text formatting, shell integration,
+   config/IO/rendering, **plugin resolution**)? → **CLI command.** *(lock status / acquire / release — thin over the
+   public `IStateLock`; show — thin over `ICurrentSchemaProvider`/`IPlanFileWriter`; init, fmt, completion.)*
 
-Reporting corollary: Core operations narrate through `IOperationReporter`; CLI commands render directly via
-`IAnsiConsole` / `Console`. When in doubt, ask whether a non-CLI front-end (GUI, CI library) would need identical
-behaviour — if yes, it belongs in Core.
+The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
+just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
+deliberate API decision (e.g. `show` re-publicized `ICurrentSchemaProvider`/`IPlanFileWriter`/`PlanFileEnvelope`) — weigh
+it against API-surface stability, not just the boundary rule.
+
+**Presentation is single-sourced** via `Services/IConsolePresenter` — a superset of the core `IOperationReporter`
+implemented directly by the Spectre/JSON reporters and registered as both faces. Core operations narrate through the
+`IOperationReporter` face; thin CLI commands resolve `IConsolePresenter` (same formatting for `Success`/`Warn`/… plus
+`Detail` for indented lines) instead of hand-rolling markup. The one exception is a structured `--json` *query result*
+(e.g. `lock status`'s single object), which keeps its explicit clean-object path rather than the reporter's NDJSON.
 
 ## Commands
 

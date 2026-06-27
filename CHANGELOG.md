@@ -22,6 +22,13 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 - **`nschema init` now restores plugins.** `init` now pre-fetches the provider and backend plugins pinned in your config. Operations restore implicitly
   on first use; `init` just does it up front so the first real command is fast.
 - **`--no-init` flag.** Skips the implicit plugin restore and requires the plugins to be cached already.
+- **`lock` command group.** `nschema lock status` / `lock acquire` / `lock release` inspect, manually hold, and release the state lock. `lock acquire`
+  holds a lock that outlives the command (for out-of-band checks before a migration), with an optional `--ttl` (e.g. `30m`) and `--reason`, `lock status`
+  surfaces any information about the currently held lock. `lock release` requires the lock id by default (refusing if it no longer matches the held lock),
+  with `--force` to release whatever lock is held without naming it.
+- **`--no-lock` flag** on `apply`, `refresh`, and `destroy`. Runs without taking the state lock.
+- **`nschema state show <file>`** renders a state file on disk directly, without a configured backend.
+- **`nschema db show`** renders the live database schema, read directly from the database via the provider — the online counterpart to `state show`.
 
 ### Changed
 
@@ -35,12 +42,20 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
   name the provider on their own — they still override the connection string set in the block.
 - **`doctor` reports plugin problems as diagnostics.** A provider or backend that fails to restore or configure is now reported by `doctor` as a
   health-check finding (every such problem at once) instead of aborting on the first.
+- **Lock commands grouped under `lock`.** `lock-status` → `nschema lock status`; `force-unlock` → `nschema lock release`, whose prompt is now skipped with
+  `--auto-approve`/`-y` (consistent with `apply`/`destroy`) instead of `--force`. The lock-id safety check is unchanged.
+- **`show` split by what it shows.** The recorded state is now `nschema state show` (offline; the `state` noun group will grow `pull`/`push`/`move`), and a
+  saved plan is `nschema plan show <file>`. The top-level `show` command is gone.
+- **`completion install` / `completion uninstall` subcommands** replace the `--install-autocomplete` / `--uninstall-autocomplete` flags. `nschema completion <shell>`
+  still prints the script.
 - Built on `NSchema.Core 4.0.0` and the 4.0 provider/backend packages.
 
 ### Removed
 
 - **The `NSCHEMA` config block.** `destructive_action` moved to the `--destructive-actions` flag / the `NSCHEMA_DESTRUCTIVE_ACTION_POLICY` environment
   variable; `dialect` and `transaction_mode` (never wired in) are gone. An `NSCHEMA` block is now rejected as an unknown configuration block.
+- **The top-level `show`, `lock-status`, and `force-unlock` commands**, replaced by `state show` / `plan show` and the `lock` group above. The `show --online`
+  live-schema view is now `nschema db show` (a `db` noun group) rather than a mode flag.
 
 ## [3.4.0] - 2026-06-25
 

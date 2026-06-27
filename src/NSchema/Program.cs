@@ -1,5 +1,6 @@
 using NSchema.Commands;
 using NSchema.Configuration;
+using NSchema.Operations;
 using NSchema.Services;
 using Spectre.Console;
 
@@ -10,9 +11,7 @@ var parseResult = root.Parse(args);
 var configuration = new System.CommandLine.InvocationConfiguration { EnableDefaultExceptionHandler = false };
 
 var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
-var json = CommonOptions.Json.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
-var error = ConsoleFactory.Create(Console.Error, colorDisabled);
 
 try
 {
@@ -20,32 +19,16 @@ try
 }
 catch (OperationCanceledException)
 {
-    error.MarkupLine("[yellow]Operation cancelled.[/]");
+    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, "Operation cancelled.");
     return ExitCodes.OperationCanceled;
 }
 catch (ConfirmationDeclinedException ex)
 {
-    if (json)
-    {
-        JsonOutput.Write(Console.Error, new ErrorEvent(ex.Message));
-    }
-    else
-    {
-        error.MarkupLineInterpolated($"[yellow]{ex.Message}[/]");
-    }
-
+    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, ex.Message);
     return ExitCodes.Error;
 }
 catch (Exception ex)
 {
-    if (json)
-    {
-        JsonOutput.Write(Console.Error, new ErrorEvent(ex.Message));
-    }
-    else
-    {
-        error.ReportException(ex);
-    }
-
+    ConsoleMessenger.Create(parseResult).ReportException(ex);
     return ExitCodes.Error;
 }
