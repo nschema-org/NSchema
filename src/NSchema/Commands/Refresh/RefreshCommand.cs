@@ -2,7 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Refresh;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Refresh;
 
@@ -33,7 +33,7 @@ internal static class RefreshCommand
             .ConfigureBackendState(configuration.State)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
         await app.Refresh(new RefreshArguments { SkipLock = configuration.NoLock }, cancellationToken);
     }
 }

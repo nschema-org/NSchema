@@ -1,4 +1,5 @@
 using NSchema.Operations;
+using NSchema.State.Model;
 
 namespace NSchema.Services;
 
@@ -28,6 +29,11 @@ internal interface IConsolePresenter : IOperationReporter
     void Warn(ConsoleMessage message);
 
     /// <summary>
+    /// Prints which environment a run is targeting.
+    /// </summary>
+    void ReportEnvironment(string? environment);
+
+    /// <summary>
     /// Writes an indented secondary line beneath a headline (e.g. the lock id and expiry under a <c>lock status</c> line).
     /// </summary>
     void Detail(string message);
@@ -36,4 +42,9 @@ internal interface IConsolePresenter : IOperationReporter
     /// An indented secondary line.
     /// </summary>
     void Detail(ConsoleMessage message);
+
+    /// <summary>
+    /// Reports the state-lock status.
+    /// </summary>
+    void ReportLockStatus(StateLockInfo? info);
 }

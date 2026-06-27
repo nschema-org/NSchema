@@ -4,6 +4,7 @@ using NSchema.Operations;
 using NSchema.Schema.Model;
 using NSchema.Services;
 using NSchema.Sql.Model;
+using NSchema.State.Model;
 
 namespace NSchema.Tests.Services;
 
@@ -120,6 +121,32 @@ public sealed class JsonConsolePresenterTests
         evt.GetProperty("type").GetString().ShouldBe("log");
         evt.GetProperty("level").GetString().ShouldBe("success");
         evt.GetProperty("message").GetString().ShouldBe("Restored postgres now");
+    }
+
+    [Fact]
+    public void ReportLockStatus_Free_EmitsLockedFalseObject()
+    {
+        _sut.ReportLockStatus(null);
+
+        // Null members are omitted, so a free lock is simply {"locked":false}.
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("locked").GetBoolean().ShouldBeFalse();
+        evt.TryGetProperty("lockId", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ReportLockStatus_Held_EmitsHolderDetailsObject()
+    {
+        var info = new StateLockInfo("abc", "apply", "tom@dev", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddMinutes(30));
+
+        _sut.ReportLockStatus(info);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("locked").GetBoolean().ShouldBeTrue();
+        evt.GetProperty("lockId").GetString().ShouldBe("abc");
+        evt.GetProperty("operation").GetString().ShouldBe("apply");
+        evt.GetProperty("who").GetString().ShouldBe("tom@dev");
+        evt.GetProperty("expires").ValueKind.ShouldNotBe(JsonValueKind.Null);
     }
 
     [Fact]

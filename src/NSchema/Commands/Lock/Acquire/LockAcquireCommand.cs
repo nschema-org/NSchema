@@ -35,7 +35,7 @@ internal static class LockAcquireCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
         var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
         var stateLock = app.Services.GetRequiredService<IStateLock>();

@@ -10,6 +10,7 @@ using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql;
 using NSchema.Sql.Model;
+using NSchema.State.Model;
 using Spectre.Console;
 
 namespace NSchema.Services;
@@ -88,9 +89,54 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     public void Detail(ConsoleMessage message) => _out.MarkupLine($"[grey]  {message.Styled}[/]");
 
+    public void ReportLockStatus(StateLockInfo? info)
+    {
+        if (info is null)
+        {
+            Report(MessageKind.Success, "The state is not locked.");
+            return;
+        }
+
+        Warn($"The state is locked by {info.Who} (operation '{info.Operation}', since {info.CreatedUtc:u}).");
+        Detail($"Lock ID: {info.Id}");
+
+        // Surface a manual hold's lifetime, and flag it once past — but NSchema never auto-breaks an expired lock.
+        if (info.ExpiresUtc is { } expires)
+        {
+            if (expires <= DateTimeOffset.UtcNow)
+            {
+                Detail($"Expires: {expires:u} (expired)");
+            }
+            else
+            {
+                Detail($"Expires: {expires:u}");
+            }
+        }
+
+        Detail($"Release it, once you're sure no operation is still running, with: nschema lock release {info.Id}");
+    }
+
     public void ReportException(Exception exception)
     {
-        _error.WriteException(exception);
+        // A policy violation carries structured diagnostics; show the table first, then the headline error.
+        if (exception is PolicyViolationException violation)
+        {
+            RenderDiagnostics(_error, violation.Errors);
+        }
+
+        _error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
+    }
+
+    public void ReportEnvironment(string? environment)
+    {
+        // Prints which environment a run is targeting, so a command run against (say) production is unmistakable.
+        if (environment is null)
+        {
+            return;
+        }
+
+        _out.MarkupLineInterpolated($"[bold]Environment:[/] [yellow]{environment}[/]");
+        _out.WriteLine();
     }
 
     public void ReportSchema(DatabaseSchema schema)
@@ -147,9 +193,43 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
     {
         // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
         var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
-        var console = notable ? _error : _out;
-        console.ReportDiagnostics(diagnostics);
+        RenderDiagnostics(notable ? _error : _out, diagnostics);
     }
+
+    private static void RenderDiagnostics(IAnsiConsole console, IReadOnlyList<PolicyDiagnostic> diagnostics)
+    {
+        if (diagnostics.Count == 0)
+        {
+            console.MarkupLine("[grey]No policy diagnostics.[/]");
+            console.WriteLine();
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .Title("Policy diagnostics")
+            .AddColumn("Severity")
+            .AddColumn("Policy")
+            .AddColumn("Message");
+
+        foreach (var diagnostic in diagnostics)
+        {
+            table.AddRow(
+                new Markup(SeverityLabel(diagnostic.Severity)),
+                new Markup(Markup.Escape(diagnostic.PolicyName)),
+                new Markup(Markup.Escape(diagnostic.Message)));
+        }
+
+        console.Write(table);
+        console.WriteLine();
+    }
+
+    private static string SeverityLabel(PolicyDiagnosticSeverity severity) => severity switch
+    {
+        PolicyDiagnosticSeverity.Error => "[red]error[/]",
+        PolicyDiagnosticSeverity.Warning => "[yellow]warning[/]",
+        _ => "[grey]info[/]",
+    };
 
     // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)

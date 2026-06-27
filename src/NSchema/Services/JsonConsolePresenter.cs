@@ -1,3 +1,6 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using NSchema.Diff.Model;
 using NSchema.Operations;
 using NSchema.Plan.Model;
@@ -5,6 +8,7 @@ using NSchema.Policies;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql.Model;
+using NSchema.State.Model;
 
 namespace NSchema.Services;
 
@@ -90,7 +94,34 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     public void ReportException(Exception exception) => Write(_error, new ErrorEvent(exception.Message));
 
+    // The environment banner is human-facing narration; JSON output omits it so the stream stays purely results + logs.
+    public void ReportEnvironment(string? environment) { }
+
+    public void ReportLockStatus(StateLockInfo? info) => Write(_out, info is null
+        ? new LockStatusReport(false, null, null, null, null, null)
+        : new LockStatusReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
+
     private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction };
 
-    private static void Write(TextWriter writer, object @event) => JsonOutput.Write(writer, @event);
+    // The --json shape for lock status: a single object so a script can gate on `locked` and read `lockId`.
+    private sealed record LockStatusReport(bool Locked, string? LockId, string? Operation, string? Who, DateTimeOffset? Since, DateTimeOffset? Expires);
+
+    // The {"type":"error","message":…} event emitted when an operation fails.
+    private sealed record ErrorEvent(string Message)
+    {
+        [JsonPropertyOrder(-1)]
+        public string Type => "error";
+    }
+
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        // SQL bodies contain quotes and angle brackets; relaxed escaping keeps them readable (\" not ") — this is
+        // CLI output, not HTML, so the extra-cautious default encoder isn't needed.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
+    private static void Write(TextWriter writer, object @event) => writer.WriteLine(JsonSerializer.Serialize(@event, SerializerOptions));
 }

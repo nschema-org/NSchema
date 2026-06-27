@@ -4,7 +4,6 @@ using NSchema.Configuration;
 using NSchema.Operations.Plan;
 using NSchema.Operations.PlanDestroy;
 using NSchema.Services;
-using Spectre.Console;
 
 namespace NSchema.Commands.Plan;
 
@@ -44,7 +43,7 @@ internal static class PlanCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
         await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
         return ExitCode(app, configuration.DetailedExitCode);
     }
@@ -63,7 +62,7 @@ internal static class PlanCommand
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
         await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
         return ExitCode(app, configuration.DetailedExitCode);
     }

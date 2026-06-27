@@ -2,7 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Import;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Import;
 
@@ -28,7 +28,7 @@ internal static class ImportCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
 
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
 
         var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
         GuardAgainstOverwrite(outputDirectory, configuration.Force);

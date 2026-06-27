@@ -2,7 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
-using Spectre.Console;
+using NSchema.Services;
 
 namespace NSchema.Commands.Apply;
 
@@ -46,7 +46,7 @@ internal static class ApplyCommand
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
+        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
         await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile, SkipLock = configuration.NoLock }, cancellationToken);
     }
 }

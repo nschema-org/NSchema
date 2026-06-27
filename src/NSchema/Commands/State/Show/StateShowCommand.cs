@@ -50,8 +50,8 @@ internal static class StateShowCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
         var presenter = app.Services.GetRequiredService<IConsolePresenter>();
+        presenter.ReportEnvironment(environment);
 
         presenter.Announce("Showing recorded state. The live database will not be contacted.");
         var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()

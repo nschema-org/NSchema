@@ -9,6 +9,7 @@ using NSchema.Schema.Model.Scripts;
 using NSchema.Services;
 using NSchema.Sql;
 using NSchema.Sql.Model;
+using NSchema.State.Model;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
@@ -120,6 +121,27 @@ public sealed class SpectreConsolePresenterTests
 
         // Assert — escaped, not interpreted or leaked.
         _out.Output.ShouldContain("app.events [text[]]");
+    }
+
+    [Fact]
+    public void ReportLockStatus_Free_ReportsNotLocked()
+    {
+        _sut.ReportLockStatus(null);
+
+        _out.Output.ShouldContain("not locked");
+    }
+
+    [Fact]
+    public void ReportLockStatus_Held_ReportsHolderOnErrorAndDetailsOnOutput()
+    {
+        var info = new StateLockInfo("abc123", "apply", "tom@dev", DateTimeOffset.UnixEpoch);
+
+        _sut.ReportLockStatus(info);
+
+        // The headline is a warning (stderr); the lock-id detail is narration (stdout).
+        _error.Output.ShouldContain("locked by");
+        _error.Output.ShouldContain("tom@dev");
+        _out.Output.ShouldContain("abc123");
     }
 
     [Fact]
