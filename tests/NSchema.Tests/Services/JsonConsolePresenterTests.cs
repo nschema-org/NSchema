@@ -121,22 +121,23 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
-    public void ReportLockStatus_Free_EmitsLockedFalseObject()
+    public void ReportLockInfo_Null_EmitsLockedFalseObject()
     {
-        _sut.ReportLockStatus(null);
+        _sut.ReportLockInfo(null);
 
-        // Null members are omitted, so a free lock is simply {"locked":false}.
+        // Null members are omitted, so the absence of a lock is simply {"locked":false}.
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.GetProperty("locked").GetBoolean().ShouldBeFalse();
         evt.TryGetProperty("lockId", out _).ShouldBeFalse();
     }
 
     [Fact]
-    public void ReportLockStatus_Held_EmitsHolderDetailsObject()
+    public void ReportLockInfo_Held_EmitsLockObject()
     {
+        // The same machine-readable object backs lock status and lock acquire, so a script can read the id.
         var info = new StateLockInfo("abc", "apply", "tom@dev", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddMinutes(30));
 
-        _sut.ReportLockStatus(info);
+        _sut.ReportLockInfo(info);
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.GetProperty("locked").GetBoolean().ShouldBeTrue();

@@ -40,7 +40,20 @@ internal static class LockStatusCommand
 
         var presenter = app.Services.GetRequiredService<IConsolePresenter>();
         presenter.ReportEnvironment(environment);
-        presenter.ReportLockStatus(info);
+
+        if (info is null)
+        {
+            presenter.Success($"The state is not locked.");
+        }
+        else
+        {
+            presenter.Warn($"The state is locked.");
+        }
+        presenter.ReportLockInfo(info);
+        if (info is not null)
+        {
+            presenter.Detail($"Release it, once you're sure no operation is still running, with: nschema lock release {info.Id}");
+        }
 
         // Without --detailed-exitcode, reading the lock succeeded → 0 regardless of state. With it, a held lock is the
         // opt-in "2" signal (mirroring plan/drift), so CI can gate on it without parsing output.

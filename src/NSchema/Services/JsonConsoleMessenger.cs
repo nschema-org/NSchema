@@ -54,12 +54,13 @@ internal class JsonConsoleMessenger : IConsoleMessenger
     // The environment banner is human-facing narration; JSON output omits it so the stream stays purely results + logs.
     public void ReportEnvironment(string? environment) { }
 
-    public void ReportLockStatus(StateLockInfo? info) => Write(Out, info is null
-        ? new LockStatusReport(false, null, null, null, null, null)
-        : new LockStatusReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
+    public void ReportLockInfo(StateLockInfo? info) => Write(Out, info is null
+        ? new LockReport(false, null, null, null, null, null)
+        : new LockReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
 
-    // The --json shape for lock status: a single object so a script can gate on `locked` and read `lockId`.
-    private sealed record LockStatusReport(bool Locked, string? LockId, string? Operation, string? Who, DateTimeOffset? Since, DateTimeOffset? Expires);
+    // The --json shape for a lock (lock status / lock acquire): a single object so a script can gate on `locked`
+    // and read `lockId` to release it later.
+    private sealed record LockReport(bool Locked, string? LockId, string? Operation, string? Who, DateTimeOffset? Since, DateTimeOffset? Expires);
 
     // The {"type":"error","message":…} event emitted when an operation fails.
     private sealed record ErrorEvent(string Message)

@@ -49,9 +49,9 @@ internal interface IConsoleMessenger
     void ReportEnvironment(string? environment);
 
     /// <summary>
-    /// Reports the state-lock status.
+    /// Reports the information about a lock.
     /// </summary>
-    void ReportLockStatus(StateLockInfo? info);
+    void ReportLockInfo(StateLockInfo? info);
 
     /// <summary>
     /// Reports an error. Receives the original <see cref="Exception"/> so the messenger can present it however suits its format.

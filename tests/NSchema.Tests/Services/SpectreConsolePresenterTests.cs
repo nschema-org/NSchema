@@ -123,24 +123,27 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportLockStatus_Free_ReportsNotLocked()
+    public void ReportLockInfo_Null_WritesNothing()
     {
-        _sut.ReportLockStatus(null);
+        // The absence of a lock has no data to render; the "not locked" narrative is the command's.
+        _sut.ReportLockInfo(null);
 
-        _out.Output.ShouldContain("not locked");
+        _out.Output.ShouldBeEmpty();
+        _error.Output.ShouldBeEmpty();
     }
 
     [Fact]
-    public void ReportLockStatus_Held_ReportsHolderOnErrorAndDetailsOnOutput()
+    public void ReportLockInfo_Held_WritesLockDetailLinesToOutput()
     {
         var info = new StateLockInfo("abc123", "apply", "tom@dev", DateTimeOffset.UnixEpoch);
 
-        _sut.ReportLockStatus(info);
+        _sut.ReportLockInfo(info);
 
-        // The headline is a warning (stderr); the lock-id detail is narration (stdout).
-        _error.Output.ShouldContain("locked by");
-        _error.Output.ShouldContain("tom@dev");
+        // Just the lock's data, as detail lines on stdout — no headline narrative (that's the command's).
         _out.Output.ShouldContain("abc123");
+        _out.Output.ShouldContain("tom@dev");
+        _out.Output.ShouldContain("apply");
+        _error.Output.ShouldBeEmpty();
     }
 
     [Fact]

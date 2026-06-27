@@ -23,8 +23,9 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
   on first use; `init` just does it up front so the first real command is fast.
 - **`--no-init` flag.** Skips the implicit plugin restore and requires the plugins to be cached already.
 - **`lock` command group.** `nschema lock status` / `lock acquire` / `lock release` inspect, manually hold, and release the state lock. `lock acquire`
-  holds a lock that outlives the command (for out-of-band checks before a migration), with an optional `--ttl` (e.g. `30m`) and `--reason`; `lock status`
-  surfaces any information about the currently held lock.
+  holds a lock that outlives the command (for out-of-band checks before a migration), with an optional `--ttl` (e.g. `30m`) and `--reason`, `lock status`
+  surfaces any information about the currently held lock. `lock release` requires the lock id by default (refusing if it no longer matches the held lock),
+  with `--force` to release whatever lock is held without naming it.
 - **`--no-lock` flag** on `apply`, `refresh`, and `destroy`. Runs without taking the state lock.
 - **`nschema state show <file>`** renders a state file on disk directly, without a configured backend.
 

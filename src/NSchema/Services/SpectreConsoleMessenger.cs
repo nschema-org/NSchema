@@ -64,31 +64,23 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
 
     public void Detail(ConsoleMessage message) => Out.MarkupLine($"[grey]  {message.Styled}[/]");
 
-    public void ReportLockStatus(StateLockInfo? info)
+    public void ReportLockInfo(StateLockInfo? info)
     {
         if (info is null)
         {
-            Report(MessageKind.Success, "The state is not locked.");
             return;
         }
 
-        Warn($"The state is locked by {info.Who} (operation '{info.Operation}', since {info.CreatedUtc:u}).");
         Detail($"Lock ID: {info.Id}");
+        Detail($"Held by: {info.Who}");
+        Detail($"Operation: {info.Operation}");
+        Detail($"Since: {info.CreatedUtc:u}");
 
         // Surface a manual hold's lifetime, and flag it once past — but NSchema never auto-breaks an expired lock.
         if (info.ExpiresUtc is { } expires)
         {
-            if (expires <= DateTimeOffset.UtcNow)
-            {
-                Detail($"Expires: {expires:u} (expired)");
-            }
-            else
-            {
-                Detail($"Expires: {expires:u}");
-            }
+            Detail(expires <= DateTimeOffset.UtcNow ? $"Expires: {expires:u} (expired)" : $"Expires: {expires:u}");
         }
-
-        Detail($"Release it, once you're sure no operation is still running, with: nschema lock release {info.Id}");
     }
 
     public void ReportException(Exception exception)
