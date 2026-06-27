@@ -33,6 +33,8 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
   label (`postgres`, `sqlite`, `sqlserver`, `s3`) still resolves to its package automatically.
 - **A `PROVIDER` block is now required to select a provider.** `NSCHEMA_POSTGRES_CONNECTION_STRING` and the other connection-string variables no longer
   name the provider on their own — they still override the connection string set in the block.
+- **`doctor` reports plugin problems as diagnostics.** A provider or backend that fails to restore or configure is now reported by `doctor` as a
+  health-check finding (every such problem at once) instead of aborting on the first.
 - Built on `NSchema.Core 4.0.0` and the 4.0 provider/backend packages.
 
 ### Removed

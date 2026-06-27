@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Commands;
+using NSchema.Configuration;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations;
@@ -115,6 +117,34 @@ public sealed class CliApplicationBuilderTests
         // Assert
         var reporter = app.Services.GetRequiredService<IOperationReporter>();
         reporter.ShouldBeOfType<SpectreOperationReporter>();
+    }
+
+    [Fact]
+    public void TryConfigureDatabaseProvider_WithAMisconfiguredProvider_CapturesADiagnosticInsteadOfThrowing()
+    {
+        // doctor's path: a misconfigured plugin must be captured, not thrown, so every problem can be reported. Loads
+        // the real NSchema.Postgres plugin (SDK + network/cache). The connection-string env var is cleared so the
+        // ambient environment can't satisfy the block under test.
+        var savedConnectionString = Environment.GetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING");
+        Environment.SetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING", null);
+        try
+        {
+            // Arrange — a postgres PROVIDER block missing the required connection_string.
+            var reference = new PluginReference("NSchema.Postgres", "4.0.0-alpha.2", "postgres",
+                new ConfigBlock("provider", "postgres", new Dictionary<string, ConfigValue>()));
+
+            // Act
+            var diagnostic = _sut.TryConfigureDatabaseProvider(reference);
+
+            // Assert — captured (not thrown), carrying the plugin's own error.
+            diagnostic.ShouldNotBeNull();
+            diagnostic.Label.ShouldBe("postgres");
+            diagnostic.Errors.ShouldContain(error => error.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING", savedConnectionString);
+        }
     }
 
     // ConfigureDesiredSchema is a thin delegation to the core's AddDdlSchemas (which the core tests cover end to end);

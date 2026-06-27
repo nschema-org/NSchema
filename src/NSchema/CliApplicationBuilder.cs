@@ -67,30 +67,62 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureBackendState(StateConfig? state)
     {
-        // The local-file store is built into the core and always available; every other backend is a plugin.
-        if (state?.File is { } file)
-        {
-            _builder.UseFileStateStore(file.Path);
-        }
-        else if (state?.Plugin is { } reference)
-        {
-            var plugin = ResolvePlugin<INSchemaBackendPlugin>(reference);
-            ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);
-        }
-
+        Throw(TryConfigureBackendState(state));
         return this;
     }
 
     public CliApplicationBuilder ConfigureDatabaseProvider(PluginReference? provider)
     {
-        // A null reference is a valid offline configuration (e.g. planning from recorded state).
-        if (provider is { } reference)
+        Throw(TryConfigureDatabaseProvider(provider));
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the database provider WITHOUT throwing: applies it on success, or returns a
+    /// <see cref="PluginDiagnostic"/> if it failed to restore or configure. Returns <see langword="null"/> when it
+    /// succeeds or no provider is configured (a valid offline setup). The fluent <see cref="ConfigureDatabaseProvider"/>
+    /// is the throwing wrapper; callers that want to report failures rather than abort (doctor) use this.
+    /// </summary>
+    public PluginDiagnostic? TryConfigureDatabaseProvider(PluginReference? provider) =>
+        provider is { } reference
+            ? TryApply<INSchemaProviderPlugin>(reference, plugin => plugin.Configure(_builder, reference.Block))
+            : null;
+
+    /// <summary>
+    /// Configures the state backend WITHOUT throwing. The built-in local-file store always succeeds; every other backend
+    /// is a plugin, which may fail — returning a <see cref="PluginDiagnostic"/> (<see langword="null"/> on success or
+    /// when no backend is configured). The fluent <see cref="ConfigureBackendState"/> is the throwing wrapper.
+    /// </summary>
+    public PluginDiagnostic? TryConfigureBackendState(StateConfig? state)
+    {
+        // The local-file store is built into the core and always available; every other backend is a plugin.
+        if (state?.File is { } file)
         {
-            var plugin = ResolvePlugin<INSchemaProviderPlugin>(reference);
-            ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);
+            _builder.UseFileStateStore(file.Path);
+            return null;
         }
 
-        return this;
+        return state?.Plugin is { } reference
+            ? TryApply<INSchemaBackendPlugin>(reference, plugin => plugin.Configure(_builder, reference.Block))
+            : null;
+    }
+
+    // Configure lives on the two derived interfaces (not the shared base), so the caller supplies the call; this method
+    // owns the resolve + non-throwing capture both the throwing wrappers and doctor build on.
+    private PluginDiagnostic? TryApply<TPlugin>(PluginReference reference, Func<TPlugin, PluginConfigureResult> configure)
+        where TPlugin : class, INSchemaPlugin
+    {
+        try
+        {
+            var result = configure(ResolvePlugin<TPlugin>(reference));
+            return result.Succeeded ? null : new PluginDiagnostic(reference.Label, result.Errors);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A restore/load failure (bad version pin, missing plugin, Core-major mismatch) is just as much a
+            // diagnostic as a Configure failure — capture it rather than letting it propagate raw.
+            return new PluginDiagnostic(reference.Label, [ex.Message]);
+        }
     }
 
     private TPlugin ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
@@ -101,12 +133,12 @@ internal sealed class CliApplicationBuilder
                 $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
     }
 
-    private static void ThrowIfFailed(PluginConfigureResult result, PluginReference reference)
+    private static void Throw(PluginDiagnostic? diagnostic)
     {
-        if (!result.Succeeded)
+        if (diagnostic is { } problem)
         {
             throw new InvalidOperationException(
-                $"The '{reference.Label}' plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, result.Errors)}");
+                $"The '{problem.Label}' plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, problem.Errors)}");
         }
     }
 
