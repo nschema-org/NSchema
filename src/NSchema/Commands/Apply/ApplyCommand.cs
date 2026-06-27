@@ -47,6 +47,6 @@ internal static class ApplyCommand
 
         using var app = builder.Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile }, cancellationToken);
+        await app.Apply(new ApplyArguments { Schemas = configuration.Scope, PlanFile = configuration.PlanFile, SkipLock = configuration.NoLock }, cancellationToken);
     }
 }
