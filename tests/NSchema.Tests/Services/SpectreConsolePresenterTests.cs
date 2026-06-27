@@ -1,3 +1,4 @@
+using NSchema.Configuration.Plugins;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Operations;
@@ -144,6 +145,63 @@ public sealed class SpectreConsolePresenterTests
         _out.Output.ShouldContain("tom@dev");
         _out.Output.ShouldContain("apply");
         _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportProjectPlugins_Empty_WritesNoPluginsMessage()
+    {
+        // Act
+        _sut.ReportProjectPlugins([]);
+
+        // Assert
+        _out.Output.ShouldContain("No provider or backend plugins");
+    }
+
+    [Fact]
+    public void ReportProjectPlugins_WritesATableOfPlugins()
+    {
+        // Act
+        _sut.ReportProjectPlugins([new ProjectPlugin("provider", "postgres", "NSchema.Postgres", "4.0.0", true, "/c")]);
+
+        // Assert
+        _out.Output.ShouldContain("postgres");
+        _out.Output.ShouldContain("NSchema.Postgres");
+        _out.Output.ShouldContain("4.0.0");
+    }
+
+    [Fact]
+    public void ReportCachedPlugins_Empty_WritesEmptyMessageWithRoot()
+    {
+        // Act
+        _sut.ReportCachedPlugins("/cache/root", []);
+
+        // Assert
+        _out.Output.ShouldContain("/cache/root");
+        _out.Output.ShouldContain("empty");
+    }
+
+    [Fact]
+    public void ReportCachedPlugins_WritesPackageVersionAndHumanReadableSize()
+    {
+        // Act — 2 MiB renders as a compact binary size.
+        _sut.ReportCachedPlugins("/cache/root", [new CachedPlugin("NSchema.Postgres", "4.0.0", "/c", 2 * 1024 * 1024)]);
+
+        // Assert
+        _out.Output.ShouldContain("NSchema.Postgres");
+        _out.Output.ShouldContain("4.0.0");
+        _out.Output.ShouldContain("MiB");
+    }
+
+    [Fact]
+    public void ReportPluginDetail_NotRestored_HintsToRunInit()
+    {
+        // Act
+        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", "4.0.0", false, null));
+
+        // Assert
+        _out.Output.ShouldContain("s3");
+        _out.Output.ShouldContain("NSchema.Aws");
+        _out.Output.ShouldContain("init");
     }
 
     [Fact]

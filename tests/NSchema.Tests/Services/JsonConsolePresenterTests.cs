@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NSchema.Configuration.Plugins;
 using NSchema.Diff.Model;
 using NSchema.Operations;
 using NSchema.Schema.Model;
@@ -145,6 +146,54 @@ public sealed class JsonConsolePresenterTests
         evt.GetProperty("operation").GetString().ShouldBe("apply");
         evt.GetProperty("who").GetString().ShouldBe("tom@dev");
         evt.GetProperty("expires").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public void ReportProjectPlugins_EmitsArrayWithRoleAndCacheStatus()
+    {
+        // Arrange
+        var plugins = new[]
+        {
+            new ProjectPlugin("provider", "postgres", "NSchema.Postgres", "4.0.0", Restored: true, CachePath: "/c"),
+        };
+
+        // Act
+        _sut.ReportProjectPlugins(plugins);
+
+        // Assert — a single clean array (a structured query result, not the NDJSON log stream).
+        var array = StdoutEvents().ShouldHaveSingleItem();
+        array.ValueKind.ShouldBe(JsonValueKind.Array);
+        array[0].GetProperty("role").GetString().ShouldBe("provider");
+        array[0].GetProperty("label").GetString().ShouldBe("postgres");
+        array[0].GetProperty("restored").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ReportCachedPlugins_EmitsRootAndPluginsArray()
+    {
+        // Arrange
+        var cached = new[] { new CachedPlugin("NSchema.Postgres", "4.0.0", "/c", 2048) };
+
+        // Act
+        _sut.ReportCachedPlugins("/root", cached);
+
+        // Assert
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("cacheRoot").GetString().ShouldBe("/root");
+        evt.GetProperty("plugins")[0].GetProperty("sizeBytes").GetInt64().ShouldBe(2048);
+    }
+
+    [Fact]
+    public void ReportPluginDetail_EmitsSingleObject_OmittingNullCachePath()
+    {
+        // Act
+        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", "4.0.0", Restored: false, CachePath: null));
+
+        // Assert
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("label").GetString().ShouldBe("s3");
+        evt.GetProperty("restored").GetBoolean().ShouldBeFalse();
+        evt.TryGetProperty("cachePath", out _).ShouldBeFalse();
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using NSchema.Configuration.Plugins;
 using NSchema.Operations;
 using NSchema.State.Model;
 
@@ -52,6 +53,21 @@ internal interface IConsoleMessenger
     /// Reports the information about a lock.
     /// </summary>
     void ReportLockInfo(StateLockInfo? info);
+
+    /// <summary>
+    /// Reports the plugins a project pins (provider and backend), annotated with their cache status.
+    /// </summary>
+    void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins);
+
+    /// <summary>
+    /// Reports the detail of a single project plugin.
+    /// </summary>
+    void ReportPluginDetail(ProjectPlugin plugin);
+
+    /// <summary>
+    /// Reports the restored plugins currently held in the global plugin cache.
+    /// </summary>
+    void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins);
 
     /// <summary>
     /// Reports an error. Receives the original <see cref="Exception"/> so the messenger can present it however suits its format.

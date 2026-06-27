@@ -1,4 +1,5 @@
 using NSchema.Configuration;
+using NSchema.Configuration.Plugins;
 using NSchema.Operations;
 using NSchema.Policies;
 using NSchema.State.Model;
@@ -81,6 +82,96 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
         {
             Detail(expires <= DateTimeOffset.UtcNow ? $"Expires: {expires:u} (expired)" : $"Expires: {expires:u}");
         }
+    }
+
+    public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins)
+    {
+        if (plugins.Count == 0)
+        {
+            Out.MarkupLine("[grey]No provider or backend plugins are configured for this project.[/]");
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Role")
+            .AddColumn("Plugin")
+            .AddColumn("Package")
+            .AddColumn("Version")
+            .AddColumn("Restored");
+
+        foreach (var plugin in plugins)
+        {
+            table.AddRow(
+                new Markup(Markup.Escape(plugin.Role)),
+                new Markup(Markup.Escape(plugin.Label)),
+                new Markup(Markup.Escape(plugin.PackageId)),
+                new Markup(Markup.Escape(plugin.Version)),
+                new Markup(RestoredLabel(plugin.Restored)));
+        }
+
+        Out.Write(table);
+    }
+
+    public void ReportPluginDetail(ProjectPlugin plugin)
+    {
+        Out.MarkupLineInterpolated($"[bold]{plugin.Label}[/] [grey]({plugin.Role})[/]");
+        Detail($"Package: {plugin.PackageId}");
+        Detail($"Version: {plugin.Version}");
+        if (plugin.Restored)
+        {
+            Detail($"Restored: yes");
+            Detail($"Cache path: {plugin.CachePath}");
+        }
+        else
+        {
+            Detail("Restored: no — run 'nschema init' to restore it.");
+        }
+    }
+
+    public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins)
+    {
+        Out.MarkupLineInterpolated($"[bold]Plugin cache:[/] {cacheRoot}");
+
+        if (plugins.Count == 0)
+        {
+            Out.MarkupLine("[grey]The plugin cache is empty.[/]");
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Package")
+            .AddColumn("Version")
+            .AddColumn(new TableColumn("Size").RightAligned());
+
+        foreach (var plugin in plugins)
+        {
+            table.AddRow(
+                Markup.Escape(plugin.PackageId),
+                Markup.Escape(plugin.Version),
+                Markup.Escape(FormatSize(plugin.SizeBytes)));
+        }
+
+        Out.Write(table);
+        Detail($"{plugins.Count} cached, {FormatSize(plugins.Sum(p => p.SizeBytes))} total. Remove with: nschema plugin cache remove <package> [version]");
+    }
+
+    private static string RestoredLabel(bool restored) => restored ? "[green]yes[/]" : "[yellow]no[/]";
+
+    // Compact binary size for cache listings (KiB/MiB/GiB), rounded to one decimal above a kibibyte.
+    private static string FormatSize(long bytes)
+    {
+        string[] units = ["B", "KiB", "MiB", "GiB", "TiB"];
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+
+        return unit == 0 ? $"{bytes} {units[unit]}" : $"{size:0.0} {units[unit]}";
     }
 
     public void ReportException(Exception exception)

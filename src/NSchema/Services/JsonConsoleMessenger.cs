@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NSchema.Configuration.Plugins;
 using NSchema.Operations;
 using NSchema.State.Model;
 
@@ -57,6 +58,15 @@ internal class JsonConsoleMessenger : IConsoleMessenger
     public void ReportLockInfo(StateLockInfo? info) => Write(Out, info is null
         ? new LockReport(false, null, null, null, null, null)
         : new LockReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
+
+    // The plugin inspection commands are structured queries, so they emit a single clean object/array (not the gated
+    // NDJSON log stream) — the same exception lock status makes.
+    public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins) => Write(Out, plugins);
+
+    public void ReportPluginDetail(ProjectPlugin plugin) => Write(Out, plugin);
+
+    public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins) =>
+        Write(Out, new { cacheRoot, plugins });
 
     // The --json shape for a lock (lock status / lock acquire): a single object so a script can gate on `locked`
     // and read `lockId` to release it later.

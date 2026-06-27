@@ -14,8 +14,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 {
     private const string SynthAssemblyName = "nschema-plugin-host";
 
-    private readonly string _cacheRoot = cacheRoot ??
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nschema", "plugins");
+    // PluginCache is the single source of truth for the on-disk layout; the loader populates what it describes.
+    private readonly PluginCache _cache = new(cacheRoot);
 
     /// <summary>
     /// Loads the plugin(s) the given package contains at the given version, restoring the package on first use.
@@ -54,7 +54,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         var hostMajor = typeof(INSchemaPlugin).Assembly.GetName().Version?.Major
             ?? throw new InvalidOperationException("Could not determine the host NSchema.Core major version.");
 
-        var projectDir = Path.Combine(_cacheRoot, packageId, "_resolve");
+        var projectDir = _cache.ResolveDirectory(packageId);
         Directory.CreateDirectory(projectDir);
         var projectPath = Path.Combine(projectDir, SynthAssemblyName + ".csproj");
 
@@ -85,9 +85,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
     private string EnsurePublished(string packageId, string version, bool allowRestore)
     {
-        var versionDir = Path.Combine(_cacheRoot, packageId, version);
-        var publishDir = Path.Combine(versionDir, "publish");
-        var pluginAssembly = Path.Combine(publishDir, packageId + ".dll");
+        var publishDir = _cache.PublishDirectory(packageId, version);
+        var pluginAssembly = _cache.PluginAssembly(packageId, version);
 
         // Restoring a plugin is expensive, so a published closure is reused across runs.
         if (File.Exists(pluginAssembly))
@@ -102,7 +101,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
                 $"Plugin '{packageId}' {version} is not restored, and --no-init was specified. Run 'nschema init' (or drop --no-init) to restore it first.");
         }
 
-        var projectDir = Path.Combine(versionDir, "proj");
+        var projectDir = _cache.ProjectDirectory(packageId, version);
         Directory.CreateDirectory(projectDir);
         File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId, version));
 
