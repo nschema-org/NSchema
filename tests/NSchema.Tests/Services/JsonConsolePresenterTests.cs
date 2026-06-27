@@ -7,16 +7,16 @@ using NSchema.Sql.Model;
 
 namespace NSchema.Tests.Services;
 
-public sealed class JsonOperationReporterTests
+public sealed class JsonConsolePresenterTests
 {
     private readonly StringWriter _out = new();
     private readonly StringWriter _error = new();
     private readonly RunOutcome _outcome = new();
-    private readonly JsonOperationReporter _sut;
+    private readonly JsonConsolePresenter _sut;
 
-    public JsonOperationReporterTests() => _sut = Build(Verbosity.Normal);
+    public JsonConsolePresenterTests() => _sut = Build(Verbosity.Normal);
 
-    private JsonOperationReporter Build(Verbosity verbosity) =>
+    private JsonConsolePresenter Build(Verbosity verbosity) =>
         new(_outcome, new OutputVerbosity(verbosity), _out, _error);
 
     private List<JsonElement> StderrEvents() => _error.ToString()

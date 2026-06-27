@@ -13,7 +13,7 @@ using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
 
-public sealed class SpectreOperationReporterTests
+public sealed class SpectreConsolePresenterTests
 {
     private readonly TestConsole _out = new();
     private readonly TestConsole _error = new();
@@ -21,16 +21,16 @@ public sealed class SpectreOperationReporterTests
     private readonly ISchemaRenderer _schemaRenderer = Substitute.For<ISchemaRenderer>();
     private readonly ISqlPlanRenderer _sqlPlanRenderer = Substitute.For<ISqlPlanRenderer>();
     private readonly RunOutcome _outcome = new();
-    private readonly SpectreOperationReporter _sut;
+    private readonly SpectreConsolePresenter _sut;
 
-    public SpectreOperationReporterTests()
+    public SpectreConsolePresenterTests()
     {
         _out.Profile.Width = 200;
         _error.Profile.Width = 200;
         _sut = Build(Verbosity.Normal);
     }
 
-    private SpectreOperationReporter Build(Verbosity verbosity) =>
+    private SpectreConsolePresenter Build(Verbosity verbosity) =>
         new(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, _outcome, new OutputVerbosity(verbosity));
 
     [Theory]

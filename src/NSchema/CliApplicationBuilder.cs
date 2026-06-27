@@ -29,12 +29,15 @@ internal sealed class CliApplicationBuilder
 
         if (json)
         {
-            _builder.UseReporter<JsonOperationReporter>();
+            _builder.Services.AddSingleton<IConsolePresenter, JsonConsolePresenter>();
         }
         else
         {
-            _builder.UseReporter<SpectreOperationReporter>();
+            _builder.Services.AddSingleton<IConsolePresenter, SpectreConsolePresenter>();
         }
+
+        // Re-register the presenter as the reporter as well.
+        _builder.UseReporter(sp => sp.GetRequiredService<IConsolePresenter>());
 
         _builder.Services.AddSingleton(AnsiConsole.Console);
         _builder.Services.AddSingleton<RunOutcome>();

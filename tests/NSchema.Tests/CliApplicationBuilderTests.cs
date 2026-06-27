@@ -116,7 +116,7 @@ public sealed class CliApplicationBuilderTests
 
         // Assert
         var reporter = app.Services.GetRequiredService<IOperationReporter>();
-        reporter.ShouldBeOfType<SpectreOperationReporter>();
+        reporter.ShouldBeOfType<SpectreConsolePresenter>();
     }
 
     [Fact]

@@ -9,18 +9,18 @@ using NSchema.Sql.Model;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IOperationReporter"/> that emits machine-readable output as newline-delimited JSON.
+/// An <see cref="IConsolePresenter"/> that emits machine-readable output as newline-delimited JSON.
 /// </summary>
-internal sealed class JsonOperationReporter : IOperationReporter
+internal sealed class JsonConsolePresenter : IConsolePresenter
 {
     private readonly RunOutcome _outcome;
     private readonly OutputVerbosity _verbosity;
     private readonly TextWriter _out;
     private readonly TextWriter _error;
 
-    public JsonOperationReporter(RunOutcome outcome, OutputVerbosity verbosity) : this(outcome, verbosity, Console.Out, Console.Error) { }
+    public JsonConsolePresenter(RunOutcome outcome, OutputVerbosity verbosity) : this(outcome, verbosity, Console.Out, Console.Error) { }
 
-    internal JsonOperationReporter(RunOutcome outcome, OutputVerbosity verbosity, TextWriter output, TextWriter error)
+    internal JsonConsolePresenter(RunOutcome outcome, OutputVerbosity verbosity, TextWriter output, TextWriter error)
     {
         _outcome = outcome;
         _verbosity = verbosity;
@@ -74,6 +74,9 @@ internal sealed class JsonOperationReporter : IOperationReporter
 
         Write(_error, new { type = "log", level = kind, message });
     }
+
+    // A detail line is secondary narration, so it joins the gated log stream (on stderr) like other messages.
+    public void Detail(string message) => Report(MessageKind.Announcement, message);
 
     public void ReportException(Exception exception) => Write(_error, new ErrorEvent(exception.Message));
 

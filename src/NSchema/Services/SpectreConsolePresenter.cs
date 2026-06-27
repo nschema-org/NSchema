@@ -15,9 +15,9 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IOperationReporter"/> that presents run output with Spectre.Console.
+/// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console.
 /// </summary>
-internal sealed class SpectreOperationReporter : IOperationReporter
+internal sealed class SpectreConsolePresenter : IConsolePresenter
 {
     private readonly IAnsiConsole _out;
     private readonly IAnsiConsole _error;
@@ -33,7 +33,7 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
     /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    public SpectreOperationReporter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
+    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
         : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer, outcome, verbosity) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
@@ -43,7 +43,7 @@ internal sealed class SpectreOperationReporter : IOperationReporter
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
     /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    internal SpectreOperationReporter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
+    internal SpectreConsolePresenter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
     {
         _out = output;
         _error = error;
@@ -81,6 +81,13 @@ internal sealed class SpectreOperationReporter : IOperationReporter
                 _out.MarkupLineInterpolated($"{message}");
                 break;
         }
+    }
+
+    public void Detail(string message)
+    {
+        // An indented, dimmed secondary line under a headline (Success/Warning). Always shown — it carries result
+        // detail (lock ids, expiry) the command exists to surface.
+        _out.MarkupLineInterpolated($"[grey]  {message}[/]");
     }
 
     public void ReportException(Exception exception)
