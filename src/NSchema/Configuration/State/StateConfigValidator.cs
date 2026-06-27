@@ -6,14 +6,12 @@ internal sealed class StateConfigValidator : AbstractValidator<StateConfig>
 {
     public StateConfigValidator()
     {
-        RuleFor(x => x.ConfiguredSectionCount)
-            .LessThanOrEqualTo(1)
+        // The built-in file store and a backend plugin are mutually exclusive — at most one BACKEND block.
+        RuleFor(x => x)
+            .Must(state => state.File is null || state.Plugin is null)
             .WithMessage("More than one state store is configured; specify exactly one.");
 
         RuleFor(x => x.File)
             .SetNonNullableValidator(new FileStateConfigValidator());
-
-        RuleFor(x => x.S3)
-            .SetNonNullableValidator(new S3StateConfigValidator());
     }
 }

@@ -1,4 +1,4 @@
-namespace NSchema.Commands.Init;
+namespace NSchema.Commands.Scaffold;
 
 /// <summary>
 /// The database provider a scaffolded project is configured for.

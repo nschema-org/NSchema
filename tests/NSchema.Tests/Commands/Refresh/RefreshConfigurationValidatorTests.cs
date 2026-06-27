@@ -1,5 +1,4 @@
 using NSchema.Commands.Refresh;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Refresh;
@@ -14,7 +13,7 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -31,7 +30,7 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -49,8 +48,8 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            State = new StateConfig(),
+            Provider = TestConfigs.Provider(),
+            State = null,
         };
 
         // Act

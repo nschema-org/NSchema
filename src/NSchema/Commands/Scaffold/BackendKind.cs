@@ -1,4 +1,4 @@
-namespace NSchema.Commands.Init;
+namespace NSchema.Commands.Scaffold;
 
 /// <summary>
 /// The state backend a scaffolded project is configured for.

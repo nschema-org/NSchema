@@ -1,5 +1,4 @@
 using NSchema.Commands.Drift;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Drift;
@@ -14,7 +13,7 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -31,7 +30,7 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -49,8 +48,8 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            State = new StateConfig(),
+            Provider = TestConfigs.Provider(),
+            State = null,
         };
 
         // Act

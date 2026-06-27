@@ -1,5 +1,4 @@
 using NSchema.Commands.Doctor;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Doctor;
@@ -14,7 +13,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
+            Provider = TestConfigs.Provider(),
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -31,8 +30,8 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — doctor can check just the database when no state store is declared.
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            State = new StateConfig(),
+            Provider = TestConfigs.Provider(),
+            State = null,
         };
 
         // Act
@@ -48,7 +47,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — doctor can check just the state store when no provider is declared (offline project).
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -65,8 +64,8 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — neither a provider nor a state store means there is nothing for doctor to probe.
         var config = new DoctorConfiguration
         {
-            Provider = new ProviderConfig(),
-            State = new StateConfig(),
+            Provider = null,
+            State = null,
         };
 
         // Act

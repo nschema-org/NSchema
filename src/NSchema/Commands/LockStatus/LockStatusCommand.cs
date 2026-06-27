@@ -31,7 +31,7 @@ internal static class LockStatusCommand
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
-        var json = CommonOptions.Json.GetValueOrDefault(null, parseResult, false);
+        var json = CommonOptions.Json.GetValueOrDefault(parseResult, false);
 
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)

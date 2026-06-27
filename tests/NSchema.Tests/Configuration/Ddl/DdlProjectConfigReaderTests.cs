@@ -1,5 +1,4 @@
 using NSchema.Configuration.Ddl;
-using NSchema.Diff.Policies;
 
 namespace NSchema.Tests.Configuration.Ddl;
 
@@ -23,100 +22,87 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task Provider_Postgres_MapsConnectionStringAndTimeout()
+    public async Task Provider_ResolvesBuiltInPluginReference()
     {
-        var config = await Read("PROVIDER postgres ( connection_string = 'host=db', command_timeout = 30 );");
+        var config = await Read("PROVIDER postgres ( version = '4.0.0', connection_string = 'host=db' );");
 
-        config.Provider!.Postgres!.ConnectionString.ShouldBe("host=db");
-        config.Provider.Postgres.CommandTimeout.ShouldBe(30);
+        var plugin = config.Provider!;
+        plugin.PackageId.ShouldBe("NSchema.Postgres");
+        plugin.Label.ShouldBe("postgres");
+        plugin.Version.ShouldBe("4.0.0");
+        // The provider's own attributes survive on the block for the plugin to interpret; version is stripped.
+        plugin.Block.Attribute("connection_string")!.AsString().ShouldBe("host=db");
+        plugin.Block.Attribute("version").ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("sqlite", "NSchema.Sqlite")]
+    [InlineData("sqlserver", "NSchema.SqlServer")]
+    public async Task Provider_MapsBuiltInLabelToPackage(string label, string package)
+    {
+        var config = await Read($"PROVIDER {label} ( version = '4.0.0', connection_string = 'x' );");
+
+        config.Provider!.PackageId.ShouldBe(package);
     }
 
     [Fact]
-    public async Task Provider_Postgres_MapsUsernameAndPassword()
+    public async Task Provider_Source_OverridesWithThirdPartyPackage()
     {
-        var config = await Read("PROVIDER postgres ( connection_string = 'host=db', username = 'app', password = 'secret' );");
+        var config = await Read("PROVIDER oracle ( source = 'Acme.NSchema.Oracle', version = '1.0.0' );");
 
-        config.Provider!.Postgres!.Username.ShouldBe("app");
-        config.Provider.Postgres.Password.ShouldBe("secret");
+        config.Provider!.PackageId.ShouldBe("Acme.NSchema.Oracle");
+        config.Provider!.Label.ShouldBe("oracle");
     }
 
     [Fact]
-    public async Task Provider_Sqlite_MapsConnectionString()
-    {
-        var config = await Read("PROVIDER sqlite ( connection_string = 'Data Source=app.db' );");
-
-        config.Provider!.Sqlite!.ConnectionString.ShouldBe("Data Source=app.db");
-        config.Provider.Postgres.ShouldBeNull();
-    }
+    public async Task Provider_MissingVersion_Throws()
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PROVIDER postgres ( connection_string = 'x' );")))
+            .Message.ShouldContain("version");
 
     [Fact]
-    public async Task Provider_SqlServer_MapsConnectionStringAndTimeout()
-    {
-        var config = await Read("PROVIDER sqlserver ( connection_string = 'Server=db', command_timeout = 30 );");
-
-        config.Provider!.SqlServer!.ConnectionString.ShouldBe("Server=db");
-        config.Provider.SqlServer.CommandTimeout.ShouldBe(30);
-        config.Provider.Postgres.ShouldBeNull();
-    }
-
-    [Fact]
-    public async Task Provider_SqlServer_MapsUsernameAndPassword()
-    {
-        var config = await Read("PROVIDER sqlserver ( connection_string = 'Server=db', username = 'app', password = 'secret' );");
-
-        config.Provider!.SqlServer!.Username.ShouldBe("app");
-        config.Provider.SqlServer.Password.ShouldBe("secret");
-    }
+    public async Task Provider_UnknownLabelWithoutSource_Throws()
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PROVIDER mysql ( version = '1.0.0' );")))
+            .Message.ShouldContain("source");
 
     [Fact]
     public async Task Backend_File_MapsPath()
         => (await Read("BACKEND file ( path = './state.json' );")).State!.File!.Path.ShouldBe("./state.json");
 
     [Fact]
-    public async Task Backend_S3_MapsBucketAndKey()
+    public async Task Backend_S3_ResolvesPluginReference()
     {
-        var state = (await Read("BACKEND s3 ( bucket = 'my-bucket', key = 'env/state.json' );")).State!;
+        var plugin = (await Read("BACKEND s3 ( version = '4.0.0', bucket = 'my-bucket', key = 'state.json' );")).State!.Plugin!;
 
-        state.S3!.Bucket.ShouldBe("my-bucket");
-        state.S3.Key.ShouldBe("env/state.json");
-        state.S3.ForcePathStyle.ShouldBeFalse();
+        plugin.PackageId.ShouldBe("NSchema.Aws");
+        plugin.Label.ShouldBe("s3");
+        plugin.Block.Attribute("bucket")!.AsString().ShouldBe("my-bucket");
     }
 
     [Fact]
-    public async Task Backend_S3_MapsForcePathStyle()
-    {
-        var state = (await Read("BACKEND s3 ( bucket = 'b', key = 'k', force_path_style = true );")).State!;
-
-        state.S3!.ForcePathStyle.ShouldBeTrue();
-    }
+    public async Task Backend_File_UnknownAttribute_Throws()
+        // The built-in file store parses its own attributes; other backends defer attribute validation to the plugin.
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("BACKEND file ( badly = 'x' );")))
+            .Message.ShouldContain("Unknown attribute");
 
     [Fact]
-    public async Task Nschema_DestructiveAction_MapsPolicy()
-        => (await Read("NSCHEMA ( destructive_action = 'warn' );")).DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Warn);
+    public async Task Nschema_Block_IsRejected()
+        // The NSCHEMA config block was removed: dialect is the provider's, transaction_mode isn't wired, and the
+        // destructive-action policy is a flag / env var — so an NSCHEMA block is now just an unknown block.
+        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("NSCHEMA ( dialect = 'postgres' );")))
+            .Message.ShouldContain("Unknown configuration block");
 
     [Fact]
-    public async Task Nschema_ReservedKeys_AreAcceptedAndIgnored()
-    {
-        // dialect (provider-driven) and transaction_mode are reserved for forward-compat with the core grammar.
-        var config = await Read("NSCHEMA ( dialect = 'postgres', transaction_mode = 'single' );");
-
-        config.DestructiveActionPolicy.ShouldBeNull();
-    }
-
-    [Fact]
-    public async Task AllThreeBlocks_Compose()
+    public async Task ProviderAndBackend_Compose()
     {
         var config = await Read(
             """
-            NSCHEMA ( destructive_action = 'allow' );
-            PROVIDER postgres ( connection_string = 'host=db' );
+            PROVIDER postgres ( version = '4.0.0', connection_string = 'host=db' );
             BACKEND file ( path = './state.json' );
             CREATE SCHEMA app;
             """);
 
-        config.Provider!.Postgres!.ConnectionString.ShouldBe("host=db");
+        config.Provider!.Label.ShouldBe("postgres");
         config.State!.File!.Path.ShouldBe("./state.json");
-        config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Allow);
     }
 
     [Fact]
@@ -126,7 +112,6 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
 
         config.Provider.ShouldBeNull();
         config.State.ShouldBeNull();
-        config.DestructiveActionPolicy.ShouldBeNull();
     }
 
     [Fact]
@@ -135,31 +120,10 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
             .Message.ShouldContain("Unknown configuration block");
 
     [Fact]
-    public async Task UnknownProvider_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PROVIDER mysql ( connection_string = 'x' );")))
-            .Message.ShouldContain("provider");
-
-    [Fact]
-    public async Task UnknownAttribute_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PROVIDER postgres ( hostname = 'x' );")))
-            .Message.ShouldContain("Unknown attribute");
-
-    [Fact]
-    public async Task UnknownBackendAttribute_Throws()
-        // Each section model rejects its own unknowns; the message names the BACKEND section it came from.
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("BACKEND s3 ( bukket = 'x' );")))
-            .Message.ShouldContain("Unknown attribute 'bukket' in a BACKEND s3 block");
-
-    [Fact]
     public async Task DuplicateProvider_Throws()
         => (await Should.ThrowAsync<InvalidOperationException>(() =>
-                Read("PROVIDER postgres ( connection_string = 'a' ); PROVIDER postgres ( connection_string = 'b' );")))
+                Read("PROVIDER postgres ( version = '4.0.0' ); PROVIDER postgres ( version = '4.0.0' );")))
             .Message.ShouldContain("More than one");
-
-    [Fact]
-    public async Task InvalidDestructiveAction_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("NSCHEMA ( destructive_action = 'nope' );")))
-            .Message.ShouldContain("destructive_action");
 
     // ── Environment overlays ──────────────────────────────────────────────────
 
@@ -170,23 +134,23 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
         var config = await ReadEnvironment(
             "BACKEND file ( path = './state.json' );",
             "prod",
-            "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );");
+            "BACKEND s3 ( version = '4.0.0', bucket = 'prod-bucket', key = 'state.json' );");
 
         config.State!.File.ShouldBeNull();
-        config.State.S3!.Bucket.ShouldBe("prod-bucket");
+        config.State.Plugin!.Block.Attribute("bucket")!.AsString().ShouldBe("prod-bucket");
     }
 
     [Fact]
     public async Task Environment_BaseSliceSurvivesWhenOverlayOmitsIt()
     {
-        // The overlay only sets the policy; the base provider carries through unchanged.
+        // The overlay only declares a backend; the base provider carries through unchanged.
         var config = await ReadEnvironment(
-            "PROVIDER postgres ( connection_string = 'host=base' );",
+            "PROVIDER postgres ( version = '4.0.0', connection_string = 'host=base' );",
             "prod",
-            "NSCHEMA ( destructive_action = 'error' );");
+            "BACKEND file ( path = './prod.state.json' );");
 
-        config.Provider!.Postgres!.ConnectionString.ShouldBe("host=base");
-        config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Error);
+        config.Provider!.Block.Attribute("connection_string")!.AsString().ShouldBe("host=base");
+        config.State!.File!.Path.ShouldBe("./prod.state.json");
     }
 
     [Fact]
@@ -204,7 +168,7 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     {
         // An overlay file is present, but with no environment selected the base config must not read its blocks.
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.env.prod.sql"),
-            "BACKEND s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
+            "BACKEND s3 ( version = '4.0.0', bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
 
         var config = await Read("CREATE SCHEMA app;");
 

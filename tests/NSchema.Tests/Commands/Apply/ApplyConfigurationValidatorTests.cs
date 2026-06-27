@@ -1,5 +1,4 @@
 using NSchema.Commands.Apply;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Apply;
@@ -14,8 +13,8 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange
         var config = new ApplyConfiguration
         {
-            Provider = new ProviderConfig { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } },
-            State = new StateConfig(),
+            Provider = TestConfigs.Provider(),
+            State = null,
         };
 
         // Act
@@ -31,8 +30,8 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange
         var config = new ApplyConfiguration
         {
-            Provider = new ProviderConfig(),
-            State = new StateConfig(),
+            Provider = null,
+            State = null,
         };
 
         // Act

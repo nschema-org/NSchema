@@ -12,6 +12,36 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [Unreleased]
+
+Version 4.0.0 changes the provider and backend model to function as plugins resolved through the NuGet package manager.
+
+### Added
+
+- **Third-party providers and backends.** A `PROVIDER` / `BACKEND` block can name any plugin package with a `source` attribute.
+- **`nschema init` now restores plugins.** `init` now pre-fetches the provider and backend plugins pinned in your config. Operations restore implicitly
+  on first use; `init` just does it up front so the first real command is fast.
+- **`--no-init` flag.** Skips the implicit plugin restore and requires the plugins to be cached already.
+
+### Changed
+
+- **Providers and backends are now plugins.** They ship as separate NuGet packages instead of being bundled with the tool; `nschema` restores the one
+  pinned in your config on first use (it shells out to the .NET SDK to do so). The local-file state backend remains built in.
+- **Scaffolding moved from `init` to `nschema scaffold`.** Creating a starter project is now `nschema scaffold` (`init` became the restore command above).
+  Its `PROVIDER` / `BACKEND` config blocks and the sample schema are rendered by the plugins themselves.
+- **`PROVIDER` / `BACKEND` blocks now require a pinned `version`** (the plugin package version); the built-in `file` backend is the exception. A first-party
+  label (`postgres`, `sqlite`, `sqlserver`, `s3`) still resolves to its package automatically.
+- **A `PROVIDER` block is now required to select a provider.** `NSCHEMA_POSTGRES_CONNECTION_STRING` and the other connection-string variables no longer
+  name the provider on their own — they still override the connection string set in the block.
+- **`doctor` reports plugin problems as diagnostics.** A provider or backend that fails to restore or configure is now reported by `doctor` as a
+  health-check finding (every such problem at once) instead of aborting on the first.
+- Built on `NSchema.Core 4.0.0` and the 4.0 provider/backend packages.
+
+### Removed
+
+- **The `NSCHEMA` config block.** `destructive_action` moved to the `--destructive-actions` flag / the `NSCHEMA_DESTRUCTIVE_ACTION_POLICY` environment
+  variable; `dialect` and `transaction_mode` (never wired in) are gone. An `NSCHEMA` block is now rejected as an unknown configuration block.
+
 ## [3.4.0] - 2026-06-25
 
 ### Added
@@ -76,7 +106,9 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/nschema-org/NSchema/compare/v3.3.0...v3.4.0
+[3.3.0]: https://github.com/nschema-org/NSchema/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/nschema-org/NSchema/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/nschema-org/NSchema/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/nschema-org/NSchema/releases/tag/v3.0.0

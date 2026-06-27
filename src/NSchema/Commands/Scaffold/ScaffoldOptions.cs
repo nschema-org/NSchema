@@ -1,13 +1,13 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 
-namespace NSchema.Commands.Init;
+namespace NSchema.Commands.Scaffold;
 
-internal static class InitOptions
+internal static class ScaffoldOptions
 {
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force", "-f")
-        .WithDescription("Init even in a non-empty directory, overwriting any files.");
+        .WithDescription("Scaffold even in a non-empty directory, overwriting any files.");
 
     public static readonly OptionBinding<ProviderKind> Provider = OptionBinding.Create<ProviderKind>()
         .FromOption("--provider")

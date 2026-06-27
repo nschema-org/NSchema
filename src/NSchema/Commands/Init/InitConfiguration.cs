@@ -1,33 +1,29 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
+using NSchema.Configuration.Plugins;
+using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Init;
 
 /// <summary>
-/// Configuration for the init command.
+/// Configuration for the init command: the provider and backend plugins to restore.
 /// </summary>
 internal sealed class InitConfiguration : IBindable
 {
     /// <summary>
-    /// Whether to init the project even if the directory isn't empty.
+    /// The provider plugin to restore; <see langword="null"/> when none is configured.
     /// </summary>
-    public bool Force { get; set; }
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
-    /// The database provider to scaffold configuration and a sample schema for.
+    /// The state backend; only its plugin (if any) needs restoring — the built-in file store does not.
     /// </summary>
-    public ProviderKind Provider { get; set; } = ProviderKind.Postgres;
-
-    /// <summary>
-    /// The state backend to scaffold configuration for.
-    /// </summary>
-    public BackendKind Backend { get; set; } = BackendKind.File;
+    public StateConfig? State { get; set; }
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        InitOptions.Force.Bind(project, cli, f => Force = f);
-        InitOptions.Provider.Bind(project, cli, p => Provider = p);
-        InitOptions.Backend.Bind(project, cli, b => Backend = b);
+        Provider = project.Provider;
+        State = project.State;
     }
 }

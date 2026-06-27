@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Destroy;
@@ -14,12 +14,12 @@ internal sealed class DestroyConfiguration : IBindable
     /// <summary>
     /// The database provider the teardown is generated and executed against.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
     /// The state store the managed schema is read from and the post-destroy snapshot is written to; offline when no section is populated.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Whether to skip the interactive confirmation prompt before tearing down the schema.
@@ -30,12 +30,12 @@ internal sealed class DestroyConfiguration : IBindable
     /// Whether a state store is configured to read the managed schema from; when absent, the teardown source falls
     /// back to the desired schema globbed from the working directory.
     /// </summary>
-    public bool HasStateStore => State.ConfiguredSectionCount >= 1;
+    public bool HasStateStore => State is not null;
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        Provider.Bind(project, cli);
-        State.Bind(project, cli);
-        DestroyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
+        Provider = project.Provider;
+        State = project.State;
+        DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
     }
 }

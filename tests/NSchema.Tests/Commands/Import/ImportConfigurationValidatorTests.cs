@@ -1,5 +1,5 @@
 using NSchema.Commands.Import;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Commands.Import;
 
@@ -7,8 +7,7 @@ public sealed class ImportConfigurationValidatorTests
 {
     private readonly ImportConfigurationValidator _sut = new();
 
-    private static ProviderConfig AProvider() =>
-        new() { Postgres = new PostgresProviderConfig { ConnectionString = "Host=localhost" } };
+    private static PluginReference AProvider() => TestConfigs.Provider();
 
     [Fact]
     public void Valid_WithProvider()
@@ -40,7 +39,7 @@ public sealed class ImportConfigurationValidatorTests
     public void Invalid_WhenProviderMissing()
     {
         // Arrange
-        var config = new ImportConfiguration { Provider = new ProviderConfig(), OutputDirectory = "./schemas" };
+        var config = new ImportConfiguration { Provider = null, OutputDirectory = "./schemas" };
 
         // Act
         var result = _sut.Validate(config);

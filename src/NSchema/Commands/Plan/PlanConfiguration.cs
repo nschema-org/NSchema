@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 
@@ -15,12 +15,12 @@ internal sealed class PlanConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema; offline when no section is populated.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
     /// The state store enabling offline planning; absent when no section is populated.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the plan to specific database schemas (namespaces).
@@ -43,7 +43,7 @@ internal sealed class PlanConfiguration : IBindable
     /// Whether a state store is configured to read the managed schema from in <c>--destroy</c> mode; when absent,
     /// the teardown source falls back to the desired schema globbed from the working directory.
     /// </summary>
-    public bool HasStateStore => State.ConfiguredSectionCount >= 1;
+    public bool HasStateStore => State is not null;
 
     /// <summary>
     /// Optional path the computed plan is written to so it can be replayed later by <c>apply --plan-file</c>
@@ -58,12 +58,12 @@ internal sealed class PlanConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        Provider.Bind(project, cli);
-        State.Bind(project, cli);
-        PlanOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
-        PlanOptions.Scope.Bind(project, cli, s => Scope = s);
-        PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);
-        PlanOptions.Out.Bind(project, cli, o => OutFile = o);
-        PlanOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        Provider = project.Provider;
+        State = project.State;
+        PlanOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        PlanOptions.Scope.Bind(cli, s => Scope = s);
+        PlanOptions.Destroy.Bind(cli, d => Destroy = d);
+        PlanOptions.Out.Bind(cli, o => OutFile = o);
+        PlanOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

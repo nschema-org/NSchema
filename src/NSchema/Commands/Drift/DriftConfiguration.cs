@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Drift;
@@ -14,12 +14,12 @@ internal sealed class DriftConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema the recorded state is compared against.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
     /// The state store holding the recorded schema the live database is compared against.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the drift check to specific database schemas (namespaces).
@@ -33,9 +33,9 @@ internal sealed class DriftConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        Provider.Bind(project, cli);
-        State.Bind(project, cli);
-        DriftOptions.Scope.Bind(project, cli, s => Scope = s);
-        DriftOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        Provider = project.Provider;
+        State = project.State;
+        DriftOptions.Scope.Bind(cli, s => Scope = s);
+        DriftOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

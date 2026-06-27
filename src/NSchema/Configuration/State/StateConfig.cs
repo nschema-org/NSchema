@@ -1,54 +1,29 @@
-using System.CommandLine;
-using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration.Plugins;
 
 namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures a backend store used to keep state snapshots.
 /// </summary>
-internal sealed class StateConfig : IBindable
+internal sealed class StateConfig
 {
-    private static readonly OptionBinding<StateConfig> StateBinding = OptionBinding.Create<StateConfig>()
-        .FromProjectConfig(c => c.State);
+    private const string FileLabel = "file";
 
     /// <summary>
-    /// Local-file state store settings.
+    /// Local-file state store settings (built in; needs no plugin).
     /// </summary>
     public FileStateConfig? File { get; set; }
 
     /// <summary>
-    /// Amazon S3 state store settings.
+    /// The resolved state-store plugin reference (e.g. <c>s3</c>); <see langword="null"/> for the built-in file store.
     /// </summary>
-    public S3StateConfig? S3 { get; set; }
+    public PluginReference? Plugin { get; set; }
 
     /// <summary>
-    /// The number of state store sections populated. Zero means online-only (no state store).
-    /// </summary>
-    public int ConfiguredSectionCount => (File is not null ? 1 : 0) + (S3 is not null ? 1 : 0);
-
-    /// <summary>
-    /// Maps a <c>BACKEND</c> block onto a typed config, selecting the section from the block's label.
+    /// Maps a <c>BACKEND</c> block onto either the built-in file store or a resolved plugin reference.
     /// </summary>
     public static StateConfig FromBlock(ConfigBlock block) =>
-        block.Label?.ToLowerInvariant() switch
-        {
-            "file" => new StateConfig { File = FileStateConfig.FromBlock(block) },
-            "s3" => new StateConfig { S3 = S3StateConfig.FromBlock(block) },
-            _ => throw new InvalidOperationException($"Unknown or missing backend '{block.Label}' in a BACKEND block. Expected 'file' or 's3'."),
-        };
-
-    /// <summary>
-    /// Resolves the state store from the project config (it has no environment or command-line override today).
-    /// </summary>
-    public void Bind(DdlProjectConfig project, ParseResult cli) => StateBinding.Bind(project, cli, CopyFrom);
-
-    /// <summary>
-    /// Copies the populated sections from <paramref name="other"/> onto this instance.
-    /// </summary>
-    private void CopyFrom(StateConfig other)
-    {
-        File = other.File;
-        S3 = other.S3;
-    }
+        string.Equals(block.Label, FileLabel, StringComparison.OrdinalIgnoreCase)
+            ? new StateConfig { File = FileStateConfig.FromBlock(block) }
+            : new StateConfig { Plugin = PluginReference.ForBackend(block) };
 }

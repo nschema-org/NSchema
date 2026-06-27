@@ -31,6 +31,11 @@ internal static class CommonOptions
         .Recursive()
         .WithDescription("Emit machine-readable NDJSON output instead of formatted text.");
 
+    public static readonly OptionBinding<bool> NoInit = OptionBinding.Create<bool>()
+        .FromOption("--no-init")
+        .Recursive()
+        .WithDescription("Don't restore plugins; use only what's already cached, failing if a pinned plugin is missing.");
+
     public static readonly OptionBinding<bool> Verbose = OptionBinding.Create<bool>()
         .FromOption("--verbose", "-v")
         .Recursive()
@@ -45,7 +50,7 @@ internal static class CommonOptions
     {
         try
         {
-            var root = Directory.GetValueOrDefault(null, context.ParseResult, System.IO.Directory.GetCurrentDirectory());
+            var root = Directory.GetValueOrDefault(context.ParseResult, System.IO.Directory.GetCurrentDirectory());
             return ProjectGlobs.EnvironmentNames(root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)

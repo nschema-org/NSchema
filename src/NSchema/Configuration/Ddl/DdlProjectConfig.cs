@@ -1,6 +1,5 @@
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
 
 namespace NSchema.Configuration.Ddl;
 
@@ -10,17 +9,12 @@ namespace NSchema.Configuration.Ddl;
 internal sealed class DdlProjectConfig
 {
     /// <summary>
-    /// The live-database provider. Null when none is declared.
+    /// The live-database provider plugin reference. Null when none is declared.
     /// </summary>
-    public ProviderConfig? Provider { get; init; }
+    public PluginReference? Provider { get; init; }
 
     /// <summary>
     /// The state backend. Null when none is declared.
     /// </summary>
     public StateConfig? State { get; init; }
-
-    /// <summary>
-    /// The destructive-action policy. Null when unset.
-    /// </summary>
-    public DestructiveActionPolicy? DestructiveActionPolicy { get; init; }
 }

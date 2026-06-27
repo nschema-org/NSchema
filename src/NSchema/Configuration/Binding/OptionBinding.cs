@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.CommandLine.Completions;
 using System.Diagnostics.CodeAnalysis;
-using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration.Binding;
 
@@ -17,7 +16,7 @@ internal static class OptionBinding
 }
 
 /// <summary>
-/// Represents a binding to a single configuration value from any combination of project config, environment variable or CLI option.
+/// Represents a binding to a single configuration value from an environment variable and/or a CLI option.
 /// </summary>
 internal sealed class OptionBinding<T>
 {
@@ -29,7 +28,6 @@ internal sealed class OptionBinding<T>
 
     private string? _envVar;
     private Func<string, T>? _envParser;
-    private Func<DdlProjectConfig, T?>? _projectSelector;
     private Func<CompletionContext, IEnumerable<string>>? _completions;
 
     /// <summary>
@@ -54,15 +52,6 @@ internal sealed class OptionBinding<T>
     {
         _envVar = envVar;
         _envParser = parser;
-        return this;
-    }
-
-    /// <summary>
-    /// Adds a binding from a project config field.
-    /// </summary>
-    public OptionBinding<T> FromProjectConfig(Func<DdlProjectConfig, T?> selector)
-    {
-        _projectSelector = selector;
         return this;
     }
 
@@ -104,31 +93,22 @@ internal sealed class OptionBinding<T>
     }
 
     /// <summary>
-    /// Resolves this binding against the project config, environment, and parsed command line.
+    /// Resolves this binding against the environment, and parsed command line.
     /// </summary>
-    public void Bind(DdlProjectConfig project, ParseResult cli, Action<T> apply)
+    public void Bind(ParseResult cli, Action<T> apply)
     {
-        if (TryGetValue(project, cli, out var value))
+        if (TryGetValue(cli, out var value))
         {
             apply(value);
         }
     }
 
-    public T GetValueOrDefault(DdlProjectConfig? project, ParseResult cli, T defaultValue) =>
-        TryGetValue(project, cli, out var value) ? value : defaultValue;
+    public T GetValueOrDefault(ParseResult cli, T defaultValue) =>
+        TryGetValue(cli, out var value) ? value : defaultValue;
 
-    public bool TryGetValue(DdlProjectConfig? project, ParseResult cli, [NotNullWhen(true)] out T? value)
+    public bool TryGetValue(ParseResult cli, [NotNullWhen(true)] out T? value)
     {
         value = default;
-
-        if (project != null && _projectSelector is not null)
-        {
-            var projectValue = _projectSelector(project);
-            if (projectValue is not null)
-            {
-                value = projectValue;
-            }
-        }
 
         if (_envVar is not null && Environment.GetEnvironmentVariable(_envVar) is { } raw)
         {

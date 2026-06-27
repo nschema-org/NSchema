@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>3.4.0</Version>
+    <Version>4.0.0-alpha.1</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -45,21 +45,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Starter project files written verbatim by `nschema init`, one per provider/backend combination. -->
-    <EmbeddedResource Include="Commands\Init\Resources\Scaffold\*.sql" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="NSchema.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="NSchema.Aws" />
     <PackageReference Include="NSchema.Core" />
-    <PackageReference Include="NSchema.Postgres" />
-    <PackageReference Include="NSchema.Sqlite" />
-    <PackageReference Include="NSchema.SqlServer" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>

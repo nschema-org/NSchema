@@ -13,7 +13,7 @@ internal sealed class LockStatusConfiguration : IBindable
     /// <summary>
     /// The state store whose lock is inspected.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Whether to return the detailed exit code (<c>2</c> when the state is locked).
@@ -22,7 +22,7 @@ internal sealed class LockStatusConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        State.Bind(project, cli);
-        LockStatusOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        State = project.State;
+        LockStatusOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 
@@ -15,12 +15,12 @@ internal sealed class ApplyConfiguration : IBindable
     /// <summary>
     /// The database provider the plan is applied against.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
     /// The state store the post-apply snapshot is written to; offline when no section is populated.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the migration to specific database schemas (namespaces).
@@ -44,11 +44,11 @@ internal sealed class ApplyConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        Provider.Bind(project, cli);
-        State.Bind(project, cli);
-        ApplyOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
-        ApplyOptions.Scope.Bind(project, cli, s => Scope = s);
-        ApplyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
-        ApplyOptions.PlanFile.Bind(project, cli, p => PlanFile = p);
+        Provider = project.Provider;
+        State = project.State;
+        ApplyOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        ApplyOptions.Scope.Bind(cli, s => Scope = s);
+        ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
+        ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
     }
 }

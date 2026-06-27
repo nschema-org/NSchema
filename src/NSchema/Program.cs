@@ -9,8 +9,8 @@ var parseResult = root.Parse(args);
 // Disable the built-in error handling so we can do our own.
 var configuration = new System.CommandLine.InvocationConfiguration { EnableDefaultExceptionHandler = false };
 
-var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(null, parseResult, false);
-var json = CommonOptions.Json.GetValueOrDefault(null, parseResult, false);
+var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
+var json = CommonOptions.Json.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
 var error = ConsoleFactory.Create(Console.Error, colorDisabled);
 
