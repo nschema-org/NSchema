@@ -109,6 +109,20 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
+    public void Success_Interpolated_EmitsUnstyledPlainText()
+    {
+        // Act — the highlighting overload still emits plain text for JSON (no markup in the message).
+        var package = "postgres";
+        _sut.Success($"Restored {package} now");
+
+        // Assert
+        var evt = StderrEvents().ShouldHaveSingleItem();
+        evt.GetProperty("type").GetString().ShouldBe("log");
+        evt.GetProperty("level").GetString().ShouldBe("success");
+        evt.GetProperty("message").GetString().ShouldBe("Restored postgres now");
+    }
+
+    [Fact]
     public void Output_IsNewlineDelimited_OneObjectPerLine()
     {
         _sut.ReportDiff(new DatabaseDiff());

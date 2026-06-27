@@ -2,7 +2,8 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using Spectre.Console;
+using NSchema.Operations;
+using NSchema.Services;
 
 namespace NSchema.Commands.Init;
 
@@ -20,8 +21,8 @@ internal static class InitCommand
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await ConfigurationFactory.Load<InitConfiguration>(parseResult, environment, cancellationToken);
 
-        using var app = CliApplicationBuilder.Create().Build();
-        var console = app.Services.GetRequiredService<IAnsiConsole>();
+        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
         // The file backend is built in, so only the provider and a plugin-backed state store need restoring.
         var references = new List<PluginReference>();
@@ -36,16 +37,16 @@ internal static class InitCommand
 
         if (references.Count == 0)
         {
-            console.MarkupLine("Nothing to restore: no provider or plugin backend is configured.");
+            presenter.Announce("Nothing to restore: no provider or plugin backend is configured.");
             return;
         }
 
         var loader = new PluginLoader();
         foreach (var reference in references)
         {
-            console.MarkupLineInterpolated($"Restoring [yellow]{reference.PackageId}[/] {reference.Version}...");
+            presenter.Announce($"Restoring {reference.PackageId} {reference.Version}...");
             loader.Load(reference.PackageId, reference.Version);
-            console.MarkupLineInterpolated($"[green]✓[/] {reference.PackageId} {reference.Version}");
+            presenter.Success($"{reference.PackageId} {reference.Version}");
         }
     }
 }

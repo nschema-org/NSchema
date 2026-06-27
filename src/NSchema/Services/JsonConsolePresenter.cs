@@ -75,8 +75,18 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
         Write(_error, new { type = "log", level = kind, message });
     }
 
+    public void Announce(ConsoleMessage message) => Report(MessageKind.Announcement, message.Plain);
+
+    public void Progress(ConsoleMessage message) => Report(MessageKind.Progress, message.Plain);
+
+    public void Success(ConsoleMessage message) => Report(MessageKind.Success, message.Plain);
+
+    public void Warn(ConsoleMessage message) => Report(MessageKind.Warning, message.Plain);
+
     // A detail line is secondary narration, so it joins the gated log stream (on stderr) like other messages.
     public void Detail(string message) => Report(MessageKind.Announcement, message);
+
+    public void Detail(ConsoleMessage message) => Detail(message.Plain);
 
     public void ReportException(Exception exception) => Write(_error, new ErrorEvent(exception.Message));
 

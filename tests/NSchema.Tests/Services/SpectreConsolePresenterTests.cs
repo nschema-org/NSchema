@@ -110,6 +110,19 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
+    public void HighlightedHole_WithMarkupCharacters_IsEscaped()
+    {
+        // Arrange — array types contain square brackets, which are Spectre markup delimiters.
+        var name = "app.events [text[]]";
+
+        // Act
+        _sut.Success($"Imported {name}");
+
+        // Assert — escaped, not interpreted or leaked.
+        _out.Output.ShouldContain("app.events [text[]]");
+    }
+
+    [Fact]
     public void Error_WritesMessageToErrorConsole()
     {
         // Exception

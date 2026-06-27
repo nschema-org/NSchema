@@ -8,7 +8,32 @@ namespace NSchema.Services;
 internal interface IConsolePresenter : IOperationReporter
 {
     /// <summary>
+    /// Announces a neutral, top-level message.
+    /// </summary>
+    void Announce(ConsoleMessage message);
+
+    /// <summary>
+    /// Reports progress narration.
+    /// </summary>
+    void Progress(ConsoleMessage message);
+
+    /// <summary>
+    /// Reports a success outcome.
+    /// </summary>
+    void Success(ConsoleMessage message);
+
+    /// <summary>
+    /// Reports a warning.
+    /// </summary>
+    void Warn(ConsoleMessage message);
+
+    /// <summary>
     /// Writes an indented secondary line beneath a headline (e.g. the lock id and expiry under a <c>lock status</c> line).
     /// </summary>
     void Detail(string message);
+
+    /// <summary>
+    /// An indented secondary line.
+    /// </summary>
+    void Detail(ConsoleMessage message);
 }

@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Operations;
 using NSchema.Plan.PlanFile;
 using NSchema.Services;
 

@@ -54,41 +54,39 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
         _verbosity = verbosity;
     }
 
-    public void Report(MessageKind kind, string message)
+    public void Report(MessageKind kind, string message) => WriteLine(kind, Markup.Escape(message));
+
+    public void Announce(ConsoleMessage message) => WriteLine(MessageKind.Announcement, message.Styled);
+
+    public void Progress(ConsoleMessage message) => WriteLine(MessageKind.Progress, message.Styled);
+
+    public void Success(ConsoleMessage message) => WriteLine(MessageKind.Success, message.Styled);
+
+    public void Warn(ConsoleMessage message) => WriteLine(MessageKind.Warning, message.Styled);
+
+    private void WriteLine(MessageKind kind, string body)
     {
         if (!_verbosity.ShouldShow(kind))
         {
             return;
         }
 
-        switch (kind)
+        var (console, markup) = kind switch
         {
-            case MessageKind.Success:
-                _out.MarkupLineInterpolated($"[green]:check_mark: {message}[/]");
-                break;
-            case MessageKind.Warning:
-                _error.MarkupLineInterpolated($"[yellow]:warning: {message}[/]");
-                break;
-            case MessageKind.Progress:
-                _out.MarkupLineInterpolated($"[grey]{message}[/]");
-                break;
-            case MessageKind.Verbose:
-                // Dimmed and italicised so verbose detail reads as secondary to the run narration.
-                _out.MarkupLineInterpolated($"[grey italic]{message}[/]");
-                break;
-            case MessageKind.Announcement:
-            default:
-                _out.MarkupLineInterpolated($"{message}");
-                break;
-        }
+            MessageKind.Success => (_out, $"[green]:check_mark: {body}[/]"),
+            MessageKind.Warning => (_error, $"[yellow]:warning: {body}[/]"),
+            MessageKind.Progress => (_out, $"[grey]{body}[/]"),
+            // Dimmed and italicised so verbose detail reads as secondary to the run narration.
+            MessageKind.Verbose => (_out, $"[grey italic]{body}[/]"),
+            _ => (_out, body),
+        };
+
+        console.MarkupLine(markup);
     }
 
-    public void Detail(string message)
-    {
-        // An indented, dimmed secondary line under a headline (Success/Warning). Always shown — it carries result
-        // detail (lock ids, expiry) the command exists to surface.
-        _out.MarkupLineInterpolated($"[grey]  {message}[/]");
-    }
+    public void Detail(string message) => _out.MarkupLine($"[grey]  {Markup.Escape(message)}[/]");
+
+    public void Detail(ConsoleMessage message) => _out.MarkupLine($"[grey]  {message.Styled}[/]");
 
     public void ReportException(Exception exception)
     {
