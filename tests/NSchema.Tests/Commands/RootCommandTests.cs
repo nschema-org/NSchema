@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "drift", "doctor", "lock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "db", "drift", "doctor", "lock", "completion"], ignoreOrder: true);
     }
 
     [Fact]
@@ -39,6 +39,17 @@ public sealed class RootCommandTests
     }
 
     [Fact]
+    public void DbGroup_RegistersShow()
+    {
+        // Act — the db noun groups live-database inspection (the online counterpart to `state show`).
+        var dbCommand = _sut.Subcommands.Single(command => command.Name == "db");
+        var names = dbCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["show"], ignoreOrder: true);
+    }
+
+    [Fact]
     public void PlanGroup_RegistersShowSubcommand()
         // plan keeps its compute action (git-stash style) and gains `plan show <file>` for saved plans.
         => _sut.Subcommands.Single(command => command.Name == "plan")
@@ -50,6 +61,7 @@ public sealed class RootCommandTests
     [InlineData("refresh")]
     [InlineData("destroy")]
     [InlineData("state show")]
+    [InlineData("db show")]
     [InlineData("drift")]
     public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {

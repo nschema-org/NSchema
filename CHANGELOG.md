@@ -28,6 +28,7 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
   with `--force` to release whatever lock is held without naming it.
 - **`--no-lock` flag** on `apply`, `refresh`, and `destroy`. Runs without taking the state lock.
 - **`nschema state show <file>`** renders a state file on disk directly, without a configured backend.
+- **`nschema db show`** renders the live database schema, read directly from the database via the provider — the online counterpart to `state show`.
 
 ### Changed
 
@@ -54,7 +55,7 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 - **The `NSCHEMA` config block.** `destructive_action` moved to the `--destructive-actions` flag / the `NSCHEMA_DESTRUCTIVE_ACTION_POLICY` environment
   variable; `dialect` and `transaction_mode` (never wired in) are gone. An `NSCHEMA` block is now rejected as an unknown configuration block.
 - **The top-level `show`, `lock-status`, and `force-unlock` commands**, replaced by `state show` / `plan show` and the `lock` group above. The `show --online`
-  live-schema view is deferred to a future `db show` rather than shipped as a mode flag.
+  live-schema view is now `nschema db show` (a `db` noun group) rather than a mode flag.
 
 ## [3.4.0] - 2026-06-25
 

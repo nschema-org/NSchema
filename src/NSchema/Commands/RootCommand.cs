@@ -1,5 +1,6 @@
 using NSchema.Commands.Apply;
 using NSchema.Commands.Completion;
+using NSchema.Commands.Db;
 using NSchema.Commands.Destroy;
 using NSchema.Commands.Doctor;
 using NSchema.Commands.Drift;
@@ -40,6 +41,7 @@ internal static class RootCommand
         root.Subcommands.Add(ImportCommand.Create());
         root.Subcommands.Add(DestroyCommand.Create());
         root.Subcommands.Add(StateCommand.Create());
+        root.Subcommands.Add(DbCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
         root.Subcommands.Add(LockCommand.Create());
