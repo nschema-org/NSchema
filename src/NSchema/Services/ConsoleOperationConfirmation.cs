@@ -10,32 +10,8 @@ internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsol
 {
     public ValueTask<bool> Confirm(OperationConfirmationRequest request, CancellationToken cancellationToken = default)
     {
-        // The base request no longer carries a plan: apply/destroy describe an action count, force-unlock describes a
-        // lock override, so each operation supplies its own summary, prompt, and the flag that skips it.
         var (summary, question, skipFlag) = Describe(request);
-
-        console.MarkupLine(summary);
-
-        if (autoApprove)
-        {
-            console.MarkupLine("[grey]Auto-approve is enabled; skipping confirmation.[/]");
-            return ValueTask.FromResult(true);
-        }
-
-        // Without an interactive terminal (redirected stdin / CI / a container) there is nothing to read.
-        if (!console.Profile.Capabilities.Interactive)
-        {
-            throw new ConfirmationDeclinedException($"This operation needs confirmation, but there is no interactive terminal. Re-run with {skipFlag} to proceed non-interactively.");
-        }
-
-        var response = console.Prompt(new TextPrompt<string>(question).AllowEmpty());
-
-        // Any answer other than "yes" cancels.
-        if (!string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ConfirmationDeclinedException("Cancelled by operator. No changes were made.");
-        }
-
+        ConsoleConfirmationPrompt.Require(console, autoApprove, summary, question, skipFlag);
         return ValueTask.FromResult(true);
     }
 
@@ -50,10 +26,6 @@ internal sealed class ConsoleOperationConfirmation(bool autoApprove, IAnsiConsol
                 $"[red]NSchema will DROP managed objects via [yellow]{destroy.Plan.Actions.Count}[/] action(s). This is destructive and cannot be undone.[/]",
                 "Do you want to destroy these objects? Only [green]yes[/] will be accepted:",
                 "--auto-approve"),
-            ForceUnlockConfirmationRequest => (
-                "[red]NSchema will forcibly release the state lock, even if another operation still holds it. This can corrupt the shared state.[/]",
-                "Do you want to force-unlock the state? Only [green]yes[/] will be accepted:",
-                "--force"),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request, "Unknown confirmation request."),
         };
 }
