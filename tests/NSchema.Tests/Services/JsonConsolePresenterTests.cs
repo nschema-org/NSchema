@@ -12,13 +12,12 @@ public sealed class JsonConsolePresenterTests
 {
     private readonly StringWriter _out = new();
     private readonly StringWriter _error = new();
-    private readonly RunOutcome _outcome = new();
     private readonly JsonConsolePresenter _sut;
 
     public JsonConsolePresenterTests() => _sut = Build(Verbosity.Normal);
 
     private JsonConsolePresenter Build(Verbosity verbosity) =>
-        new(_outcome, new OutputVerbosity(verbosity), _out, _error);
+        new(verbosity, _out, _error);
 
     private List<JsonElement> StderrEvents() => _error.ToString()
         .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -31,23 +30,21 @@ public sealed class JsonConsolePresenterTests
         .ToList();
 
     [Fact]
-    public void ReportDiff_EmptyDiff_EmitsDiffEvent_AndRecordsNoChanges()
+    public void ReportDiff_EmptyDiff_EmitsDiffEvent()
     {
         _sut.ReportDiff(new DatabaseDiff());
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.GetProperty("type").GetString().ShouldBe("diff");
         evt.GetProperty("diff").GetProperty("isEmpty").GetBoolean().ShouldBeTrue();
-        _outcome.HasChanges.ShouldBeFalse();
     }
 
     [Fact]
-    public void ReportDiff_NonEmptyDiff_RecordsChanges()
+    public void ReportDiff_NonEmptyDiff_EmitsDiffEvent()
     {
         _sut.ReportDiff(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]));
 
         StdoutEvents().ShouldHaveSingleItem().GetProperty("diff").GetProperty("isEmpty").GetBoolean().ShouldBeFalse();
-        _outcome.HasChanges.ShouldBeTrue();
     }
 
     [Fact]

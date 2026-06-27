@@ -34,9 +34,9 @@ internal static class DriftCommand
             .ConfigureBackendState(configuration.State)
             .Build();
         app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        await app.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
+        var result = await app.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
 
-        return configuration.DetailedExitCode && app.Services.GetRequiredService<RunOutcome>().HasChanges
+        return configuration.DetailedExitCode && result.HasDrift
             ? ExitCodes.HasChanges
             : ExitCodes.NoChanges;
     }

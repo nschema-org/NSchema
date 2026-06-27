@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using NSchema;
 using NSchema.Commands;
 using NSchema.Configuration;
 using NSchema.Operations;
@@ -21,22 +19,16 @@ try
 }
 catch (OperationCanceledException)
 {
-    return Fail(ExitCodes.OperationCanceled, presenter => presenter.Warn("Operation cancelled."));
+    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, "Operation cancelled.");
+    return ExitCodes.OperationCanceled;
 }
 catch (ConfirmationDeclinedException ex)
 {
-    return Fail(ExitCodes.Error, presenter => presenter.Warn(ex.Message));
+    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, ex.Message);
+    return ExitCodes.Error;
 }
 catch (Exception ex)
 {
-    return Fail(ExitCodes.Error, presenter => presenter.ReportException(ex));
-}
-
-// Renders a top-level outcome through the presenter — which handles text vs. --json itself — then returns the exit
-// code. Builds a fresh application just for presentation: the command's own one is already gone by the time we get here.
-int Fail(int exitCode, Action<IConsolePresenter> render)
-{
-    using var app = CliApplicationBuilder.Create(parseResult).Build();
-    render(app.Services.GetRequiredService<IConsolePresenter>());
-    return exitCode;
+    ConsoleMessenger.Create(parseResult).ReportException(ex);
+    return ExitCodes.Error;
 }

@@ -5,7 +5,6 @@ using NSchema.Configuration.State;
 using NSchema.Operations;
 using NSchema.Schema;
 using NSchema.Services;
-using Spectre.Console;
 
 namespace NSchema.Commands.State.Show;
 

@@ -44,8 +44,8 @@ internal static class PlanCommand
             .ConfigureBackendState(configuration.State)
             .Build();
         app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app, configuration.DetailedExitCode);
+        var result = await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(result, configuration.DetailedExitCode);
     }
 
     private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
@@ -63,10 +63,10 @@ internal static class PlanCommand
 
         using var app = builder.Build();
         app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(app, configuration.DetailedExitCode);
+        var result = await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
+        return ExitCode(result, configuration.DetailedExitCode);
     }
 
-    private static int ExitCode(NSchemaApplication app, bool detailed) =>
-        detailed && app.Services.GetRequiredService<RunOutcome>().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+    private static int ExitCode(PlanResult result, bool detailed) =>
+        detailed && result.HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
 }

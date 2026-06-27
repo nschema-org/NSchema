@@ -1,8 +1,6 @@
 using System.Text;
-using NSchema.Configuration;
 using NSchema.Diff;
 using NSchema.Diff.Model;
-using NSchema.Operations;
 using NSchema.Plan.Model;
 using NSchema.Policies;
 using NSchema.Schema;
@@ -10,7 +8,6 @@ using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql;
 using NSchema.Sql.Model;
-using NSchema.State.Model;
 using Spectre.Console;
 
 namespace NSchema.Services;
@@ -18,125 +15,37 @@ namespace NSchema.Services;
 /// <summary>
 /// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console.
 /// </summary>
-internal sealed class SpectreConsolePresenter : IConsolePresenter
+internal sealed class SpectreConsolePresenter : SpectreConsoleMessenger, IConsolePresenter
 {
-    private readonly IAnsiConsole _out;
-    private readonly IAnsiConsole _error;
     private readonly IDiffRenderer _diffRenderer;
     private readonly ISchemaRenderer _schemaRenderer;
     private readonly ISqlPlanRenderer _sqlPlanRenderer;
-    private readonly RunOutcome _outcome;
-    private readonly OutputVerbosity _verbosity;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
-    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
+    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
-        : this(console, CreateStandardErrorConsole(console), diffRenderer, schemaRenderer, sqlPlanRenderer, outcome, verbosity) { }
+    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, Verbosity verbosity)
+        : base(console, verbosity)
+    {
+        _diffRenderer = diffRenderer;
+        _schemaRenderer = schemaRenderer;
+        _sqlPlanRenderer = sqlPlanRenderer;
+    }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
-    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>show</c>.</param>
+    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    /// <param name="outcome">Records whether the reported diff had changes, for the detailed exit code.</param>
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    internal SpectreConsolePresenter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, RunOutcome outcome, OutputVerbosity verbosity)
+    internal SpectreConsolePresenter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, Verbosity verbosity)
+        : base(output, error, verbosity)
     {
-        _out = output;
-        _error = error;
         _diffRenderer = diffRenderer;
         _schemaRenderer = schemaRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
-        _outcome = outcome;
-        _verbosity = verbosity;
-    }
-
-    public void Report(MessageKind kind, string message) => WriteLine(kind, Markup.Escape(message));
-
-    public void Announce(ConsoleMessage message) => WriteLine(MessageKind.Announcement, message.Styled);
-
-    public void Progress(ConsoleMessage message) => WriteLine(MessageKind.Progress, message.Styled);
-
-    public void Success(ConsoleMessage message) => WriteLine(MessageKind.Success, message.Styled);
-
-    public void Warn(ConsoleMessage message) => WriteLine(MessageKind.Warning, message.Styled);
-
-    private void WriteLine(MessageKind kind, string body)
-    {
-        if (!_verbosity.ShouldShow(kind))
-        {
-            return;
-        }
-
-        var (console, markup) = kind switch
-        {
-            MessageKind.Success => (_out, $"[green]:check_mark: {body}[/]"),
-            MessageKind.Warning => (_error, $"[yellow]:warning: {body}[/]"),
-            MessageKind.Progress => (_out, $"[grey]{body}[/]"),
-            // Dimmed and italicised so verbose detail reads as secondary to the run narration.
-            MessageKind.Verbose => (_out, $"[grey italic]{body}[/]"),
-            _ => (_out, body),
-        };
-
-        console.MarkupLine(markup);
-    }
-
-    public void Detail(string message) => _out.MarkupLine($"[grey]  {Markup.Escape(message)}[/]");
-
-    public void Detail(ConsoleMessage message) => _out.MarkupLine($"[grey]  {message.Styled}[/]");
-
-    public void ReportLockStatus(StateLockInfo? info)
-    {
-        if (info is null)
-        {
-            Report(MessageKind.Success, "The state is not locked.");
-            return;
-        }
-
-        Warn($"The state is locked by {info.Who} (operation '{info.Operation}', since {info.CreatedUtc:u}).");
-        Detail($"Lock ID: {info.Id}");
-
-        // Surface a manual hold's lifetime, and flag it once past — but NSchema never auto-breaks an expired lock.
-        if (info.ExpiresUtc is { } expires)
-        {
-            if (expires <= DateTimeOffset.UtcNow)
-            {
-                Detail($"Expires: {expires:u} (expired)");
-            }
-            else
-            {
-                Detail($"Expires: {expires:u}");
-            }
-        }
-
-        Detail($"Release it, once you're sure no operation is still running, with: nschema lock release {info.Id}");
-    }
-
-    public void ReportException(Exception exception)
-    {
-        // A policy violation carries structured diagnostics; show the table first, then the headline error.
-        if (exception is PolicyViolationException violation)
-        {
-            RenderDiagnostics(_error, violation.Errors);
-        }
-
-        _error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
-    }
-
-    public void ReportEnvironment(string? environment)
-    {
-        // Prints which environment a run is targeting, so a command run against (say) production is unmistakable.
-        if (environment is null)
-        {
-            return;
-        }
-
-        _out.MarkupLineInterpolated($"[bold]Environment:[/] [yellow]{environment}[/]");
-        _out.WriteLine();
     }
 
     public void ReportSchema(DatabaseSchema schema)
@@ -148,7 +57,6 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     public void ReportDiff(DatabaseDiff diff)
     {
-        _outcome.HasChanges = !diff.IsEmpty;
         var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
         WriteSection("Plan", body);
     }
@@ -193,52 +101,17 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
     {
         // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
         var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
-        RenderDiagnostics(notable ? _error : _out, diagnostics);
+        RenderDiagnostics(notable ? Error : Out, diagnostics);
     }
-
-    private static void RenderDiagnostics(IAnsiConsole console, IReadOnlyList<PolicyDiagnostic> diagnostics)
-    {
-        if (diagnostics.Count == 0)
-        {
-            console.MarkupLine("[grey]No policy diagnostics.[/]");
-            console.WriteLine();
-            return;
-        }
-
-        var table = new Table()
-            .RoundedBorder()
-            .Title("Policy diagnostics")
-            .AddColumn("Severity")
-            .AddColumn("Policy")
-            .AddColumn("Message");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            table.AddRow(
-                new Markup(SeverityLabel(diagnostic.Severity)),
-                new Markup(Markup.Escape(diagnostic.PolicyName)),
-                new Markup(Markup.Escape(diagnostic.Message)));
-        }
-
-        console.Write(table);
-        console.WriteLine();
-    }
-
-    private static string SeverityLabel(PolicyDiagnosticSeverity severity) => severity switch
-    {
-        PolicyDiagnosticSeverity.Error => "[red]error[/]",
-        PolicyDiagnosticSeverity.Warning => "[yellow]warning[/]",
-        _ => "[grey]info[/]",
-    };
 
     // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)
     {
-        _out.MarkupLineInterpolated($"[bold]{title}[/]");
-        _out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
-        _out.Write(body);
-        _out.WriteLine();
-        _out.WriteLine();
+        Out.MarkupLineInterpolated($"[bold]{title}[/]");
+        Out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
+        Out.Write(body);
+        Out.WriteLine();
+        Out.WriteLine();
     }
 
     // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the
@@ -321,8 +194,4 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
         return new Markup(builder.ToString());
     }
-
-    // Mirror the output console's color decision (which already reflects --no-color / NO_COLOR) onto stderr.
-    private static IAnsiConsole CreateStandardErrorConsole(IAnsiConsole output) =>
-        ConsoleFactory.Create(Console.Error, output.Profile.Capabilities.ColorSystem == ColorSystem.NoColors);
 }

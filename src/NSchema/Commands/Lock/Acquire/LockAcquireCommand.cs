@@ -4,7 +4,6 @@ using NSchema.Configuration;
 using NSchema.Services;
 using NSchema.State;
 using NSchema.State.Model;
-using Spectre.Console;
 
 namespace NSchema.Commands.Lock.Acquire;
 

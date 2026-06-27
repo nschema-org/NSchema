@@ -21,7 +21,6 @@ public sealed class SpectreConsolePresenterTests
     private readonly IDiffRenderer _diffRenderer = Substitute.For<IDiffRenderer>();
     private readonly ISchemaRenderer _schemaRenderer = Substitute.For<ISchemaRenderer>();
     private readonly ISqlPlanRenderer _sqlPlanRenderer = Substitute.For<ISqlPlanRenderer>();
-    private readonly RunOutcome _outcome = new();
     private readonly SpectreConsolePresenter _sut;
 
     public SpectreConsolePresenterTests()
@@ -32,7 +31,7 @@ public sealed class SpectreConsolePresenterTests
     }
 
     private SpectreConsolePresenter Build(Verbosity verbosity) =>
-        new(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, _outcome, new OutputVerbosity(verbosity));
+        new(_out, _error, _diffRenderer, _schemaRenderer, _sqlPlanRenderer, verbosity);
 
     [Theory]
     [InlineData(MessageKind.Announcement)]
@@ -172,26 +171,6 @@ public sealed class SpectreConsolePresenterTests
         _out.Output.ShouldContain("Plan");
         _out.Output.ShouldContain("table app.widgets");
         _out.Output.ShouldContain("1 to add");
-    }
-
-    [Fact]
-    public void ReportDiff_RecordsChangesOnTheOutcome()
-    {
-        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("+ schema app");
-
-        _sut.ReportDiff(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]));
-
-        _outcome.HasChanges.ShouldBeTrue();
-    }
-
-    [Fact]
-    public void ReportDiff_EmptyDiff_RecordsNoChanges()
-    {
-        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("Plan: no changes.");
-
-        _sut.ReportDiff(new DatabaseDiff());
-
-        _outcome.HasChanges.ShouldBeFalse();
     }
 
     [Fact]
