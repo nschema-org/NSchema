@@ -1,5 +1,4 @@
 using NSchema.Commands.Apply;
-using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Apply;
 
