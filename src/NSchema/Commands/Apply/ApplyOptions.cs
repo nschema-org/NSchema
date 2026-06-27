@@ -15,7 +15,6 @@ internal static class ApplyOptions
     public static readonly OptionBinding<DestructiveActionPolicy?> Destructive = OptionBinding.Create<DestructiveActionPolicy?>()
         .FromOption("--destructive-actions")
         .FromEnvironmentVariable(EnvironmentVariables.DestructiveActionPolicy)
-        .FromProjectConfig(c => c?.DestructiveActionPolicy)
         .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, or Allow.");
 
     public static readonly OptionBinding<bool> AutoApprove = OptionBinding.Create<bool>()

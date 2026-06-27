@@ -46,9 +46,9 @@ internal sealed class ApplyConfiguration : IBindable
     {
         Provider = project.Provider;
         State = project.State;
-        ApplyOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
-        ApplyOptions.Scope.Bind(project, cli, s => Scope = s);
-        ApplyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
-        ApplyOptions.PlanFile.Bind(project, cli, p => PlanFile = p);
+        ApplyOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        ApplyOptions.Scope.Bind(cli, s => Scope = s);
+        ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
+        ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
     }
 }

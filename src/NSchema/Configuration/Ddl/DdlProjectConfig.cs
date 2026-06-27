@@ -1,6 +1,5 @@
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
 
 namespace NSchema.Configuration.Ddl;
 
@@ -18,9 +17,4 @@ internal sealed class DdlProjectConfig
     /// The state backend. Null when none is declared.
     /// </summary>
     public StateConfig? State { get; init; }
-
-    /// <summary>
-    /// The destructive-action policy. Null when unset.
-    /// </summary>
-    public DestructiveActionPolicy? DestructiveActionPolicy { get; init; }
 }

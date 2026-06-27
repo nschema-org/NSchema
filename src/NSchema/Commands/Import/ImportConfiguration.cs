@@ -33,8 +33,8 @@ internal sealed class ImportConfiguration : IBindable
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
-        ImportOptions.Scope.Bind(project, cli, s => Scope = s);
-        ImportOptions.OutputDirectory.Bind(project, cli, o => OutputDirectory = o);
-        ImportOptions.Force.Bind(project, cli, f => Force = f);
+        ImportOptions.Scope.Bind(cli, s => Scope = s);
+        ImportOptions.OutputDirectory.Bind(cli, o => OutputDirectory = o);
+        ImportOptions.Force.Bind(cli, f => Force = f);
     }
 }

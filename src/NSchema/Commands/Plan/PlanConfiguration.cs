@@ -60,10 +60,10 @@ internal sealed class PlanConfiguration : IBindable
     {
         Provider = project.Provider;
         State = project.State;
-        PlanOptions.Destructive.Bind(project, cli, p => DestructiveActionPolicy = p);
-        PlanOptions.Scope.Bind(project, cli, s => Scope = s);
-        PlanOptions.Destroy.Bind(project, cli, d => Destroy = d);
-        PlanOptions.Out.Bind(project, cli, o => OutFile = o);
-        PlanOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        PlanOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        PlanOptions.Scope.Bind(cli, s => Scope = s);
+        PlanOptions.Destroy.Bind(cli, d => Destroy = d);
+        PlanOptions.Out.Bind(cli, o => OutFile = o);
+        PlanOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

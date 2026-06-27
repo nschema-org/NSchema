@@ -23,6 +23,6 @@ internal sealed class LockStatusConfiguration : IBindable
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         State = project.State;
-        LockStatusOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        LockStatusOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

@@ -23,6 +23,6 @@ internal sealed class ShowConfiguration : IBindable
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         State = project.State;
-        ShowOptions.Scope.Bind(project, cli, s => Scope = s);
+        ShowOptions.Scope.Bind(cli, s => Scope = s);
     }
 }

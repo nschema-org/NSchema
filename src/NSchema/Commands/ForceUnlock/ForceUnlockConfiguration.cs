@@ -24,6 +24,6 @@ internal sealed class ForceUnlockConfiguration : IBindable
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         State = project.State;
-        ForceUnlockOptions.Force.Bind(project, cli, f => Force = f);
+        ForceUnlockOptions.Force.Bind(cli, f => Force = f);
     }
 }

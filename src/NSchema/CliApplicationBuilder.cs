@@ -125,7 +125,7 @@ internal sealed class CliApplicationBuilder
     /// Creates a builder whose output format and verbosity follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(null, parseResult, false), ResolveVerbosity(parseResult));
+        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
 
     /// <summary>
     /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single <see cref="Verbosity"/>. The two flags are mutually
@@ -133,8 +133,8 @@ internal sealed class CliApplicationBuilder
     /// </summary>
     private static Verbosity ResolveVerbosity(ParseResult parseResult)
     {
-        var quiet = CommonOptions.Quiet.GetValueOrDefault(null, parseResult, false);
-        var verbose = CommonOptions.Verbose.GetValueOrDefault(null, parseResult, false);
+        var quiet = CommonOptions.Quiet.GetValueOrDefault(parseResult, false);
+        var verbose = CommonOptions.Verbose.GetValueOrDefault(parseResult, false);
 
         if (quiet && verbose)
         {

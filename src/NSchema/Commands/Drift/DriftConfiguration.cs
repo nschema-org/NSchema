@@ -35,7 +35,7 @@ internal sealed class DriftConfiguration : IBindable
     {
         Provider = project.Provider;
         State = project.State;
-        DriftOptions.Scope.Bind(project, cli, s => Scope = s);
-        DriftOptions.DetailedExitCode.Bind(project, cli, d => DetailedExitCode = d);
+        DriftOptions.Scope.Bind(cli, s => Scope = s);
+        DriftOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
     }
 }

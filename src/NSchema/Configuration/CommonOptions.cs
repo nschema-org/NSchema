@@ -45,7 +45,7 @@ internal static class CommonOptions
     {
         try
         {
-            var root = Directory.GetValueOrDefault(null, context.ParseResult, System.IO.Directory.GetCurrentDirectory());
+            var root = Directory.GetValueOrDefault(context.ParseResult, System.IO.Directory.GetCurrentDirectory());
             return ProjectGlobs.EnvironmentNames(root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)

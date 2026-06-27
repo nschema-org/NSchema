@@ -26,8 +26,8 @@ internal sealed class InitConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        InitOptions.Force.Bind(project, cli, f => Force = f);
-        InitOptions.Provider.Bind(project, cli, p => Provider = p);
-        InitOptions.Backend.Bind(project, cli, b => Backend = b);
+        InitOptions.Force.Bind(cli, f => Force = f);
+        InitOptions.Provider.Bind(cli, p => Provider = p);
+        InitOptions.Backend.Bind(cli, b => Backend = b);
     }
 }

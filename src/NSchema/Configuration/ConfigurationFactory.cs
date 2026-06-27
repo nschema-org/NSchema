@@ -29,14 +29,14 @@ internal static class ConfigurationFactory
     /// <see langword="null"/> when none is selected.
     /// </summary>
     public static string? ResolveEnvironment(ParseResult args) =>
-        CommonOptions.Environment.GetValueOrDefault(null, args, null);
+        CommonOptions.Environment.GetValueOrDefault(args, null);
 
     /// <summary>
     /// Sets the current directory based on <c>--directory</c> before anything is resolved.
     /// </summary>
     private static void ApplyWorkingDirectory(ParseResult args)
     {
-        if (!CommonOptions.Directory.TryGetValue(null, args, out var directory))
+        if (!CommonOptions.Directory.TryGetValue(args, out var directory))
         {
             return;
         }

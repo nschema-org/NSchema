@@ -36,6 +36,6 @@ internal sealed class DestroyConfiguration : IBindable
     {
         Provider = project.Provider;
         State = project.State;
-        DestroyOptions.AutoApprove.Bind(project, cli, a => AutoApprove = a);
+        DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
     }
 }
