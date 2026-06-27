@@ -12,7 +12,7 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [4.0.0-beta.1]
+## [4.0.0-beta.2]
 
 Version 4.0.0 changes the provider and backend model to function as plugins resolved through the NuGet package manager.
 
@@ -52,6 +52,11 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 - **`completion install` / `completion uninstall` subcommands** replace the `--install-autocomplete` / `--uninstall-autocomplete` flags. `nschema completion <shell>`
   still prints the script.
 - Built on `NSchema.Core 4.0.0` and the 4.0 provider/backend packages.
+
+### Fixed
+
+- Running `nschema --help` in a busy directory like root would cause a performance slowdown due to the `--environment` arg autocomplete recursively scanning
+  all the files in the directory. This has been fixed by removing autocomplete.
 
 ### Removed
 
