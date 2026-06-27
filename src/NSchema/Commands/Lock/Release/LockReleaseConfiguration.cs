@@ -16,14 +16,12 @@ internal sealed class LockReleaseConfiguration : IBindable
     public StateConfig? State { get; set; }
 
     /// <summary>
-    /// The id of the lock to release. Required unless <see cref="Force"/> is set; the release is refused if it no
-    /// longer matches the held lock, so a lock taken since the caller read the id is never released by mistake.
+    /// The id of the lock to release. Required unless <see cref="Force"/> is set.
     /// </summary>
     public string? LockId { get; set; }
 
     /// <summary>
-    /// Whether to release whatever lock is held without naming its id — the deliberate opt-out of the
-    /// <see cref="LockId"/> safety check.
+    /// Whether to release whatever lock is held without naming its id.
     /// </summary>
     public bool Force { get; set; }
 
