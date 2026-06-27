@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text.Json;
 using NSchema.Plugins;
 
 namespace NSchema.Configuration.Plugins;
@@ -19,9 +20,9 @@ internal sealed class PluginLoader(string? cacheRoot = null)
     /// <summary>
     /// Loads the plugin(s) the given package contains at the given version, restoring the package on first use.
     /// </summary>
-    public IReadOnlyList<INSchemaPlugin> Load(string packageId, string version)
+    public IReadOnlyList<INSchemaPlugin> Load(string packageId, string version, bool allowRestore = true)
     {
-        var publishDir = EnsurePublished(packageId, version);
+        var publishDir = EnsurePublished(packageId, version, allowRestore);
 
         // The synthesized host project is the resolver root: its .deps.json describes the whole closure, including
         // the plugin package itself, which we then load by name through the isolated context.
@@ -43,7 +44,46 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         return plugins;
     }
 
-    private string EnsurePublished(string packageId, string version)
+    /// <summary>
+    /// Resolves the latest available version of <paramref name="packageId"/> that shares this host's NSchema.Core
+    /// major version, by floating-restoring it and reading the resolved version back from the lock file. Used when
+    /// scaffolding, where no version is pinned yet.
+    /// </summary>
+    public string ResolveLatestVersion(string packageId)
+    {
+        var hostMajor = typeof(INSchemaPlugin).Assembly.GetName().Version?.Major
+            ?? throw new InvalidOperationException("Could not determine the host NSchema.Core major version.");
+
+        var projectDir = Path.Combine(_cacheRoot, packageId, "_resolve");
+        Directory.CreateDirectory(projectDir);
+        var projectPath = Path.Combine(projectDir, SynthAssemblyName + ".csproj");
+
+        // Float within the host major (prereleases included) so the pin always matches a plugin this CLI can load.
+        File.WriteAllText(projectPath, SynthProject(packageId, $"{hostMajor}.*-*"));
+
+        // --force re-evaluates the floating range every time, so a newly published version is picked up.
+        RunDotnet("restore", projectPath, "--force");
+
+        return ReadResolvedVersion(Path.Combine(projectDir, "obj", "project.assets.json"), packageId);
+    }
+
+    private static string ReadResolvedVersion(string assetsPath, string packageId)
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(assetsPath));
+        foreach (var library in document.RootElement.GetProperty("libraries").EnumerateObject())
+        {
+            // Library keys are "Id/Version"; match the package id case-insensitively.
+            var separator = library.Name.IndexOf('/');
+            if (separator > 0 && library.Name.AsSpan(0, separator).Equals(packageId, StringComparison.OrdinalIgnoreCase))
+            {
+                return library.Name[(separator + 1)..];
+            }
+        }
+
+        throw new InvalidOperationException($"Could not resolve a version for plugin package '{packageId}'.");
+    }
+
+    private string EnsurePublished(string packageId, string version, bool allowRestore)
     {
         var versionDir = Path.Combine(_cacheRoot, packageId, version);
         var publishDir = Path.Combine(versionDir, "publish");
@@ -53,6 +93,13 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         if (File.Exists(pluginAssembly))
         {
             return publishDir;
+        }
+
+        // --no-init: stay offline and require the plugin to be cached already.
+        if (!allowRestore)
+        {
+            throw new InvalidOperationException(
+                $"Plugin '{packageId}' {version} is not restored, and --no-init was specified. Run 'nschema init' (or drop --no-init) to restore it first.");
         }
 
         var projectDir = Path.Combine(versionDir, "proj");

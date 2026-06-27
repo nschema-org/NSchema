@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "lock-status", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "lock-status", "completion"], ignoreOrder: true);
     }
 
     [Theory]
@@ -168,6 +168,11 @@ public sealed class RootCommandTests
         result.Errors.ShouldNotBeEmpty();
     }
 
+    [Fact]
+    public void NoInit_IsAcceptedByOperations()
+        // --no-init skips the implicit plugin restore (cache-only); it's a recursive root option.
+        => _sut.Parse(["plan", "--no-init"]).Errors.ShouldBeEmpty();
+
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
@@ -182,6 +187,7 @@ public sealed class RootCommandTests
 
     [Theory]
     [InlineData("init")]
+    [InlineData("scaffold")]
     [InlineData("validate")]
     [InlineData("plan")]
     [InlineData("apply")]
@@ -203,6 +209,7 @@ public sealed class RootCommandTests
     }
 
     [Theory]
+    [InlineData("init")]
     [InlineData("validate")]
     [InlineData("plan")]
     [InlineData("apply")]
@@ -217,7 +224,7 @@ public sealed class RootCommandTests
     public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
     {
         // --environment selects the per-environment overlay config; it's a recursive root option, so it follows any
-        // command. (init is excluded — it scaffolds a project rather than acting on an environment.)
+        // command. (scaffold is excluded — it scaffolds a project rather than acting on an environment.)
         var result = _sut.Parse([command, "--environment", "prod"]);
 
         // Assert

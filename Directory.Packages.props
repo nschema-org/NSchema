@@ -7,11 +7,7 @@
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
-    <PackageVersion Include="NSchema.Aws" Version="4.0.0-alpha.1" />
-    <PackageVersion Include="NSchema.Core" Version="4.0.0-alpha.1" />
-    <PackageVersion Include="NSchema.Postgres" Version="4.0.0-alpha.1" />
-    <PackageVersion Include="NSchema.Sqlite" Version="4.0.0-alpha.1" />
-    <PackageVersion Include="NSchema.SqlServer" Version="4.0.0-alpha.1" />
+    <PackageVersion Include="NSchema.Core" Version="4.0.0-alpha.2" />
     <PackageVersion Include="System.CommandLine" Version="2.0.9" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.1" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />

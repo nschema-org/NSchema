@@ -30,7 +30,7 @@ public sealed class PluginLoaderTests : IDisposable
         var loader = new PluginLoader(_cacheRoot);
 
         // Act — restore + load + discover
-        var plugin = loader.Load("NSchema.Postgres", "4.0.0-alpha.1")
+        var plugin = loader.Load("NSchema.Postgres", "4.0.0-alpha.2")
             .OfType<INSchemaProviderPlugin>()
             .Single();
 
@@ -50,5 +50,46 @@ public sealed class PluginLoaderTests : IDisposable
         result.Succeeded.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
         builder.Services.ShouldContain(d => d.ServiceType == typeof(ISqlGenerator));
+    }
+
+    [Fact]
+    public void ResolveLatestVersion_ReturnsAVersionInTheHostMajor()
+    {
+        // Arrange
+        var loader = new PluginLoader(_cacheRoot);
+
+        // Act — floats NSchema.Postgres within this CLI's NSchema.Core major and reads back the resolved version.
+        var version = loader.ResolveLatestVersion("NSchema.Postgres");
+
+        // Assert — a concrete 4.x version is pinned (the exact build floats as new ones publish).
+        version.ShouldStartWith("4.");
+    }
+
+    [Fact]
+    public void Load_WithoutRestore_WhenNotCached_Throws()
+    {
+        // Arrange — a fresh cache, so the plugin is not present.
+        var loader = new PluginLoader(_cacheRoot);
+
+        // Act / Assert — allowRestore: false (the --no-init path) must not reach the network; it fails fast. No
+        // restore happens here, so this case needs neither the SDK nor network.
+        Should.Throw<InvalidOperationException>(() => loader.Load("NSchema.Postgres", "4.0.0-alpha.2", allowRestore: false))
+            .Message.ShouldContain("--no-init");
+    }
+
+    [Fact]
+    public void Load_WithoutRestore_AfterCaching_Succeeds()
+    {
+        // Arrange — warm the cache with a normal (restoring) load.
+        var loader = new PluginLoader(_cacheRoot);
+        loader.Load("NSchema.Postgres", "4.0.0-alpha.2");
+
+        // Act — a subsequent cache-only load (the --no-init path) succeeds without restoring.
+        var plugin = loader.Load("NSchema.Postgres", "4.0.0-alpha.2", allowRestore: false)
+            .OfType<INSchemaProviderPlugin>()
+            .Single();
+
+        // Assert
+        plugin.Label.ShouldBe("postgres");
     }
 }

@@ -15,9 +15,11 @@ internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder;
     private readonly PluginLoader _plugins = new();
+    private readonly bool _allowRestore;
 
-    private CliApplicationBuilder(bool json, Verbosity verbosity)
+    private CliApplicationBuilder(bool json, Verbosity verbosity, bool allowRestore)
     {
+        _allowRestore = allowRestore;
         _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
         {
             ExceptionBehavior = ExceptionBehavior.Throw,
@@ -93,7 +95,7 @@ internal sealed class CliApplicationBuilder
 
     private TPlugin ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var plugins = _plugins.Load(reference.PackageId, reference.Version);
+        var plugins = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
         return plugins.OfType<TPlugin>().FirstOrDefault(p => string.Equals(p.Label, reference.Label, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
                 $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
@@ -119,13 +121,14 @@ internal sealed class CliApplicationBuilder
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.
     /// </summary>
-    public static CliApplicationBuilder Create() => new(json: false, Verbosity.Normal);
+    public static CliApplicationBuilder Create() => new(json: false, Verbosity.Normal, allowRestore: true);
 
     /// <summary>
     /// Creates a builder whose output format and verbosity follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
+        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult),
+            allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false));
 
     /// <summary>
     /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single <see cref="Verbosity"/>. The two flags are mutually

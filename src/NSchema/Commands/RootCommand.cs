@@ -10,6 +10,7 @@ using NSchema.Commands.Init;
 using NSchema.Commands.LockStatus;
 using NSchema.Commands.Plan;
 using NSchema.Commands.Refresh;
+using NSchema.Commands.Scaffold;
 using NSchema.Commands.Show;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
@@ -26,10 +27,12 @@ internal static class RootCommand
         root.Options.Add(CommonOptions.Directory.Option);
         root.Options.Add(CommonOptions.Environment.Option);
         root.Options.Add(CommonOptions.Json.Option);
+        root.Options.Add(CommonOptions.NoInit.Option);
         root.Options.Add(CommonOptions.Verbose.Option);
         root.Options.Add(CommonOptions.Quiet.Option);
 
         root.Subcommands.Add(InitCommand.Create());
+        root.Subcommands.Add(ScaffoldCommand.Create());
         root.Subcommands.Add(ValidateCommand.Create());
         root.Subcommands.Add(FmtCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
