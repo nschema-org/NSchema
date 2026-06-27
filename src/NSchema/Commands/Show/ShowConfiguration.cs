@@ -13,7 +13,7 @@ internal sealed class ShowConfiguration : IBindable
     /// <summary>
     /// The state store the recorded schema is read from. Show never contacts the live database.
     /// </summary>
-    public StateConfig State { get; init; } = new();
+    public StateConfig? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the output to specific database schemas (namespaces).
@@ -22,7 +22,7 @@ internal sealed class ShowConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        State.Bind(project, cli);
+        State = project.State;
         ShowOptions.Scope.Bind(project, cli, s => Scope = s);
     }
 }

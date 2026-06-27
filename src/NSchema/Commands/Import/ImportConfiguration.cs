@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 
 namespace NSchema.Commands.Import;
 
@@ -13,7 +13,7 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema to import.
     /// </summary>
-    public ProviderConfig Provider { get; init; } = new();
+    public PluginReference? Provider { get; set; }
 
     /// <summary>
     /// The directory to write into.
@@ -32,7 +32,7 @@ internal sealed class ImportConfiguration : IBindable
 
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
-        Provider.Bind(project, cli);
+        Provider = project.Provider;
         ImportOptions.Scope.Bind(project, cli, s => Scope = s);
         ImportOptions.OutputDirectory.Bind(project, cli, o => OutputDirectory = o);
         ImportOptions.Force.Bind(project, cli, f => Force = f);

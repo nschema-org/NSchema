@@ -1,25 +1,15 @@
 namespace NSchema.Configuration;
 
 /// <summary>
-/// The environment variables the CLI reads as configuration overrides.
+/// The environment variables the CLI reads.
 /// </summary>
 internal static class EnvironmentVariables
 {
     /// <summary>
-    /// The connection string for the PostgreSQL provider. Self-identifying: it fills <c>provider.postgres</c>, so no
-    /// separate provider discriminator is needed (mirroring how <c>state.s3</c> is named by its own settings).
+    /// The connection string for the PostgreSQL provider — the variable <c>init</c> points the user at. The plugin
+    /// (not the CLI) reads it at runtime.
     /// </summary>
     public const string PostgresConnectionString = "NSCHEMA_POSTGRES_CONNECTION_STRING";
-
-    /// <summary>
-    /// The username for the PostgreSQL provider.
-    /// </summary>
-    public const string PostgresUsername = "NSCHEMA_POSTGRES_USERNAME";
-
-    /// <summary>
-    /// The password for the PostgreSQL provider`.
-    /// </summary>
-    public const string PostgresPassword = "NSCHEMA_POSTGRES_PASSWORD";
 
     /// <summary>
     /// The connection string for the SQLite provider, e.g. <c>Data Source=app.db</c>.
@@ -30,16 +20,6 @@ internal static class EnvironmentVariables
     /// The connection string for the SQL Server provider.
     /// </summary>
     public const string SqlServerConnectionString = "NSCHEMA_SQLSERVER_CONNECTION_STRING";
-
-    /// <summary>
-    /// The username for the SQL Server provider.
-    /// </summary>
-    public const string SqlServerUsername = "NSCHEMA_SQLSERVER_USERNAME";
-
-    /// <summary>
-    /// The password for the SQL Server provider.
-    /// </summary>
-    public const string SqlServerPassword = "NSCHEMA_SQLSERVER_PASSWORD";
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions.

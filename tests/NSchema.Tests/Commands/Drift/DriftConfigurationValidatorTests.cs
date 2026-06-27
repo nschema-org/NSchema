@@ -1,5 +1,4 @@
 using NSchema.Commands.Drift;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Drift;
@@ -31,7 +30,7 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -50,7 +49,7 @@ public sealed class DriftConfigurationValidatorTests
         var config = new DriftConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act

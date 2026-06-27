@@ -1,5 +1,4 @@
 using NSchema.Commands.Destroy;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Destroy;
@@ -48,7 +47,7 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange
         var config = new DestroyConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 

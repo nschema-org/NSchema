@@ -27,7 +27,7 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     {
         var config = await Read("PROVIDER postgres ( version = '4.0.0', connection_string = 'host=db' );");
 
-        var plugin = config.Provider!.Plugin!;
+        var plugin = config.Provider!;
         plugin.PackageId.ShouldBe("NSchema.Postgres");
         plugin.Label.ShouldBe("postgres");
         plugin.Version.ShouldBe("4.0.0");
@@ -43,7 +43,7 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     {
         var config = await Read($"PROVIDER {label} ( version = '4.0.0', connection_string = 'x' );");
 
-        config.Provider!.Plugin!.PackageId.ShouldBe(package);
+        config.Provider!.PackageId.ShouldBe(package);
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
     {
         var config = await Read("PROVIDER oracle ( source = 'Acme.NSchema.Oracle', version = '1.0.0' );");
 
-        config.Provider!.Plugin!.PackageId.ShouldBe("Acme.NSchema.Oracle");
-        config.Provider.Plugin.Label.ShouldBe("oracle");
+        config.Provider!.PackageId.ShouldBe("Acme.NSchema.Oracle");
+        config.Provider!.Label.ShouldBe("oracle");
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
             CREATE SCHEMA app;
             """);
 
-        config.Provider!.Plugin!.Label.ShouldBe("postgres");
+        config.Provider!.Label.ShouldBe("postgres");
         config.State!.File!.Path.ShouldBe("./state.json");
         config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Allow);
     }
@@ -164,7 +164,7 @@ public sealed class DdlProjectConfigReaderTests : IDisposable
             "prod",
             "NSCHEMA ( destructive_action = 'error' );");
 
-        config.Provider!.Plugin!.Block.Attribute("connection_string")!.AsString().ShouldBe("host=base");
+        config.Provider!.Block.Attribute("connection_string")!.AsString().ShouldBe("host=base");
         config.DestructiveActionPolicy.ShouldBe(DestructiveActionPolicy.Error);
     }
 

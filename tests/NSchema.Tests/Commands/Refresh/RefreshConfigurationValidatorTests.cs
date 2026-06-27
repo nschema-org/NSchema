@@ -1,5 +1,4 @@
 using NSchema.Commands.Refresh;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Refresh;
@@ -31,7 +30,7 @@ public sealed class RefreshConfigurationValidatorTests
         // Arrange
         var config = new RefreshConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -50,7 +49,7 @@ public sealed class RefreshConfigurationValidatorTests
         var config = new RefreshConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act

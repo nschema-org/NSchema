@@ -1,5 +1,4 @@
 using NSchema.Commands.Plan;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 
 namespace NSchema.Tests.Commands.Plan;
@@ -15,7 +14,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act
@@ -31,7 +30,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange
         var config = new PlanConfiguration
         {
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 
@@ -48,8 +47,8 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange
         var config = new PlanConfiguration
         {
-            Provider = new ProviderConfig(),
-            State = new StateConfig(),
+            Provider = null,
+            State = null,
         };
 
         // Act
@@ -86,7 +85,7 @@ public sealed class PlanConfigurationValidatorTests
         {
             Destroy = true,
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act
@@ -103,7 +102,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
             OutFile = "plan.nschema",
         };
 
@@ -122,7 +121,7 @@ public sealed class PlanConfigurationValidatorTests
         {
             Destroy = true,
             Provider = TestConfigs.Provider(),
-            State = new StateConfig(),
+            State = null,
             OutFile = "plan.nschema",
         };
 
@@ -140,7 +139,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = new ProviderConfig(),
+            Provider = null,
             State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
         };
 

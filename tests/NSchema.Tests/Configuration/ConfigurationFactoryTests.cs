@@ -27,7 +27,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
         var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         // Assert — the config was discovered under --directory (an empty config would have left state unset).
-        config.State.File!.Path.ShouldBe("./custom.state.json");
+        config.State!.File!.Path.ShouldBe("./custom.state.json");
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
 
         var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
-        config.State.File.ShouldBeNull();
+        config.State!.File.ShouldBeNull();
         config.State.Plugin!.Block.Attribute("bucket")!.AsString().ShouldBe("prod-bucket");
     }
 }

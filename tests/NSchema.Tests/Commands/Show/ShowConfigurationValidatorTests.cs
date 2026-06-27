@@ -29,7 +29,7 @@ public sealed class ShowConfigurationValidatorTests
         // Arrange
         var config = new ShowConfiguration
         {
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act

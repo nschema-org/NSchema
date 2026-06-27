@@ -27,7 +27,7 @@ public sealed class LockStatusConfigurationValidatorTests
     public void Invalid_WhenStateStoreMissing()
     {
         // Arrange — the lock lives with the state store, so there is nothing to inspect without one.
-        var config = new LockStatusConfiguration { State = new StateConfig() };
+        var config = new LockStatusConfiguration { State = null };
 
         // Act
         var result = _sut.Validate(config);

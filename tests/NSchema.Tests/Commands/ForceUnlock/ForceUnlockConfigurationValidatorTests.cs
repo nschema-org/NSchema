@@ -29,7 +29,7 @@ public sealed class ForceUnlockConfigurationValidatorTests
         // Arrange
         var config = new ForceUnlockConfiguration
         {
-            State = new StateConfig(),
+            State = null,
         };
 
         // Act

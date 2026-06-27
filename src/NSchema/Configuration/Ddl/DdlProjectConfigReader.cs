@@ -1,4 +1,4 @@
-using NSchema.Configuration.Provider;
+using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Schema.Ddl;
@@ -53,7 +53,7 @@ internal static class DdlProjectConfigReader
 
     private static DdlProjectConfig Parse(IReadOnlyList<ConfigBlock> blocks)
     {
-        ProviderConfig? provider = null;
+        PluginReference? provider = null;
         StateConfig? state = null;
         DestructiveActionPolicy? destructiveAction = null;
         var nschemaSeen = false;
@@ -67,7 +67,7 @@ internal static class DdlProjectConfigReader
                     {
                         throw Conflict("PROVIDER");
                     }
-                    provider = ProviderConfig.FromBlock(block);
+                    provider = PluginReference.ForProvider(block);
                     break;
                 case "backend":
                     if (state is not null)

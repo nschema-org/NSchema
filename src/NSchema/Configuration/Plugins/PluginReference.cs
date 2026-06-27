@@ -8,6 +8,28 @@ internal sealed record PluginReference(string PackageId, string Version, string 
     private const string VersionAttribute = "version";
     private const string SourceAttribute = "source";
 
+    /// <summary>The first-party provider plugins, keyed by their <c>PROVIDER</c> block label.</summary>
+    private static readonly IReadOnlyDictionary<string, string> ProviderPackages =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["postgres"] = "NSchema.Postgres",
+            ["sqlite"] = "NSchema.Sqlite",
+            ["sqlserver"] = "NSchema.SqlServer",
+        };
+
+    /// <summary>The first-party backend plugins, keyed by their <c>BACKEND</c> block label.</summary>
+    private static readonly IReadOnlyDictionary<string, string> BackendPackages =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["s3"] = "NSchema.Aws",
+        };
+
+    /// <summary>Resolves the plugin reference for a <c>PROVIDER</c> block.</summary>
+    public static PluginReference ForProvider(ConfigBlock block) => FromBlock(block, ProviderPackages);
+
+    /// <summary>Resolves the plugin reference for a <c>BACKEND</c> block (the non-file backends).</summary>
+    public static PluginReference ForBackend(ConfigBlock block) => FromBlock(block, BackendPackages);
+
     /// <summary>
     /// Resolves the plugin reference for a configuration block.
     /// </summary>

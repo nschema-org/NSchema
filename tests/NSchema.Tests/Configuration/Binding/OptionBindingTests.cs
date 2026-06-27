@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Ddl;
-using NSchema.Configuration.Provider;
 using NSchema.Diff.Policies;
 
 namespace NSchema.Tests.Configuration.Binding;
@@ -88,12 +87,12 @@ public sealed class OptionBindingTests : IDisposable
     // ── Project config layer (lowest precedence) ────────────────────────────
 
     private static DdlProjectConfig ProjectWithProviderVersion(string version) =>
-        new() { Provider = new ProviderConfig { Plugin = TestConfigs.Provider().Plugin! with { Version = version } } };
+        new() { Provider = TestConfigs.Provider() with { Version = version } };
 
     [Fact]
     public void Bind_AppliesProjectValue_WhenSet()
     {
-        var binding = OptionBinding.Create<string>().FromProjectConfig(c => c.Provider?.Plugin?.Version);
+        var binding = OptionBinding.Create<string>().FromProjectConfig(c => c.Provider?.Version);
 
         string? captured = null;
         binding.Bind(ProjectWithProviderVersion("from-project"), new Command("test").Parse([]), v => captured = v);
@@ -107,7 +106,7 @@ public sealed class OptionBindingTests : IDisposable
         Environment.SetEnvironmentVariable(EnvVar, "from-env");
         var binding = OptionBinding.Create<string>()
             .FromEnvironmentVariable(EnvVar)
-            .FromProjectConfig(c => c.Provider?.Plugin?.Version);
+            .FromProjectConfig(c => c.Provider?.Version);
 
         string? captured = null;
         binding.Bind(ProjectWithProviderVersion("from-project"), new Command("test").Parse([]), v => captured = v);
@@ -120,7 +119,7 @@ public sealed class OptionBindingTests : IDisposable
     {
         var binding = OptionBinding.Create<string>()
             .FromOption("--opt")
-            .FromProjectConfig(c => c.Provider?.Plugin?.Version);
+            .FromProjectConfig(c => c.Provider?.Version);
         var result = Parse(binding, "--opt", "cli");
 
         string? captured = null;

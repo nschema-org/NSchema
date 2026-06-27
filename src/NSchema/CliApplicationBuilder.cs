@@ -2,7 +2,6 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Configuration.Provider;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Operations.Confirmation;
@@ -64,14 +63,14 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureBackendState(StateConfig state)
+    public CliApplicationBuilder ConfigureBackendState(StateConfig? state)
     {
         // The local-file store is built into the core and always available; every other backend is a plugin.
-        if (state.File is { } file)
+        if (state?.File is { } file)
         {
             _builder.UseFileStateStore(file.Path);
         }
-        else if (state.Plugin is { } reference)
+        else if (state?.Plugin is { } reference)
         {
             var plugin = ResolvePlugin<INSchemaBackendPlugin>(reference);
             ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);
@@ -80,10 +79,10 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDatabaseProvider(ProviderConfig provider)
+    public CliApplicationBuilder ConfigureDatabaseProvider(PluginReference? provider)
     {
-        // A null plugin is a valid offline configuration (e.g. planning from recorded state).
-        if (provider.Plugin is { } reference)
+        // A null reference is a valid offline configuration (e.g. planning from recorded state).
+        if (provider is { } reference)
         {
             var plugin = ResolvePlugin<INSchemaProviderPlugin>(reference);
             ThrowIfFailed(plugin.Configure(_builder, reference.Block), reference);

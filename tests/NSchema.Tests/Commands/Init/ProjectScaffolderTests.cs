@@ -52,7 +52,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
-        config.Provider!.Plugin.ShouldNotBeNull();
+        config.Provider.ShouldNotBeNull();
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
@@ -110,12 +110,11 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         // Exactly the selected provider is populated, resolved to the matching plugin label.
         config.Provider.ShouldNotBeNull();
-        config.Provider!.ConfiguredSectionCount.ShouldBe(1);
-        config.Provider.Plugin!.Label.ShouldBe(providerName);
+        config.Provider!.Label.ShouldBe(providerName);
 
         // Exactly the selected backend is populated.
         config.State.ShouldNotBeNull();
-        config.State!.ConfiguredSectionCount.ShouldBe(1);
+        config.State.ShouldNotBeNull();
         (backend switch
         {
             BackendKind.File => config.State.File is not null,
