@@ -24,10 +24,22 @@ public sealed class CompletionCommandTests
         => _sut.Parse(["completion"]).Errors.ShouldNotBeEmpty();
 
     [Theory]
-    [InlineData("--install-autocomplete")]
-    [InlineData("--uninstall-autocomplete")]
-    public void Completion_AcceptsTheInstallFlags(string flag)
-        => _sut.Parse(["completion", "bash", flag]).Errors.ShouldBeEmpty();
+    [InlineData("install")]
+    [InlineData("uninstall")]
+    public void Completion_AcceptsInstallAndUninstallSubcommands(string verb)
+        => _sut.Parse(["completion", verb, "bash"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("install")]
+    [InlineData("uninstall")]
+    public void CompletionInstallVerbs_RequireAShell(string verb)
+        => _sut.Parse(["completion", verb]).Errors.ShouldNotBeEmpty();
+
+    [Theory]
+    [InlineData("install")]
+    [InlineData("uninstall")]
+    public void CompletionInstallVerbs_RejectAnUnknownShell(string verb)
+        => _sut.Parse(["completion", verb, "powershell"]).Errors.ShouldNotBeEmpty();
 
     [Fact]
     public void Root_RegistersTheSuggestDirective()

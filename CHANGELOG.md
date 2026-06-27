@@ -44,6 +44,8 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
   `--auto-approve`/`-y` (consistent with `apply`/`destroy`) instead of `--force`. The lock-id safety check is unchanged.
 - **`show` split by what it shows.** The recorded state is now `nschema state show` (offline; the `state` noun group will grow `pull`/`push`/`move`), and a
   saved plan is `nschema plan show <file>`. The top-level `show` command is gone.
+- **`completion install` / `completion uninstall` subcommands** replace the `--install-autocomplete` / `--uninstall-autocomplete` flags. `nschema completion <shell>`
+  still prints the script.
 - Built on `NSchema.Core 4.0.0` and the 4.0 provider/backend packages.
 
 ### Removed

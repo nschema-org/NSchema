@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Spectre.Console;
 
 namespace NSchema.Commands.Completion;
 
@@ -7,65 +6,36 @@ internal static class CompletionCommand
 {
     internal static readonly string[] Shells = ["bash", "zsh", "fish", "pwsh"];
 
-    public static Command Create()
+    /// <summary>
+    /// Builds the <c>shell</c> positional accepted by <c>completion</c> and its subcommands.
+    /// </summary>
+    internal static Argument<string> ShellArgument()
     {
         var shell = new Argument<string>("shell")
         {
-            Description = $"The shell to generate a completion script for ({string.Join(", ", Shells)}).",
+            Description = $"The shell to target ({string.Join(", ", Shells)}).",
         };
         shell.AcceptOnlyFromAmong(Shells);
-
-        var command = new Command("completion", "Output a shell tab-completion script for nschema.");
-        command.Arguments.Add(shell);
-        command.Options.AddRange(CompletionOptions.All);
-
-        command.SetAction((parseResult, cancellationToken) => Run(
-            parseResult.GetValue(shell)!,
-            parseResult.GetValue(CompletionOptions.Install.Option),
-            parseResult.GetValue(CompletionOptions.Uninstall.Option),
-            cancellationToken
-        ));
-
-        return command;
+        return shell;
     }
 
-    private static async Task Run(string shell, bool install, bool uninstall, CancellationToken cancellationToken)
+    public static Command Create()
     {
-        if (install && uninstall)
+        var shell = ShellArgument();
+
+        // `completion <shell>` emits the script (the default action); `completion install/uninstall <shell>` manage it.
+        // The subcommand names never collide with the shell names, so the positional stays unambiguous.
+        var command = new Command("completion", "Output a shell tab-completion script for nschema, or install/uninstall it.");
+        command.Arguments.Add(shell);
+        command.Subcommands.Add(CompletionInstallCommand.Create());
+        command.Subcommands.Add(CompletionUninstallCommand.Create());
+
+        command.SetAction((parseResult, _) =>
         {
-            throw new InvalidOperationException("Specify only one of --install-autocomplete or --uninstall-autocomplete.");
-        }
+            Console.Out.Write(CompletionScripts.For(parseResult.GetValue(shell)!));
+            return Task.CompletedTask;
+        });
 
-        if (install)
-        {
-            var outcome = await CompletionInstaller.Install(shell, cancellationToken);
-            if (outcome.Changed)
-            {
-                AnsiConsole.MarkupLineInterpolated($"[green]✓[/] Installed {shell} completion in [yellow]{outcome.Path}[/]. Restart your shell to enable it.");
-            }
-            else
-            {
-                AnsiConsole.MarkupLineInterpolated($"{shell} completion is already installed in [yellow]{outcome.Path}[/].");
-            }
-
-            return;
-        }
-
-        if (uninstall)
-        {
-            var outcome = await CompletionInstaller.Uninstall(shell, cancellationToken);
-            if (outcome.Changed)
-            {
-                AnsiConsole.MarkupLineInterpolated($"[green]✓[/] Removed {shell} completion from [yellow]{outcome.Path}[/].");
-            }
-            else
-            {
-                AnsiConsole.MarkupLineInterpolated($"No {shell} completion found in [yellow]{outcome.Path}[/].");
-            }
-
-            return;
-        }
-
-        Console.Out.Write(CompletionScripts.For(shell));
+        return command;
     }
 }
