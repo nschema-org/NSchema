@@ -37,21 +37,6 @@ internal static class ProjectGlobs
         .AddInclude(EnvironmentOverlay(environment));
 
     /// <summary>
-    /// The distinct environment names declared under <paramref name="root"/>.
-    /// </summary>
-    public static IReadOnlyList<string> EnvironmentNames(string root)
-    {
-        var matcher = new Matcher().AddInclude(AnyEnvironmentOverlay);
-        return Match(root, matcher)
-            .Select(path => Path.GetFileName(path).Split('.'))
-            .Where(parts => parts is [.., _, "env", _, "sql"])
-            .Select(parts => parts[^2])
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .ToList();
-    }
-
-    /// <summary>
     /// Runs <paramref name="matcher"/> against <paramref name="root"/> and returns the matched files as sorted absolute paths.
     /// </summary>
     public static IReadOnlyList<string> Match(string root, Matcher matcher) => matcher
