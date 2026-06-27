@@ -13,7 +13,57 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "db", "drift", "doctor", "lock", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "db", "drift", "doctor", "lock", "plugin", "completion"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void PluginGroup_RegistersListShowAndCache()
+    {
+        // Act — the plugin noun groups project-plugin inspection (list/show) and the cache sub-noun.
+        var pluginCommand = _sut.Subcommands.Single(command => command.Name == "plugin");
+        var names = pluginCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["list", "show", "cache"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void PluginCacheGroup_RegistersListRemoveAndClear()
+    {
+        // Act — the cache sub-noun groups the profile-level, project-independent cache operations.
+        var cacheCommand = _sut.Subcommands.Single(command => command.Name == "plugin")
+            .Subcommands.Single(command => command.Name == "cache");
+        var names = cacheCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["list", "remove", "clear"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void PluginCacheClear_TakesNoArguments()
+        // clear wipes the whole cache; the destructive "all" is its own named verb, not a bare `remove`.
+        => _sut.Parse(["plugin", "cache", "clear"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void PluginShow_RequiresALabel()
+        // The plugin to show is mandatory; bare `plugin show` is a usage error.
+        => _sut.Parse(["plugin", "show"]).Errors.ShouldNotBeEmpty();
+
+    [Fact]
+    public void PluginShow_AcceptsAPositionalLabel()
+        => _sut.Parse(["plugin", "show", "postgres"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void PluginCacheRemove_RequiresAPackage()
+        // The package to remove is mandatory; bare `plugin cache remove` is a usage error.
+        => _sut.Parse(["plugin", "cache", "remove"]).Errors.ShouldNotBeEmpty();
+
+    [Fact]
+    public void PluginCacheRemove_AcceptsPackageWithOptionalVersion()
+    {
+        // Both forms parse: a bare package (all versions) and a package + version.
+        _sut.Parse(["plugin", "cache", "remove", "NSchema.Postgres"]).Errors.ShouldBeEmpty();
+        _sut.Parse(["plugin", "cache", "remove", "NSchema.Postgres", "4.0.0"]).Errors.ShouldBeEmpty();
     }
 
     [Fact]

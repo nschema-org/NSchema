@@ -28,8 +28,10 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
 2. **Else, is it a thin pass-through to an existing Core primitive** — a single public interface call (e.g.
    `IStateLock.Acquire`/`Peek`/`Release`, `ICurrentSchemaProvider.GetSchema`, `IPlanFileWriter.Read`) plus presentation
    — **or local developer plumbing** (filesystem scaffolding, source-text formatting, shell integration,
-   config/IO/rendering, **plugin resolution**)? → **CLI command.** *(lock status / acquire / release — thin over the
-   public `IStateLock`; show — thin over `ICurrentSchemaProvider`/`IPlanFileWriter`; init, fmt, completion.)*
+   config/IO/rendering, **plugin resolution & cache management**)? → **CLI command.** *(lock status / acquire / release —
+   thin over the public `IStateLock`; show — thin over `ICurrentSchemaProvider`/`IPlanFileWriter`; plugin list / show /
+   cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and project config; init, fmt,
+   completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
@@ -128,7 +130,8 @@ A provider/backend is a NuGet package implementing a contract from `NSchema.Core
 `PluginConfigureResult` (success, or aggregated errors — it does **not** throw, so `doctor` can report a misconfigured
 plugin). `Configuration/Plugins/PluginLoader` turns a `PluginReference` into live instances: it synthesizes an
 `EnableDynamicLoading` project, shells `dotnet publish` to materialise the pinned package's dependency closure into a
-per-version cache under `~/.nschema/plugins`, and loads it into an isolated `AssemblyLoadContext` that **defers
+per-version cache under `~/.nschema/plugins` (whose on-disk layout is owned by `Configuration/Plugins/PluginCache` — the
+loader delegates all path math to it), and loads it into an isolated `AssemblyLoadContext` that **defers
 `NSchema.Core` + the framework assemblies to the host** (so contract types unify across the boundary) while isolating the
 plugin's own deps (Npgsql, the AWS SDK, …). The host rejects a plugin whose referenced `NSchema.Core` **major** differs.
 `CliApplicationBuilder.ResolvePlugin` matches the discovered plugin by label and calls `Configure`; a failed result
@@ -137,6 +140,12 @@ own env vars) and validation live **in the plugin**, not the CLI.
 
 **Adding a provider/backend is a new package**, not a CLI change: implement the contract, and either name it via the
 block's `source` attribute or (for a first-party engine) add it to the built-in label→package map on `PluginReference`.
+
+The **`plugin` command group** (`Commands/Plugin/`) is the management surface over this, all thin CLI per the boundary
+rule (config + cache inspection, no Core op): `plugin list` / `plugin show <label>` cross-reference the project's pinned
+plugins (via `PluginInventory.ForProject`) against the cache; `plugin cache list` / `remove <package> [version]` / `clear`
+operate on the profile-level `PluginCache` directly. The cache is **shared across projects**, so there is no per-project
+prune — only `cache remove` (targeted) and `cache clear` (wholesale). `init` is the restore counterpart.
 
 ## Error handling and output
 

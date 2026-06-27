@@ -29,6 +29,9 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 - **`--no-lock` flag** on `apply`, `refresh`, and `destroy`. Runs without taking the state lock.
 - **`nschema state show <file>`** renders a state file on disk directly, without a configured backend.
 - **`nschema db show`** renders the live database schema, read directly from the database via the provider — the online counterpart to `state show`.
+- **`plugin` command group.** `nschema plugin list` shows the provider and backend plugins your project pins and whether each is restored;
+  `plugin show <label>` prints one plugin's detail (package, pinned version, cache status). `plugin cache list` /
+  `plugin cache remove <package> [version]` / `plugin cache clear` inspect and prune the shared plugin cache at `~/.nschema/plugins`.
 
 ### Changed
 

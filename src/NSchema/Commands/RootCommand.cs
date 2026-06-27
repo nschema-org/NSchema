@@ -9,6 +9,7 @@ using NSchema.Commands.Import;
 using NSchema.Commands.Init;
 using NSchema.Commands.Lock;
 using NSchema.Commands.Plan;
+using NSchema.Commands.Plugin;
 using NSchema.Commands.Refresh;
 using NSchema.Commands.Scaffold;
 using NSchema.Commands.State;
@@ -45,6 +46,7 @@ internal static class RootCommand
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
         root.Subcommands.Add(LockCommand.Create());
+        root.Subcommands.Add(PluginCommand.Create());
         root.Subcommands.Add(CompletionCommand.Create());
 
         // Backs `nschema [suggest:<pos>] "<command line>"`, which the shell-completion scripts call to compute
