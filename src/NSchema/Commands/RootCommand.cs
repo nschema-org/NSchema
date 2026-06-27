@@ -4,14 +4,13 @@ using NSchema.Commands.Destroy;
 using NSchema.Commands.Doctor;
 using NSchema.Commands.Drift;
 using NSchema.Commands.Fmt;
-using NSchema.Commands.ForceUnlock;
 using NSchema.Commands.Import;
 using NSchema.Commands.Init;
-using NSchema.Commands.LockStatus;
+using NSchema.Commands.Lock;
 using NSchema.Commands.Plan;
 using NSchema.Commands.Refresh;
 using NSchema.Commands.Scaffold;
-using NSchema.Commands.Show;
+using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
 
@@ -40,11 +39,10 @@ internal static class RootCommand
         root.Subcommands.Add(RefreshCommand.Create());
         root.Subcommands.Add(ImportCommand.Create());
         root.Subcommands.Add(DestroyCommand.Create());
-        root.Subcommands.Add(ShowCommand.Create());
+        root.Subcommands.Add(StateCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
-        root.Subcommands.Add(ForceUnlockCommand.Create());
-        root.Subcommands.Add(LockStatusCommand.Create());
+        root.Subcommands.Add(LockCommand.Create());
         root.Subcommands.Add(CompletionCommand.Create());
 
         // Backs `nschema [suggest:<pos>] "<command line>"`, which the shell-completion scripts call to compute

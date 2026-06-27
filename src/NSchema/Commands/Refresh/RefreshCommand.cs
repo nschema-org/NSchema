@@ -12,6 +12,8 @@ internal static class RefreshCommand
     {
         var command = new Command("refresh", "Read the live schema and write it to the state store.");
 
+        command.Options.AddRange(RefreshOptions.All);
+
         command.SetAction(Run);
         return command;
     }
@@ -32,6 +34,6 @@ internal static class RefreshCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
         app.Services.GetRequiredService<IAnsiConsole>().ReportEnvironment(environment);
-        await app.Refresh(new RefreshArguments(), cancellationToken);
+        await app.Refresh(new RefreshArguments { SkipLock = configuration.NoLock }, cancellationToken);
     }
 }

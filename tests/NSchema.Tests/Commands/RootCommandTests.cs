@@ -13,22 +13,50 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "show", "drift", "doctor", "force-unlock", "lock-status", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "drift", "doctor", "lock", "completion"], ignoreOrder: true);
     }
+
+    [Fact]
+    public void LockGroup_RegistersStatusAcquireAndRelease()
+    {
+        // Act — the lock noun groups the thin IStateLock front-ends.
+        var lockCommand = _sut.Subcommands.Single(command => command.Name == "lock");
+        var names = lockCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["status", "acquire", "release"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void StateGroup_RegistersShow()
+    {
+        // Act — the state noun groups recorded-state inspection (and, later, pull/push/move).
+        var stateCommand = _sut.Subcommands.Single(command => command.Name == "state");
+        var names = stateCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["show"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void PlanGroup_RegistersShowSubcommand()
+        // plan keeps its compute action (git-stash style) and gains `plan show <file>` for saved plans.
+        => _sut.Subcommands.Single(command => command.Name == "plan")
+            .Subcommands.Select(command => command.Name).ShouldContain("show");
 
     [Theory]
     [InlineData("plan")]
     [InlineData("apply")]
     [InlineData("refresh")]
     [InlineData("destroy")]
-    [InlineData("show")]
+    [InlineData("state show")]
     [InlineData("drift")]
     public void ProviderAndStateOptions_AreNotCliFlags(string command)
     {
         // The live database (PROVIDER block) and state store (BACKEND block) are defined in the project's .sql config
         // blocks — with the connection string overridable via NSCHEMA_POSTGRES_CONNECTION_STRING — so these are
         // rejected as unknown flags.
-        var result = _sut.Parse([command, "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
+        var result = _sut.Parse([.. command.Split(' '), "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();
@@ -55,36 +83,29 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void Force_IsAcceptedByForceUnlock()
+    public void AutoApprove_IsAcceptedByLockRelease()
     {
-        // Act — force-unlock skips its confirmation prompt with --force (Terraform's force-unlock -force).
-        var result = _sut.Parse(["force-unlock", "--force"]);
+        // Act — lock release skips its confirmation prompt with --auto-approve, consistent with apply/destroy.
+        var result = _sut.Parse(["lock", "release", "--auto-approve"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
     }
 
     [Fact]
-    public void ForceUnlock_AcceptsAPositionalLockId()
-        // force-unlock <lock-id> releases a specific lock (compare-and-swap), Terraform's force-unlock LOCK_ID.
-        => _sut.Parse(["force-unlock", "9f8e7d6c"]).Errors.ShouldBeEmpty();
+    public void LockRelease_AcceptsAPositionalLockId()
+        // lock release <lock-id> releases a specific lock (compare-and-swap), Terraform's force-unlock LOCK_ID.
+        => _sut.Parse(["lock", "release", "9f8e7d6c"]).Errors.ShouldBeEmpty();
 
     [Fact]
-    public void ForceUnlock_LockIdArgumentIsOptional()
-        // Bare `force-unlock` still releases whatever lock is held, so the positional must be optional.
-        => _sut.Parse(["force-unlock"]).Errors.ShouldBeEmpty();
+    public void LockRelease_LockIdArgumentIsOptional()
+        // Bare `lock release` still releases whatever lock is held, so the positional must be optional.
+        => _sut.Parse(["lock", "release"]).Errors.ShouldBeEmpty();
 
     [Fact]
-    public void ForceUnlock_TakesAnOptionLikeTokenAsTheLockId()
-    {
-        // force-unlock has no --auto-approve flag (it uses --force). Because the lock-id is a free-form positional,
-        // an option-like token in that position is taken literally as the lock id rather than erroring as an unknown
-        // option — so the prompt is never skipped this way. (--force is covered by Force_IsAcceptedByForceUnlock.)
-        var result = _sut.Parse(["force-unlock", "--auto-approve"]);
-
-        // Assert
-        result.Errors.ShouldBeEmpty();
-    }
+    public void LockAcquire_AcceptsReasonAndTtl()
+        // lock acquire holds the lock for out-of-band work; --reason annotates it and --ttl gives it an expiry.
+        => _sut.Parse(["lock", "acquire", "--reason", "manual db surgery", "--ttl", "30m"]).Errors.ShouldBeEmpty();
 
     [Fact]
     public void AutoApprove_IsRejectedByPlan()
@@ -194,15 +215,16 @@ public sealed class RootCommandTests
     [InlineData("refresh")]
     [InlineData("import")]
     [InlineData("destroy")]
-    [InlineData("show")]
+    [InlineData("state show")]
     [InlineData("drift")]
     [InlineData("doctor")]
-    [InlineData("force-unlock")]
-    [InlineData("lock-status")]
+    [InlineData("lock status")]
+    [InlineData("lock acquire")]
+    [InlineData("lock release")]
     public void Directory_IsAcceptedAfterEveryCommand(string command)
     {
         // --directory is a recursive root option, so it can follow the subcommand on any command.
-        var result = _sut.Parse([command, "--directory", "."]);
+        var result = _sut.Parse([.. command.Split(' '), "--directory", "."]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -216,16 +238,17 @@ public sealed class RootCommandTests
     [InlineData("refresh")]
     [InlineData("import")]
     [InlineData("destroy")]
-    [InlineData("show")]
+    [InlineData("state show")]
     [InlineData("drift")]
     [InlineData("doctor")]
-    [InlineData("force-unlock")]
-    [InlineData("lock-status")]
+    [InlineData("lock status")]
+    [InlineData("lock acquire")]
+    [InlineData("lock release")]
     public void Environment_IsAcceptedByEveryEnvironmentAwareCommand(string command)
     {
         // --environment selects the per-environment overlay config; it's a recursive root option, so it follows any
         // command. (scaffold is excluded — it scaffolds a project rather than acting on an environment.)
-        var result = _sut.Parse([command, "--environment", "prod"]);
+        var result = _sut.Parse([.. command.Split(' '), "--environment", "prod"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -255,38 +278,48 @@ public sealed class RootCommandTests
     }
 
     [Theory]
-    [InlineData("show")]
+    [InlineData("state show")]
     [InlineData("drift")]
-    public void Scope_IsAcceptedByShowAndDrift(string command)
+    public void Scope_IsAcceptedByStateShowAndDrift(string command)
     {
-        // Act — show and drift filter the recorded state by namespace, but expose no destructive-action knob.
-        var result = _sut.Parse([command, "--scope", "public"]);
+        // Act — state show and drift filter the recorded state by namespace, but expose no destructive-action knob.
+        var result = _sut.Parse([.. command.Split(' '), "--scope", "public"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
     }
 
     [Theory]
-    [InlineData("show")]
+    [InlineData("state show")]
     [InlineData("drift")]
-    public void ShowAndDriftReject_DestructiveActions(string command)
+    public void StateShowAndDriftReject_DestructiveActions(string command)
     {
         // Act — neither command produces a migration, so the destructive-action policy is meaningless.
-        var result = _sut.Parse([command, "--destructive-actions", "Warn"]);
+        var result = _sut.Parse([.. command.Split(' '), "--destructive-actions", "Warn"]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();
     }
 
     [Fact]
-    public void Show_AcceptsAPositionalPlanFile()
-        // show <planfile> renders a saved plan instead of the recorded state (Terraform's show <planfile>).
-        => _sut.Parse(["show", "plan.nschema"]).Errors.ShouldBeEmpty();
+    public void StateShow_AcceptsAPositionalStateFile()
+        // state show <file> renders a state file directly instead of the configured store.
+        => _sut.Parse(["state", "show", "state.json"]).Errors.ShouldBeEmpty();
 
     [Fact]
-    public void Show_PlanFileArgumentIsOptional()
-        // Bare `show` still reads the recorded state, so the positional must be optional.
-        => _sut.Parse(["show"]).Errors.ShouldBeEmpty();
+    public void StateShow_FileArgumentIsOptional()
+        // Bare `state show` reads the configured store, so the positional must be optional.
+        => _sut.Parse(["state", "show"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void PlanShow_AcceptsAPositionalPlanFile()
+        // plan show <file> renders a saved plan's diff/plan/SQL (was the old top-level `show <planfile>`).
+        => _sut.Parse(["plan", "show", "plan.nschema"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void PlanShow_RequiresAFile()
+        // The saved plan to render is mandatory; bare `plan show` is a usage error.
+        => _sut.Parse(["plan", "show"]).Errors.ShouldNotBeEmpty();
 
     [Theory]
     [InlineData("--scope", "public")]
@@ -302,20 +335,35 @@ public sealed class RootCommandTests
 
     [Fact]
     public void DetailedExitCode_IsAcceptedByLockStatus()
-        // lock-status --detailed-exitcode opts into exit 2 when the state is locked, for CI gating.
-        => _sut.Parse(["lock-status", "--detailed-exitcode"]).Errors.ShouldBeEmpty();
+        // lock status --detailed-exitcode opts into exit 2 when the state is locked, for CI gating.
+        => _sut.Parse(["lock", "status", "--detailed-exitcode"]).Errors.ShouldBeEmpty();
 
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
     public void LockStatusRejects_MigrationOptions(string option, string value)
     {
-        // Act — lock-status only reads the lock; it produces no migration, so it exposes no scope/policy knobs.
-        var result = _sut.Parse(["lock-status", option, value]);
+        // Act — lock status only reads the lock; it produces no migration, so it exposes no scope/policy knobs.
+        var result = _sut.Parse(["lock", "status", option, value]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();
     }
+
+    [Theory]
+    [InlineData("apply")]
+    [InlineData("refresh")]
+    [InlineData("destroy")]
+    public void NoLock_IsAcceptedByMutatingCommands(string command)
+        // --no-lock runs the operation without taking the state lock (e.g. under a manually-held lock).
+        => _sut.Parse([command, "--no-lock"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("plan")]
+    [InlineData("drift")]
+    public void NoLock_IsRejectedByReadOnlyCommands(string command)
+        // --no-lock is meaningless for commands that never take the lock.
+        => _sut.Parse([command, "--no-lock"]).Errors.ShouldNotBeEmpty();
 
     [Fact]
     public void Fmt_AcceptsAPositionalPathAndCheck()

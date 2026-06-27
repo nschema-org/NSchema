@@ -21,9 +21,15 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public StateConfig? State { get; set; }
 
+    /// <summary>
+    /// Whether to refresh without acquiring the state lock.
+    /// </summary>
+    public bool NoLock { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
+        RefreshOptions.NoLock.Bind(cli, n => NoLock = n);
     }
 }

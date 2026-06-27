@@ -15,6 +15,7 @@ internal static class PlanCommand
         var command = new Command("plan", "Compute and show the migration plan without applying it. Use --destroy to preview a teardown instead.");
 
         command.Options.AddRange(PlanOptions.All);
+        command.Subcommands.Add(PlanShowCommand.Create());
 
         command.SetAction(Run);
         return command;
