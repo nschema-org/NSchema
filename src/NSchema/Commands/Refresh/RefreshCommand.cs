@@ -3,6 +3,7 @@ using NSchema.Configuration;
 using NSchema.Operations.Refresh;
 using NSchema.Policies;
 using NSchema.Services;
+using NSchema.State;
 
 namespace NSchema.Commands.Refresh;
 

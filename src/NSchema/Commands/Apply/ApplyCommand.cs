@@ -6,6 +6,7 @@ using NSchema.Operations.Plan;
 using NSchema.Plan.PlanFile;
 using NSchema.Policies;
 using NSchema.Services;
+using NSchema.State;
 using NSchema.Sql.Model;
 using Spectre.Console;
 
