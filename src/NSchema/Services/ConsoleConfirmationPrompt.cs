@@ -3,9 +3,7 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// The shared terminal confirmation gate: present a summary and, unless auto-approved, require the operator to type
-/// "yes" before a dangerous action proceeds. Used both by the operation-level <see cref="ConsoleOperationConfirmation"/>
-/// and by thin lock commands that prompt directly.
+/// The shared terminal confirmation gate: present a summary and, unless auto-approved, require the operator to type "yes" before a dangerous action proceeds.
 /// </summary>
 internal static class ConsoleConfirmationPrompt
 {
