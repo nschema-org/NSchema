@@ -12,8 +12,6 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [4.0.0-beta.2]
-
 Version 4.0.0 changes the provider and backend model to function as plugins resolved through the NuGet package manager.
 
 ### Added
@@ -57,6 +55,8 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 
 - Running `nschema --help` in a busy directory like root would cause a performance slowdown due to the `--environment` arg autocomplete recursively scanning
   all the files in the directory. This has been fixed by removing autocomplete.
+- **Torn reads of the local state file.** The built-in file state store now writes to a temporary sibling file and
+    atomically renames it into place, so a command reading the recorded state while another run writes it.
 
 ### Removed
 
