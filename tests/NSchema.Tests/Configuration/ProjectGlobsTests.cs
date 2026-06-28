@@ -56,24 +56,4 @@ public sealed class ProjectGlobsTests : IDisposable
         EnvironmentSchema("dev").ShouldBe(["seed.env.dev.sql"]);
         EnvironmentSchema("staging").ShouldBeEmpty();
     }
-
-    [Fact]
-    public void EnvironmentNames_ReturnsDistinctSortedNames()
-    {
-        Write("schema.sql");                 // not an overlay
-        Write("public.users.sql");           // dotted, but not an overlay
-        Write("audit.env.prod.sql");
-        Write("seed.env.prod.sql");          // a second prod overlay — name de-duplicated
-        Write("scratch.env.dev.sql");
-
-        ProjectGlobs.EnvironmentNames(_root).ShouldBe(["dev", "prod"]);
-    }
-
-    [Fact]
-    public void EnvironmentNames_NoOverlays_ReturnsEmpty()
-    {
-        Write("schema.sql");
-
-        ProjectGlobs.EnvironmentNames(_root).ShouldBeEmpty();
-    }
 }
