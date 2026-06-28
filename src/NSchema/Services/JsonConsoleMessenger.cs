@@ -1,8 +1,6 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using NSchema.Configuration.Plugins;
-using NSchema.Operations;
+using NSchema.Policies;
 using NSchema.State.Model;
 
 namespace NSchema.Services;
@@ -10,19 +8,19 @@ namespace NSchema.Services;
 /// <summary>
 /// Emits line-level narration and outcomes as newline-delimited JSON.
 /// </summary>
-internal class JsonConsoleMessenger : IConsoleMessenger
+internal sealed class JsonConsoleMessenger : IConsoleMessenger
 {
     private readonly Verbosity _verbosity;
-    protected readonly TextWriter Out;
-    protected readonly TextWriter Error;
+    private readonly TextWriter _out;
+    private readonly TextWriter _error;
 
     public JsonConsoleMessenger(Verbosity verbosity) : this(verbosity, Console.Out, Console.Error) { }
 
     internal JsonConsoleMessenger(Verbosity verbosity, TextWriter output, TextWriter error)
     {
         _verbosity = verbosity;
-        Out = output;
-        Error = error;
+        _out = output;
+        _error = error;
     }
 
     public void Report(MessageKind kind, string message)
@@ -34,7 +32,7 @@ internal class JsonConsoleMessenger : IConsoleMessenger
             return;
         }
 
-        Write(Error, new { type = "log", level = kind, message });
+        JsonOutput.Write(_error, new { type = "log", level = kind, message });
     }
 
     public void Announce(ConsoleMessage message) => Report(MessageKind.Announcement, message.Plain);
@@ -50,23 +48,33 @@ internal class JsonConsoleMessenger : IConsoleMessenger
 
     public void Detail(ConsoleMessage message) => Detail(message.Plain);
 
-    public void ReportException(Exception exception) => Write(Error, new ErrorEvent(exception.Message));
+    public void ReportException(Exception exception) => JsonOutput.Write(_error, new ErrorEvent(exception.Message));
 
     // The environment banner is human-facing narration; JSON output omits it so the stream stays purely results + logs.
     public void ReportEnvironment(string? environment) { }
 
-    public void ReportLockInfo(StateLockInfo? info) => Write(Out, info is null
+    public void ReportLockInfo(StateLockInfo? info) => JsonOutput.Write(_out, info is null
         ? new LockReport(false, null, null, null, null, null)
         : new LockReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
 
     // The plugin inspection commands are structured queries, so they emit a single clean object/array (not the gated
     // NDJSON log stream) — the same exception lock status makes.
-    public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins) => Write(Out, plugins);
+    public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins) => JsonOutput.Write(_out, plugins);
 
-    public void ReportPluginDetail(ProjectPlugin plugin) => Write(Out, plugin);
+    public void ReportPluginDetail(ProjectPlugin plugin) => JsonOutput.Write(_out, plugin);
 
     public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins) =>
-        Write(Out, new { cacheRoot, plugins });
+        JsonOutput.Write(_out, new { cacheRoot, plugins });
+
+    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
+    {
+        if (diagnostics.Count == 0)
+        {
+            return;
+        }
+
+        JsonOutput.Write(_out, new { type = "diagnostics", diagnostics = diagnostics.ToList() });
+    }
 
     // The --json shape for a lock (lock status / lock acquire): a single object so a script can gate on `locked`
     // and read `lockId` to release it later.
@@ -78,16 +86,4 @@ internal class JsonConsoleMessenger : IConsoleMessenger
         [JsonPropertyOrder(-1)]
         public string Type => "error";
     }
-
-    protected static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        // SQL bodies contain quotes and angle brackets; relaxed escaping keeps them readable (\" not ") — this is
-        // CLI output, not HTML, so the extra-cautious default encoder isn't needed.
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
-
-    protected static void Write(TextWriter writer, object @event) => writer.WriteLine(JsonSerializer.Serialize(@event, SerializerOptions));
 }

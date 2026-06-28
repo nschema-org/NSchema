@@ -1,6 +1,5 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
-using NSchema.Policies;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql.Model;
@@ -10,17 +9,19 @@ namespace NSchema.Services;
 /// <summary>
 /// An <see cref="IConsolePresenter"/> that emits machine-readable output as newline-delimited JSON.
 /// </summary>
-internal sealed class JsonConsolePresenter : JsonConsoleMessenger, IConsolePresenter
+internal sealed class JsonConsolePresenter : IConsolePresenter
 {
-    public JsonConsolePresenter(Verbosity verbosity) : base(verbosity) { }
+    private readonly TextWriter _out;
 
-    internal JsonConsolePresenter(Verbosity verbosity, TextWriter output, TextWriter error) : base(verbosity, output, error) { }
+    public JsonConsolePresenter() : this(Console.Out) { }
 
-    public void ReportDiff(DatabaseDiff diff) => Write(Out, new { type = "diff", diff });
+    internal JsonConsolePresenter(TextWriter output) => _out = output;
 
-    public void ReportSchema(DatabaseSchema schema) => Write(Out, new { type = "schema", schema });
+    public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, new { type = "diff", diff });
 
-    public void ReportSqlPlan(SqlPlan plan) => Write(Out, new { type = "sqlPlan", statements = plan.Statements });
+    public void ReportSchema(DatabaseSchema schema) => JsonOutput.Write(_out, new { type = "schema", schema });
+
+    public void ReportSqlPlan(SqlPlan plan) => JsonOutput.Write(_out, new { type = "sqlPlan", statements = plan.Statements });
 
     public void ReportPlan(MigrationPlan plan)
     {
@@ -29,22 +30,12 @@ internal sealed class JsonConsolePresenter : JsonConsoleMessenger, IConsolePrese
             return;
         }
 
-        Write(Out, new
+        JsonOutput.Write(_out, new
         {
             type = "scripts",
             preDeployment = plan.PreDeploymentScripts.Select(Describe),
             postDeployment = plan.PostDeploymentScripts.Select(Describe),
         });
-    }
-
-    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
-    {
-        if (diagnostics.Count == 0)
-        {
-            return;
-        }
-
-        Write(Out, new { type = "diagnostics", diagnostics = diagnostics.ToList() });
     }
 
     private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction };
