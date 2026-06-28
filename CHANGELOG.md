@@ -12,6 +12,8 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.0.0-beta.3]
+
 Version 4.0.0 changes the provider and backend model to function as plugins resolved through the NuGet package manager.
 
 ### Added
