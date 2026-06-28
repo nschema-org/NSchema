@@ -2,7 +2,6 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.State;
-using NSchema.Operations;
 using NSchema.Schema;
 using NSchema.Services;
 
@@ -52,7 +51,7 @@ internal static class StateShowCommand
         var presenter = app.Services.GetRequiredService<IConsolePresenter>();
         presenter.ReportEnvironment(environment);
 
-        presenter.Announce("Showing recorded state. The live database will not be contacted.");
+        presenter.Announce($"Showing recorded state. The live database will not be contacted.");
         var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
             .GetSchema(SchemaSourceMode.Offline, configuration.Scope, required: true, cancellationToken);
         presenter.ReportSchema(schema);
