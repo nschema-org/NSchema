@@ -5,7 +5,6 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
-using NSchema.Operations;
 using NSchema.Services;
 using NSchema.State;
 using Spectre.Console;
@@ -108,15 +107,14 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void Build_ResolvesTheSpectreReporter_WithoutDuplicateFormatCollision()
+    public void Build_ResolvesTheSpectreConsolePresenter()
     {
-        // Act — a second reporter sharing the core "human" format would throw at resolution; the Spectre reporter
-        // is registered under its own format and selected, so the default coexists harmlessly.
+        // Act
         using var app = _sut.Build();
 
-        // Assert
-        var reporter = app.Services.GetRequiredService<IOperationReporter>();
-        reporter.ShouldBeOfType<SpectreConsolePresenter>();
+        // Assert — the formatted (non-JSON) builder wires up the Spectre presenter as the CLI's presentation surface.
+        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
+        presenter.ShouldBeOfType<SpectreConsolePresenter>();
     }
 
     [Fact]

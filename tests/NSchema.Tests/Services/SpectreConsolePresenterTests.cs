@@ -1,7 +1,7 @@
 using NSchema.Configuration.Plugins;
+using NSchema.Diagnostics;
 using NSchema.Diff;
 using NSchema.Diff.Model;
-using NSchema.Operations;
 using NSchema.Plan.Model;
 using NSchema.Policies;
 using NSchema.Schema;
@@ -351,7 +351,7 @@ public sealed class SpectreConsolePresenterTests
     public void ReportDiagnostics_WritesInfoToOutput()
     {
         // Arrange
-        var diagnostics = new PolicyDiagnostics([new PolicyDiagnostic("style", "Naming hint", PolicyDiagnosticSeverity.Info)]);
+        var diagnostics = new PolicyDiagnostics([new Diagnostic("style", "Naming hint", DiagnosticSeverity.Info)]);
 
         // Act
         _sut.ReportDiagnostics(diagnostics);
@@ -367,7 +367,7 @@ public sealed class SpectreConsolePresenterTests
         // Arrange
         var diagnostics = new PolicyDiagnostics(
         [
-            new PolicyDiagnostic("destructive", "Dropping column id", PolicyDiagnosticSeverity.Error),
+            new Diagnostic("destructive", "Dropping column id", DiagnosticSeverity.Error),
         ]);
 
         // Act

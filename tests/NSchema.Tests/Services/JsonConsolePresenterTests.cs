@@ -1,7 +1,6 @@
 using System.Text.Json;
 using NSchema.Configuration.Plugins;
 using NSchema.Diff.Model;
-using NSchema.Operations;
 using NSchema.Schema.Model;
 using NSchema.Services;
 using NSchema.Sql.Model;

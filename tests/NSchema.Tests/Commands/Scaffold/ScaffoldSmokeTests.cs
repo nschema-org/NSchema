@@ -1,6 +1,7 @@
 using NSchema.Commands.Scaffold;
 using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
+using NSchema.Extensions;
 using NSchema.Plugins;
 using NSchema.Schema.Ddl;
 
@@ -27,6 +28,7 @@ public sealed class ScaffoldSmokeTests : IDisposable
     {
         // Arrange — load the real plugin and render exactly what the scaffold command would.
         var plugin = new PluginLoader().Load("NSchema.Postgres", Version)
+            .ValueOrThrow()
             .OfType<INSchemaProviderPlugin>()
             .Single();
         var providerBlock = plugin.GetScaffoldTemplate(new ScaffoldContext { Version = Version });
