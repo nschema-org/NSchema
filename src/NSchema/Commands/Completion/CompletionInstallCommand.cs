@@ -1,6 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using NSchema.Services;
 
 namespace NSchema.Commands.Completion;
 
@@ -20,16 +18,15 @@ internal static class CompletionInstallCommand
     private static async Task Run(ParseResult parseResult, string shell, CancellationToken cancellationToken)
     {
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
         var outcome = await CompletionInstaller.Install(shell, cancellationToken);
         if (outcome.Changed)
         {
-            presenter.Success($"Installed {shell} completion in {outcome.Path}. Restart your shell to enable it.");
+            app.Messenger.Success($"Installed {shell} completion in {outcome.Path}. Restart your shell to enable it.");
         }
         else
         {
-            presenter.Announce($"{shell} completion is already installed in {outcome.Path}.");
+            app.Messenger.Announce($"{shell} completion is already installed in {outcome.Path}.");
         }
     }
 }

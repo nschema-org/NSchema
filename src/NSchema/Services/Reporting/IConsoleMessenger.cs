@@ -1,8 +1,8 @@
 using NSchema.Configuration.Plugins;
-using NSchema.Operations;
+using NSchema.Policies;
 using NSchema.State.Model;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Writes consistently-formatted messages to the console.
@@ -20,11 +20,6 @@ internal interface IConsoleMessenger
     void Announce(ConsoleMessage message);
 
     /// <summary>
-    /// Reports progress narration.
-    /// </summary>
-    void Progress(ConsoleMessage message);
-
-    /// <summary>
     /// Reports a success outcome.
     /// </summary>
     void Success(ConsoleMessage message);
@@ -33,11 +28,6 @@ internal interface IConsoleMessenger
     /// Reports a warning.
     /// </summary>
     void Warn(ConsoleMessage message);
-
-    /// <summary>
-    /// Writes an indented secondary line beneath a headline (e.g. the lock id and expiry under a <c>lock status</c> line).
-    /// </summary>
-    void Detail(string message);
 
     /// <summary>
     /// An indented secondary line.
@@ -73,4 +63,9 @@ internal interface IConsoleMessenger
     /// Reports an error. Receives the original <see cref="Exception"/> so the messenger can present it however suits its format.
     /// </summary>
     void ReportException(Exception exception);
+
+    /// <summary>
+    /// Reports policy diagnostics (warnings, info, and errors) produced during an operation.
+    /// </summary>
+    void ReportDiagnostics(PolicyDiagnostics diagnostics);
 }

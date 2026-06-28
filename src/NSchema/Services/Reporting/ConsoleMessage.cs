@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// An interpolated-string handler for presenter messages.

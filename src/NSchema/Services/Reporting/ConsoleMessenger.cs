@@ -2,20 +2,21 @@ using System.CommandLine;
 using NSchema.Configuration;
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Builds an <see cref="IConsoleMessenger"/> straight from the parsed command line — no DI host.
 /// </summary>
 internal static class ConsoleMessenger
 {
-    public static IConsoleMessenger Create(ParseResult parseResult)
-    {
-        var verbosity = ResolveVerbosity(parseResult);
-        return CommonOptions.Json.GetValueOrDefault(parseResult, false)
-            ? new JsonConsoleMessenger(verbosity)
-            : new SpectreConsoleMessenger(AnsiConsole.Console, verbosity);
-    }
+    public static IConsoleMessenger Create(ParseResult parseResult) =>
+        Create(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
+
+    /// <summary>
+    /// Builds an <see cref="IConsoleMessenger"/> for the resolved output format and verbosity.
+    /// </summary>
+    public static IConsoleMessenger Create(bool json, Verbosity verbosity) =>
+        json ? new JsonConsoleMessenger(verbosity) : new SpectreConsoleMessenger(AnsiConsole.Console, verbosity);
 
     /// <summary>
     /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single verbosity. The two flags are mutually exclusive:

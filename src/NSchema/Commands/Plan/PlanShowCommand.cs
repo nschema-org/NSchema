@@ -1,7 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using NSchema.Plan.PlanFile;
-using NSchema.Services;
 
 namespace NSchema.Commands.Plan;
 
@@ -29,12 +26,11 @@ internal static class PlanShowCommand
 
         // A saved plan is self-contained: no project config, database, or state store is needed.
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
-        presenter.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
-        var envelope = await app.Services.GetRequiredService<IPlanFileWriter>().Read(file, cancellationToken);
-        presenter.ReportDiff(envelope.Diff);
-        presenter.ReportPlan(envelope.Plan);
-        presenter.ReportSqlPlan(envelope.Sql);
+        app.Messenger.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
+        var envelope = await app.PlanFile.Read(file, cancellationToken);
+        app.Presenter.ReportDiff(envelope.Diff);
+        app.Presenter.ReportPlan(envelope.Plan);
+        app.Presenter.ReportSqlPlan(envelope.Sql);
     }
 }

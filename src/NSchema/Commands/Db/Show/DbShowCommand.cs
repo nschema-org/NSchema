@@ -1,9 +1,6 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
-using NSchema.Operations;
 using NSchema.Schema;
-using NSchema.Services;
 
 namespace NSchema.Commands.Db.Show;
 
@@ -34,12 +31,11 @@ internal static class DbShowCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
-        presenter.ReportEnvironment(environment);
+        app.Messenger.ReportEnvironment(environment);
 
-        presenter.Announce("Reading the live database schema.");
-        var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
+        app.Messenger.Announce($"Reading the live database schema.");
+        var schema = await app.CurrentSchema
             .GetSchema(SchemaSourceMode.Online, configuration.Scope, required: true, cancellationToken);
-        presenter.ReportSchema(schema);
+        app.Presenter.ReportSchema(schema);
     }
 }

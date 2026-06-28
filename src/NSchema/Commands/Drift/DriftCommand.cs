@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Drift;
 using NSchema.Services;
@@ -33,10 +32,27 @@ internal static class DriftCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        var result = await app.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
+        app.Messenger.ReportEnvironment(environment);
 
-        return configuration.DetailedExitCode && result.HasDrift
+        var result = await app.Operations.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
+        if (result.IsFailure)
+        {
+            return ExitCodes.Error;
+        }
+
+        // The operation returns the diff; the CLI renders it and the outcome line.
+        var drift = result.Value;
+        app.Presenter.ReportDiff(drift.Diff);
+        if (drift.HasDrift)
+        {
+            app.Messenger.Warn($"Drift detected: {RunSummary.Describe(drift.Diff)}.");
+        }
+        else
+        {
+            app.Messenger.Success($"No drift detected.");
+        }
+
+        return configuration.DetailedExitCode && drift.HasDrift
             ? ExitCodes.HasChanges
             : ExitCodes.NoChanges;
     }

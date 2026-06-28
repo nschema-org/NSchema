@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
+using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
-using NSchema.Operations.Confirmation;
 using NSchema.Plugins;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 using Spectre.Console;
 
 namespace NSchema;
@@ -20,10 +20,7 @@ internal sealed class CliApplicationBuilder
     private CliApplicationBuilder(bool json, Verbosity verbosity, bool allowRestore)
     {
         _allowRestore = allowRestore;
-        _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
-        {
-            ExceptionBehavior = ExceptionBehavior.Throw,
-        });
+        _builder = NSchemaApplication.CreateBuilder();
 
         _builder.UseTerraformRenderer(o => o.IncludeColour = false);
 
@@ -36,11 +33,10 @@ internal sealed class CliApplicationBuilder
             _builder.Services.AddSingleton<IConsolePresenter, SpectreConsolePresenter>();
         }
 
-        // Re-register the presenter as the reporter as well.
-        _builder.UseReporter(sp => sp.GetRequiredService<IConsolePresenter>());
-
-        _builder.Services.AddSingleton(AnsiConsole.Console);
         _builder.Services.AddSingleton(verbosity);
+        _builder.UseProgressReporter<ConsoleProgress>();
+        _builder.Services.AddSingleton(ConsoleMessenger.Create(json, verbosity));
+        _builder.Services.AddSingleton(AnsiConsole.Console);
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
@@ -110,29 +106,37 @@ internal sealed class CliApplicationBuilder
     }
 
     // Configure lives on the two derived interfaces (not the shared base), so the caller supplies the call; this method
-    // owns the resolve + non-throwing capture both the throwing wrappers and doctor build on.
+    // owns the resolve + non-throwing capture both the throwing wrappers and doctor build on. Resolution and the plugin's
+    // own Configure both report failure as data now, so there is nothing to catch — the diagnostic is composed, not caught.
     private PluginDiagnostic? TryApply<TPlugin>(PluginReference reference, Func<TPlugin, PluginConfigureResult> configure)
         where TPlugin : class, INSchemaPlugin
     {
-        try
+        var resolved = ResolvePlugin<TPlugin>(reference);
+        if (resolved.IsFailure)
         {
-            var result = configure(ResolvePlugin<TPlugin>(reference));
-            return result.Succeeded ? null : new PluginDiagnostic(reference.Label, result.Errors);
+            return new PluginDiagnostic(reference.Label, resolved.Errors.Select(e => e.Message).ToList());
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // A restore/load failure (bad version pin, missing plugin, Core-major mismatch) is just as much a
-            // diagnostic as a Configure failure — capture it rather than letting it propagate raw.
-            return new PluginDiagnostic(reference.Label, [ex.Message]);
-        }
+
+        var result = configure(resolved.Value);
+        return result.Succeeded ? null : new PluginDiagnostic(reference.Label, result.Errors);
     }
 
-    private TPlugin ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
+    private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var plugins = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
-        return plugins.OfType<TPlugin>().FirstOrDefault(p => string.Equals(p.Label, reference.Label, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
+        var loaded = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<TPlugin>(loaded.Diagnostics);
+        }
+
+        var plugin = loaded.Value.OfType<TPlugin>().FirstOrDefault(p => string.Equals(p.Label, reference.Label, StringComparison.OrdinalIgnoreCase));
+        if (plugin is null)
+        {
+            return Diagnostic.Error(reference.PackageId,
                 $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
+        }
+
+        return plugin;
     }
 
     private static void Throw(PluginDiagnostic? diagnostic)
@@ -142,12 +146,6 @@ internal sealed class CliApplicationBuilder
             throw new InvalidOperationException(
                 $"The '{problem.Label}' plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, problem.Errors)}");
         }
-    }
-
-    public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)
-    {
-        _builder.Services.AddSingleton<IOperationConfirmation>(sp => new ConsoleOperationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
-        return this;
     }
 
     public NSchemaApplication Build() => _builder.Build();

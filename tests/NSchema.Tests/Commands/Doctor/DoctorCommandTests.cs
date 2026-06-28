@@ -37,11 +37,12 @@ public sealed class DoctorCommandTests : IDisposable
 
         var parseResult = NSchema.Commands.RootCommand.Create().Parse(["doctor", "--directory", _projectDirectory]);
 
-        // Act — mirror Program.cs (default exception handler off) so the command's exception surfaces here.
+        // Act — mirror Program.cs (default exception handler off).
         var invocation = new InvocationConfiguration { EnableDefaultExceptionHandler = false };
-        var exception = await Should.ThrowAsync<InvalidOperationException>(() => parseResult.InvokeAsync(invocation));
+        var exitCode = await parseResult.InvokeAsync(invocation, TestContext.Current.CancellationToken);
 
-        // Assert — doctor aggregated the plugin failure into a reported problem rather than passing or crashing raw.
-        exception.Message.ShouldContain("plugin problem");
+        // Assert — doctor aggregated the plugin failure into a non-zero exit (the contract CI gates on) rather than
+        // passing or crashing raw.
+        exitCode.ShouldBe(1);
     }
 }

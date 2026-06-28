@@ -26,23 +26,32 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    plan, plan --destroy, drift, refresh, destroy, import, doctor; and validate, which parses+diffs the
    `DatabaseSchema` despite touching no infrastructure.)*
 2. **Else, is it a thin pass-through to an existing Core primitive** — a single public interface call (e.g.
-   `IStateLock.Acquire`/`Peek`/`Release`, `ICurrentSchemaProvider.GetSchema`, `IPlanFileWriter.Read`) plus presentation
+   `app.Locks`'s `Acquire`/`Peek`/`Release`, `app.CurrentSchema.GetSchema`, `app.PlanFile.Read`) plus presentation
    — **or local developer plumbing** (filesystem scaffolding, source-text formatting, shell integration,
    config/IO/rendering, **plugin resolution & cache management**)? → **CLI command.** *(lock status / acquire / release —
-   thin over the public `IStateLock`; show — thin over `ICurrentSchemaProvider`/`IPlanFileWriter`; plugin list / show /
-   cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and project config; init, fmt,
-   completion.)*
+   thin over the public `IStateLockCoordinator` (`app.Locks`); show — thin over `app.CurrentSchema`/`app.PlanFile`;
+   plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and project
+   config; init, fmt, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
 deliberate API decision (e.g. `show` re-publicized `ICurrentSchemaProvider`/`IPlanFileWriter`/`PlanFileEnvelope`) — weigh
 it against API-surface stability, not just the boundary rule.
 
-**Presentation is single-sourced** via `Services/IConsolePresenter` — a superset of the core `IOperationReporter`
-implemented directly by the Spectre/JSON reporters and registered as both faces. Core operations narrate through the
-`IOperationReporter` face; thin CLI commands resolve `IConsolePresenter` (same formatting for `Success`/`Warn`/… plus
-`Detail` for indented lines) instead of hand-rolling markup. The one exception is a structured `--json` *query result*
-(e.g. `lock status`'s single object), which keeps its explicit clean-object path rather than the reporter's NDJSON.
+**Presentation lives in the CLI**, split by *what* is being written (`Services/Reporting/`), with a Spectre face and a
+`--json` face for each:
+
+- **`IConsoleMessenger`** — line-level narration (status `Report`, `Announce`/`Success`/`Warn`/`Detail`,
+  `ReportDiagnostics`, the lock/plugin query renderers). App-free; reached as **`app.Messenger`**.
+- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`),
+  delegating to the core renderers. Reached as **`app.Presenter`**. Both are CLI-side C# 14 extension properties over the
+  application (`Extensions/NSchemaApplicationExtensions`), mirroring `app.Operations`/`app.Locks`.
+- **Core-operation progress** (the live narration a long run emits) flows through the core's `IProgress<OperationProgress>`,
+  implemented CLI-side by `Services/Reporting/ConsoleProgress` and registered via the builder's
+  `UseProgressReporter<ConsoleProgress>()`.
+
+A structured `--json` *query result* (e.g. `lock status`'s single object) keeps its explicit clean-object path rather
+than the messenger's NDJSON log stream.
 
 ## Commands
 
@@ -151,9 +160,10 @@ prune — only `cache remove` (targeted) and `cache clear` (wholesale). `init` i
 
 The CLI is the **single** presenter of errors. `Program.cs` disables System.CommandLine's default exception handler
 (`EnableDefaultExceptionHandler = false`) and maps exceptions to exit codes (130 for cancellation, 1 otherwise). The core
-is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does **not** also print failures. Run output
-(plan diffs, progress) flows through the core's `IMigrationReporter`; avoid direct `Console` writes except in `Program.cs`
-(top-level errors) and the interactive prompt in `ConsoleMigrationConfirmation`.
+is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does **not** also print failures. Structured
+run output (the diff, schema, SQL plan) is rendered by the CLI's `app.Presenter`, and live progress flows through the
+core's `IProgress<OperationProgress>` (the CLI's `ConsoleProgress`); avoid direct `Console` writes except in `Program.cs`
+(top-level errors) and the interactive prompt in `ConsoleConfirmationPrompt`.
 
 ## Options layout
 

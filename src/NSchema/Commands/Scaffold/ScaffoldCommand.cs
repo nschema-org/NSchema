@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
-using NSchema.Services;
 using Spectre.Console;
 
 namespace NSchema.Commands.Scaffold;
@@ -23,7 +22,6 @@ internal static class ScaffoldCommand
         var configuration = await ConfigurationFactory.Load<ScaffoldConfiguration>(parseResult, environment: null, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
         var console = app.Services.GetRequiredService<IAnsiConsole>();
 
         var loader = new PluginLoader();
@@ -31,7 +29,7 @@ internal static class ScaffoldCommand
         // The provider plugin renders its own config block and supplies a dialect-specific sample schema. Resolve the
         // latest version compatible with this CLI and pin it.
         var (providerPackage, providerLabel) = ProviderPackage(configuration.Provider);
-        presenter.Announce($"Resolving {providerPackage}...");
+        app.Messenger.Announce($"Resolving {providerPackage}...");
         var providerVersion = loader.ResolveLatestVersion(providerPackage);
         var providerPlugin = Resolve<INSchemaProviderPlugin>(loader, providerPackage, providerLabel, providerVersion);
         var providerBlock = providerPlugin.GetScaffoldTemplate(new ScaffoldContext { Version = providerVersion });
@@ -41,7 +39,7 @@ internal static class ScaffoldCommand
         (string Base, string Overlay)? pluginBackend = null;
         if (BackendPackage(configuration.Backend) is { } backend)
         {
-            presenter.Announce($"Resolving {backend.Package}...");
+            app.Messenger.Announce($"Resolving {backend.Package}...");
             var backendVersion = loader.ResolveLatestVersion(backend.Package);
             var backendPlugin = Resolve<INSchemaBackendPlugin>(loader, backend.Package, backend.Label, backendVersion);
             pluginBackend = (
@@ -70,17 +68,17 @@ internal static class ScaffoldCommand
         // band, so point the user at the right environment variable.
         if (configuration.Provider == ProviderKind.Sqlite)
         {
-            presenter.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
+            app.Messenger.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
         }
         else
         {
-            presenter.Announce($"Set {ConnectionStringEnvVar(configuration.Provider)}, then run {"nschema plan"}.");
+            app.Messenger.Announce($"Set {ConnectionStringEnvVar(configuration.Provider)}, then run {"nschema plan"}.");
         }
     }
 
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, string packageId, string label, string version)
         where TPlugin : class, INSchemaPlugin =>
-        loader.Load(packageId, version)
+        loader.Load(packageId, version).ValueOrThrow()
             .OfType<TPlugin>()
             .FirstOrDefault(p => string.Equals(p.Label, label, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"The package '{packageId}' does not provide a plugin for '{label}'.");

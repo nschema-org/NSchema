@@ -1,9 +1,6 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Operations;
-using NSchema.Services;
 
 namespace NSchema.Commands.Init;
 
@@ -22,7 +19,6 @@ internal static class InitCommand
         var configuration = await ConfigurationFactory.Load<InitConfiguration>(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
         // The file backend is built in, so only the provider and a plugin-backed state store need restoring.
         var references = new List<PluginReference>();
@@ -37,16 +33,16 @@ internal static class InitCommand
 
         if (references.Count == 0)
         {
-            presenter.Announce("Nothing to restore: no provider or plugin backend is configured.");
+            app.Messenger.Announce($"Nothing to restore: no provider or plugin backend is configured.");
             return;
         }
 
         var loader = new PluginLoader();
         foreach (var reference in references)
         {
-            presenter.Announce($"Restoring {reference.PackageId} {reference.Version}...");
-            loader.Load(reference.PackageId, reference.Version);
-            presenter.Success($"{reference.PackageId} {reference.Version}");
+            app.Messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
+            loader.Load(reference.PackageId, reference.Version).ThrowIfFailure();
+            app.Messenger.Success($"{reference.PackageId} {reference.Version}");
         }
     }
 }
