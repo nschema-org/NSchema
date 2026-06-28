@@ -1,6 +1,6 @@
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Operations;
+using NSchema.Diagnostics;
 using NSchema.Policies;
 using NSchema.State.Model;
 using Spectre.Console;
@@ -10,10 +10,10 @@ namespace NSchema.Services;
 /// <summary>
 /// Renders line-level narration and outcomes with Spectre.Console.
 /// </summary>
-internal class SpectreConsoleMessenger : IConsoleMessenger
+internal sealed class SpectreConsoleMessenger : IConsoleMessenger
 {
-    protected readonly IAnsiConsole Out;
-    protected readonly IAnsiConsole Error;
+    private readonly IAnsiConsole _out;
+    private readonly IAnsiConsole _error;
     private readonly Verbosity _verbosity;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
@@ -26,8 +26,8 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
     public SpectreConsoleMessenger(IAnsiConsole output, IAnsiConsole error, Verbosity verbosity)
     {
-        Out = output;
-        Error = error;
+        _out = output;
+        _error = error;
         _verbosity = verbosity;
     }
 
@@ -50,20 +50,20 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
 
         var (console, markup) = kind switch
         {
-            MessageKind.Success => (Out, $"[green]:check_mark: {body}[/]"),
-            MessageKind.Warning => (Error, $"[yellow]:warning: {body}[/]"),
-            MessageKind.Progress => (Out, $"[grey]{body}[/]"),
+            MessageKind.Success => (_out, $"[green]:check_mark: {body}[/]"),
+            MessageKind.Warning => (_error, $"[yellow]:warning: {body}[/]"),
+            MessageKind.Progress => (_out, $"[grey]{body}[/]"),
             // Dimmed and italicised so verbose detail reads as secondary to the run narration.
-            MessageKind.Verbose => (Out, $"[grey italic]{body}[/]"),
-            _ => (Out, body),
+            MessageKind.Verbose => (_out, $"[grey italic]{body}[/]"),
+            _ => (_out, body),
         };
 
         console.MarkupLine(markup);
     }
 
-    public void Detail(string message) => Out.MarkupLine($"[grey]  {Markup.Escape(message)}[/]");
+    public void Detail(string message) => _out.MarkupLine($"[grey]  {Markup.Escape(message)}[/]");
 
-    public void Detail(ConsoleMessage message) => Out.MarkupLine($"[grey]  {message.Styled}[/]");
+    public void Detail(ConsoleMessage message) => _out.MarkupLine($"[grey]  {message.Styled}[/]");
 
     public void ReportLockInfo(StateLockInfo? info)
     {
@@ -88,7 +88,7 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
     {
         if (plugins.Count == 0)
         {
-            Out.MarkupLine("[grey]No provider or backend plugins are configured for this project.[/]");
+            _out.MarkupLine("[grey]No provider or backend plugins are configured for this project.[/]");
             return;
         }
 
@@ -110,12 +110,12 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
                 new Markup(RestoredLabel(plugin.Restored)));
         }
 
-        Out.Write(table);
+        _out.Write(table);
     }
 
     public void ReportPluginDetail(ProjectPlugin plugin)
     {
-        Out.MarkupLineInterpolated($"[bold]{plugin.Label}[/] [grey]({plugin.Role})[/]");
+        _out.MarkupLineInterpolated($"[bold]{plugin.Label}[/] [grey]({plugin.Role})[/]");
         Detail($"Package: {plugin.PackageId}");
         Detail($"Version: {plugin.Version}");
         if (plugin.Restored)
@@ -131,11 +131,11 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
 
     public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins)
     {
-        Out.MarkupLineInterpolated($"[bold]Plugin cache:[/] {cacheRoot}");
+        _out.MarkupLineInterpolated($"[bold]Plugin cache:[/] {cacheRoot}");
 
         if (plugins.Count == 0)
         {
-            Out.MarkupLine("[grey]The plugin cache is empty.[/]");
+            _out.MarkupLine("[grey]The plugin cache is empty.[/]");
             return;
         }
 
@@ -153,7 +153,7 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
                 Markup.Escape(FormatSize(plugin.SizeBytes)));
         }
 
-        Out.Write(table);
+        _out.Write(table);
         Detail($"{plugins.Count} cached, {FormatSize(plugins.Sum(p => p.SizeBytes))} total. Remove with: nschema plugin cache remove <package> [version]");
     }
 
@@ -174,15 +174,14 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
         return unit == 0 ? $"{bytes} {units[unit]}" : $"{size:0.0} {units[unit]}";
     }
 
-    public void ReportException(Exception exception)
-    {
-        // A policy violation carries structured diagnostics; show the table first, then the headline error.
-        if (exception is PolicyViolationException violation)
-        {
-            RenderDiagnostics(Error, violation.Errors);
-        }
+    public void ReportException(Exception exception) =>
+        _error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
 
-        Error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
+    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
+    {
+        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
+        var notable = diagnostics.Any(d => d.Severity is DiagnosticSeverity.Warning or DiagnosticSeverity.Error);
+        RenderDiagnostics(notable ? _error : _out, diagnostics);
     }
 
     public void ReportEnvironment(string? environment)
@@ -193,12 +192,12 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
             return;
         }
 
-        Out.MarkupLineInterpolated($"[bold]Environment:[/] [yellow]{environment}[/]");
-        Out.WriteLine();
+        _out.MarkupLineInterpolated($"[bold]Environment:[/] [yellow]{environment}[/]");
+        _out.WriteLine();
     }
 
-    // Renders a policy-diagnostic table. Shared by ReportException (here) and the presenter's ReportDiagnostics.
-    protected static void RenderDiagnostics(IAnsiConsole console, IReadOnlyList<PolicyDiagnostic> diagnostics)
+    // Renders a policy-diagnostic table.
+    private static void RenderDiagnostics(IAnsiConsole console, IReadOnlyList<Diagnostic> diagnostics)
     {
         if (diagnostics.Count == 0)
         {
@@ -218,7 +217,7 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
         {
             table.AddRow(
                 new Markup(SeverityLabel(diagnostic.Severity)),
-                new Markup(Markup.Escape(diagnostic.PolicyName)),
+                new Markup(Markup.Escape(diagnostic.Source)),
                 new Markup(Markup.Escape(diagnostic.Message)));
         }
 
@@ -226,10 +225,10 @@ internal class SpectreConsoleMessenger : IConsoleMessenger
         console.WriteLine();
     }
 
-    private static string SeverityLabel(PolicyDiagnosticSeverity severity) => severity switch
+    private static string SeverityLabel(DiagnosticSeverity severity) => severity switch
     {
-        PolicyDiagnosticSeverity.Error => "[red]error[/]",
-        PolicyDiagnosticSeverity.Warning => "[yellow]warning[/]",
+        DiagnosticSeverity.Error => "[red]error[/]",
+        DiagnosticSeverity.Warning => "[yellow]warning[/]",
         _ => "[grey]info[/]",
     };
 

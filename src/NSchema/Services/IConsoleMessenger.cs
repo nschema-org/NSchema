@@ -1,5 +1,5 @@
 using NSchema.Configuration.Plugins;
-using NSchema.Operations;
+using NSchema.Policies;
 using NSchema.State.Model;
 
 namespace NSchema.Services;
@@ -73,4 +73,9 @@ internal interface IConsoleMessenger
     /// Reports an error. Receives the original <see cref="Exception"/> so the messenger can present it however suits its format.
     /// </summary>
     void ReportException(Exception exception);
+
+    /// <summary>
+    /// Reports policy diagnostics (warnings, info, and errors) produced during an operation.
+    /// </summary>
+    void ReportDiagnostics(PolicyDiagnostics diagnostics);
 }

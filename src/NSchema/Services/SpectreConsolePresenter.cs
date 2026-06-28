@@ -2,7 +2,6 @@ using System.Text;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
-using NSchema.Policies;
 using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -13,10 +12,12 @@ using Spectre.Console;
 namespace NSchema.Services;
 
 /// <summary>
-/// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console.
+/// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console. Line-level messaging is the
+/// separate <see cref="IConsoleMessenger"/>; this renders only the structured output.
 /// </summary>
-internal sealed class SpectreConsolePresenter : SpectreConsoleMessenger, IConsolePresenter
+internal sealed class SpectreConsolePresenter : IConsolePresenter
 {
+    private readonly IAnsiConsole _out;
     private readonly IDiffRenderer _diffRenderer;
     private readonly ISchemaRenderer _schemaRenderer;
     private readonly ISqlPlanRenderer _sqlPlanRenderer;
@@ -25,24 +26,9 @@ internal sealed class SpectreConsolePresenter : SpectreConsoleMessenger, IConsol
     /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
     /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
     /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, Verbosity verbosity)
-        : base(console, verbosity)
+    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
     {
-        _diffRenderer = diffRenderer;
-        _schemaRenderer = schemaRenderer;
-        _sqlPlanRenderer = sqlPlanRenderer;
-    }
-
-    /// <param name="output">The console for informational output (typically stdout).</param>
-    /// <param name="error">The console for errors and warnings (typically stderr).</param>
-    /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
-    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
-    /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
-    internal SpectreConsolePresenter(IAnsiConsole output, IAnsiConsole error, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer, Verbosity verbosity)
-        : base(output, error, verbosity)
-    {
+        _out = console;
         _diffRenderer = diffRenderer;
         _schemaRenderer = schemaRenderer;
         _sqlPlanRenderer = sqlPlanRenderer;
@@ -97,21 +83,14 @@ internal sealed class SpectreConsolePresenter : SpectreConsoleMessenger, IConsol
         WriteSection("SQL", body);
     }
 
-    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
-    {
-        // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
-        var notable = diagnostics.Any(d => d.Severity is PolicyDiagnosticSeverity.Warning or PolicyDiagnosticSeverity.Error);
-        RenderDiagnostics(notable ? Error : Out, diagnostics);
-    }
-
     // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)
     {
-        Out.MarkupLineInterpolated($"[bold]{title}[/]");
-        Out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
-        Out.Write(body);
-        Out.WriteLine();
-        Out.WriteLine();
+        _out.MarkupLineInterpolated($"[bold]{title}[/]");
+        _out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
+        _out.Write(body);
+        _out.WriteLine();
+        _out.WriteLine();
     }
 
     // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the
