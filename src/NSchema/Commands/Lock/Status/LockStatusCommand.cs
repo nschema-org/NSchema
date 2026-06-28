@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Services;
 
 namespace NSchema.Commands.Lock.Status;
 

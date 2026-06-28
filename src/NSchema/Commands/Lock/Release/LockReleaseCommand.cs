@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
-using NSchema.Services;
+using NSchema.Services.Confirmation;
 using NSchema.State.Model;
 using Spectre.Console;
 

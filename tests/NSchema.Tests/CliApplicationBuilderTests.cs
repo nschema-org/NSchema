@@ -5,7 +5,7 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 using NSchema.State;
 using Spectre.Console;
 

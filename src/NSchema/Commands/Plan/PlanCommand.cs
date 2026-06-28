@@ -3,7 +3,7 @@ using NSchema.Configuration;
 using NSchema.Diagnostics;
 using NSchema.Operations.Plan;
 using NSchema.Policies;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plan;
 

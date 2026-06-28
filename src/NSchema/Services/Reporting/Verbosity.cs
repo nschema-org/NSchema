@@ -1,4 +1,4 @@
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// How much of the run narration to show, selected by <c>--quiet</c> / <c>--verbose</c>.

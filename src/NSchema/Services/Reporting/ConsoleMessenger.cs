@@ -2,7 +2,7 @@ using System.CommandLine;
 using NSchema.Configuration;
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Builds an <see cref="IConsoleMessenger"/> straight from the parsed command line — no DI host.

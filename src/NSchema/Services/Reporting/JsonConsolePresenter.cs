@@ -4,7 +4,7 @@ using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql.Model;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// An <see cref="IConsolePresenter"/> that emits machine-readable output as newline-delimited JSON.

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
-using NSchema.Services;
 using Spectre.Console;
 
 namespace NSchema.Commands.Scaffold;

@@ -2,7 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// The shared NDJSON serialization used by both the JSON messenger and presenter, so the two write identical output

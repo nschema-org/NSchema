@@ -3,7 +3,6 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Operations.Doctor;
 using NSchema.Policies;
-using NSchema.Services;
 
 namespace NSchema.Commands.Doctor;
 

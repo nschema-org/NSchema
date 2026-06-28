@@ -1,4 +1,4 @@
-using NSchema.Services;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Tests.Services;
 

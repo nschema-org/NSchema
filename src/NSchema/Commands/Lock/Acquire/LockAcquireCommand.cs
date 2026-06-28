@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Policies;
-using NSchema.Services;
 using NSchema.State.Model;
 
 namespace NSchema.Commands.Lock.Acquire;

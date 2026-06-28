@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Services;
 
 namespace NSchema.Commands.Init;
 

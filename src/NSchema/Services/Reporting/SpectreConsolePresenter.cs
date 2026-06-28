@@ -9,7 +9,7 @@ using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console. Line-level messaging is the

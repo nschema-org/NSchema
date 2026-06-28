@@ -2,7 +2,6 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations.Validate;
 using NSchema.Policies;
-using NSchema.Services;
 
 namespace NSchema.Commands.Validate;
 

@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Plugins;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Cache.Clear;
 

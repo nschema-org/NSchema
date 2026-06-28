@@ -2,7 +2,7 @@ using System.Text.Json;
 using NSchema.Configuration.Plugins;
 using NSchema.Diagnostics;
 using NSchema.Policies;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 using NSchema.State.Model;
 
 namespace NSchema.Tests.Services;

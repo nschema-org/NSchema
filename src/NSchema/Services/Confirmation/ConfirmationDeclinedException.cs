@@ -1,4 +1,4 @@
-namespace NSchema.Services;
+namespace NSchema.Services.Confirmation;
 
 /// <summary>
 /// Thrown when an operation that needs confirmation is not approved.

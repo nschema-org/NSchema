@@ -1,6 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using NSchema.Services;
 
 namespace NSchema.Commands.Plan;
 

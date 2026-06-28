@@ -3,7 +3,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Policies;
 using NSchema.State.Model;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Emits line-level narration and outcomes as newline-delimited JSON.

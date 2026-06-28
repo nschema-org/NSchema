@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Services;
 
 namespace NSchema.Commands.Completion;
 

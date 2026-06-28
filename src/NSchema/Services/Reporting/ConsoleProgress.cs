@@ -1,6 +1,6 @@
 using NSchema.Operations.Progress;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// The CLI sink for an operation's transient progress narration.

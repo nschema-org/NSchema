@@ -1,4 +1,4 @@
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Classifies a status / progress message.

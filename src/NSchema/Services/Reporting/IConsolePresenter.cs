@@ -3,7 +3,7 @@ using NSchema.Plan.Model;
 using NSchema.Schema.Model;
 using NSchema.Sql.Model;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Renders an operation's structured output.

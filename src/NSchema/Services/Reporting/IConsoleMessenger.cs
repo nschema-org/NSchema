@@ -2,7 +2,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Policies;
 using NSchema.State.Model;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Writes consistently-formatted messages to the console.

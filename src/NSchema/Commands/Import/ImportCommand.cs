@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations.Import;
-using NSchema.Services;
 
 namespace NSchema.Commands.Import;
 

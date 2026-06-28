@@ -1,9 +1,7 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.State;
 using NSchema.Schema;
-using NSchema.Services;
 
 namespace NSchema.Commands.State.Show;
 

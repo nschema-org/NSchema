@@ -1,4 +1,4 @@
-using NSchema.Services;
+using NSchema.Services.Confirmation;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;

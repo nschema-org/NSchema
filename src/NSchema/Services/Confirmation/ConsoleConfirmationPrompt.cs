@@ -1,6 +1,6 @@
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Confirmation;
 
 /// <summary>
 /// The shared terminal confirmation gate: present a summary and, unless auto-approved, require the operator to type "yes" before a dangerous action proceeds.

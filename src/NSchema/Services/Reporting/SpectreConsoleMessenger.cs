@@ -5,7 +5,7 @@ using NSchema.Policies;
 using NSchema.State.Model;
 using Spectre.Console;
 
-namespace NSchema.Services;
+namespace NSchema.Services.Reporting;
 
 /// <summary>
 /// Renders line-level narration and outcomes with Spectre.Console.

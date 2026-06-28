@@ -1,8 +1,6 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Schema;
-using NSchema.Services;
 
 namespace NSchema.Commands.Db.Show;
 

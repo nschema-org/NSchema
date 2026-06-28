@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using NSchema.Services.Reporting;
 
-namespace NSchema.Services;
+namespace NSchema.Extensions;
 
 /// <summary>
 /// Exposes the CLI's console surfaces on the application via the same <c>app.X</c> access pattern as

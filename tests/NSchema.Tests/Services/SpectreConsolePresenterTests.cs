@@ -4,7 +4,7 @@ using NSchema.Plan.Model;
 using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console.Testing;

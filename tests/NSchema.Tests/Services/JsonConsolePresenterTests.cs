@@ -1,7 +1,7 @@
 using System.Text.Json;
 using NSchema.Diff.Model;
 using NSchema.Schema.Model;
-using NSchema.Services;
+using NSchema.Services.Reporting;
 using NSchema.Sql.Model;
 
 namespace NSchema.Tests.Services;
