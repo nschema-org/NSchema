@@ -41,7 +41,7 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
 
     public void Warn(ConsoleMessage message) => Report(MessageKind.Warning, message.Plain);
 
-    public void Detail(ConsoleMessage message) =>  Report(MessageKind.Announcement, message.Plain);
+    public void Detail(ConsoleMessage message) => Report(MessageKind.Announcement, message.Plain);
 
     public void ReportException(Exception exception) => JsonOutput.Write(_error, new ErrorEvent(exception.Message));
 

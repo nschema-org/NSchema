@@ -5,8 +5,8 @@ using NSchema.Operations.Apply;
 using NSchema.Operations.Plan;
 using NSchema.Policies;
 using NSchema.Services;
-using NSchema.State;
 using NSchema.Sql.Model;
+using NSchema.State;
 using Spectre.Console;
 
 namespace NSchema.Commands.Apply;
