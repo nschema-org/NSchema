@@ -51,7 +51,7 @@ internal static class StateShowCommand
         app.Messenger.ReportEnvironment(environment);
 
         app.Messenger.Announce($"Showing recorded state. The live database will not be contacted.");
-        var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
+        var schema = await app.CurrentSchema
             .GetSchema(SchemaSourceMode.Offline, configuration.Scope, required: true, cancellationToken);
         app.Presenter.ReportSchema(schema);
     }
@@ -66,7 +66,7 @@ internal static class StateShowCommand
             .Build();
 
         app.Messenger.Announce($"Showing state file {file}.");
-        var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
+        var schema = await app.CurrentSchema
             .GetSchema(SchemaSourceMode.Offline, scope, required: true, cancellationToken);
         app.Presenter.ReportSchema(schema);
     }

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
 using NSchema.Operations.Plan;
-using NSchema.Plan.PlanFile;
 using NSchema.Policies;
 using NSchema.Services;
 using NSchema.State;
@@ -84,7 +83,7 @@ internal static class ApplyCommand
         PlanResult plan;
         if (configuration.PlanFile is not null)
         {
-            var envelope = await app.Services.GetRequiredService<IPlanFileWriter>().Read(configuration.PlanFile, cancellationToken);
+            var envelope = await app.PlanFile.Read(configuration.PlanFile, cancellationToken);
             plan = new PlanResult(envelope.Diff, envelope.Plan, envelope.Sql);
             app.Presenter.ReportDiff(envelope.Diff);
         }

@@ -36,7 +36,7 @@ internal static class DbShowCommand
         app.Messenger.ReportEnvironment(environment);
 
         app.Messenger.Announce($"Reading the live database schema.");
-        var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
+        var schema = await app.CurrentSchema
             .GetSchema(SchemaSourceMode.Online, configuration.Scope, required: true, cancellationToken);
         app.Presenter.ReportSchema(schema);
     }
