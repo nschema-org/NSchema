@@ -2,7 +2,6 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Services;
-using NSchema.State;
 using NSchema.State.Model;
 using Spectre.Console;
 
@@ -46,9 +45,7 @@ internal static class LockReleaseCommand
         var console = app.Services.GetRequiredService<IAnsiConsole>();
         app.Messenger.ReportEnvironment(environment);
 
-        var stateLock = app.Services.GetRequiredService<IStateLock>();
-
-        var current = await stateLock.Peek(cancellationToken);
+        var current = await app.Locks.Peek(cancellationToken);
         if (current is null)
         {
             app.Messenger.Announce($"No state lock is held.");
@@ -68,7 +65,13 @@ internal static class LockReleaseCommand
             "Do you want to release the lock? Only [green]yes[/] will be accepted:",
             "--auto-approve");
 
-        await stateLock.Release(cancellationToken);
-        app.Messenger.Success($"Released the state lock held by {current.Who} (operation '{current.Operation}', since {current.CreatedUtc:u}).");
+        var released = await app.Locks.Release(cancellationToken);
+        if (released is null)
+        {
+            app.Messenger.Announce($"No state lock is held.");
+            return;
+        }
+
+        app.Messenger.Success($"Released the state lock held by {released.Who} (operation '{released.Operation}', since {released.CreatedUtc:u}).");
     }
 }

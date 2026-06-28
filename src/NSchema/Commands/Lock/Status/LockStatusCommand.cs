@@ -1,8 +1,6 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Services;
-using NSchema.State;
 
 namespace NSchema.Commands.Lock.Status;
 
@@ -34,9 +32,7 @@ internal static class LockStatusCommand
             .ConfigureBackendState(configuration.State)
             .Build();
 
-        // Read the lock directly via the public Core primitive — no live database is contacted, and Peek never
-        // acquires the lock, so this can't contend with a running operation.
-        var info = await app.Services.GetRequiredService<IStateLock>().Peek(cancellationToken);
+        var info = await app.Locks.Peek(cancellationToken);
 
         app.Messenger.ReportEnvironment(environment);
 
