@@ -20,11 +20,6 @@ internal interface IConsoleMessenger
     void Announce(ConsoleMessage message);
 
     /// <summary>
-    /// Reports progress narration.
-    /// </summary>
-    void Progress(ConsoleMessage message);
-
-    /// <summary>
     /// Reports a success outcome.
     /// </summary>
     void Success(ConsoleMessage message);
@@ -33,11 +28,6 @@ internal interface IConsoleMessenger
     /// Reports a warning.
     /// </summary>
     void Warn(ConsoleMessage message);
-
-    /// <summary>
-    /// Writes an indented secondary line beneath a headline (e.g. the lock id and expiry under a <c>lock status</c> line).
-    /// </summary>
-    void Detail(string message);
 
     /// <summary>
     /// An indented secondary line.

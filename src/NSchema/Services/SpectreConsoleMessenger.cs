@@ -35,8 +35,6 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
 
     public void Announce(ConsoleMessage message) => WriteLine(MessageKind.Announcement, message.Styled);
 
-    public void Progress(ConsoleMessage message) => WriteLine(MessageKind.Progress, message.Styled);
-
     public void Success(ConsoleMessage message) => WriteLine(MessageKind.Success, message.Styled);
 
     public void Warn(ConsoleMessage message) => WriteLine(MessageKind.Warning, message.Styled);
@@ -61,8 +59,6 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         console.MarkupLine(markup);
     }
 
-    public void Detail(string message) => _out.MarkupLine($"[grey]  {Markup.Escape(message)}[/]");
-
     public void Detail(ConsoleMessage message) => _out.MarkupLine($"[grey]  {message.Styled}[/]");
 
     public void ReportLockInfo(StateLockInfo? info)
@@ -80,7 +76,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         // Surface a manual hold's lifetime, and flag it once past — but NSchema never auto-breaks an expired lock.
         if (info.ExpiresUtc is { } expires)
         {
-            Detail(expires <= DateTimeOffset.UtcNow ? $"Expires: {expires:u} (expired)" : $"Expires: {expires:u}");
+            Detail(expires <= DateTimeOffset.UtcNow ? (ConsoleMessage)$"Expires: {expires:u} (expired)" : $"Expires: {expires:u}");
         }
     }
 
@@ -125,7 +121,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         }
         else
         {
-            Detail("Restored: no — run 'nschema init' to restore it.");
+            Detail($"Restored: no — run 'nschema init' to restore it.");
         }
     }
 
