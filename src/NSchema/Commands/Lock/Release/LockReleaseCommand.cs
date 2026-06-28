@@ -1,7 +1,6 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
-using NSchema.Operations;
 using NSchema.Services;
 using NSchema.State;
 using NSchema.State.Model;
@@ -53,7 +52,7 @@ internal static class LockReleaseCommand
         var current = await stateLock.Peek(cancellationToken);
         if (current is null)
         {
-            presenter.Announce("No state lock is held.");
+            presenter.Announce($"No state lock is held.");
             return;
         }
 
