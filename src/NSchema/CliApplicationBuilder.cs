@@ -142,12 +142,6 @@ internal sealed class CliApplicationBuilder
         }
     }
 
-    public CliApplicationBuilder ConfigureConfirmation(bool autoApprove)
-    {
-        _builder.Services.AddSingleton<IOperationConfirmation>(sp => new ConsoleOperationConfirmation(autoApprove, sp.GetRequiredService<IAnsiConsole>()));
-        return this;
-    }
-
     public NSchemaApplication Build() => _builder.Build();
 
     /// <summary>
