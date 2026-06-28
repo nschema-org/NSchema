@@ -48,13 +48,12 @@ internal static class StateShowCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
-        presenter.ReportEnvironment(environment);
+        app.Messenger.ReportEnvironment(environment);
 
-        presenter.Announce($"Showing recorded state. The live database will not be contacted.");
+        app.Messenger.Announce($"Showing recorded state. The live database will not be contacted.");
         var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
             .GetSchema(SchemaSourceMode.Offline, configuration.Scope, required: true, cancellationToken);
-        presenter.ReportSchema(schema);
+        app.Presenter.ReportSchema(schema);
     }
 
     private static async Task ShowStateFile(ParseResult parseResult, string file, CancellationToken cancellationToken)
@@ -65,11 +64,10 @@ internal static class StateShowCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(new StateConfig { File = new FileStateConfig { Path = file } })
             .Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
 
-        presenter.Announce($"Showing state file {file}.");
+        app.Messenger.Announce($"Showing state file {file}.");
         var schema = await app.Services.GetRequiredService<ICurrentSchemaProvider>()
             .GetSchema(SchemaSourceMode.Offline, scope, required: true, cancellationToken);
-        presenter.ReportSchema(schema);
+        app.Presenter.ReportSchema(schema);
     }
 }

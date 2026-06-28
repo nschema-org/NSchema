@@ -1,8 +1,8 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
+using NSchema.Diagnostics;
 using NSchema.Operations.Plan;
-using NSchema.Operations.PlanDestroy;
+using NSchema.Policies;
 using NSchema.Services;
 
 namespace NSchema.Commands.Plan;
@@ -43,9 +43,11 @@ internal static class PlanCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();
-        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        var result = await app.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(result, configuration.DetailedExitCode);
+
+        app.Messenger.ReportEnvironment(environment);
+        app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
+        var result = await app.Operations.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
+        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Plan saved to", configuration.DetailedExitCode);
     }
 
     private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
@@ -62,11 +64,51 @@ internal static class PlanCommand
         }
 
         using var app = builder.Build();
-        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
-        var result = await app.PlanDestroy(new PlanDestroyArguments { OutFile = configuration.OutFile }, cancellationToken);
-        return ExitCode(result, configuration.DetailedExitCode);
+        app.Messenger.ReportEnvironment(environment);
+        app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
+        var result = await app.Operations.Plan(new PlanArguments { OutFile = configuration.OutFile, Target = PlanTarget.Teardown }, cancellationToken);
+        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Planned destroy saved to", configuration.DetailedExitCode);
     }
 
-    private static int ExitCode(PlanResult result, bool detailed) =>
-        detailed && result.HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+    // The operation returns its outcome (diff, generated SQL, diagnostics); the CLI renders them and maps the result
+    // to an exit code (failure → error, otherwise the detailed code reflects whether the plan has changes).
+    private static int Finish(IConsolePresenter presenter, IConsoleMessenger messenger, Result<PlanResult> result, string? outFile, string savedPrefix, bool detailed)
+    {
+        if (result.Value is { } plan)
+        {
+            // The diff is shown even on a policy failure, so the offending change is visible.
+            if (plan.Diff is not null)
+            {
+                presenter.ReportDiff(plan.Diff);
+            }
+
+            // The plan (its deployment scripts) and SQL are only present for a successful plan.
+            if (plan.Plan is not null)
+            {
+                presenter.ReportPlan(plan.Plan);
+            }
+
+            if (plan.Sql is not null)
+            {
+                presenter.ReportSqlPlan(plan.Sql);
+            }
+        }
+
+        if (result.Diagnostics.Count > 0)
+        {
+            messenger.ReportDiagnostics(new PolicyDiagnostics(result.Diagnostics));
+        }
+
+        if (result.IsFailure)
+        {
+            return ExitCodes.Error;
+        }
+
+        if (outFile is not null && result.Value.Sql is not null)
+        {
+            messenger.Success($"{savedPrefix} {outFile}. Apply it later with this file to execute exactly this plan.");
+        }
+
+        return detailed && result.Value.HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+    }
 }

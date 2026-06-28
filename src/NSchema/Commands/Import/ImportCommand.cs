@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Import;
 using NSchema.Services;
@@ -18,7 +17,7 @@ internal static class ImportCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await ConfigurationFactory.Load<ImportConfiguration>(parseResult, environment, cancellationToken);
@@ -28,10 +27,12 @@ internal static class ImportCommand
             .ConfigureDatabaseProvider(configuration.Provider)
             .Build();
 
-        app.Services.GetRequiredService<IConsolePresenter>().ReportEnvironment(environment);
+        app.Messenger.ReportEnvironment(environment);
 
         var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
         GuardAgainstOverwrite(outputDirectory, configuration.Force);
+
+        app.Messenger.Announce($"Importing schema from database...");
 
         var args = new ImportArguments
         {
@@ -39,7 +40,14 @@ internal static class ImportCommand
             OutputDirectory = outputDirectory
         };
 
-        await app.Import(args, cancellationToken);
+        var result = await app.Operations.Import(args, cancellationToken);
+        if (result.IsFailure)
+        {
+            return ExitCodes.Error;
+        }
+
+        app.Messenger.Success($"Schema imported successfully.");
+        return ExitCodes.NoChanges;
     }
 
     private static void GuardAgainstOverwrite(string outputDirectory, bool force)

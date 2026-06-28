@@ -34,8 +34,7 @@ internal static class LockAcquireCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
-        presenter.ReportEnvironment(environment);
+        app.Messenger.ReportEnvironment(environment);
 
         var stateLock = app.Services.GetRequiredService<IStateLock>();
 
@@ -45,8 +44,8 @@ internal static class LockAcquireCommand
         var handle = await stateLock.Acquire(new StateLockRequest(configuration.Reason, configuration.TimeToLive), cancellationToken);
         var info = handle.Info;
 
-        presenter.Success($"Acquired the state lock.");
-        presenter.ReportLockInfo(info);
-        presenter.Detail($"The lock is held until you run: nschema lock release {info.Id}");
+        app.Messenger.Success($"Acquired the state lock.");
+        app.Messenger.ReportLockInfo(info);
+        app.Messenger.Detail($"The lock is held until you run: nschema lock release {info.Id}");
     }
 }

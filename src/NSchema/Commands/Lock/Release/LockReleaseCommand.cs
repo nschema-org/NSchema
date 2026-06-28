@@ -44,15 +44,14 @@ internal static class LockReleaseCommand
             .ConfigureBackendState(configuration.State)
             .Build();
         var console = app.Services.GetRequiredService<IAnsiConsole>();
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
-        presenter.ReportEnvironment(environment);
+        app.Messenger.ReportEnvironment(environment);
 
         var stateLock = app.Services.GetRequiredService<IStateLock>();
 
         var current = await stateLock.Peek(cancellationToken);
         if (current is null)
         {
-            presenter.Announce($"No state lock is held.");
+            app.Messenger.Announce($"No state lock is held.");
             return;
         }
 
@@ -70,6 +69,6 @@ internal static class LockReleaseCommand
             "--auto-approve");
 
         await stateLock.Release(cancellationToken);
-        presenter.Success($"Released the state lock held by {current.Who} (operation '{current.Operation}', since {current.CreatedUtc:u}).");
+        app.Messenger.Success($"Released the state lock held by {current.Who} (operation '{current.Operation}', since {current.CreatedUtc:u}).");
     }
 }
