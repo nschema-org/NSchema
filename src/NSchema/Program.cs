@@ -1,6 +1,5 @@
 using NSchema.Commands;
 using NSchema.Configuration;
-using NSchema.Operations;
 using NSchema.Services;
 using Spectre.Console;
 

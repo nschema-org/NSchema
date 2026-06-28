@@ -3,8 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
+using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
-using NSchema.Operations.Confirmation;
+using NSchema.Operations.Progress;
 using NSchema.Plugins;
 using NSchema.Services;
 using Spectre.Console;
@@ -20,10 +21,7 @@ internal sealed class CliApplicationBuilder
     private CliApplicationBuilder(bool json, Verbosity verbosity, bool allowRestore)
     {
         _allowRestore = allowRestore;
-        _builder = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions
-        {
-            ExceptionBehavior = ExceptionBehavior.Throw,
-        });
+        _builder = NSchemaApplication.CreateBuilder();
 
         _builder.UseTerraformRenderer(o => o.IncludeColour = false);
 
