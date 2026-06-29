@@ -29,8 +29,6 @@ internal static class PlanShowCommand
 
         app.Messenger.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
         var envelope = await app.PlanFile.Read(file, cancellationToken);
-        app.Presenter.ReportDiff(envelope.Diff);
-        app.Presenter.ReportPlan(envelope.Plan);
-        app.Presenter.ReportSqlPlan(envelope.Sql);
+        app.Presenter.ReportSavedPlan(envelope);
     }
 }

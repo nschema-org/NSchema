@@ -1,5 +1,6 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Sql.Model;
 
@@ -29,4 +30,9 @@ internal interface IConsolePresenter
     /// Presents the SQL plan a migration would run.
     /// </summary>
     void ReportSqlPlan(SqlPlan plan);
+
+    /// <summary>
+    /// Presents a saved plan file as a single combined output.
+    /// </summary>
+    void ReportSavedPlan(PlanFileEnvelope envelope);
 }

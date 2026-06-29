@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.PlanFile;
 using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -81,6 +82,13 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
     {
         var body = DimComments(_sqlPlanRenderer.Render(plan));
         WriteSection("SQL", body);
+    }
+
+    public void ReportSavedPlan(PlanFileEnvelope envelope)
+    {
+        ReportDiff(envelope.Diff);
+        ReportPlan(envelope.Plan);
+        ReportSqlPlan(envelope.Sql);
     }
 
     // A bold heading underlined to its own length

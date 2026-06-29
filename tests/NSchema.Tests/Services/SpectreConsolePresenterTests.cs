@@ -1,6 +1,7 @@
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.PlanFile;
 using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -142,5 +143,29 @@ public sealed class SpectreConsolePresenterTests
 
         // Assert
         _out.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportSavedPlan_RendersDiffScriptsAndSqlSections()
+    {
+        // Arrange — humans still get all three sections; only --json collapses to a single object.
+        _diffRenderer.Render(Arg.Any<DatabaseDiff>()).Returns("+ table app.widgets");
+        _sqlPlanRenderer.Render(Arg.Any<SqlPlan>()).Returns("CREATE TABLE app.widgets ();");
+        var envelope = new PlanFileEnvelope(
+            new DatabaseDiff(),
+            new MigrationPlan([], [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)], []),
+            new SqlPlan([]),
+            CreatedAt: default);
+
+        // Act
+        _sut.ReportSavedPlan(envelope);
+
+        // Assert
+        _out.Output.ShouldContain("Plan");
+        _out.Output.ShouldContain("table app.widgets");
+        _out.Output.ShouldContain("Pre-deployment");
+        _out.Output.ShouldContain("seed-roles");
+        _out.Output.ShouldContain("SQL");
+        _out.Output.ShouldContain("CREATE TABLE app.widgets");
     }
 }

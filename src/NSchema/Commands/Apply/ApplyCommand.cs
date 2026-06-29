@@ -116,7 +116,7 @@ internal static class ApplyCommand
         // empty plan defensively so "no changes" and "no SQL generated" collapse to the same no-op.
         var sql = plan.Sql ?? new SqlPlan([]);
 
-        // The database already matches the desired schema. Applying still captures state (initialising the store on a
+        // The database already matches the desired schema. Applying still captures state (initializing the store on a
         // first run), but there is nothing to confirm or preview.
         if (sql.IsEmpty)
         {

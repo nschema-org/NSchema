@@ -40,9 +40,25 @@ internal static class InitCommand
         var loader = new PluginLoader();
         foreach (var reference in references)
         {
-            app.Messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
+            // Probe before loading so we can tell the user whether this run actually fetched the plugin or just found
+            // it already cached. The "Restoring..." progress line is only worth showing for the slow path (a real
+            // publish); a cache hit is instant. Either way we still Load, so an already-cached plugin is revalidated.
+            var alreadyInstalled = loader.Cache.Contains(reference.PackageId, reference.Version);
+            if (!alreadyInstalled)
+            {
+                app.Messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
+            }
+
             loader.Load(reference.PackageId, reference.Version).ThrowIfFailure();
-            app.Messenger.Success($"{reference.PackageId} {reference.Version}");
+
+            if (alreadyInstalled)
+            {
+                app.Messenger.Success($"{reference.PackageId} {reference.Version} (already installed)");
+            }
+            else
+            {
+                app.Messenger.Success($"{reference.PackageId} {reference.Version} (installed)");
+            }
         }
     }
 }
