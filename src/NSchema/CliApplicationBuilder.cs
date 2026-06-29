@@ -1,11 +1,9 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
-using NSchema.Operations.Progress;
 using NSchema.Plugins;
 using NSchema.Services.Reporting;
 
@@ -29,7 +27,7 @@ internal sealed class CliApplicationBuilder
         // feed that one the messenger.
         _messenger = ReporterFactory.CreateMessenger(json, verbosity);
         _presenter = ReporterFactory.CreatePresenter(json);
-        _builder.Services.AddSingleton<IProgress<OperationProgress>>(new ConsoleProgress(_messenger));
+        _builder.UseProgressReporter(new ConsoleProgress(_messenger));
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)

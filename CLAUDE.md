@@ -42,14 +42,21 @@ it against API-surface stability, not just the boundary rule.
 `--json` face for each:
 
 - **`IConsoleMessenger`** — line-level narration (status `Report`, `Announce`/`Success`/`Warn`/`Detail`,
-  `ReportDiagnostics`, the lock/plugin query renderers). App-free; reached as **`app.Messenger`**.
+  `ReportDiagnostics`, the lock/plugin query renderers). App-free: built straight from the `ParseResult` by
+  `ReporterFactory`, so it works before/without an application (top-level error handling in `Program.cs`, the `plugin`
+  commands). With an app it's reached as **`app.Messenger`**.
 - **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`,
-  plus `ReportSavedPlan` for `plan show`), delegating to the core renderers. Reached as **`app.Presenter`**. Both are
-  CLI-side C# 14 extension properties over the application (`Extensions/NSchemaApplicationExtensions`), mirroring
-  `app.Operations`/`app.Locks`.
+  plus `ReportSavedPlan` for `plan show`). It owns the core renderers directly — `DiffRenderer`/`SchemaRenderer`/
+  `SqlPlanRenderer` via their `.Default` singletons, stateless utilities rather than DI services — and wraps their
+  plain-text output in Spectre markup. Reached as **`app.Presenter`**.
+- The messenger and presenter are **stateless console utilities the CLI owns directly, not container services**:
+  `ReporterFactory` builds the right (Spectre or `--json`) pair, and they hang off the **`CliApplication`** handle
+  (`app.Messenger`/`app.Presenter`) next to the engine members it forwards (`app.Operations`/`app.Locks`/
+  `app.CurrentSchema`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()` returns — the built core
+  `NSchemaApplication` paired with the console surfaces, so a command reaches engine and console through one handle.
 - **Core-operation progress** (the live narration a long run emits) flows through the core's `IProgress<OperationProgress>`,
-  implemented CLI-side by `Services/Reporting/ConsoleProgress` and registered via the builder's
-  `UseProgressReporter<ConsoleProgress>()`.
+  implemented CLI-side by `Services/Reporting/ConsoleProgress` (wrapping the messenger) and registered via the builder's
+  `UseProgressReporter(new ConsoleProgress(messenger))`.
 
 The `--json` shape splits on the **nature of the command**, not the method. A *progressive operation* (`apply`, `plan`,
 `destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so `ReportDiff`/`ReportPlan`/`ReportSqlPlan`
