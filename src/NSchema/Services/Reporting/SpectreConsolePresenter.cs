@@ -22,9 +22,9 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     // The core renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
     // The diff renderer must emit plain +/-/~ markers (colour off); ColorizeByMarker maps those glyphs to Spectre colours.
-    private readonly TerraformDiffRenderer _diffRenderer = new(new TerraformDiffRendererOptions { IncludeColour = false });
-    private readonly DefaultSchemaRenderer _schemaRenderer = DefaultSchemaRenderer.Default;
-    private readonly DefaultSqlPlanRenderer _sqlPlanRenderer = DefaultSqlPlanRenderer.Default;
+    private readonly DiffRenderer _diffRenderer = DiffRenderer.Default;
+    private readonly SchemaRenderer _schemaRenderer = SchemaRenderer.Default;
+    private readonly SqlPlanRenderer _sqlPlanRenderer = SqlPlanRenderer.Default;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     public SpectreConsolePresenter(IAnsiConsole console)
