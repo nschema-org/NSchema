@@ -16,7 +16,7 @@ internal static class PluginCacheClearCommand
     // Project-independent, and safe to skip confirmation: the cache is just a restorable copy.
     private static Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var messenger = ConsoleMessenger.Create(parseResult);
+        var messenger = ReporterFactory.CreateMessenger(parseResult);
         var cleared = new PluginCache().Clear();
 
         if (cleared.Count == 0)

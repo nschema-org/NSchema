@@ -17,7 +17,7 @@ internal static class PluginCacheListCommand
     private static Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var cache = new PluginCache();
-        ConsoleMessenger.Create(parseResult).ReportCachedPlugins(cache.Root, cache.List());
+        ReporterFactory.CreateMessenger(parseResult).ReportCachedPlugins(cache.Root, cache.List());
         return Task.CompletedTask;
     }
 }

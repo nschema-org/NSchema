@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
 using NSchema.Operations.Plan;
@@ -74,7 +73,7 @@ internal static class DestroyCommand
         }
     }
 
-    private static async Task<int> DestroyUnderLock(NSchemaApplication app, DestroyConfiguration configuration, CancellationToken cancellationToken)
+    private static async Task<int> DestroyUnderLock(CliApplication app, DestroyConfiguration configuration, CancellationToken cancellationToken)
     {
         var planResult = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Teardown }, cancellationToken);
 
@@ -118,7 +117,7 @@ internal static class DestroyCommand
         // Confirmation is entirely CLI-side: the engine never prompts. Declining throws, which propagates out (the lock
         // is released by the finally in Run) and is mapped to a cancellation by Program.
         ConsoleConfirmationPrompt.Require(
-            app.Services.GetRequiredService<IAnsiConsole>(),
+            AnsiConsole.Console,
             configuration.AutoApprove,
             $"[red]NSchema will DROP managed objects via [yellow]{sql.Statements.Count}[/] statement(s). This is destructive and cannot be undone.[/]",
             "Do you want to destroy these objects? Only [green]yes[/] will be accepted:",

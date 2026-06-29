@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
@@ -22,7 +21,7 @@ internal static class ScaffoldCommand
         var configuration = await ConfigurationFactory.Load<ScaffoldConfiguration>(parseResult, environment: null, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult).Build();
-        var console = app.Services.GetRequiredService<IAnsiConsole>();
+        var console = AnsiConsole.Console;
 
         var loader = new PluginLoader();
 

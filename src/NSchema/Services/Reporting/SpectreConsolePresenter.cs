@@ -19,20 +19,17 @@ namespace NSchema.Services.Reporting;
 internal sealed class SpectreConsolePresenter : IConsolePresenter
 {
     private readonly IAnsiConsole _out;
-    private readonly IDiffRenderer _diffRenderer;
-    private readonly ISchemaRenderer _schemaRenderer;
-    private readonly ISqlPlanRenderer _sqlPlanRenderer;
+
+    // The core renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
+    // The diff renderer must emit plain +/-/~ markers (colour off); ColorizeByMarker maps those glyphs to Spectre colours.
+    private readonly TerraformDiffRenderer _diffRenderer = new(new TerraformDiffRendererOptions { IncludeColour = false });
+    private readonly DefaultSchemaRenderer _schemaRenderer = DefaultSchemaRenderer.Default;
+    private readonly DefaultSqlPlanRenderer _sqlPlanRenderer = DefaultSqlPlanRenderer.Default;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
-    /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
-    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
-    /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    public SpectreConsolePresenter(IAnsiConsole console)
     {
         _out = console;
-        _diffRenderer = diffRenderer;
-        _schemaRenderer = schemaRenderer;
-        _sqlPlanRenderer = sqlPlanRenderer;
     }
 
     public void ReportSchema(DatabaseSchema schema)

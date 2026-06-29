@@ -5,9 +5,9 @@ using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
+using NSchema.Operations.Progress;
 using NSchema.Plugins;
 using NSchema.Services.Reporting;
-using Spectre.Console;
 
 namespace NSchema;
 
@@ -16,27 +16,20 @@ internal sealed class CliApplicationBuilder
     private readonly NSchemaApplicationBuilder _builder;
     private readonly PluginLoader _plugins = new();
     private readonly bool _allowRestore;
+    private readonly IConsoleMessenger _messenger;
+    private readonly IConsolePresenter _presenter;
 
     private CliApplicationBuilder(bool json, Verbosity verbosity, bool allowRestore)
     {
         _allowRestore = allowRestore;
         _builder = NSchemaApplication.CreateBuilder();
 
-        _builder.UseTerraformRenderer(o => o.IncludeColour = false);
-
-        if (json)
-        {
-            _builder.Services.AddSingleton<IConsolePresenter, JsonConsolePresenter>();
-        }
-        else
-        {
-            _builder.Services.AddSingleton<IConsolePresenter, SpectreConsolePresenter>();
-        }
-
-        _builder.Services.AddSingleton(verbosity);
-        _builder.UseProgressReporter<ConsoleProgress>();
-        _builder.Services.AddSingleton(ConsoleMessenger.Create(json, verbosity));
-        _builder.Services.AddSingleton(AnsiConsole.Console);
+        // The messenger and presenter are stateless console utilities, so the CLI owns them directly (see CliApplication)
+        // rather than registering them in the container. The engine still narrates progress through its own seam, so
+        // feed that one the messenger.
+        _messenger = ReporterFactory.CreateMessenger(json, verbosity);
+        _presenter = ReporterFactory.CreatePresenter(json);
+        _builder.Services.AddSingleton<IProgress<OperationProgress>>(new ConsoleProgress(_messenger));
     }
 
     public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
@@ -148,7 +141,7 @@ internal sealed class CliApplicationBuilder
         }
     }
 
-    public NSchemaApplication Build() => _builder.Build();
+    public CliApplication Build() => new(_builder.Build(), _messenger, _presenter);
 
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.
@@ -159,6 +152,6 @@ internal sealed class CliApplicationBuilder
     /// Creates a builder whose output format and verbosity follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ConsoleMessenger.ResolveVerbosity(parseResult),
+        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ReporterFactory.ResolveVerbosity(parseResult),
             allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false));
 }

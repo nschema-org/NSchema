@@ -33,7 +33,7 @@ internal static class PluginCacheRemoveCommand
         var package = parseResult.GetValue(PackageArgument)!;
         var version = parseResult.GetValue(VersionArgument);
 
-        var messenger = ConsoleMessenger.Create(parseResult);
+        var messenger = ReporterFactory.CreateMessenger(parseResult);
         var removed = new PluginCache().Remove(package, version);
 
         if (removed.Count == 0)

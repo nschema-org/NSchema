@@ -19,16 +19,16 @@ try
 }
 catch (OperationCanceledException)
 {
-    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, "Operation cancelled.");
+    ReporterFactory.CreateMessenger(parseResult).Report(MessageKind.Warning, "Operation cancelled.");
     return ExitCodes.OperationCanceled;
 }
 catch (ConfirmationDeclinedException ex)
 {
-    ConsoleMessenger.Create(parseResult).Report(MessageKind.Warning, ex.Message);
+    ReporterFactory.CreateMessenger(parseResult).Report(MessageKind.Warning, ex.Message);
     return ExitCodes.Error;
 }
 catch (Exception ex)
 {
-    ConsoleMessenger.Create(parseResult).ReportException(ex);
+    ReporterFactory.CreateMessenger(parseResult).ReportException(ex);
     return ExitCodes.Error;
 }
