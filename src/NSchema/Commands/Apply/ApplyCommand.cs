@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Operations.Apply;
 using NSchema.Operations.Plan;
@@ -78,7 +77,7 @@ internal static class ApplyCommand
         }
     }
 
-    private static async Task<int> ApplyUnderLock(NSchemaApplication app, ApplyConfiguration configuration, CancellationToken cancellationToken)
+    private static async Task<int> ApplyUnderLock(CliApplication app, ApplyConfiguration configuration, CancellationToken cancellationToken)
     {
         // The plan is a saved file replayed verbatim, or computed against the live database under the lock.
         PlanResult plan;
@@ -116,7 +115,7 @@ internal static class ApplyCommand
         // empty plan defensively so "no changes" and "no SQL generated" collapse to the same no-op.
         var sql = plan.Sql ?? new SqlPlan([]);
 
-        // The database already matches the desired schema. Applying still captures state (initialising the store on a
+        // The database already matches the desired schema. Applying still captures state (initializing the store on a
         // first run), but there is nothing to confirm or preview.
         if (sql.IsEmpty)
         {
@@ -136,7 +135,7 @@ internal static class ApplyCommand
         // Confirmation is entirely CLI-side. Declining throws, which propagates out (the lock is released by the
         // finally in Run) and is mapped to a cancellation by Program.
         ConsoleConfirmationPrompt.Require(
-            app.Services.GetRequiredService<IAnsiConsole>(),
+            AnsiConsole.Console,
             configuration.AutoApprove,
             $"NSchema will execute [yellow]{sql.Statements.Count}[/] statement(s) against the database.",
             "Do you want to apply these changes? Only [green]yes[/] will be accepted:",

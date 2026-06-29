@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using NSchema.Configuration;
 using NSchema.Services.Confirmation;
 using NSchema.State.Model;
@@ -42,7 +41,7 @@ internal static class LockReleaseCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureBackendState(configuration.State)
             .Build();
-        var console = app.Services.GetRequiredService<IAnsiConsole>();
+        var console = AnsiConsole.Console;
         app.Messenger.ReportEnvironment(environment);
 
         var current = await app.Locks.Peek(cancellationToken);

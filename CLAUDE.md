@@ -42,16 +42,29 @@ it against API-surface stability, not just the boundary rule.
 `--json` face for each:
 
 - **`IConsoleMessenger`** — line-level narration (status `Report`, `Announce`/`Success`/`Warn`/`Detail`,
-  `ReportDiagnostics`, the lock/plugin query renderers). App-free; reached as **`app.Messenger`**.
-- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`),
-  delegating to the core renderers. Reached as **`app.Presenter`**. Both are CLI-side C# 14 extension properties over the
-  application (`Extensions/NSchemaApplicationExtensions`), mirroring `app.Operations`/`app.Locks`.
+  `ReportDiagnostics`, the lock/plugin query renderers). App-free: built straight from the `ParseResult` by
+  `ReporterFactory`, so it works before/without an application (top-level error handling in `Program.cs`, the `plugin`
+  commands). With an app it's reached as **`app.Messenger`**.
+- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`,
+  plus `ReportSavedPlan` for `plan show`). It owns the core renderers directly — `DiffRenderer`/`SchemaRenderer`/
+  `SqlPlanRenderer` via their `.Default` singletons, stateless utilities rather than DI services — and wraps their
+  plain-text output in Spectre markup. Reached as **`app.Presenter`**.
+- The messenger and presenter are **stateless console utilities the CLI owns directly, not container services**:
+  `ReporterFactory` builds the right (Spectre or `--json`) pair, and they hang off the **`CliApplication`** handle
+  (`app.Messenger`/`app.Presenter`) next to the engine members it forwards (`app.Operations`/`app.Locks`/
+  `app.CurrentSchema`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()` returns — the built core
+  `NSchemaApplication` paired with the console surfaces, so a command reaches engine and console through one handle.
 - **Core-operation progress** (the live narration a long run emits) flows through the core's `IProgress<OperationProgress>`,
-  implemented CLI-side by `Services/Reporting/ConsoleProgress` and registered via the builder's
-  `UseProgressReporter<ConsoleProgress>()`.
+  implemented CLI-side by `Services/Reporting/ConsoleProgress` (wrapping the messenger) and registered via the builder's
+  `UseProgressReporter(new ConsoleProgress(messenger))`.
 
-A structured `--json` *query result* (e.g. `lock status`'s single object) keeps its explicit clean-object path rather
-than the messenger's NDJSON log stream.
+The `--json` shape splits on the **nature of the command**, not the method. A *progressive operation* (`apply`, `plan`,
+`destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so `ReportDiff`/`ReportPlan`/`ReportSqlPlan`
+each carry a discriminator. A *query* (`db show`, `state show`, `plan show`, `lock status`, `plugin …`) is one request
+for one answer, so it emits a **single bare object** on stdout (no `type` envelope): `ReportSchema` writes the schema
+directly, and `plan show` uses `ReportSavedPlan` to fold its diff + scripts + SQL into one `{diff, scripts, sql}` object
+rather than three lines. Either way, line-level narration (`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}`
+stream — so `cmd --json | jq` only ever sees the result, never the narration.
 
 ## Commands
 
@@ -159,8 +172,9 @@ prune — only `cache remove` (targeted) and `cache clear` (wholesale). `init` i
 ## Error handling and output
 
 The CLI is the **single** presenter of errors. `Program.cs` disables System.CommandLine's default exception handler
-(`EnableDefaultExceptionHandler = false`) and maps exceptions to exit codes (130 for cancellation, 1 otherwise). The core
-is configured with `WithExceptionBehavior(ExceptionBehavior.Throw)` so it does **not** also print failures. Structured
+(`EnableDefaultExceptionHandler = false`) and maps the genuinely-exceptional escapes to exit codes (130 for cancellation,
+1 otherwise). Core operations return `Result`s — an *expected* failure (contention, a policy violation, a bad config)
+comes back as failure diagnostics the command renders, not a thrown exception and not a core-side print. Structured
 run output (the diff, schema, SQL plan) is rendered by the CLI's `app.Presenter`, and live progress flows through the
 core's `IProgress<OperationProgress>` (the CLI's `ConsoleProgress`); avoid direct `Console` writes except in `Program.cs`
 (top-level errors) and the interactive prompt in `ConsoleConfirmationPrompt`.
@@ -187,12 +201,12 @@ written in **NSchema DDL** — the core's canonical, SQL-flavoured `DatabaseSche
 registered by the core; the CLI no longer offers YAML or JSON). Column types are canonical compact strings (`bigint`,
 `text`, `varchar(255)`). There is no format, directory, or glob to configure. See `README.md` for a worked example.
 
-**Deployment scripts** are raw SQL files distinguished by suffix: `*.pre.sql` runs before the migration, `*.post.sql`
-after (both in filename order, registered via the core's `AddScriptFromFile`/`ScriptType`). They are the imperative
-escape hatch (extensions, backfills, grants NSchema doesn't model) and are deliberately **excluded** from the desired
-schema by `ConfigureDesiredSchema` (so the DSL parser never sees them). `ConfigureScripts` registers them, and is
-called only by the deployment commands — `apply` and forward `plan` — not by `validate`, `destroy`, or `plan --destroy`.
-They run on every apply, so they must be idempotent.
+**Deployment scripts** are now declared **inline** in the DDL as dollar-quoted `PRE DEPLOYMENT 'name' AS $$…$$` /
+`POST DEPLOYMENT 'name' AS $$…$$` blocks (an optional `(run_outside_transaction = true)` for statements a transaction
+forbids, e.g. `CREATE INDEX CONCURRENTLY`) — not separate `*.pre.sql`/`*.post.sql` files. They are the imperative escape
+hatch (extensions, backfills, grants NSchema doesn't model). The CLI does **nothing special** with them: they ride the
+same `*.sql` glob into the core's parser, which captures them on the `DatabaseSchema` and surfaces them in the migration
+plan's pre/post sections; the core runs them around the computed migration on every apply, so they must be idempotent.
 
 ## Test conventions
 

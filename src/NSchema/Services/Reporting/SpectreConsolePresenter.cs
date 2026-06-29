@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.PlanFile;
 using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -18,20 +19,17 @@ namespace NSchema.Services.Reporting;
 internal sealed class SpectreConsolePresenter : IConsolePresenter
 {
     private readonly IAnsiConsole _out;
-    private readonly IDiffRenderer _diffRenderer;
-    private readonly ISchemaRenderer _schemaRenderer;
-    private readonly ISqlPlanRenderer _sqlPlanRenderer;
+
+    // The core renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
+    // The diff renderer must emit plain +/-/~ markers (colour off); ColorizeByMarker maps those glyphs to Spectre colours.
+    private readonly DiffRenderer _diffRenderer = DiffRenderer.Default;
+    private readonly SchemaRenderer _schemaRenderer = SchemaRenderer.Default;
+    private readonly SqlPlanRenderer _sqlPlanRenderer = SqlPlanRenderer.Default;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
-    /// <param name="diffRenderer">The core diff renderer, reused for diff structure.</param>
-    /// <param name="schemaRenderer">The core schema renderer, reused for the recorded state shown by <c>state show</c>.</param>
-    /// <param name="sqlPlanRenderer">The core SQL plan renderer, reused for SQL text.</param>
-    public SpectreConsolePresenter(IAnsiConsole console, IDiffRenderer diffRenderer, ISchemaRenderer schemaRenderer, ISqlPlanRenderer sqlPlanRenderer)
+    public SpectreConsolePresenter(IAnsiConsole console)
     {
         _out = console;
-        _diffRenderer = diffRenderer;
-        _schemaRenderer = schemaRenderer;
-        _sqlPlanRenderer = sqlPlanRenderer;
     }
 
     public void ReportSchema(DatabaseSchema schema)
@@ -81,6 +79,13 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
     {
         var body = DimComments(_sqlPlanRenderer.Render(plan));
         WriteSection("SQL", body);
+    }
+
+    public void ReportSavedPlan(PlanFileEnvelope envelope)
+    {
+        ReportDiff(envelope.Diff);
+        ReportPlan(envelope.Plan);
+        ReportSqlPlan(envelope.Sql);
     }
 
     // A bold heading underlined to its own length

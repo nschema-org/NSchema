@@ -34,6 +34,6 @@ internal static class PluginShowCommand
                 $"No plugin labelled '{configuration.Label}' is configured for this project (configured: {configured}).");
         }
 
-        ConsoleMessenger.Create(parseResult).ReportPluginDetail(match);
+        ReporterFactory.CreateMessenger(parseResult).ReportPluginDetail(match);
     }
 }

@@ -7,7 +7,6 @@ using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
 using NSchema.Services.Reporting;
 using NSchema.State;
-using Spectre.Console;
 
 namespace NSchema.Tests;
 
@@ -15,23 +14,19 @@ public sealed class CliApplicationBuilderTests
 {
     private readonly CliApplicationBuilder _sut = CliApplicationBuilder.Create();
 
-    private static Verbosity ResolvedVerbosity(params string[] args)
-    {
-        var parseResult = RootCommand.Create().Parse(args);
-        using var app = CliApplicationBuilder.Create(parseResult).Build();
-        return app.Services.GetRequiredService<Verbosity>();
-    }
+    private static Verbosity ResolvedVerbosity(params string[] args) =>
+        ReporterFactory.ResolveVerbosity(RootCommand.Create().Parse(args));
 
     [Fact]
-    public void Create_DefaultsToNormalVerbosity() =>
+    public void ResolveVerbosity_DefaultsToNormal() =>
         ResolvedVerbosity("plan").ShouldBe(Verbosity.Normal);
 
     [Fact]
-    public void Create_Verbose_ResolvesVerboseVerbosity() =>
+    public void ResolveVerbosity_Verbose_ResolvesVerbose() =>
         ResolvedVerbosity("plan", "--verbose").ShouldBe(Verbosity.Verbose);
 
     [Fact]
-    public void Create_Quiet_ResolvesQuietVerbosity() =>
+    public void ResolveVerbosity_Quiet_ResolvesQuiet() =>
         ResolvedVerbosity("plan", "--quiet").ShouldBe(Verbosity.Quiet);
 
     [Fact]
@@ -41,14 +36,6 @@ public sealed class CliApplicationBuilderTests
 
         var ex = Should.Throw<InvalidOperationException>(() => CliApplicationBuilder.Create(parseResult));
         ex.Message.ShouldContain("--quiet and --verbose cannot be used together");
-    }
-
-    [Fact]
-    public void Create_NoArg_DefaultsToNormalVerbosity()
-    {
-        using var app = CliApplicationBuilder.Create().Build();
-
-        app.Services.GetRequiredService<Verbosity>().ShouldBe(Verbosity.Normal);
     }
 
     [Fact]
@@ -97,24 +84,13 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void Build_RegistersAnAnsiConsole()
-    {
-        // Act
-        using var app = _sut.Build();
-
-        // Assert
-        app.Services.GetService<IAnsiConsole>().ShouldNotBeNull();
-    }
-
-    [Fact]
-    public void Build_ResolvesTheSpectreConsolePresenter()
+    public void Build_UsesTheSpectreConsolePresenter()
     {
         // Act
         using var app = _sut.Build();
 
         // Assert — the formatted (non-JSON) builder wires up the Spectre presenter as the CLI's presentation surface.
-        var presenter = app.Services.GetRequiredService<IConsolePresenter>();
-        presenter.ShouldBeOfType<SpectreConsolePresenter>();
+        app.Presenter.ShouldBeOfType<SpectreConsolePresenter>();
     }
 
     [Fact]

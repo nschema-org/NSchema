@@ -5,17 +5,23 @@ using Spectre.Console;
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// Builds an <see cref="IConsoleMessenger"/> straight from the parsed command line — no DI host.
+/// Builds the CLI's console reporters.
 /// </summary>
-internal static class ConsoleMessenger
+internal static class ReporterFactory
 {
-    public static IConsoleMessenger Create(ParseResult parseResult) =>
-        Create(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
+    /// <summary>
+    /// Builds an <see cref="IConsolePresenter"/> for the resolved output format.
+    /// </summary>
+    public static IConsolePresenter CreatePresenter(bool json) =>
+        json ? new JsonConsolePresenter() : new SpectreConsolePresenter(AnsiConsole.Console);
+
+    public static IConsoleMessenger CreateMessenger(ParseResult parseResult) =>
+        CreateMessenger(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
 
     /// <summary>
     /// Builds an <see cref="IConsoleMessenger"/> for the resolved output format and verbosity.
     /// </summary>
-    public static IConsoleMessenger Create(bool json, Verbosity verbosity) =>
+    public static IConsoleMessenger CreateMessenger(bool json, Verbosity verbosity) =>
         json ? new JsonConsoleMessenger(verbosity) : new SpectreConsoleMessenger(AnsiConsole.Console, verbosity);
 
     /// <summary>

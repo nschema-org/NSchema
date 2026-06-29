@@ -1,5 +1,6 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Sql.Model;
@@ -19,9 +20,20 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, new { type = "diff", diff });
 
-    public void ReportSchema(DatabaseSchema schema) => JsonOutput.Write(_out, new { type = "schema", schema });
+    public void ReportSchema(DatabaseSchema schema) => JsonOutput.Write(_out, schema);
 
     public void ReportSqlPlan(SqlPlan plan) => JsonOutput.Write(_out, new { type = "sqlPlan", statements = plan.Statements });
+
+    public void ReportSavedPlan(PlanFileEnvelope envelope) => JsonOutput.Write(_out, new
+    {
+        diff = envelope.Diff,
+        scripts = new
+        {
+            preDeployment = envelope.Plan.PreDeploymentScripts.Select(Describe),
+            postDeployment = envelope.Plan.PostDeploymentScripts.Select(Describe),
+        },
+        sql = envelope.Sql.Statements,
+    });
 
     public void ReportPlan(MigrationPlan plan)
     {
