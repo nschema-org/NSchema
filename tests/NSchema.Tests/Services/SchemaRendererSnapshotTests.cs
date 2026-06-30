@@ -1,4 +1,3 @@
-using NSchema.Services.Reporting;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Columns;
 using NSchema.Schema.Model.CompositeTypes;
@@ -13,6 +12,7 @@ using NSchema.Schema.Model.Sequences;
 using NSchema.Schema.Model.Tables;
 using NSchema.Schema.Model.Triggers;
 using NSchema.Schema.Model.Views;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Tests.Services;
 
