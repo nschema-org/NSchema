@@ -1,0 +1,41 @@
+﻿extension citext
+
+extension postgis (version 3.4) ("spatial types")
+
+schema app ("application schema")
+  grant usage to readers
+  table users ("all users")
+    id bigint not null identity
+    email varchar(255) not null ("contact address")
+    status text null default 'active'
+    email_upper text null generated as (upper(email))
+    primary key users_pkey (id)
+    exclude users_span_excl using gist ((int4range(0, id)) with &&)
+    index users_email_ix (email) unique
+    index users_active_ix (status) where status = 'active'
+    index users_email_low_ix (status desc nulls last, (lower(email))) using btree include (id)
+    trigger users_audit after insert, update of (email) row -> app.log_change ("audit changes")
+    grant SELECT, INSERT to readers
+  table orders
+    id bigint not null
+    user_id bigint not null
+    foreign key orders_user_fk (user_id) -> app.users (id)
+  view active_users ("currently active users")
+    reads app.users
+  view user_orders
+    reads app.active_users
+    reads app.orders
+  materialized view order_totals ("per-user order counts")
+    reads app.orders
+    index order_totals_user_ix (user_id) unique
+  enum order_status (pending, shipped, delivered) ("order lifecycle")
+  enum priority (low, high)
+  domain typeid (text) ("unique id as text")
+  domain positive_amount (decimal(18,2) not null default 0)
+    check positive_amount_chk (VALUE >= 0)
+  type address (street text, zip int) ("a postal address")
+  type money_amount (amount decimal(18,2), currency text)
+  sequence order_id (as=bigint, start=100, step=5, cache=10, cycle) ("order numbers")
+  sequence invoice_id
+  function add_tax(amount numeric, rate numeric) ("adds tax")
+  procedure archive_users(before date)
