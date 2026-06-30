@@ -104,13 +104,6 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
             }
         }
 
-        // The document opens each block with a blank spacer; drop the leading one so the body sits flush under
-        // the section rule (interior spacers still separate blocks).
-        if (lines.Count > 0 && lines[0].Length == 0)
-        {
-            lines.RemoveAt(0);
-        }
-
         var (added, modified, removed) = document.Summary;
         lines.Add(string.Empty);
         lines.Add(Markup.Escape($"Plan: {added} to add, {modified} to change, {removed} to destroy."));
