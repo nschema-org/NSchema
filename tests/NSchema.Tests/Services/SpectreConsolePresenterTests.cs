@@ -46,7 +46,7 @@ public sealed class SpectreConsolePresenterTests
 
         // Assert
         _out.Output.ShouldContain("Plan");
-        _out.Output.ShouldContain("schema app");
+        _out.Output.ShouldContain("+ schema app"); // the add glyph comes from the line's change kind, not parsed text
         _out.Output.ShouldContain("1 to add");
     }
 
@@ -111,6 +111,41 @@ public sealed class SpectreConsolePresenterTests
         // Assert
         _out.Output.ShouldContain("SQL");
         _out.Output.ShouldContain("CREATE TABLE app.widgets");
+    }
+
+    [Fact]
+    public void ReportSqlPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
+    {
+        // Arrange
+        var plan = new SqlPlan(
+        [
+            new SqlStatement("CREATE INDEX CONCURRENTLY ix ON app.widgets (id)", RunOutsideTransaction: true),
+            new SqlStatement("ANALYZE app.widgets"),
+        ]);
+
+        // Act
+        _sut.ReportSqlPlan(plan);
+
+        // Assert — headers number each statement; only the concurrent one is flagged, read from the model.
+        var output = _out.Output;
+        output.ShouldContain("-- [1/2] (outside transaction)");
+        output.ShouldContain("-- [2/2]");
+        output.ShouldNotContain("-- [2/2] (outside transaction)");
+        output.IndexOf("CREATE INDEX").ShouldBeLessThan(output.IndexOf("ANALYZE"));
+    }
+
+    [Fact]
+    public void ReportSqlPlan_EmptyPlan_ReportsNothingToExecute()
+    {
+        // Arrange
+        var plan = new SqlPlan([]);
+
+        // Act
+        _sut.ReportSqlPlan(plan);
+
+        // Assert
+        _out.Output.ShouldContain("SQL");
+        _out.Output.ShouldContain("No statements to execute");
     }
 
     [Fact]

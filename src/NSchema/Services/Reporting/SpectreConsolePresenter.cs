@@ -3,46 +3,29 @@ using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
-using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
 
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console. Line-level messaging is the
-/// separate <see cref="IConsoleMessenger"/>; this renders only the structured output.
+/// An <see cref="IConsolePresenter"/> that presents run output with Spectre.Console.
+/// Line-level messaging is the separate <see cref="IConsoleMessenger"/>; this renders only the structured output.
 /// </summary>
-internal sealed class SpectreConsolePresenter : IConsolePresenter
+internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePresenter
 {
-    private readonly IAnsiConsole _out;
-
-    // The core renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
-    // The diff renderer must emit plain +/-/~ markers (colour off); ColorizeByMarker maps those glyphs to Spectre colours.
-    private readonly DiffRenderer _diffRenderer = DiffRenderer.Default;
-    private readonly SchemaRenderer _schemaRenderer = SchemaRenderer.Default;
-    private readonly SqlPlanRenderer _sqlPlanRenderer = SqlPlanRenderer.Default;
-
-    /// <param name="console">The console for informational output (typically stdout).</param>
-    public SpectreConsolePresenter(IAnsiConsole console)
-    {
-        _out = console;
-    }
-
     public void ReportSchema(DatabaseSchema schema)
     {
-        // A single state, not a diff — render it plainly with no marker coloring under a "Schema" section.
-        var body = new Markup(Markup.Escape(_schemaRenderer.Render(schema).Trim()));
-        WriteSection("Schema", body);
+        var content = SchemaRenderer.Render(schema);
+        var markup = new Markup(Markup.Escape(content));
+        WriteSection("Schema", markup);
     }
 
     public void ReportDiff(DatabaseDiff diff)
     {
-        var body = ColorizeByMarker(_diffRenderer.Render(diff).Trim());
-        WriteSection("Plan", body);
+        WriteSection("Plan", RenderDiff(diff));
     }
 
     public void ReportPlan(MigrationPlan plan)
@@ -77,8 +60,7 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     public void ReportSqlPlan(SqlPlan plan)
     {
-        var body = DimComments(_sqlPlanRenderer.Render(plan));
-        WriteSection("SQL", body);
+        WriteSection("SQL", RenderSqlPlan(plan));
     }
 
     public void ReportSavedPlan(PlanFileEnvelope envelope)
@@ -91,91 +73,74 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
     // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)
     {
-        _out.MarkupLineInterpolated($"[bold]{title}[/]");
-        _out.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
-        _out.Write(body);
-        _out.WriteLine();
-        _out.WriteLine();
+        console.MarkupLineInterpolated($"[bold]{title}[/]");
+        console.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");
+        console.Write(body);
+        console.WriteLine();
+        console.WriteLine();
     }
 
-    // Colors each line by its leading Terraform marker. Structure, formatting, and the summary all come from the
-    // core renderer — this only maps a glyph to a color, so there is no second diff renderer to keep in sync.
-    private static Markup ColorizeByMarker(string text)
+    private static Markup RenderDiff(DatabaseDiff diff)
     {
-        var lines = text.Split('\n');
-        var builder = new StringBuilder(text.Length + (lines.Length * 12));
-
-        for (var i = 0; i < lines.Length; i++)
+        if (diff.IsEmpty)
         {
-            var line = lines[i].TrimEnd('\r');
-            var color = MarkerColor(line);
-            var escaped = Markup.Escape(line);
+            return new Markup("No changes detected.");
+        }
 
-            if (color is null)
+        var document = DiffReader.Default.Read(diff);
+        var lines = new List<string>();
+
+        foreach (var line in document.Lines)
+        {
+            if (line.Kind is { } kind)
             {
-                builder.Append(escaped);
+                var (marker, colour) = DiffStyle(kind);
+                var text = Markup.Escape($"{new string(' ', line.Depth * 4)}{marker} {line.Text}");
+                lines.Add($"[{colour}]{text}[/]");
             }
             else
             {
-                builder.Append('[').Append(color).Append(']').Append(escaped).Append("[/]");
-            }
-
-            if (i < lines.Length - 1)
-            {
-                builder.Append('\n');
+                lines.Add(string.Empty);
             }
         }
 
-        return new Markup(builder.ToString());
+        var (added, modified, removed) = document.Summary;
+        lines.Add(string.Empty);
+        lines.Add(Markup.Escape($"Plan: {added} to add, {modified} to change, {removed} to destroy."));
+
+        return new Markup(string.Join('\n', lines));
     }
 
-    private static string? MarkerColor(string line)
+    private static (string Marker, string Colour) DiffStyle(ChangeKind kind) => kind switch
     {
-        foreach (var ch in line)
-        {
-            if (ch is ' ' or '\t')
-            {
-                continue;
-            }
+        ChangeKind.Add => ("+", "green"),
+        ChangeKind.Remove => ("-", "red"),
+        ChangeKind.Modify => ("~", "yellow"),
+        _ => ("?", "grey"),
+    };
 
-            return ch switch
-            {
-                '+' => "green",
-                '-' => "red",
-                '~' => "yellow",
-                _ => null,
-            };
+    private static Markup RenderSqlPlan(SqlPlan plan)
+    {
+        if (plan.IsEmpty)
+        {
+            return new Markup("- No statements to execute");
         }
 
-        return null;
-    }
+        var lines = new List<string>(plan.Statements.Count * 3);
 
-    // Dims the `-- [n/m]` statement headers so the SQL itself stands out.
-    private static Markup DimComments(string text)
-    {
-        var lines = text.Split('\n');
-        var builder = new StringBuilder(text.Length + (lines.Length * 12));
-
-        for (var i = 0; i < lines.Length; i++)
+        for (var i = 0; i < plan.Statements.Count; i++)
         {
-            var line = lines[i].TrimEnd('\r');
-            var escaped = Markup.Escape(line);
-
-            if (line.TrimStart().StartsWith("--", StringComparison.Ordinal))
+            if (i > 0)
             {
-                builder.Append("[grey]").Append(escaped).Append("[/]");
-            }
-            else
-            {
-                builder.Append(escaped);
+                lines.Add(string.Empty);
             }
 
-            if (i < lines.Length - 1)
-            {
-                builder.Append('\n');
-            }
+            var statement = plan.Statements[i];
+            var marker = statement.RunOutsideTransaction ? " (outside transaction)" : string.Empty;
+            lines.Add($"[grey]{Markup.Escape($"-- [{i + 1}/{plan.Statements.Count}]{marker}")}[/]");
+            lines.Add(Markup.Escape(statement.Sql));
         }
 
-        return new Markup(builder.ToString());
+        return new Markup(string.Join('\n', lines));
     }
 }
