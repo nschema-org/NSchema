@@ -20,6 +20,7 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Spectre.Console.Testing" />
+    <PackageReference Include="Verify.XunitV3" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -31,6 +32,7 @@
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
     <Using Include="NSubstitute" />
+    <Using Include="VerifyXunit" />
   </ItemGroup>
 
   <ItemGroup>

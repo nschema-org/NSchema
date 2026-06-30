@@ -3,10 +3,8 @@ using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
-using NSchema.Sql;
 using NSchema.Sql.Model;
 using Spectre.Console;
 
@@ -20,11 +18,10 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 {
     private readonly IAnsiConsole _out;
 
-    // The core renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
-    // The diff renderer must emit plain +/-/~ markers (colour off); ColorizeByMarker maps those glyphs to Spectre colours.
+    // These renderers are stateless utilities, so the presenter owns them directly rather than taking them from DI.
+    // The schema and SQL-plan renderers are CLI-local; the diff renderer is the core one and must emit plain +/-/~
+    // markers (colour off), which ColorizeByMarker maps to Spectre colours.
     private readonly DiffRenderer _diffRenderer = DiffRenderer.Default;
-    private readonly SchemaRenderer _schemaRenderer = SchemaRenderer.Default;
-    private readonly SqlPlanRenderer _sqlPlanRenderer = SqlPlanRenderer.Default;
 
     /// <param name="console">The console for informational output (typically stdout).</param>
     public SpectreConsolePresenter(IAnsiConsole console)
@@ -34,9 +31,9 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     public void ReportSchema(DatabaseSchema schema)
     {
-        // A single state, not a diff — render it plainly with no marker coloring under a "Schema" section.
-        var body = new Markup(Markup.Escape(_schemaRenderer.Render(schema).Trim()));
-        WriteSection("Schema", body);
+        var content = SchemaRenderer.Render(schema);
+        var markup = new Markup(Markup.Escape(content));
+        WriteSection("Schema", markup);
     }
 
     public void ReportDiff(DatabaseDiff diff)
@@ -77,8 +74,9 @@ internal sealed class SpectreConsolePresenter : IConsolePresenter
 
     public void ReportSqlPlan(SqlPlan plan)
     {
-        var body = DimComments(_sqlPlanRenderer.Render(plan));
-        WriteSection("SQL", body);
+        var body = SqlPlanRenderer.Render(plan);
+        var markup = DimComments(body);
+        WriteSection("SQL", markup);
     }
 
     public void ReportSavedPlan(PlanFileEnvelope envelope)
