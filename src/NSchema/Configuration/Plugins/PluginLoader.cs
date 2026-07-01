@@ -15,6 +15,10 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 {
     private const string SynthAssemblyName = "nschema-plugin-host";
 
+    // A cold restore (dotnet publish of the full dependency closure) can take tens of seconds;
+    // under contention every waiter but the first only blocks for that one restore.
+    private static readonly TimeSpan _restoreLockTimeout = TimeSpan.FromMinutes(5);
+
     /// <summary>
     /// Exposes the plugin cache to check for available plugins.
     /// </summary>
@@ -76,6 +80,10 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         Directory.CreateDirectory(projectDir);
         var projectPath = Path.Combine(projectDir, SynthAssemblyName + ".csproj");
 
+        // Concurrent runs share this scratch dir, so serialize the restore across processes.
+        using var resolveLock = FileLock.Acquire(Cache.ResolveLockFile(packageId), _restoreLockTimeout)
+            ?? throw new InvalidOperationException($"Timed out waiting for another process to finish resolving the latest version of plugin '{packageId}'.");
+
         // Float within the host major (prereleases included) so the pin always matches a plugin this CLI can load.
         File.WriteAllText(projectPath, SynthProject(packageId, $"{hostMajor}.*-*"));
 
@@ -106,7 +114,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         var publishDir = Cache.PublishDirectory(packageId, version);
         var pluginAssembly = Cache.PluginAssembly(packageId, version);
 
-        // Restoring a plugin is expensive, so a published closure is reused across runs.
+        // Fast path: a completed publish closure is reused across runs.
         if (File.Exists(pluginAssembly))
         {
             return publishDir;
@@ -119,21 +127,51 @@ internal sealed class PluginLoader(string? cacheRoot = null)
                 $"Plugin '{packageId}' {version} is not restored, and --no-init was specified. Run 'nschema init' (or drop --no-init) to restore it first.");
         }
 
+        // Concurrent runs share this cache, so serialize the restore of a given version across processes.
+        Directory.CreateDirectory(Cache.VersionDirectory(packageId, version));
+        using var restoreLock = FileLock.Acquire(Cache.LockFile(packageId, version), _restoreLockTimeout);
+        if (restoreLock is null)
+        {
+            return Diagnostic.Error(packageId, $"Timed out waiting for another process to finish restoring plugin '{packageId}' {version}.");
+        }
+
+        // Re-check under the lock: another process may have completed the restore while we were waiting for it.
+        if (File.Exists(pluginAssembly))
+        {
+            return publishDir;
+        }
+
         var projectDir = Cache.ProjectDirectory(packageId, version);
         Directory.CreateDirectory(projectDir);
         File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId, version));
 
-        var publish = RunDotnet("publish", Path.Combine(projectDir, SynthAssemblyName + ".csproj"), "-c", "Release", "-o", publishDir);
+        // Publish into a staging dir and atomically rename it onto the publish dir, so the lock-free fast path above
+        // never sees a partially-populated closure.
+        var staging = Cache.StagingDirectory(packageId, version);
+        if (Directory.Exists(staging))
+        {
+            Directory.Delete(staging, recursive: true);
+        }
+
+        var publish = RunDotnet("publish", Path.Combine(projectDir, SynthAssemblyName + ".csproj"), "-c", "Release", "-o", staging);
         if (publish.IsFailure)
         {
             return Result.Failure<string>(publish.Diagnostics);
         }
 
-        if (!File.Exists(pluginAssembly))
+        if (!File.Exists(Path.Combine(staging, packageId + ".dll")))
         {
             return Diagnostic.Error(packageId,
                 $"Restored package '{packageId}' {version} but its assembly '{packageId}.dll' was not found — is the package an NSchema plugin?");
         }
+
+        // A leftover from an interrupted earlier restore would block the rename; we hold the lock, so clearing it is safe.
+        if (Directory.Exists(publishDir))
+        {
+            Directory.Delete(publishDir, recursive: true);
+        }
+
+        Directory.Move(staging, publishDir);
 
         return publishDir;
     }
