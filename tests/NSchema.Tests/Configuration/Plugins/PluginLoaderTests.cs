@@ -68,6 +68,28 @@ public sealed class PluginLoaderTests : IDisposable
     }
 
     [Fact]
+    public void Load_RacingColdCache_AllConcurrentCallersSucceed()
+    {
+        // Arrange — several loaders share one cold cache, mirroring parallel integration tests that each spin up their
+        // own throwaway database and restore the same plugin at the same moment.
+        const int concurrency = 4;
+        var labels = new string?[concurrency];
+
+        // Act — race the restore. Before the cross-process restore lock this collided inside `dotnet publish`
+        // ("the process cannot access the file ... because it is being used by another process").
+        Parallel.For(0, concurrency, i => labels[i] = new PluginLoader(_cacheRoot)
+            .Load("NSchema.Postgres", "4.0.0-alpha.2")
+            .ValueOrThrow()
+            .OfType<INSchemaProviderPlugin>()
+            .Single()
+            .Label);
+
+        // Assert — every racer ended up with the working plugin, and exactly one publish closure landed in the cache.
+        labels.ShouldAllBe(label => label == "postgres");
+        new PluginCache(_cacheRoot).List().ShouldHaveSingleItem();
+    }
+
+    [Fact]
     public void Load_WithoutRestore_WhenNotCached_FailsWithDiagnostic()
     {
         // Arrange — a fresh cache, so the plugin is not present.

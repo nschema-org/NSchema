@@ -12,6 +12,12 @@ internal sealed class PluginCache(string? root = null)
     private const string PublishDirectoryName = "publish";
     private const string ProjectDirectoryName = "proj";
 
+    // The restore publishes here first, then atomically renames it onto the publish dir.
+    private const string StagingDirectoryName = ".staging";
+
+    // Per-version lock file guarding the restore (see FileLock). Lives beside publish/proj inside the version dir.
+    private const string LockFileName = ".lock";
+
     /// <summary>
     /// The cache root, e.g. <c>~/.nschema/plugins</c>.
     /// </summary>
@@ -25,7 +31,22 @@ internal sealed class PluginCache(string? root = null)
     public string ProjectDirectory(string packageId, string version) =>
         Path.Combine(VersionDirectory(packageId, version), ProjectDirectoryName);
 
+    public string StagingDirectory(string packageId, string version) =>
+        Path.Combine(VersionDirectory(packageId, version), StagingDirectoryName);
+
     public string ResolveDirectory(string packageId) => Path.Combine(Root, packageId, ResolveDirectoryName);
+
+    /// <summary>
+    /// The lock file serializing a given version's restore. Its parent (the version directory) must exist first.
+    /// </summary>
+    public string LockFile(string packageId, string version) =>
+        Path.Combine(VersionDirectory(packageId, version), LockFileName);
+
+    /// <summary>
+    /// The lock file serializing latest-version resolution for a package. Its parent (the resolve directory) must
+    /// exist first.
+    /// </summary>
+    public string ResolveLockFile(string packageId) => Path.Combine(ResolveDirectory(packageId), LockFileName);
 
     // A plugin counts as restored once its own assembly sits in the publish closure — the same probe the loader makes.
     public string PluginAssembly(string packageId, string version) =>
