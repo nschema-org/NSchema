@@ -1,0 +1,17 @@
+﻿## Plan
+
+```diff
++ schema reporting
+
++ table app.users
++   id bigint not null
+
+! table app.orders
+!   total type: int → bigint
+-   legacy boolean not null
+
+- schema scratch
+```
+
+**Plan:** 3 to add, 2 to change, 2 to destroy.
+
