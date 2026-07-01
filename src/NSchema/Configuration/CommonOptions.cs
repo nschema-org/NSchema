@@ -1,4 +1,5 @@
 using NSchema.Configuration.Binding;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Configuration;
 
@@ -27,7 +28,12 @@ internal static class CommonOptions
     public static readonly OptionBinding<bool> Json = OptionBinding.Create<bool>()
         .FromOption("--json")
         .Recursive()
-        .WithDescription("Emit machine-readable NDJSON output instead of formatted text.");
+        .WithDescription("Emit machine-readable NDJSON output instead of formatted text (shorthand for --format json).");
+
+    public static readonly OptionBinding<OutputFormat> Format = OptionBinding.Create<OutputFormat>()
+        .FromOption("--format")
+        .Recursive()
+        .WithDescription("Output format: text (default), json, or markdown (for a PR comment or CI job summary).");
 
     public static readonly OptionBinding<bool> NoInit = OptionBinding.Create<bool>()
         .FromOption("--no-init")

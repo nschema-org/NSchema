@@ -1,0 +1,8 @@
+﻿## Schema
+
+```
+schema app
+  table widgets
+    id bigint not null
+```
+

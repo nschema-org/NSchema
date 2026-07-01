@@ -1,0 +1,12 @@
+﻿## SQL
+
+```sql
+-- [1/2]
+CREATE TABLE app.users (
+    id bigint NOT NULL
+)
+
+-- [2/2] (outside transaction)
+CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)
+```
+

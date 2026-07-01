@@ -17,7 +17,7 @@ internal sealed class CliApplicationBuilder
     private readonly IConsoleMessenger _messenger;
     private readonly IConsolePresenter _presenter;
 
-    private CliApplicationBuilder(bool json, Verbosity verbosity, bool allowRestore)
+    private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore)
     {
         _allowRestore = allowRestore;
         _builder = NSchemaApplication.CreateBuilder();
@@ -25,8 +25,8 @@ internal sealed class CliApplicationBuilder
         // The messenger and presenter are stateless console utilities, so the CLI owns them directly (see CliApplication)
         // rather than registering them in the container. The engine still narrates progress through its own seam, so
         // feed that one the messenger.
-        _messenger = ReporterFactory.CreateMessenger(json, verbosity);
-        _presenter = ReporterFactory.CreatePresenter(json);
+        _messenger = ReporterFactory.CreateMessenger(format, verbosity);
+        _presenter = ReporterFactory.CreatePresenter(format);
         _builder.UseProgressReporter(new ConsoleProgress(_messenger));
     }
 
@@ -144,12 +144,12 @@ internal sealed class CliApplicationBuilder
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.
     /// </summary>
-    public static CliApplicationBuilder Create() => new(json: false, Verbosity.Normal, allowRestore: true);
+    public static CliApplicationBuilder Create() => new(OutputFormat.Text, Verbosity.Normal, allowRestore: true);
 
     /// <summary>
     /// Creates a builder whose output format and verbosity follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
-        new(CommonOptions.Json.GetValueOrDefault(parseResult, false), ReporterFactory.ResolveVerbosity(parseResult),
+        new(ReporterFactory.ResolveFormat(parseResult), ReporterFactory.ResolveVerbosity(parseResult),
             allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false));
 }

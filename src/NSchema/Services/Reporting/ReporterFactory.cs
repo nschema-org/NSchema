@@ -12,17 +12,47 @@ internal static class ReporterFactory
     /// <summary>
     /// Builds an <see cref="IConsolePresenter"/> for the resolved output format.
     /// </summary>
-    public static IConsolePresenter CreatePresenter(bool json) =>
-        json ? new JsonConsolePresenter() : new SpectreConsolePresenter(AnsiConsole.Console);
+    public static IConsolePresenter CreatePresenter(OutputFormat format) => format switch
+    {
+        OutputFormat.Json => new JsonConsolePresenter(),
+        OutputFormat.Markdown => new MarkdownConsolePresenter(),
+        _ => new SpectreConsolePresenter(AnsiConsole.Console),
+    };
 
-    public static IConsoleMessenger CreateMessenger(ParseResult parseResult) =>
-        CreateMessenger(CommonOptions.Json.GetValueOrDefault(parseResult, false), ResolveVerbosity(parseResult));
+    public static IConsoleMessenger CreateMessenger(ParseResult parseResult) => CreateMessenger(
+        ResolveFormat(parseResult),
+        ResolveVerbosity(parseResult)
+    );
 
     /// <summary>
     /// Builds an <see cref="IConsoleMessenger"/> for the resolved output format and verbosity.
     /// </summary>
-    public static IConsoleMessenger CreateMessenger(bool json, Verbosity verbosity) =>
-        json ? new JsonConsoleMessenger(verbosity) : new SpectreConsoleMessenger(AnsiConsole.Console, verbosity);
+    public static IConsoleMessenger CreateMessenger(OutputFormat format, Verbosity verbosity) => format switch
+    {
+        OutputFormat.Json => new JsonConsoleMessenger(verbosity),
+        // Markdown output owns stdout, so its narration goes to stderr — the same results-on-stdout / logs-on-stderr
+        // split the JSON path uses — keeping the piped Markdown (e.g. into $GITHUB_STEP_SUMMARY) uncontaminated.
+        OutputFormat.Markdown => new SpectreConsoleMessenger(ConsoleFactory.Create(Console.Error, colorDisabled: false), verbosity),
+        _ => new SpectreConsoleMessenger(AnsiConsole.Console, verbosity),
+    };
+
+    /// <summary>
+    /// Resolves <c>--format</c> and the <c>--json</c> shorthand to a single <see cref="OutputFormat"/>. The two are
+    /// mutually exclusive when they disagree: <c>--json</c> alongside a non-json <c>--format</c> is a usage error.
+    /// </summary>
+    public static OutputFormat ResolveFormat(ParseResult parseResult)
+    {
+        var json = CommonOptions.Json.GetValueOrDefault(parseResult, false);
+        var format = CommonOptions.Format.GetValueOrDefault(parseResult, OutputFormat.Text);
+        var formatSpecified = parseResult.GetResult(CommonOptions.Format.Option) is { Implicit: false };
+
+        if (json && formatSpecified && format != OutputFormat.Json)
+        {
+            throw new InvalidOperationException("--json cannot be combined with --format; pass --format json instead.");
+        }
+
+        return json ? OutputFormat.Json : format;
+    }
 
     /// <summary>
     /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single verbosity. The two flags are mutually exclusive:
