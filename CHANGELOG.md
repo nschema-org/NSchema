@@ -12,7 +12,13 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [4.0.0]
+## [4.0.1] - 2026-07-07
+
+### Fixed
+
+- Updated to `NSchema.Core 4.0.1` which fixes several issues to do with action ordering when objects are renamed.
+
+## [4.0.0] - 2026-07-01
 
 Version 4.0.0 changes the provider and backend model to function as plugins resolved through the NuGet package manager.
 
