@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.1.0] - 2026-07-08
+
+### Added
+
+- Updated to `NSchema.Core 4.1.0` which adds support for schema and table templates.
+
 ## [4.0.1] - 2026-07-07
 
 ### Fixed
