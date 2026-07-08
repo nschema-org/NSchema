@@ -40,13 +40,13 @@ internal static class ApplyCommand
             .ConfigureBackendState(configuration.State);
 
         // Replaying a saved plan runs exactly the SQL captured at plan time, so the desired schema, deployment
-        // scripts, and destructive-action policy that shaped that plan are not consulted again — and the *.sql files
-        // needn't even be present. A fresh apply computes the plan now, so it configures all three.
+        // scripts, and policy flags that shaped that plan are not consulted again — and the *.sql files needn't
+        // even be present. A fresh apply computes the plan now, so it configures all three.
         if (configuration.PlanFile is null)
         {
             builder
                 .ConfigureDesiredSchema(environment)
-                .ConfigurePolicies(configuration.DestructiveActionPolicy);
+                .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy);
         }
 
         using var app = builder.Build();

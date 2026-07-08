@@ -39,7 +39,7 @@ internal static class PlanCommand
 
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDesiredSchema(environment)
-            .ConfigurePolicies(configuration.DestructiveActionPolicy)
+            .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
             .ConfigureBackendState(configuration.State)
             .Build();

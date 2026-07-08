@@ -5,6 +5,7 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
+using NSchema.Policies;
 using NSchema.Services.Reporting;
 using NSchema.State;
 
@@ -42,7 +43,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(DestructiveActionPolicy.Warn).Build();
+        using var app = _sut.ConfigurePolicies(DestructiveActionPolicy.Warn, null).Build();
 
         // Assert
         var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
@@ -50,14 +51,27 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void ConfigurePolicies_LeavesDefault_WhenPolicyNull()
+    public void ConfigurePolicies_AppliesDataHazardPolicy()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(null).Build();
+        using var app = _sut.ConfigurePolicies(null, PolicyEnforcement.Error).Build();
 
         // Assert
-        var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
-        options.Policy.ShouldBe(DestructiveActionPolicy.Error);
+        var options = app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value;
+        options.Policy.ShouldBe(PolicyEnforcement.Error);
+    }
+
+    [Fact]
+    public void ConfigurePolicies_LeavesDefaults_WhenPoliciesNull()
+    {
+        // Act
+        using var app = _sut.ConfigurePolicies(null, null).Build();
+
+        // Assert
+        app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value
+            .Policy.ShouldBe(DestructiveActionPolicy.Error);
+        app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value
+            .Policy.ShouldBe(PolicyEnforcement.Warn);
     }
 
     [Fact]

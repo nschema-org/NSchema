@@ -4,6 +4,7 @@ using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
+using NSchema.Policies;
 
 namespace NSchema.Commands.Plan;
 
@@ -34,6 +35,12 @@ internal sealed class PlanConfiguration : IBindable
     public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
 
     /// <summary>
+    /// The policy applied when the plan contains changes that can fail on existing data. Unused in <c>--destroy</c>
+    /// mode, which bypasses the diff and its policies.
+    /// </summary>
+    public PolicyEnforcement? DataHazardPolicy { get; private set; }
+
+    /// <summary>
     /// Whether to preview a teardown of the managed schema (Terraform's <c>plan -destroy</c>) instead of a forward plan.
     /// </summary>
     // internal set: bound via Bind, but the mode toggle drives the validator's two branches, so tests set it directly.
@@ -61,6 +68,7 @@ internal sealed class PlanConfiguration : IBindable
         Provider = project.Provider;
         State = project.State;
         PlanOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        PlanOptions.DataHazards.Bind(cli, p => DataHazardPolicy = p);
         PlanOptions.Scope.Bind(cli, s => Scope = s);
         PlanOptions.Destroy.Bind(cli, d => Destroy = d);
         PlanOptions.Out.Bind(cli, o => OutFile = o);

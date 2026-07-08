@@ -185,7 +185,7 @@ public sealed class RootCommandTests
     public void MigrationOptions_AreAcceptedByPlanAndApply(string command)
     {
         // Act — the schema (dir/format/pattern) is config-only now; only the migration knobs are flags.
-        var result = _sut.Parse([command, "--scope", "public", "--destructive-actions", "Warn"]);
+        var result = _sut.Parse([command, "--scope", "public", "--destructive-actions", "Warn", "--data-hazards", "Error"]);
 
         // Assert
         result.Errors.ShouldBeEmpty();
@@ -259,6 +259,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
+    [InlineData("--data-hazards", "Warn")]
     public void RefreshRejects_MigrationOptions(string option, string value)
     {
         // Act
@@ -330,6 +331,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
+    [InlineData("--data-hazards", "Warn")]
     public void ValidateRejects_MigrationOptions(string option, string value)
     {
         // Act
@@ -352,12 +354,14 @@ public sealed class RootCommandTests
     }
 
     [Theory]
-    [InlineData("state show")]
-    [InlineData("drift")]
-    public void StateShowAndDriftReject_DestructiveActions(string command)
+    [InlineData("state show", "--destructive-actions")]
+    [InlineData("state show", "--data-hazards")]
+    [InlineData("drift", "--destructive-actions")]
+    [InlineData("drift", "--data-hazards")]
+    public void StateShowAndDriftReject_PolicyOptions(string command, string option)
     {
-        // Act — neither command produces a migration, so the destructive-action policy is meaningless.
-        var result = _sut.Parse([.. command.Split(' '), "--destructive-actions", "Warn"]);
+        // Act — neither command produces a migration, so the diff policies are meaningless.
+        var result = _sut.Parse([.. command.Split(' '), option, "Warn"]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();
@@ -386,6 +390,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
+    [InlineData("--data-hazards", "Warn")]
     public void DoctorRejects_MigrationOptions(string option, string value)
     {
         // Act — doctor is a bare health check; it produces no migration, so it exposes no scope/policy knobs.
@@ -403,6 +408,7 @@ public sealed class RootCommandTests
     [Theory]
     [InlineData("--scope", "public")]
     [InlineData("--destructive-actions", "Warn")]
+    [InlineData("--data-hazards", "Warn")]
     public void LockStatusRejects_MigrationOptions(string option, string value)
     {
         // Act — lock status only reads the lock; it produces no migration, so it exposes no scope/policy knobs.

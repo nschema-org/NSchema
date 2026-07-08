@@ -4,6 +4,7 @@ using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diff.Policies;
+using NSchema.Policies;
 
 namespace NSchema.Commands.Apply;
 
@@ -33,6 +34,11 @@ internal sealed class ApplyConfiguration : IBindable
     public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
 
     /// <summary>
+    /// The policy applied when the plan contains changes that can fail on existing data.
+    /// </summary>
+    public PolicyEnforcement? DataHazardPolicy { get; private set; }
+
+    /// <summary>
     /// Whether to skip the interactive confirmation prompt and apply immediately.
     /// </summary>
     public bool AutoApprove { get; private set; }
@@ -52,6 +58,7 @@ internal sealed class ApplyConfiguration : IBindable
         Provider = project.Provider;
         State = project.State;
         ApplyOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
+        ApplyOptions.DataHazards.Bind(cli, p => DataHazardPolicy = p);
         ApplyOptions.Scope.Bind(cli, s => Scope = s);
         ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
