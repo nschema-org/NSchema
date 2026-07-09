@@ -1,9 +1,11 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Columns;
 using NSchema.Schema.Model.Schemas;
+using NSchema.Schema.Model.Migrations;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Schema.Model.Tables;
 using NSchema.Services.Reporting;
@@ -84,6 +86,22 @@ public sealed class MarkdownConsolePresenterTests
         [
             new SchemaDefinition("app", Tables: [new Table("widgets", Columns: [new Column("id", SqlType.BigInt)])]),
         ]));
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_WithDataMigrations()
+    {
+        var plan = new MigrationPlan(
+            [
+                new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';"),
+                new ExecuteDataMigration(null, DataMigrationTrigger.AddConstraint, "app", "users", "users_email_uq", "DELETE FROM app.users;"),
+            ],
+            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)],
+            []);
+
+        _sut.ReportPlan(plan);
 
         return Verify(_out.ToString());
     }

@@ -1,0 +1,9 @@
+﻿## Pre-deployment
+
+- `seed-roles`
+
+## Data migrations
+
+- `backfill emails`
+- `ADD CONSTRAINT app.users.users_email_uq`
+

@@ -1,8 +1,10 @@
 using System.Text.Json;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
+using NSchema.Schema.Model.Migrations;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Services.Reporting;
 using NSchema.Sql.Model;
@@ -80,6 +82,35 @@ public sealed class JsonConsolePresenterTests
         evt.GetProperty("scripts").GetProperty("preDeployment")[0].GetProperty("name").GetString().ShouldBe("seed-roles");
         evt.GetProperty("scripts").GetProperty("postDeployment").GetArrayLength().ShouldBe(0);
         evt.GetProperty("sql")[0].GetProperty("sql").GetString()!.ShouldContain("CREATE TABLE app.widgets");
+    }
+
+    [Fact]
+    public void ReportPlan_EmitsDataMigrations_WhenThePlanHasMatchedBlocks()
+    {
+        // A plan whose only extras are data migrations must still emit the scripts event (the empty guard
+        // considers migrations too).
+        var plan = new MigrationPlan(
+            [new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';") { RunOutsideTransaction = true }],
+            [],
+            []);
+
+        _sut.ReportPlan(plan);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("type").GetString().ShouldBe("scripts");
+        var migration = evt.GetProperty("dataMigrations")[0];
+        migration.GetProperty("name").GetString().ShouldBe("backfill emails");
+        migration.GetProperty("trigger").GetString().ShouldBe("addColumn");
+        migration.GetProperty("path").GetString().ShouldBe("app.users.email");
+        migration.GetProperty("runOutsideTransaction").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ReportPlan_WritesNothing_WhenThereAreNoScriptsOrMigrations()
+    {
+        _sut.ReportPlan(new MigrationPlan([], [], []));
+
+        _out.ToString().ShouldBeEmpty();
     }
 
     [Fact]

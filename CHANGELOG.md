@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.3.0] - 2026-07-09
+
+### Added
+
+- **Data migrations.** A `MIGRATION ['name'] FOR <trigger> <schema>.<table>.<member> AS $$…$$;` block (via `NSchema.Core 4.3.0`) attaches raw SQL to an `ADD COLUMN`, `ALTER COLUMN TYPE`, or `ADD CONSTRAINT` change and runs only when that change is in the plan. A required column add with a matching block is applied as add-nullable → backfill → `SET NOT NULL`, a matching block silences the corresponding data-hazard warning, and a block matching nothing is reported as safe to delete. The plan output gains a "Data migrations" section (`dataMigrations` in `--json`). Executing a plan with a matched block requires a provider plugin at 4.3 or later.
+
 ## [4.2.0] - 2026-07-09
 
 ### Added
@@ -151,7 +157,12 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v4.3.0...HEAD
+[4.3.0]: https://github.com/nschema-org/NSchema/compare/v4.2.0...v4.3.0
+[4.2.0]: https://github.com/nschema-org/NSchema/compare/v4.1.0...v4.2.0
+[4.1.0]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.1.0
+[4.0.1]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.0.1
+[4.0.0]: https://github.com/nschema-org/NSchema/compare/v3.4.0...v4.0.0
 [3.4.0]: https://github.com/nschema-org/NSchema/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/nschema-org/NSchema/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/nschema-org/NSchema/compare/v3.1.0...v3.2.0
