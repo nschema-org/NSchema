@@ -4,8 +4,8 @@ using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
-using NSchema.Policies;
 using NSchema.Plugins;
+using NSchema.Policies;
 using NSchema.Services.Reporting;
 
 namespace NSchema;

@@ -30,6 +30,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>devops;cicd;build;automation;pipelines;databases;schema;rdbms;deployment;migration</PackageTags>
     <LangVersion>latest</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
