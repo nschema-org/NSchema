@@ -18,6 +18,17 @@ a major one, and called out explicitly in this changelog.
 
 - **Data migrations.** A `MIGRATION ['name'] FOR <trigger> <schema>.<table>.<member> AS $$…$$;` block (via `NSchema.Core 4.3.0`) attaches raw SQL to an `ADD COLUMN`, `ALTER COLUMN TYPE`, or `ADD CONSTRAINT` change and runs only when that change is in the plan. A required column add with a matching block is applied as add-nullable → backfill → `SET NOT NULL`, a matching block silences the corresponding data-hazard warning, and a block matching nothing is reported as safe to delete. The plan output gains a "Data migrations" section (`dataMigrations` in `--json`). Executing a plan with a matched block requires a provider plugin at 4.3 or later.
 
+### Changed
+
+- The `import` command now writes the per-schema header to `<schema>/schema.sql` instead of `<schema>.sql`.
+
+### Fixed
+
+- The `nschema lock release` command suggested by `lock status` and `lock acquire` now carries the `--environment` and `--directory` arguments of the current invocation.
+- The diff now shows an added or removed column's default expression and identity marker.
+- DDL syntax errors now name the file the error was found in, alongside the existing line and column.
+- The `import` command no longer repeats the `CREATE SCHEMA` statement in every object file; only the per-schema header declares the schema.
+
 ## [4.2.0] - 2026-07-09
 
 ### Added
