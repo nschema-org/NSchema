@@ -32,7 +32,7 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
     public void ReportPlan(MigrationPlan plan)
     {
         ReportScripts("Pre-deployment", plan.PreDeploymentScripts);
-        ReportDataMigrations([..plan.Actions.OfType<ExecuteDataMigration>()]);
+        ReportDataMigrations([.. plan.Actions.OfType<ExecuteDataMigration>()]);
         ReportScripts("Post-deployment", plan.PostDeploymentScripts);
     }
 
