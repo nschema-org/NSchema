@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.2.0] - 2026-07-09
+
+### Added
+
+- **Data-hazard detection.** `plan` and `apply` (via `NSchema.Core 4.2.0`) now flag changes that are valid against the schema but can fail on the data already in a table.
+
 ## [4.1.0] - 2026-07-08
 
 ### Added

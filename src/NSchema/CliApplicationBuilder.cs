@@ -5,6 +5,7 @@ using NSchema.Configuration.State;
 using NSchema.Diagnostics;
 using NSchema.Diff.Policies;
 using NSchema.Plugins;
+using NSchema.Policies;
 using NSchema.Services.Reporting;
 
 namespace NSchema;
@@ -30,11 +31,16 @@ internal sealed class CliApplicationBuilder
         _builder.UseProgressReporter(new ConsoleProgress(_messenger));
     }
 
-    public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? policy)
+    public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? destructiveActions, PolicyEnforcement? dataHazards)
     {
-        if (policy is { } value)
+        if (destructiveActions is { } destructive)
         {
-            _builder.WithDestructiveActionPolicy(value);
+            _builder.WithDestructiveActionPolicy(destructive);
+        }
+
+        if (dataHazards is { } hazards)
+        {
+            _builder.WithDataHazardPolicy(hazards);
         }
 
         return this;

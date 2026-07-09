@@ -2,6 +2,7 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Diff.Policies;
+using NSchema.Policies;
 
 namespace NSchema.Commands.Apply;
 
@@ -16,6 +17,11 @@ internal static class ApplyOptions
         .FromOption("--destructive-actions")
         .FromEnvironmentVariable(EnvironmentVariables.DestructiveActionPolicy)
         .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, or Allow.");
+
+    public static readonly OptionBinding<PolicyEnforcement?> DataHazards = OptionBinding.Create<PolicyEnforcement?>()
+        .FromOption("--data-hazards")
+        .FromEnvironmentVariable(EnvironmentVariables.DataHazardPolicy)
+        .WithDescription("Policy when the plan contains changes that can fail on existing data: Error, Warn (default), Allow, or Ignore.");
 
     public static readonly OptionBinding<bool> AutoApprove = OptionBinding.Create<bool>()
         .FromOption("--auto-approve", "-y")
@@ -33,6 +39,7 @@ internal static class ApplyOptions
     [
         Scope.Option,
         Destructive.Option,
+        DataHazards.Option,
         AutoApprove.Option,
         PlanFile.Option,
         NoLock.Option,

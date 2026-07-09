@@ -23,13 +23,14 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>4.1.0</Version>
+    <Version>4.2.0</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>devops;cicd;build;automation;pipelines;databases;schema;rdbms;deployment;migration</PackageTags>
     <LangVersion>latest</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
