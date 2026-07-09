@@ -16,6 +16,12 @@ max_line_length = 150
 [*.{ts,tsx,js,jsx,json}]
 indent_size = 2
 
+# Verify snapshot files are written by the test tooling and compared byte-for-byte;
+# editors must not reformat them (a final newline breaks serializer-based snapshots).
+[*.{received,verified}.{txt,json,xml}]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
 # Generated code
 [*{_AssemblyInfo.cs,.notsupported.cs}]
 generated_code = true
