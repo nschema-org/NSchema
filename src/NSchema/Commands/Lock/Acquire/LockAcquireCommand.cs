@@ -46,7 +46,7 @@ internal static class LockAcquireCommand
         var info = result.Value.Info;
         app.Messenger.Success($"Acquired the state lock.");
         app.Messenger.ReportLockInfo(info);
-        app.Messenger.Detail($"The lock is held until you run: nschema lock release {info.Id}");
+        app.Messenger.Detail($"The lock is held until you run: {LockReleaseHint.Command(info.Id, environment, parseResult)}");
         return ExitCodes.NoChanges;
     }
 }

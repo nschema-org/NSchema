@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -31,7 +32,30 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
     public void ReportPlan(MigrationPlan plan)
     {
         ReportScripts("Pre-deployment", plan.PreDeploymentScripts);
+        ReportDataMigrations([.. plan.Actions.OfType<ExecuteDataMigration>()]);
         ReportScripts("Post-deployment", plan.PostDeploymentScripts);
+    }
+
+    // Lists the matched data migrations by description, mirroring the script sections. An empty section is skipped.
+    private void ReportDataMigrations(IReadOnlyList<ExecuteDataMigration> migrations)
+    {
+        if (migrations.Count == 0)
+        {
+            return;
+        }
+
+        var builder = new StringBuilder();
+        for (var i = 0; i < migrations.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+
+            builder.Append("  - ").Append(Markup.Escape(migrations[i].Description));
+        }
+
+        WriteSection("Data migrations", new Markup(builder.ToString()));
     }
 
     // Lists the script names under a section rule (the SQL itself is shown by ReportSqlPlan). An empty section is

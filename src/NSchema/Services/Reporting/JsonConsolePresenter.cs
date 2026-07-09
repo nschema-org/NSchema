@@ -1,5 +1,6 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -37,7 +38,8 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     public void ReportPlan(MigrationPlan plan)
     {
-        if (plan.PreDeploymentScripts.Count == 0 && plan.PostDeploymentScripts.Count == 0)
+        var migrations = plan.Actions.OfType<ExecuteDataMigration>().ToList();
+        if (plan.PreDeploymentScripts.Count == 0 && plan.PostDeploymentScripts.Count == 0 && migrations.Count == 0)
         {
             return;
         }
@@ -47,8 +49,17 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
             type = "scripts",
             preDeployment = plan.PreDeploymentScripts.Select(Describe),
             postDeployment = plan.PostDeploymentScripts.Select(Describe),
+            dataMigrations = migrations.Select(Describe),
         });
     }
 
     private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction };
+
+    private static object Describe(ExecuteDataMigration migration) => new
+    {
+        migration.Name,
+        migration.Trigger,
+        Path = $"{migration.SchemaName}.{migration.TableName}.{migration.MemberName}",
+        migration.RunOutsideTransaction,
+    };
 }

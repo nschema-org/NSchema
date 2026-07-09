@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Diff;
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Scripts;
@@ -29,7 +30,24 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
     public void ReportPlan(MigrationPlan plan)
     {
         WriteScripts("Pre-deployment", plan.PreDeploymentScripts);
+        WriteDataMigrations(plan.Actions.OfType<ExecuteDataMigration>().ToList());
         WriteScripts("Post-deployment", plan.PostDeploymentScripts);
+    }
+
+    private void WriteDataMigrations(IReadOnlyList<ExecuteDataMigration> migrations)
+    {
+        if (migrations.Count == 0)
+        {
+            return;
+        }
+
+        var body = new StringBuilder();
+        foreach (var migration in migrations)
+        {
+            body.Append("- `").Append(migration.Description).Append("`\n");
+        }
+
+        WriteSection("Data migrations", body.ToString());
     }
 
     public void ReportSavedPlan(PlanFileEnvelope envelope)

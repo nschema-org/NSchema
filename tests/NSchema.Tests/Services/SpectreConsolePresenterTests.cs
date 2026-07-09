@@ -1,8 +1,11 @@
 using NSchema.Diff.Model;
 using NSchema.Plan.Model;
+using NSchema.Plan.Model.Columns;
+using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
 using NSchema.Schema.Model;
 using NSchema.Schema.Model.Columns;
+using NSchema.Schema.Model.Migrations;
 using NSchema.Schema.Model.Schemas;
 using NSchema.Schema.Model.Scripts;
 using NSchema.Schema.Model.Tables;
@@ -195,6 +198,41 @@ public sealed class SpectreConsolePresenterTests
 
         // Assert
         _out.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportPlan_ListsDataMigrationsUnderTheirOwnSection()
+    {
+        // Arrange
+        var plan = new MigrationPlan(
+            [
+                new AddColumn("app", "users", new Column("email", SqlType.Text)),
+                new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';"),
+                new ExecuteDataMigration(null, DataMigrationTrigger.AddConstraint, "app", "users", "users_email_uq", "DELETE FROM app.users;"),
+            ],
+            [],
+            []);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert — matched migrations are listed by description; other actions are not listed here.
+        _out.Output.ShouldContain("Data migrations");
+        _out.Output.ShouldContain("backfill emails");
+        _out.Output.ShouldContain("ADD CONSTRAINT app.users.users_email_uq");
+    }
+
+    [Fact]
+    public void ReportPlan_SkipsDataMigrationSection_WhenThePlanHasNone()
+    {
+        // Arrange
+        var plan = new MigrationPlan([new AddColumn("app", "users", new Column("email", SqlType.Text))], [], []);
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert
+        _out.Output.ShouldNotContain("Data migrations");
     }
 
     [Fact]
