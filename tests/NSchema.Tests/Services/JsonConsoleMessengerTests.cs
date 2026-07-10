@@ -3,6 +3,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Diagnostics;
 using NSchema.Policies;
 using NSchema.Services.Reporting;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 
 namespace NSchema.Tests.Services;
@@ -114,6 +115,17 @@ public sealed class JsonConsoleMessengerTests
         record.GetProperty("name").GetString().ShouldBe("seed-users");
         record.GetProperty("hash").GetString().ShouldBe("abc123");
         record.GetProperty("executedUtc").GetDateTimeOffset().ShouldBe(DateTimeOffset.UnixEpoch);
+    }
+
+    [Fact]
+    public void ReportScriptHashes_EmitsASingleArray()
+    {
+        _sut.ReportScriptHashes([new ScriptHash("seed-users", "abc123")]);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        var record = evt.EnumerateArray().ShouldHaveSingleItem();
+        record.GetProperty("name").GetString().ShouldBe("seed-users");
+        record.GetProperty("hash").GetString().ShouldBe("abc123");
     }
 
     [Fact]

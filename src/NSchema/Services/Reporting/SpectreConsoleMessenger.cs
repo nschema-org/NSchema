@@ -2,6 +2,7 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Diagnostics;
 using NSchema.Policies;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 using Spectre.Console;
 
@@ -99,6 +100,29 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
             table.AddRow(
                 new Markup(Markup.Escape(script.Name)),
                 new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
+                new Markup($"[grey]{Markup.Escape(script.Hash)}[/]"));
+        }
+
+        _out.Write(table);
+    }
+
+    public void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            _out.MarkupLine("[grey]No scripts are declared in this project.[/]");
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Script")
+            .AddColumn("Body hash");
+
+        foreach (var script in scripts)
+        {
+            table.AddRow(
+                new Markup(Markup.Escape(script.Name)),
                 new Markup($"[grey]{Markup.Escape(script.Hash)}[/]"));
         }
 

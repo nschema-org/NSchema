@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Commands.Script.Hash;
 using NSchema.Commands.Script.List;
 using NSchema.Commands.Script.Taint;
 using NSchema.Commands.Script.Untaint;
@@ -15,6 +16,7 @@ internal static class ScriptCommand
         var command = new Command("script", "Manage the script executions recorded in the state.");
 
         command.Subcommands.Add(ScriptListCommand.Create());
+        command.Subcommands.Add(ScriptHashCommand.Create());
         command.Subcommands.Add(ScriptTaintCommand.Create());
         command.Subcommands.Add(ScriptUntaintCommand.Create());
 

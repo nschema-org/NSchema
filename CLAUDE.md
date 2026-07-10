@@ -31,8 +31,8 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    config/IO/rendering, **plugin resolution & cache management**)? → **CLI command.** *(lock status / acquire / release —
    thin over the public `IStateLockCoordinator` (`app.Locks`); show — thin over `app.CurrentSchema`/`app.PlanFile`;
    state pull / push and script list / taint / untaint — read → mutate → write loops over the public
-   `ISchemaStateManager` (`app.State`), with untaint plucking the body hash from an ordinary plan's pending-script
-   manifest; plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
+   `ISchemaStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.DesiredSchema`;
+   plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
    project config; init, fmt, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
@@ -219,12 +219,14 @@ the `run-once`/`deprecations` diagnostics render through the standard diagnostic
 The **`script` command group** (`Commands/Script/`) manages the recorded ledger, all thin CLI over `app.State`
 (`ISchemaStateManager`): `script list` renders the recorded executions (a query — single bare array in `--json`),
 `script taint <name>` removes an execution (read → `RemoveScript` → write), and `script untaint <name>` records a
-pending script as executed without running it — it runs an ordinary plan and takes the script's name + body hash from
-`SqlPlan.Scripts` (the pending run-once manifest), so it needs a provider; a recorded-but-changed script must be
-tainted before it can be untainted (only pending scripts appear in the manifest). `state pull` / `state push` move the
-raw payload through `ReadRaw`/`WriteRaw` — pull suppresses narration when writing to stdout so redirection stays
-byte-clean; push validates and writes verbatim. Push, taint, and untaint take the state lock (each has `--no-lock`);
-pull and list are reads and do not.
+run-once script as executed without running it — the name + body `Hash` come from the script's declaration, read
+through `app.DesiredSchema` (the expanded desired project), so no provider or plan is involved; untaint on an
+already-recorded script deliberately errors with "taint first, then untaint" rather than silently overwriting the
+recorded hash. `script hash [name]` computes the same declaration hashes for hand-editing pulled state (bare hash on
+stdout with a name, table/array without) — the shared name-matching lives in `RunOnceDeclarations`, used by both
+hash and untaint. `state pull` / `state push` move the raw payload through `ReadRaw`/`WriteRaw` — pull suppresses
+narration when writing to stdout so redirection stays byte-clean; push validates and writes verbatim. Push, taint,
+and untaint take the state lock (each has `--no-lock`); pull and list are reads and do not.
 
 ## Test conventions
 

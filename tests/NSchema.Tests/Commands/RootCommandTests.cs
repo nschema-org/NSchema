@@ -96,7 +96,7 @@ public sealed class RootCommandTests
         var names = scriptCommand.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["list", "taint", "untaint"], ignoreOrder: true);
+        names.ShouldBe(["list", "hash", "taint", "untaint"], ignoreOrder: true);
     }
 
     [Fact]

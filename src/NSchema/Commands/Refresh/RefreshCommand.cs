@@ -51,7 +51,7 @@ internal static class RefreshCommand
         // Release explicitly in a finally — a lock handle is not disposable (a manual lock can outlive the process).
         try
         {
-            var result = await app.Operations.Refresh(new RefreshArguments(), cancellationToken);
+            var result = await app.Operations.Refresh(new RefreshArguments { Force = configuration.Force }, cancellationToken);
             if (result.IsFailure)
             {
                 if (result.Diagnostics.Count > 0)

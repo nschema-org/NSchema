@@ -2,6 +2,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Diagnostics;
 using NSchema.Policies;
 using NSchema.Services.Reporting;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 using Spectre.Console.Testing;
 
@@ -152,6 +153,25 @@ public sealed class SpectreConsoleMessengerTests
         // The ledger's data as a table on stdout — name, execution time, and body hash.
         _out.Output.ShouldContain("seed-users");
         _out.Output.ShouldContain("1970-01-01");
+        _out.Output.ShouldContain("abc123");
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportScriptHashes_Empty_WritesNoDeclarationsMessage()
+    {
+        _sut.ReportScriptHashes([]);
+
+        _out.Output.ShouldContain("No scripts are declared");
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportScriptHashes_WritesTheDeclarationTableToOutput()
+    {
+        _sut.ReportScriptHashes([new ScriptHash("seed-users", "abc123")]);
+
+        _out.Output.ShouldContain("seed-users");
         _out.Output.ShouldContain("abc123");
         _error.Output.ShouldBeEmpty();
     }
