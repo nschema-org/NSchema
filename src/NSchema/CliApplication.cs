@@ -28,6 +28,9 @@ internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger m
     /// <inheritdoc cref="NSchemaApplication.CurrentSchema"/>
     public ICurrentSchemaProvider CurrentSchema => app.CurrentSchema;
 
+    /// <inheritdoc cref="NSchemaApplication.DesiredSchema"/>
+    public IDesiredSchemaProvider DesiredSchema => app.DesiredSchema;
+
     /// <inheritdoc cref="NSchemaApplication.PlanFile"/>
     public IPlanFileWriter PlanFile => app.PlanFile;
 
