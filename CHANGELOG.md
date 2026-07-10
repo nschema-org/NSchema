@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.5.1] - 2026-07-10
+
+### Changed
+
+- A `RUN ONCE` script that has already been run no-longer produces an informational diagnostic.
+
 ## [4.5.0] - 2026-07-10
 
 ### Added
