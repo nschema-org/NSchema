@@ -16,12 +16,14 @@ a major one, and called out explicitly in this changelog.
 
 ### Added
 
+- **`refresh --force`** refresh fails if it finds an unreadable state payload, instead of silently overwriting it; `--force` replaces it, resetting the run-once script ledger.
 - **`state pull [file]`** to pull the raw recorded state payload out of the configured backend. Writes to a file or stdout.
 - **`state push <file>`** to push the raw recorded state payload into the configured backend. Push takes the state lock (`--no-lock` to skip).
 - **`script` command group** to manage the scripts recorded in the state:
   - `script list` shows the recorded scripts (name, execution time, body hash); `--json` emits them as a single array.
+  - `script hash [name]` computes the body hash of the project's run-once declarations, bare on stdout for one script, or a listing of all of them, for hand-editing pulled state.
   - `script taint <name>` removes a script's record, so it runs again on the next apply.
-  - `script untaint <name>` records a pending script as executed without running it. Taint and untaint take the state lock (`--no-lock` to skip).
+  - `script untaint <name>` records a script as executed without running it, using the body hash from the script's declaration. Taint and untaint take the state lock (`--no-lock` to skip).
 
 ## [4.4.0] - 2026-07-10
 
