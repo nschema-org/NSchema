@@ -106,6 +106,20 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
+    public void ReportPlan_EmitsTheRunConditionOnScripts()
+    {
+        var plan = new MigrationPlan(
+            [],
+            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],
+            []);
+
+        _sut.ReportPlan(plan);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.GetProperty("preDeployment")[0].GetProperty("runCondition").GetString().ShouldBe("once");
+    }
+
+    [Fact]
     public void ReportPlan_WritesNothing_WhenThereAreNoScriptsOrMigrations()
     {
         _sut.ReportPlan(new MigrationPlan([], [], []));

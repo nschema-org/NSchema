@@ -130,7 +130,12 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
         var body = new StringBuilder();
         foreach (var script in scripts)
         {
-            body.Append("- `").Append(script.Name).Append("`\n");
+            body.Append("- `").Append(script.Name).Append('`');
+            if (script.RunCondition == RunCondition.Once)
+            {
+                body.Append(" *(run once)*");
+            }
+            body.Append('\n');
         }
 
         WriteSection(title, body.ToString());
