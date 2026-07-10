@@ -12,6 +12,22 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.4.0] - 2026-07-10
+
+### Added
+
+- **Unified `SCRIPT` statement** (via `NSchema.Core 4.4.0`). `SCRIPT '<name>' RUN [ALWAYS | ONCE] ON <event> AS $$…$$;` is the new canonical form of deployment scripts and data migrations: the event is `PRE DEPLOYMENT`, `POST DEPLOYMENT`, or a structural change (`ADD COLUMN` / `ALTER COLUMN TYPE` / `ADD CONSTRAINT` with a target path).
+- **Run-once scripts.** A `RUN ONCE` script is recorded in the state backend on a successful apply and skipped by later plans; a recorded script whose body has since changed stays skipped and warns. Plan output marks run-once scripts in the pre/post-deployment sections (`(run once)`; `runCondition` in `--json`). Recording requires a state backend — planning without one warns.
+- **Scripts in schema templates.** Both script kinds can be declared inside a `TEMPLATE … BEGIN … END;` body and instantiate once per applied schema, with the `{schema}` token substituted in the name and the SQL.
+
+### Changed
+
+- Script names must be unique across the project (they identify scripts in diagnostics and run-once tracking); a template-declared script applied to multiple schemas can include `{schema}` in its name.
+
+### Deprecated
+
+- The `PRE|POST DEPLOYMENT '<name>' AS $$…$$;` and `MIGRATION ['name'] FOR <trigger> <path> AS $$…$$;` forms still work, but plan/apply/validate now surface a `deprecations` warning naming the `SCRIPT` replacement. They will be removed in NSchema 5.0.
+
 ## [4.3.0] - 2026-07-09
 
 ### Added

@@ -53,7 +53,7 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
         });
     }
 
-    private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction };
+    private static object Describe(Script script) => new { script.Name, script.Type, script.RunOutsideTransaction, script.RunCondition };
 
     private static object Describe(ExecuteDataMigration migration) => new
     {

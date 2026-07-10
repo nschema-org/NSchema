@@ -201,12 +201,18 @@ written in **NSchema DDL** — the core's canonical, SQL-flavoured `DatabaseSche
 registered by the core; the CLI no longer offers YAML or JSON). Column types are canonical compact strings (`bigint`,
 `text`, `varchar(255)`). There is no format, directory, or glob to configure. See `README.md` for a worked example.
 
-**Deployment scripts** are now declared **inline** in the DDL as dollar-quoted `PRE DEPLOYMENT 'name' AS $$…$$` /
-`POST DEPLOYMENT 'name' AS $$…$$` blocks (an optional `(run_outside_transaction = true)` for statements a transaction
-forbids, e.g. `CREATE INDEX CONCURRENTLY`) — not separate `*.pre.sql`/`*.post.sql` files. They are the imperative escape
-hatch (extensions, backfills, grants NSchema doesn't model). The CLI does **nothing special** with them: they ride the
-same `*.sql` glob into the core's parser, which captures them on the `DatabaseSchema` and surfaces them in the migration
-plan's pre/post sections; the core runs them around the computed migration on every apply, so they must be idempotent.
+**Scripts** are declared **inline** in the DDL with the unified `SCRIPT '<name>' RUN [ALWAYS | ONCE] ON <event>
+[(run_outside_transaction = true)] AS $$…$$;` statement (Core 4.4+). The event is a deployment bookend
+(`PRE DEPLOYMENT` / `POST DEPLOYMENT`) or a structural change (`ADD COLUMN` / `ALTER COLUMN TYPE` / `ADD CONSTRAINT`
+with a `schema.table.member` path — the data-migration form, spliced into the plan only when the matching change is
+planned). `RUN ONCE` scripts are recorded in the state backend on a successful apply and skipped by later plans (skip
+= `run-once` Info diagnostic; a changed body warns and stays skipped). Script names are unique project-wide. The
+pre-4.4 spellings (`PRE|POST DEPLOYMENT 'name' AS $$…$$;`, `MIGRATION ['name'] FOR <trigger> <path> AS $$…$$;`) still
+parse but surface `deprecations` warnings — removal in 5.0. The CLI does **almost nothing special** with any of this:
+scripts ride the same `*.sql` glob into the core's parser, the core plans/executes/records them (the run-once manifest
+travels on `SqlPlan` inside the plan result and plan file, so apply needs no extra wiring), and the CLI's only additions
+are presentation — the pre/post plan sections annotate run-once scripts (`(run once)`; `runCondition` in `--json`), and
+the `run-once`/`deprecations` diagnostics render through the standard diagnostics table.
 
 ## Test conventions
 

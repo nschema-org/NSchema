@@ -77,6 +77,10 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
             }
 
             builder.Append("  - ").Append(Markup.Escape(scripts[i].Name));
+            if (scripts[i].RunCondition == RunCondition.Once)
+            {
+                builder.Append(" [grey](run once)[/]");
+            }
         }
 
         WriteSection(title, new Markup(builder.ToString()));

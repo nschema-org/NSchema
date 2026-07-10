@@ -1,0 +1,8 @@
+﻿## Pre-deployment
+
+- `seed-roles` *(run once)*
+
+## Post-deployment
+
+- `refresh-views`
+

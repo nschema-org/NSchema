@@ -107,6 +107,19 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
+    public Task ReportPlan_WithRunOnceScript()
+    {
+        var plan = new MigrationPlan(
+            [],
+            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],
+            [new Script("refresh-views", "REFRESH MATERIALIZED VIEW app.stats;", ScriptType.PostDeployment)]);
+
+        _sut.ReportPlan(plan);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
     public Task ReportSavedPlan()
     {
         var envelope = new PlanFileEnvelope(
