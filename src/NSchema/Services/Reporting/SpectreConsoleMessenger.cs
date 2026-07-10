@@ -85,7 +85,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
     {
         if (scripts.Count == 0)
         {
-            _out.MarkupLine("[grey]No run-once script executions are recorded.[/]");
+            _out.MarkupLine("[grey]No script executions are recorded.[/]");
             return;
         }
 

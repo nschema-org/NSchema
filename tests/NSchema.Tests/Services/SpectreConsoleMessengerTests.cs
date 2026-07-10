@@ -141,7 +141,7 @@ public sealed class SpectreConsoleMessengerTests
     {
         _sut.ReportScripts([]);
 
-        _out.Output.ShouldContain("No run-once script executions are recorded");
+        _out.Output.ShouldContain("No script executions are recorded");
         _error.Output.ShouldBeEmpty();
     }
 

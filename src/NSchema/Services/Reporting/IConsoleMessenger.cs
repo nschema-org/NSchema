@@ -46,12 +46,12 @@ internal interface IConsoleMessenger
     void ReportLockInfo(StateLockInfo? info);
 
     /// <summary>
-    /// Reports the run-once script executions recorded in the state ledger.
+    /// Reports the script executions recorded in the state ledger.
     /// </summary>
     void ReportScripts(IReadOnlyList<ScriptRecord> scripts);
 
     /// <summary>
-    /// Reports the run-once scripts a project declares, with their body hashes.
+    /// Reports the scripts a project declares, with their body hashes.
     /// </summary>
     void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts);
 

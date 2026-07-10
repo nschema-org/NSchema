@@ -173,7 +173,7 @@ public sealed class SpectreConsolePresenterTests
     [Fact]
     public void ReportPlan_AnnotatesRunOnceScripts()
     {
-        // Arrange — a run-once script is marked so the reader knows it executes and is then recorded.
+        // Arrange — a script is marked so the reader knows it executes and is then recorded.
         var plan = new MigrationPlan(
             [],
             [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],

@@ -11,7 +11,7 @@ internal static class RefreshOptions
 
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force")
-        .WithDescription("Replace an existing state payload that cannot be read, resetting the run-once script ledger. Without it, an unreadable payload fails the refresh.");
+        .WithDescription("Replace an existing state payload that cannot be read, resetting the script ledger. Without it, an unreadable payload fails the refresh.");
 
     public static IEnumerable<Option> All =>
     [

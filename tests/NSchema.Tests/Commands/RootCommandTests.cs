@@ -91,7 +91,7 @@ public sealed class RootCommandTests
     [Fact]
     public void ScriptGroup_RegistersListTaintAndUntaint()
     {
-        // Act — the script noun manages the run-once execution ledger recorded in the state.
+        // Act — the script noun manages the execution ledger recorded in the state.
         var scriptCommand = _sut.Subcommands.Single(command => command.Name == "script");
         var names = scriptCommand.Subcommands.Select(command => command.Name);
 

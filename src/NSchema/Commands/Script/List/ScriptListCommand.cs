@@ -9,7 +9,7 @@ internal static class ScriptListCommand
 {
     public static Command Create()
     {
-        var command = new Command("list", "List the run-once script executions recorded in the state.");
+        var command = new Command("list", "List the script executions recorded in the state.");
 
         command.SetAction(Run);
         return command;

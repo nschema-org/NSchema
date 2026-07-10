@@ -7,13 +7,13 @@ internal static class ScriptHashCommand
 {
     private static readonly Argument<string?> NameArgument = new("name")
     {
-        Description = "The declared name of a run-once script. Omit to list every run-once declaration with its hash.",
+        Description = "The declared name of a script. Omit to list every declaration with its hash.",
         Arity = ArgumentArity.ZeroOrOne,
     };
 
     public static Command Create()
     {
-        var command = new Command("hash", "Compute the body hash of the project's run-once scripts — the identity the state ledger records, e.g. for hand-editing pulled state.");
+        var command = new Command("hash", "Compute the body hash of the project's scripts.");
 
         command.Arguments.Add(NameArgument);
 

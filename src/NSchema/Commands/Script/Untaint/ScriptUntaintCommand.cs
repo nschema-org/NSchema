@@ -10,12 +10,12 @@ internal static class ScriptUntaintCommand
 {
     private static readonly Argument<string> NameArgument = new("name")
     {
-        Description = "The declared name of the run-once script to record as executed.",
+        Description = "The declared name of the script to record as executed.",
     };
 
     public static Command Create()
     {
-        var command = new Command("untaint", "Record a run-once script as executed without running it, so later plans skip it — e.g. after rebuilding lost state with refresh.");
+        var command = new Command("untaint", "Record a script as executed without running it, so later plans skip it — e.g. after rebuilding lost state with refresh.");
 
         command.Arguments.Add(NameArgument);
         command.Options.AddRange(ScriptUntaintOptions.All);

@@ -10,7 +10,7 @@ internal static class ScriptTaintCommand
 {
     private static readonly Argument<string> NameArgument = new("name")
     {
-        Description = "The declared name of the run-once script whose recorded execution should be removed.",
+        Description = "The declared name of the script whose recorded execution should be removed.",
     };
 
     public static Command Create()
