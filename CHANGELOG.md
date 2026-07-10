@@ -12,6 +12,17 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [4.5.0] - 2026-07-10
+
+### Added
+
+- **`state pull [file]`** to pull the raw recorded state payload out of the configured backend. Writes to a file or stdout.
+- **`state push <file>`** to push the raw recorded state payload into the configured backend. Push takes the state lock (`--no-lock` to skip).
+- **`script` command group** to manage the scripts recorded in the state:
+  - `script list` shows the recorded scripts (name, execution time, body hash); `--json` emits them as a single array.
+  - `script taint <name>` removes a script's record, so it runs again on the next apply.
+  - `script untaint <name>` records a pending script as executed without running it. Taint and untaint take the state lock (`--no-lock` to skip).
+
 ## [4.4.0] - 2026-07-10
 
 ### Added

@@ -80,6 +80,31 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         }
     }
 
+    public void ReportScripts(IReadOnlyList<ScriptRecord> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            _out.MarkupLine("[grey]No run-once script executions are recorded.[/]");
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Script")
+            .AddColumn("Executed")
+            .AddColumn("Body hash");
+
+        foreach (var script in scripts)
+        {
+            table.AddRow(
+                new Markup(Markup.Escape(script.Name)),
+                new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
+                new Markup($"[grey]{Markup.Escape(script.Hash)}[/]"));
+        }
+
+        _out.Write(table);
+    }
+
     public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins)
     {
         if (plugins.Count == 0)

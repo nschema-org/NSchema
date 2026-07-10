@@ -104,6 +104,19 @@ public sealed class JsonConsoleMessengerTests
     }
 
     [Fact]
+    public void ReportScriptExecutions_EmitsASingleArray()
+    {
+        // A query result: one clean array on stdout a script can consume directly.
+        _sut.ReportScripts([new ScriptRecord("seed-users", "abc123", DateTimeOffset.UnixEpoch)]);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        var record = evt.EnumerateArray().ShouldHaveSingleItem();
+        record.GetProperty("name").GetString().ShouldBe("seed-users");
+        record.GetProperty("hash").GetString().ShouldBe("abc123");
+        record.GetProperty("executedUtc").GetDateTimeOffset().ShouldBe(DateTimeOffset.UnixEpoch);
+    }
+
+    [Fact]
     public void ReportProjectPlugins_EmitsArrayWithRoleAndCacheStatus()
     {
         // Arrange

@@ -136,6 +136,27 @@ public sealed class SpectreConsoleMessengerTests
     }
 
     [Fact]
+    public void ReportScriptExecutions_Empty_WritesNoExecutionsMessage()
+    {
+        _sut.ReportScripts([]);
+
+        _out.Output.ShouldContain("No run-once script executions are recorded");
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportScriptExecutions_WritesTheLedgerTableToOutput()
+    {
+        _sut.ReportScripts([new ScriptRecord("seed-users", "abc123", DateTimeOffset.UnixEpoch)]);
+
+        // The ledger's data as a table on stdout — name, execution time, and body hash.
+        _out.Output.ShouldContain("seed-users");
+        _out.Output.ShouldContain("1970-01-01");
+        _out.Output.ShouldContain("abc123");
+        _error.Output.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void ReportProjectPlugins_Empty_WritesNoPluginsMessage()
     {
         // Act

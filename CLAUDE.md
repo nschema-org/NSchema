@@ -30,8 +30,10 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    — **or local developer plumbing** (filesystem scaffolding, source-text formatting, shell integration,
    config/IO/rendering, **plugin resolution & cache management**)? → **CLI command.** *(lock status / acquire / release —
    thin over the public `IStateLockCoordinator` (`app.Locks`); show — thin over `app.CurrentSchema`/`app.PlanFile`;
-   plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and project
-   config; init, fmt, completion.)*
+   state pull / push and script list / taint / untaint — read → mutate → write loops over the public
+   `ISchemaStateManager` (`app.State`), with untaint plucking the body hash from an ordinary plan's pending-script
+   manifest; plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
+   project config; init, fmt, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
@@ -60,7 +62,7 @@ it against API-surface stability, not just the boundary rule.
 
 The `--json` shape splits on the **nature of the command**, not the method. A *progressive operation* (`apply`, `plan`,
 `destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so `ReportDiff`/`ReportPlan`/`ReportSqlPlan`
-each carry a discriminator. A *query* (`db show`, `state show`, `plan show`, `lock status`, `plugin …`) is one request
+each carry a discriminator. A *query* (`db show`, `state show`, `plan show`, `lock status`, `script list`, `plugin …`) is one request
 for one answer, so it emits a **single bare object** on stdout (no `type` envelope): `ReportSchema` writes the schema
 directly, and `plan show` uses `ReportSavedPlan` to fold its diff + scripts + SQL into one `{diff, scripts, sql}` object
 rather than three lines. Either way, line-level narration (`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}`
@@ -213,6 +215,16 @@ scripts ride the same `*.sql` glob into the core's parser, the core plans/execut
 travels on `SqlPlan` inside the plan result and plan file, so apply needs no extra wiring), and the CLI's only additions
 are presentation — the pre/post plan sections annotate run-once scripts (`(run once)`; `runCondition` in `--json`), and
 the `run-once`/`deprecations` diagnostics render through the standard diagnostics table.
+
+The **`script` command group** (`Commands/Script/`) manages the recorded ledger, all thin CLI over `app.State`
+(`ISchemaStateManager`): `script list` renders the recorded executions (a query — single bare array in `--json`),
+`script taint <name>` removes an execution (read → `RemoveScript` → write), and `script untaint <name>` records a
+pending script as executed without running it — it runs an ordinary plan and takes the script's name + body hash from
+`SqlPlan.Scripts` (the pending run-once manifest), so it needs a provider; a recorded-but-changed script must be
+tainted before it can be untainted (only pending scripts appear in the manifest). `state pull` / `state push` move the
+raw payload through `ReadRaw`/`WriteRaw` — pull suppresses narration when writing to stdout so redirection stays
+byte-clean; push validates and writes verbatim. Push, taint, and untaint take the state lock (each has `--no-lock`);
+pull and list are reads and do not.
 
 ## Test conventions
 

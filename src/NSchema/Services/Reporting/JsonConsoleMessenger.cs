@@ -52,6 +52,9 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
         ? new LockReport(false, null, null, null, null, null)
         : new LockReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
 
+    // `script list` is a structured query too, so the ledger emits as a single clean array.
+    public void ReportScripts(IReadOnlyList<ScriptRecord> scripts) => JsonOutput.Write(_out, scripts);
+
     // The plugin inspection commands are structured queries, so they emit a single clean object/array (not the gated
     // NDJSON log stream) — the same exception lock status makes.
     public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins) => JsonOutput.Write(_out, plugins);

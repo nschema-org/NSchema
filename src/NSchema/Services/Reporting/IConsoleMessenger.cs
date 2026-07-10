@@ -45,6 +45,11 @@ internal interface IConsoleMessenger
     void ReportLockInfo(StateLockInfo? info);
 
     /// <summary>
+    /// Reports the run-once script executions recorded in the state ledger.
+    /// </summary>
+    void ReportScripts(IReadOnlyList<ScriptRecord> scripts);
+
+    /// <summary>
     /// Reports the plugins a project pins (provider and backend), annotated with their cache status.
     /// </summary>
     void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins);

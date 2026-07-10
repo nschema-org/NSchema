@@ -12,6 +12,7 @@ using NSchema.Commands.Plan;
 using NSchema.Commands.Plugin;
 using NSchema.Commands.Refresh;
 using NSchema.Commands.Scaffold;
+using NSchema.Commands.Script;
 using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
@@ -43,6 +44,7 @@ internal static class RootCommand
         root.Subcommands.Add(ImportCommand.Create());
         root.Subcommands.Add(DestroyCommand.Create());
         root.Subcommands.Add(StateCommand.Create());
+        root.Subcommands.Add(ScriptCommand.Create());
         root.Subcommands.Add(DbCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
