@@ -3,6 +3,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Diagnostics;
 using NSchema.Policies;
 using NSchema.Services.Reporting;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 
 namespace NSchema.Tests.Services;
@@ -101,6 +102,30 @@ public sealed class JsonConsoleMessengerTests
         evt.GetProperty("operation").GetString().ShouldBe("apply");
         evt.GetProperty("who").GetString().ShouldBe("tom@dev");
         evt.GetProperty("expires").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public void ReportScriptExecutions_EmitsASingleArray()
+    {
+        // A query result: one clean array on stdout a script can consume directly.
+        _sut.ReportScripts([new ScriptRecord("seed-users", "abc123", DateTimeOffset.UnixEpoch)]);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        var record = evt.EnumerateArray().ShouldHaveSingleItem();
+        record.GetProperty("name").GetString().ShouldBe("seed-users");
+        record.GetProperty("hash").GetString().ShouldBe("abc123");
+        record.GetProperty("executedUtc").GetDateTimeOffset().ShouldBe(DateTimeOffset.UnixEpoch);
+    }
+
+    [Fact]
+    public void ReportScriptHashes_EmitsASingleArray()
+    {
+        _sut.ReportScriptHashes([new ScriptHash("seed-users", "abc123")]);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        var record = evt.EnumerateArray().ShouldHaveSingleItem();
+        record.GetProperty("name").GetString().ShouldBe("seed-users");
+        record.GetProperty("hash").GetString().ShouldBe("abc123");
     }
 
     [Fact]

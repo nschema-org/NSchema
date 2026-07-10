@@ -26,10 +26,16 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public bool NoLock { get; private set; }
 
+    /// <summary>
+    /// Whether to replace an existing state payload that cannot be read.
+    /// </summary>
+    public bool Force { get; private set; }
+
     public void Bind(DdlProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
         RefreshOptions.NoLock.Bind(cli, n => NoLock = n);
+        RefreshOptions.Force.Bind(cli, f => Force = f);
     }
 }

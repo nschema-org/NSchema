@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "db", "drift", "doctor", "lock", "plugin", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "script", "db", "drift", "doctor", "lock", "plugin", "completion"], ignoreOrder: true);
     }
 
     [Fact]
@@ -78,14 +78,25 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void StateGroup_RegistersShow()
+    public void StateGroup_RegistersShowPullAndPush()
     {
-        // Act — the state noun groups recorded-state inspection (and, later, pull/push/move).
+        // Act — the state noun groups recorded-state inspection and surgery.
         var stateCommand = _sut.Subcommands.Single(command => command.Name == "state");
         var names = stateCommand.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["show"], ignoreOrder: true);
+        names.ShouldBe(["show", "pull", "push"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void ScriptGroup_RegistersListTaintAndUntaint()
+    {
+        // Act — the script noun manages the execution ledger recorded in the state.
+        var scriptCommand = _sut.Subcommands.Single(command => command.Name == "script");
+        var names = scriptCommand.Subcommands.Select(command => command.Name);
+
+        // Assert
+        names.ShouldBe(["list", "hash", "taint", "untaint"], ignoreOrder: true);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using NSchema.Plan.PlanFile;
 using NSchema.Schema;
 using NSchema.Services.Reporting;
 using NSchema.State;
+using NSchema.State.Storage;
 
 namespace NSchema;
 
@@ -27,8 +28,14 @@ internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger m
     /// <inheritdoc cref="NSchemaApplication.CurrentSchema"/>
     public ICurrentSchemaProvider CurrentSchema => app.CurrentSchema;
 
+    /// <inheritdoc cref="NSchemaApplication.DesiredSchema"/>
+    public IDesiredSchemaProvider DesiredSchema => app.DesiredSchema;
+
     /// <inheritdoc cref="NSchemaApplication.PlanFile"/>
     public IPlanFileWriter PlanFile => app.PlanFile;
+
+    /// <inheritdoc cref="NSchemaApplication.State"/>
+    public ISchemaStateManager State => app.State;
 
     /// <inheritdoc cref="NSchemaApplication.Services"/>
     public IServiceProvider Services => app.Services;

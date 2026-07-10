@@ -1,5 +1,6 @@
 using NSchema.Configuration.Plugins;
 using NSchema.Policies;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 
 namespace NSchema.Services.Reporting;
@@ -43,6 +44,16 @@ internal interface IConsoleMessenger
     /// Reports the information about a lock.
     /// </summary>
     void ReportLockInfo(StateLockInfo? info);
+
+    /// <summary>
+    /// Reports the script executions recorded in the state ledger.
+    /// </summary>
+    void ReportScripts(IReadOnlyList<ScriptRecord> scripts);
+
+    /// <summary>
+    /// Reports the scripts a project declares, with their body hashes.
+    /// </summary>
+    void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts);
 
     /// <summary>
     /// Reports the plugins a project pins (provider and backend), annotated with their cache status.

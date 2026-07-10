@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using NSchema.Configuration.Plugins;
 using NSchema.Policies;
+using NSchema.Sql.Model;
 using NSchema.State.Model;
 
 namespace NSchema.Services.Reporting;
@@ -51,6 +52,11 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
     public void ReportLockInfo(StateLockInfo? info) => JsonOutput.Write(_out, info is null
         ? new LockReport(false, null, null, null, null, null)
         : new LockReport(true, info.Id, info.Operation, info.Who, info.CreatedUtc, info.ExpiresUtc));
+
+    // `script list` is a structured query too, so the ledger emits as a single clean array.
+    public void ReportScripts(IReadOnlyList<ScriptRecord> scripts) => JsonOutput.Write(_out, scripts);
+
+    public void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts) => JsonOutput.Write(_out, scripts);
 
     // The plugin inspection commands are structured queries, so they emit a single clean object/array (not the gated
     // NDJSON log stream) — the same exception lock status makes.
