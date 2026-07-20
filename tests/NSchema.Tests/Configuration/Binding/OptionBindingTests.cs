@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Diff.Policies;
 
 namespace NSchema.Tests.Configuration.Binding;
 
@@ -124,15 +123,15 @@ public sealed class OptionBindingTests : IDisposable
     {
         // Arrange
         Environment.SetEnvironmentVariable(EnvVar, "warn");
-        var binding = OptionBinding.Create<DestructiveActionPolicy>().FromOption("--destructive-actions").FromEnvironmentVariable(EnvVar);
+        var binding = OptionBinding.Create<PolicyEnforcement>().FromOption("--destructive-actions").FromEnvironmentVariable(EnvVar);
         var result = Parse(binding);
 
         // Act
-        DestructiveActionPolicy? captured = null;
+        PolicyEnforcement? captured = null;
         binding.Bind(result, value => captured = value);
 
         // Assert
-        captured.ShouldBe(DestructiveActionPolicy.Warn);
+        captured.ShouldBe(PolicyEnforcement.Warn);
     }
 
     [Fact]

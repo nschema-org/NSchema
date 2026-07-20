@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Lock.Release;
@@ -30,7 +30,7 @@ internal sealed class LockReleaseConfiguration : IBindable
     /// </summary>
     public bool AutoApprove { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         State = project.State;
         LockId = cli.GetValue(LockReleaseCommand.LockIdArgument);

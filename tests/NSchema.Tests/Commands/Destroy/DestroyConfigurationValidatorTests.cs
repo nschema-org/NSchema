@@ -25,13 +25,30 @@ public sealed class DestroyConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_WithProviderOnly_FallsBackToWorkingDirectorySchema()
+    public void Invalid_WhenStateMissing()
     {
-        // Arrange — with no state store, the managed schema is the *.sql files under the working directory, so a
-        // provider alone is sufficient.
+        // Arrange — the managed schema is read from the recorded state, so a store is required.
         var config = new DestroyConfiguration
         {
             Provider = TestConfigs.Provider(),
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("state store is required"));
+    }
+
+    [Fact]
+    public void Valid_WithEphemeral_InsteadOfAStore()
+    {
+        // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
+        var config = new DestroyConfiguration
+        {
+            Provider = TestConfigs.Provider(),
+            Ephemeral = true,
         };
 
         // Act

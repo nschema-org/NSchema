@@ -1,10 +1,8 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
-using NSchema.Policies;
 
 namespace NSchema.Commands.Plan;
 
@@ -14,12 +12,12 @@ namespace NSchema.Commands.Plan;
 internal sealed class PlanConfiguration : IBindable
 {
     /// <summary>
-    /// The database provider supplying the live schema; offline when no section is populated.
+    /// The database provider rendering the plan's SQL; absent when no DATABASE statement is declared.
     /// </summary>
     public PluginReference? Provider { get; set; }
 
     /// <summary>
-    /// The state store enabling offline planning; absent when no section is populated.
+    /// The state store holding the recorded state the plan diffs against.
     /// </summary>
     public StateConfig? State { get; set; }
 
@@ -32,7 +30,7 @@ internal sealed class PlanConfiguration : IBindable
     /// The policy applied when the plan contains destructive actions. Unused in <c>--destroy</c> mode, which bypasses
     /// the diff and its policies.
     /// </summary>
-    public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
+    public PolicyEnforcement? DestructiveActionPolicy { get; private set; }
 
     /// <summary>
     /// The policy applied when the plan contains changes that can fail on existing data. Unused in <c>--destroy</c>
@@ -47,12 +45,6 @@ internal sealed class PlanConfiguration : IBindable
     public bool Destroy { get; internal set; }
 
     /// <summary>
-    /// Whether a state store is configured to read the managed schema from in <c>--destroy</c> mode; when absent,
-    /// the teardown source falls back to the desired schema globbed from the working directory.
-    /// </summary>
-    public bool HasStateStore => State is not null;
-
-    /// <summary>
     /// Optional path the computed plan is written to so it can be replayed later by <c>apply --plan-file</c>
     /// </summary>
     // internal set: bound via Bind, but paired with the Destroy toggle in tests, so they set it directly.
@@ -63,7 +55,13 @@ internal sealed class PlanConfiguration : IBindable
     /// </summary>
     public bool DetailedExitCode { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    /// <summary>
+    /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
+    /// </summary>
+    // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
+    public bool Ephemeral { get; internal set; }
+
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
@@ -73,5 +71,6 @@ internal sealed class PlanConfiguration : IBindable
         PlanOptions.Destroy.Bind(cli, d => Destroy = d);
         PlanOptions.Out.Bind(cli, o => OutFile = o);
         PlanOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
+        PlanOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

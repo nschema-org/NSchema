@@ -9,7 +9,7 @@ internal static class PluginShowCommand
 {
     internal static readonly Argument<string> LabelArgument = new("label")
     {
-        Description = "The label of the plugin to show, as written in its PROVIDER/BACKEND block (e.g. postgres, s3).",
+        Description = "The label of the plugin to show, as declared by its PLUGIN statement (e.g. postgres, s3).",
     };
 
     public static Command Create()

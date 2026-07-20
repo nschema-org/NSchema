@@ -1,6 +1,5 @@
 using NSchema.Configuration.Plugins;
-using NSchema.Policies;
-using NSchema.Sql.Model;
+using NSchema.State.Locks;
 using NSchema.State.Model;
 
 namespace NSchema.Services.Reporting;
@@ -48,15 +47,15 @@ internal interface IConsoleMessenger
     /// <summary>
     /// Reports the script executions recorded in the state ledger.
     /// </summary>
-    void ReportScripts(IReadOnlyList<ScriptRecord> scripts);
+    void ReportScripts(IReadOnlyList<ScriptExecution> scripts);
 
     /// <summary>
     /// Reports the scripts a project declares, with their body hashes.
     /// </summary>
-    void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts);
+    void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts);
 
     /// <summary>
-    /// Reports the plugins a project pins (provider and backend), annotated with their cache status.
+    /// Reports the plugins a project pins (database and state), annotated with their cache status.
     /// </summary>
     void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins);
 
@@ -76,7 +75,7 @@ internal interface IConsoleMessenger
     void ReportException(Exception exception);
 
     /// <summary>
-    /// Reports policy diagnostics (warnings, info, and errors) produced during an operation.
+    /// Reports the diagnostics (warnings, info, and errors) produced during an operation.
     /// </summary>
-    void ReportDiagnostics(PolicyDiagnostics diagnostics);
+    void ReportDiagnostics(IReadOnlyList<Diagnostic> diagnostics);
 }

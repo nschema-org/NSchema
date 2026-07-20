@@ -1,8 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Policies;
 using NSchema.State;
-using NSchema.State.Storage;
+using NSchema.State.Locks;
 
 namespace NSchema.Commands.State.Push;
 
@@ -45,16 +44,16 @@ internal static class StatePushCommand
         app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Pushing state from {file}. The recorded state will be replaced.");
 
-        var locked = await app.Locks.Acquire("state push", configuration.NoLock, cancellationToken);
+        var locked = await app.Locks.Acquire(new AcquireLockArguments("state push") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
         }
 
         try
@@ -62,13 +61,13 @@ internal static class StatePushCommand
             var result = await app.State.WriteRaw(new StateRawWriteArguments(payload), cancellationToken);
             if (result.IsFailure)
             {
-                app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+                app.Messenger.ReportDiagnostics(result.Diagnostics);
                 return ExitCodes.Error;
             }
 
             if (result.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+                app.Messenger.ReportDiagnostics(result.Diagnostics);
             }
 
             app.Messenger.Success($"State pushed ({result.Value.PayloadSize:N0} bytes).");
@@ -76,7 +75,7 @@ internal static class StatePushCommand
         }
         finally
         {
-            await locked.Value.Release(CancellationToken.None);
+            await locked.Require().Release(CancellationToken.None);
         }
     }
 }

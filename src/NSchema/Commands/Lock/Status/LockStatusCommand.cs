@@ -46,7 +46,7 @@ internal static class LockStatusCommand
         app.Messenger.ReportLockInfo(info);
         if (info is not null)
         {
-            app.Messenger.Detail($"Release it, once you're sure no operation is still running, with: {LockReleaseHint.Command(info.Id, environment, parseResult)}");
+            app.Messenger.Detail($"Release it, once you're sure no operation is still running, with: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
         }
 
         // Without --detailed-exitcode, reading the lock succeeded → 0 regardless of state. With it, a held lock is the

@@ -1,8 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Operations.Refresh;
-using NSchema.Policies;
-using NSchema.State;
+using NSchema.Operations;
+using NSchema.State.Locks;
 
 namespace NSchema.Commands.Refresh;
 
@@ -36,16 +35,16 @@ internal static class RefreshCommand
         app.Messenger.ReportEnvironment(environment);
 
         // Refresh writes the live schema into the store, so it takes the lock too.
-        var locked = await app.Locks.Acquire("refresh", configuration.NoLock, cancellationToken);
+        var locked = await app.Locks.Acquire(new AcquireLockArguments("refresh") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
         }
 
         // Release explicitly in a finally — a lock handle is not disposable (a manual lock can outlive the process).
@@ -56,7 +55,7 @@ internal static class RefreshCommand
             {
                 if (result.Diagnostics.Count > 0)
                 {
-                    app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+                    app.Messenger.ReportDiagnostics(result.Diagnostics);
                 }
                 return ExitCodes.Error;
             }
@@ -66,7 +65,7 @@ internal static class RefreshCommand
         }
         finally
         {
-            await locked.Value.Release(CancellationToken.None);
+            await locked.Require().Release(CancellationToken.None);
         }
     }
 }

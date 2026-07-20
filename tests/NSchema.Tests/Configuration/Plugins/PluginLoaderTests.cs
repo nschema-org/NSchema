@@ -1,8 +1,7 @@
-using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Extensions;
+using NSchema.Plan.Backends;
 using NSchema.Plugins;
-using NSchema.Sql;
 
 namespace NSchema.Tests.Configuration.Plugins;
 
@@ -14,6 +13,8 @@ namespace NSchema.Tests.Configuration.Plugins;
 /// </summary>
 public sealed class PluginLoaderTests : IDisposable
 {
+    private const string Version = "5.0.0-alpha.1";
+
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
@@ -25,33 +26,30 @@ public sealed class PluginLoaderTests : IDisposable
     }
 
     [Fact]
-    public void Load_RealPostgresPlugin_DiscoversProviderAndConfiguresHost()
+    public void Load_RealPostgresPlugin_DiscoversDatabasePluginAndConfiguresHost()
     {
         // Arrange
         var loader = new PluginLoader(_cacheRoot);
 
-        // Act — restore + load + discover
-        var plugin = loader.Load("NSchema.Postgres", "4.0.0-alpha.2")
-            .ValueOrThrow()
-            .OfType<INSchemaProviderPlugin>()
+        // Act — restore + load + discover by capability (a plugin has no name of its own).
+        var plugin = loader.Load("NSchema.Postgres", Version)
+            .Require()
+            .OfType<INSchemaDatabasePlugin>()
             .Single();
-
-        // Assert — discovery
-        plugin.Label.ShouldBe("postgres");
 
         // Act — drive the plugin (in its own ALC) against the host's builder
         var builder = NSchemaApplication.CreateBuilder();
-        var block = new ConfigBlock("provider", "postgres", new Dictionary<string, ConfigValue>
+        var config = new PluginConfig(new PluginLabel("postgres"), new Dictionary<AttributeKey, ConfigValue>
         {
-            ["connection_string"] = ConfigValue.OfString("Host=localhost;Database=app"),
+            [new AttributeKey("connection_string")] = ConfigValue.OfString("Host=localhost;Database=app"),
         });
-        var result = plugin.Configure(builder, block);
+        var result = plugin.Configure(builder, config);
 
-        // Assert — the plugin registered the HOST's ISqlGenerator: proof the contract types unify across the
+        // Assert — the plugin registered the HOST's SqlDialect: proof the contract types unify across the
         // AssemblyLoadContext boundary (Core was deferred to the default context).
-        result.Succeeded.ShouldBeTrue();
+        result.IsSuccess.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
-        builder.Services.ShouldContain(d => d.ServiceType == typeof(ISqlGenerator));
+        builder.Services.ShouldContain(d => d.ServiceType == typeof(SqlDialect));
     }
 
     [Fact]
@@ -63,8 +61,8 @@ public sealed class PluginLoaderTests : IDisposable
         // Act — floats NSchema.Postgres within this CLI's NSchema.Core major and reads back the resolved version.
         var version = loader.ResolveLatestVersion("NSchema.Postgres");
 
-        // Assert — a concrete 4.x version is pinned (the exact build floats as new ones publish).
-        version.ShouldStartWith("4.");
+        // Assert — a concrete 5.x version is pinned (the exact build floats as new ones publish).
+        version.ShouldStartWith("5.");
     }
 
     [Fact]
@@ -73,19 +71,18 @@ public sealed class PluginLoaderTests : IDisposable
         // Arrange — several loaders share one cold cache, mirroring parallel integration tests that each spin up their
         // own throwaway database and restore the same plugin at the same moment.
         const int concurrency = 4;
-        var labels = new string?[concurrency];
+        var loaded = new bool[concurrency];
 
         // Act — race the restore. Before the cross-process restore lock this collided inside `dotnet publish`
         // ("the process cannot access the file ... because it is being used by another process").
-        Parallel.For(0, concurrency, i => labels[i] = new PluginLoader(_cacheRoot)
-            .Load("NSchema.Postgres", "4.0.0-alpha.2")
-            .ValueOrThrow()
-            .OfType<INSchemaProviderPlugin>()
-            .Single()
-            .Label);
+        Parallel.For(0, concurrency, i => loaded[i] = new PluginLoader(_cacheRoot)
+            .Load("NSchema.Postgres", Version)
+            .Require()
+            .OfType<INSchemaDatabasePlugin>()
+            .Any());
 
         // Assert — every racer ended up with the working plugin, and exactly one publish closure landed in the cache.
-        labels.ShouldAllBe(label => label == "postgres");
+        loaded.ShouldAllBe(found => found);
         new PluginCache(_cacheRoot).List().ShouldHaveSingleItem();
     }
 
@@ -97,7 +94,7 @@ public sealed class PluginLoaderTests : IDisposable
 
         // Act — allowRestore: false (the --no-init path) must not reach the network; it fails fast as a diagnostic,
         // not an exception. No restore happens here, so this case needs neither the SDK nor network.
-        var result = loader.Load("NSchema.Postgres", "4.0.0-alpha.2", allowRestore: false);
+        var result = loader.Load("NSchema.Postgres", Version, allowRestore: false);
 
         // Assert
         result.IsFailure.ShouldBeTrue();
@@ -109,15 +106,12 @@ public sealed class PluginLoaderTests : IDisposable
     {
         // Arrange — warm the cache with a normal (restoring) load.
         var loader = new PluginLoader(_cacheRoot);
-        loader.Load("NSchema.Postgres", "4.0.0-alpha.2").ValueOrThrow();
+        loader.Load("NSchema.Postgres", Version).Require();
 
         // Act — a subsequent cache-only load (the --no-init path) succeeds without restoring.
-        var plugin = loader.Load("NSchema.Postgres", "4.0.0-alpha.2", allowRestore: false)
-            .ValueOrThrow()
-            .OfType<INSchemaProviderPlugin>()
-            .Single();
+        var plugins = loader.Load("NSchema.Postgres", Version, allowRestore: false).Require();
 
         // Assert
-        plugin.Label.ShouldBe("postgres");
+        plugins.OfType<INSchemaDatabasePlugin>().ShouldHaveSingleItem();
     }
 }

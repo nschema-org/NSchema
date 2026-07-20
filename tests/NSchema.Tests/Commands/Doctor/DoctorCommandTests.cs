@@ -29,10 +29,13 @@ public sealed class DoctorCommandTests : IDisposable
     public async Task Doctor_WithAMisconfiguredProvider_FailsAndReportsThePluginProblem()
     {
         // Arrange — a project whose postgres provider is missing the required connection_string.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), """
-            PROVIDER postgres (
-              version = '4.0.0-alpha.2'
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), """
+            PLUGIN postgres (
+              source  = 'NSchema.Postgres',
+              version = '5.0.0-alpha.1'
             );
+
+            DATABASE postgres ();
             """, TestContext.Current.CancellationToken);
 
         var parseResult = NSchema.Commands.RootCommand.Create().Parse(["doctor", "--directory", _projectDirectory]);

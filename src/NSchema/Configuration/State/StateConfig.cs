@@ -1,4 +1,6 @@
+using NSchema.Config;
 using NSchema.Configuration.Plugins;
+using NSchema.Plugins;
 
 namespace NSchema.Configuration.State;
 
@@ -7,7 +9,7 @@ namespace NSchema.Configuration.State;
 /// </summary>
 internal sealed class StateConfig
 {
-    private const string FileLabel = "file";
+    private static readonly PluginLabel _fileLabel = new("file");
 
     /// <summary>
     /// Local-file state store settings (built in; needs no plugin).
@@ -15,15 +17,17 @@ internal sealed class StateConfig
     public FileStateConfig? File { get; set; }
 
     /// <summary>
-    /// The resolved state-store plugin reference (e.g. <c>s3</c>); <see langword="null"/> for the built-in file store.
+    /// The resolved state-store plugin reference; <see langword="null"/> for the built-in file store.
     /// </summary>
     public PluginReference? Plugin { get; set; }
 
     /// <summary>
-    /// Maps a <c>BACKEND</c> block onto either the built-in file store or a resolved plugin reference.
+    /// Maps a <c>STATE</c> statement onto either the built-in file store or a resolved plugin reference.
     /// </summary>
-    public static StateConfig FromBlock(ConfigBlock block) =>
-        string.Equals(block.Label, FileLabel, StringComparison.OrdinalIgnoreCase)
-            ? new StateConfig { File = FileStateConfig.FromBlock(block) }
-            : new StateConfig { Plugin = PluginReference.ForBackend(block) };
+    /// <param name="config">The statement's translated settings.</param>
+    /// <param name="plugins">The project's <c>PLUGIN</c> declarations.</param>
+    public static StateConfig Resolve(PluginConfig config, IReadOnlyList<PluginDeclaration> plugins) =>
+        config.Label == _fileLabel
+            ? new StateConfig { File = FileStateConfig.FromConfig(config) }
+            : new StateConfig { Plugin = PluginReference.Resolve(config, plugins) };
 }

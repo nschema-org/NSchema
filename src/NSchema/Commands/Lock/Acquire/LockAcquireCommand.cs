@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Policies;
-using NSchema.State.Model;
+using NSchema.State.Locks;
 
 namespace NSchema.Commands.Lock.Acquire;
 
@@ -36,17 +35,17 @@ internal static class LockAcquireCommand
 
         // Deliberately do NOT release the lock:
         // the handle outlives this process, so the lock is held until `nschema lock release`.
-        var result = await app.Locks.Acquire(new StateLockRequest(configuration.Reason, configuration.TimeToLive), cancellationToken: cancellationToken);
+        var result = await app.Locks.Acquire(new AcquireLockArguments(configuration.Reason) { TimeToLive = configuration.TimeToLive }, cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+            app.Messenger.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
-        var info = result.Value.Info;
+        var info = result.Require().Info;
         app.Messenger.Success($"Acquired the state lock.");
         app.Messenger.ReportLockInfo(info);
-        app.Messenger.Detail($"The lock is held until you run: {LockReleaseHint.Command(info.Id, environment, parseResult)}");
+        app.Messenger.Detail($"The lock is held until you run: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
         return ExitCodes.NoChanges;
     }
 }

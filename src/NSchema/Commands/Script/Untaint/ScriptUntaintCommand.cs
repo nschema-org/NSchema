@@ -1,8 +1,9 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Policies;
+using NSchema.Model;
+using NSchema.Model.Scripts;
 using NSchema.State;
-using NSchema.State.Storage;
+using NSchema.State.Locks;
 
 namespace NSchema.Commands.Script.Untaint;
 
@@ -39,21 +40,21 @@ internal static class ScriptUntaintCommand
 
         // The desired schema is configured because the hash to record comes from the script's declaration.
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema(environment)
+            .ConfigureDesiredSchema()
             .ConfigureBackendState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 
-        var locked = await app.Locks.Acquire("script untaint", configuration.NoLock, cancellationToken);
+        var locked = await app.Locks.Acquire(new AcquireLockArguments("script untaint") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. locked.Diagnostics]));
+            app.Messenger.ReportDiagnostics(locked.Diagnostics);
         }
 
         try
@@ -62,7 +63,7 @@ internal static class ScriptUntaintCommand
         }
         finally
         {
-            await locked.Value.Release(CancellationToken.None);
+            await locked.Require().Release(CancellationToken.None);
         }
     }
 
@@ -71,11 +72,11 @@ internal static class ScriptUntaintCommand
         var read = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (read.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. read.Diagnostics]));
+            app.Messenger.ReportDiagnostics(read.Diagnostics);
             return ExitCodes.Error;
         }
 
-        if (read.Value.State is not { } state)
+        if (read.Value?.State is not { } state)
         {
             app.Messenger.Warn($"No state has been recorded yet. Run refresh to capture the schema first, then untaint.");
             return ExitCodes.Error;
@@ -89,18 +90,18 @@ internal static class ScriptUntaintCommand
 
         // The recorded identity is the declaration's name and body hash — the same values an apply would record,
         // read from the expanded desired project.
-        var project = (await app.DesiredSchema.GetProject(cancellationToken: cancellationToken)).Project;
+        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).Require();
         var declaration = project.FindScript(name);
-        if (declaration is null)
+        if (declaration is null || declaration.RunCondition != RunCondition.Once)
         {
             app.Messenger.Warn($"Script '{name}' is not declared as a RUN ONCE script in this project; there is nothing to record.");
             return ExitCodes.Error;
         }
 
-        var written = await app.State.Write(new StateWriteArguments(state.RecordScripts([declaration], DateTimeOffset.UtcNow)), cancellationToken);
+        var written = await app.State.Write(new StateWriteArguments(state.RecordExecution([declaration], DateTimeOffset.UtcNow)), cancellationToken);
         if (written.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. written.Diagnostics]));
+            app.Messenger.ReportDiagnostics(written.Diagnostics);
             return ExitCodes.Error;
         }
 

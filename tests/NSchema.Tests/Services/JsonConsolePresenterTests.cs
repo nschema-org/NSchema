@@ -1,13 +1,11 @@
 using System.Text.Json;
 using NSchema.Diff.Model;
+using NSchema.Diff.Model.Schemas;
+using NSchema.Model;
+using NSchema.Model.Scripts;
 using NSchema.Plan.Model;
-using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema.Model;
-using NSchema.Schema.Model.Migrations;
-using NSchema.Schema.Model.Scripts;
 using NSchema.Services.Reporting;
-using NSchema.Sql.Model;
 
 namespace NSchema.Tests.Services;
 
@@ -42,9 +40,32 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
+    public void ReportDiff_CarriesTheDeploymentScriptsOnTheDiff()
+    {
+        // The scripts are first-class on the diff now, so the diff event carries them — no separate scripts event.
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts =
+            [
+                new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)
+                {
+                    RunCondition = RunCondition.Once,
+                },
+            ],
+        };
+
+        _sut.ReportDiff(diff);
+
+        var script = StdoutEvents().ShouldHaveSingleItem().GetProperty("diff").GetProperty("deploymentScripts")[0];
+        script.GetProperty("name").GetString().ShouldBe("seed-roles");
+        script.GetProperty("phase").GetString().ShouldBe("pre");
+        script.GetProperty("runCondition").GetString().ShouldBe("once");
+    }
+
+    [Fact]
     public void ReportSqlPlan_EmitsStatementsWithTransactionFlag()
     {
-        _sut.ReportSqlPlan(new SqlPlan([new SqlStatement("CREATE INDEX CONCURRENTLY i ON t (c)", RunOutsideTransaction: true)]));
+        _sut.ReportSqlPlan([new SqlStatement("CREATE INDEX CONCURRENTLY i ON t (c)", RunOutsideTransaction: true)]);
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.GetProperty("type").GetString().ShouldBe("sqlPlan");
@@ -57,7 +78,7 @@ public sealed class JsonConsolePresenterTests
     public void ReportSchema_EmitsBareSchemaObject_WithNoTypeEnvelope()
     {
         // A `show` is a single query, so the schema is the whole object — no NDJSON "type" discriminator to filter past.
-        _sut.ReportSchema(new DatabaseSchema());
+        _sut.ReportSchema(new Database());
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.ValueKind.ShouldBe(JsonValueKind.Object);
@@ -65,12 +86,14 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSavedPlan_EmitsBareCompositeObject_WithDiffScriptsAndSql()
+    public void ReportSavedPlan_EmitsBareCompositeObject_WithDiffAndSql()
     {
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
+        };
         var envelope = new PlanFileEnvelope(
-            new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]),
-            new MigrationPlan([], [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)], []),
-            new SqlPlan([new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
+            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
             CreatedAt: default);
 
         _sut.ReportSavedPlan(envelope);
@@ -79,52 +102,8 @@ public sealed class JsonConsolePresenterTests
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.TryGetProperty("type", out _).ShouldBeFalse();
         evt.GetProperty("diff").GetProperty("isEmpty").GetBoolean().ShouldBeFalse();
-        evt.GetProperty("scripts").GetProperty("preDeployment")[0].GetProperty("name").GetString().ShouldBe("seed-roles");
-        evt.GetProperty("scripts").GetProperty("postDeployment").GetArrayLength().ShouldBe(0);
+        evt.GetProperty("diff").GetProperty("deploymentScripts")[0].GetProperty("name").GetString().ShouldBe("seed-roles");
         evt.GetProperty("sql")[0].GetProperty("sql").GetString()!.ShouldContain("CREATE TABLE app.widgets");
-    }
-
-    [Fact]
-    public void ReportPlan_EmitsDataMigrations_WhenThePlanHasMatchedBlocks()
-    {
-        // A plan whose only extras are data migrations must still emit the scripts event (the empty guard
-        // considers migrations too).
-        var plan = new MigrationPlan(
-            [new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';") { RunOutsideTransaction = true }],
-            [],
-            []);
-
-        _sut.ReportPlan(plan);
-
-        var evt = StdoutEvents().ShouldHaveSingleItem();
-        evt.GetProperty("type").GetString().ShouldBe("scripts");
-        var migration = evt.GetProperty("dataMigrations")[0];
-        migration.GetProperty("name").GetString().ShouldBe("backfill emails");
-        migration.GetProperty("trigger").GetString().ShouldBe("addColumn");
-        migration.GetProperty("path").GetString().ShouldBe("app.users.email");
-        migration.GetProperty("runOutsideTransaction").GetBoolean().ShouldBeTrue();
-    }
-
-    [Fact]
-    public void ReportPlan_EmitsTheRunConditionOnScripts()
-    {
-        var plan = new MigrationPlan(
-            [],
-            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],
-            []);
-
-        _sut.ReportPlan(plan);
-
-        var evt = StdoutEvents().ShouldHaveSingleItem();
-        evt.GetProperty("preDeployment")[0].GetProperty("runCondition").GetString().ShouldBe("once");
-    }
-
-    [Fact]
-    public void ReportPlan_WritesNothing_WhenThereAreNoScriptsOrMigrations()
-    {
-        _sut.ReportPlan(new MigrationPlan([], [], []));
-
-        _out.ToString().ShouldBeEmpty();
     }
 
     [Fact]
@@ -132,7 +111,7 @@ public sealed class JsonConsolePresenterTests
     {
         // The streaming methods (used by apply/plan/destroy/drift) frame each event as its own NDJSON line.
         _sut.ReportDiff(new DatabaseDiff());
-        _sut.ReportSqlPlan(new SqlPlan([]));
+        _sut.ReportSqlPlan([]);
 
         StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan"]);
     }

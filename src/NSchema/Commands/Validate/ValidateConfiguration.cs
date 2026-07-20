@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 
 namespace NSchema.Commands.Validate;
 
@@ -9,7 +9,7 @@ namespace NSchema.Commands.Validate;
 /// </summary>
 internal sealed class ValidateConfiguration : IBindable
 {
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
     }
 }

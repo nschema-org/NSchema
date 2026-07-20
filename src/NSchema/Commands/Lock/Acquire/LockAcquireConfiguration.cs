@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Lock.Acquire;
@@ -31,7 +31,7 @@ internal sealed class LockAcquireConfiguration : IBindable
     /// </summary>
     public TimeSpan? TimeToLive => TtlText is null ? null : Duration.Parse(TtlText);
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         State = project.State;
         LockAcquireOptions.Reason.Bind(cli, r => Reason = r);

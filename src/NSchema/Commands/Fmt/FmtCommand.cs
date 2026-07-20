@@ -1,5 +1,5 @@
 using System.CommandLine;
-using NSchema.Schema.Ddl;
+using NSchema.Project.Nsql;
 
 namespace NSchema.Commands.Fmt;
 
@@ -48,7 +48,7 @@ internal static class FmtCommand
     private static int FormatStdin(bool check)
     {
         var input = Console.In.ReadToEnd();
-        var formatted = DdlFormatter.Instance.Format(input);
+        var formatted = NsqlFormatter.Format(input);
         if (check)
         {
             return formatted == input ? ExitCodes.NoChanges : ExitCodes.HasChanges;
@@ -67,7 +67,7 @@ internal static class FmtCommand
         foreach (var file in ResolveFiles(path))
         {
             var original = File.ReadAllText(file);
-            var formatted = DdlFormatter.Instance.Format(original);
+            var formatted = NsqlFormatter.Format(original);
             if (formatted == original)
             {
                 continue;

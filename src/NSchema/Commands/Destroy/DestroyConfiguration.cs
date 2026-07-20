@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 
@@ -17,7 +17,7 @@ internal sealed class DestroyConfiguration : IBindable
     public PluginReference? Provider { get; set; }
 
     /// <summary>
-    /// The state store the managed schema is read from and the post-destroy snapshot is written to; offline when no section is populated.
+    /// The state store the managed schema is read from and the post-destroy snapshot is written to.
     /// </summary>
     public StateConfig? State { get; set; }
 
@@ -27,21 +27,22 @@ internal sealed class DestroyConfiguration : IBindable
     public bool AutoApprove { get; private set; }
 
     /// <summary>
-    /// Whether a state store is configured to read the managed schema from; when absent, the teardown source falls
-    /// back to the desired schema globbed from the working directory.
-    /// </summary>
-    public bool HasStateStore => State is not null;
-
-    /// <summary>
     /// Whether to tear down without acquiring the state lock (<c>--no-lock</c>).
     /// </summary>
     public bool NoLock { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    /// <summary>
+    /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
+    /// </summary>
+    // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
+    public bool Ephemeral { get; internal set; }
+
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
         DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         DestroyOptions.NoLock.Bind(cli, n => NoLock = n);
+        DestroyOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

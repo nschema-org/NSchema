@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Policies;
-using NSchema.State.Storage;
+using NSchema.State;
 
 namespace NSchema.Commands.Script.List;
 
@@ -35,11 +34,11 @@ internal static class ScriptListCommand
         var result = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+            app.Messenger.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.ReportScripts(result.Value.State?.Scripts ?? []);
+        app.Messenger.ReportScripts(result.Require().State?.Scripts ?? []);
         return ExitCodes.NoChanges;
     }
 }

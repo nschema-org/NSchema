@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text.Json;
-using NSchema.Diagnostics;
 using NSchema.Plugins;
 
 namespace NSchema.Configuration.Plugins;
@@ -27,9 +26,13 @@ internal sealed class PluginLoader(string? cacheRoot = null)
     /// <summary>
     /// Loads the plugin(s) the given package contains at the given version, restoring the package on first use.
     /// </summary>
-    public Result<IReadOnlyList<INSchemaPlugin>> Load(string packageId, string version, bool allowRestore = true)
+    /// <param name="packageId">The plugin's NuGet package id.</param>
+    /// <param name="version">The pinned version, keying the cache layout.</param>
+    /// <param name="restoreVersion">The version in NuGet notation for the restore; defaults to <paramref name="version"/>.</param>
+    /// <param name="allowRestore">Whether a missing plugin may be restored, or must already be cached.</param>
+    public Result<IReadOnlyList<INSchemaPlugin>> Load(string packageId, string version, string? restoreVersion = null, bool allowRestore = true)
     {
-        var published = EnsurePublished(packageId, version, allowRestore);
+        var published = EnsurePublished(packageId, version, restoreVersion ?? version, allowRestore);
         if (published.IsFailure)
         {
             return Result.Failure<IReadOnlyList<INSchemaPlugin>>(published.Diagnostics);
@@ -43,9 +46,12 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             var context = new PluginLoadContext(Path.Combine(published.Value, SynthAssemblyName + ".dll"));
             var assembly = context.LoadFromAssemblyName(new AssemblyName(packageId));
 
-            if (IncompatibleCore(packageId, assembly) is { } incompatible)
+            // The engine handshake rejects a plugin built against an incompatible NSchema.Core before any of its
+            // types are instantiated.
+            var handshake = PluginHandshake.Validate(assembly);
+            if (handshake.IsFailure)
             {
-                return incompatible;
+                return Result.Failure<IReadOnlyList<INSchemaPlugin>>(handshake.Diagnostics);
             }
 
             var plugins = assembly.GetExportedTypes()
@@ -88,7 +94,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         File.WriteAllText(projectPath, SynthProject(packageId, $"{hostMajor}.*-*"));
 
         // --force re-evaluates the floating range every time, so a newly published version is picked up.
-        RunDotnet("restore", projectPath, "--force").ThrowIfFailure();
+        RunDotnet("restore", projectPath, "--force").Require();
 
         return ReadResolvedVersion(Path.Combine(projectDir, "obj", "project.assets.json"), packageId);
     }
@@ -109,7 +115,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         throw new InvalidOperationException($"Could not resolve a version for plugin package '{packageId}'.");
     }
 
-    private Result<string> EnsurePublished(string packageId, string version, bool allowRestore)
+    private Result<string> EnsurePublished(string packageId, string version, string restoreVersion, bool allowRestore)
     {
         var publishDir = Cache.PublishDirectory(packageId, version);
         var pluginAssembly = Cache.PluginAssembly(packageId, version);
@@ -143,7 +149,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
         var projectDir = Cache.ProjectDirectory(packageId, version);
         Directory.CreateDirectory(projectDir);
-        File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId, version));
+        File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId, restoreVersion));
 
         // Publish into a staging dir and atomically rename it onto the publish dir, so the lock-free fast path above
         // never sees a partially-populated closure.
@@ -191,7 +197,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
          </Project>
          """;
 
-    private static Result<Success> RunDotnet(params string[] args)
+    private static Result<int> RunDotnet(params string[] args)
     {
         var startInfo = new ProcessStartInfo("dotnet")
         {
@@ -205,7 +211,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             startInfo.ArgumentList.Add(arg);
         }
 
-        Process process;
+        Process? process = null;
         try
         {
             process = Process.Start(startInfo)!;
@@ -213,8 +219,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         catch (Win32Exception)
         {
             // Launching the external 'dotnet' process is a genuine external-code boundary, so catching is correct here.
-            return Result.Failure<Success>(Diagnostic.Error("dotnet",
-                "NSchema needs the .NET SDK ('dotnet') on your PATH to restore plugins, but it could not be found."));
+            return Result.From(process?.ExitCode ?? -1, [Diagnostic.Error("dotnet",
+                "NSchema needs the .NET SDK ('dotnet') on your PATH to restore plugins, but it could not be found.")]);
         }
 
         var output = process.StandardOutput.ReadToEndAsync();
@@ -223,25 +229,11 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
         if (process.ExitCode != 0)
         {
-            return Result.Failure<Success>(Diagnostic.Error("dotnet",
-                $"Restoring an NSchema plugin failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{output.GetAwaiter().GetResult()}{error.GetAwaiter().GetResult()}"));
+            return Result.From(process.ExitCode, [Diagnostic.Error("dotnet",
+                $"Restoring an NSchema plugin failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{output.GetAwaiter().GetResult()}{error.GetAwaiter().GetResult()}")]);
         }
 
-        return Result.Success(new Success());
-    }
-
-    // The contract surface is NSchema.Core's entire public API, frozen within a major version, so a plugin built
-    // against a different Core major would bind against types this host cannot supply. Flag it clearly up front.
-    private static Diagnostic? IncompatibleCore(string packageId, Assembly plugin)
-    {
-        var hostMajor = typeof(INSchemaPlugin).Assembly.GetName().Version?.Major;
-        var pluginMajor = plugin.GetReferencedAssemblies()
-            .FirstOrDefault(a => string.Equals(a.Name, "NSchema.Core", StringComparison.Ordinal))?.Version?.Major;
-
-        return pluginMajor == hostMajor
-            ? null
-            : Diagnostic.Error(packageId,
-                $"Plugin '{packageId}' targets NSchema.Core v{pluginMajor?.ToString() ?? "unknown"}, but this CLI hosts NSchema.Core v{hostMajor}. A plugin must share the host's major version.");
+        return Result.Success(0);
     }
 
     private sealed class PluginLoadContext(string entryAssemblyPath) : AssemblyLoadContext
@@ -260,6 +252,14 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
             var path = _resolver.ResolveAssemblyToPath(assemblyName);
             return path is null ? null : LoadFromAssemblyPath(path);
+        }
+
+        // A plugin's dependency closure can carry native libraries (e.g. SQLite's e_sqlite3); resolve them from the
+        // same publish closure the managed assemblies load from.
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            var path = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            return path is null ? IntPtr.Zero : LoadUnmanagedDllFromPath(path);
         }
 
         private static bool IsSharedWithHost(string? name) =>

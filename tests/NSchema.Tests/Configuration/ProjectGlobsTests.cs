@@ -15,45 +15,61 @@ public sealed class ProjectGlobsTests : IDisposable
         File.WriteAllText(path, "-- placeholder");
     }
 
-    private List<string> BaseSchema() =>
-        ProjectGlobs.Match(_root, ProjectGlobs.BaseSchema()).Select(Path.GetFileName).ToList()!;
+    private List<string> Schema() =>
+        ProjectGlobs.Match(_root, ProjectGlobs.Schema()).Select(Path.GetFileName).ToList()!;
 
-    private List<string> EnvironmentSchema(string environment) =>
-        ProjectGlobs.Match(_root, ProjectGlobs.EnvironmentSchema(environment)).Select(Path.GetFileName).ToList()!;
+    private List<string> BaseConfiguration() =>
+        ProjectGlobs.Match(_root, ProjectGlobs.BaseConfiguration()).Select(Path.GetFileName).ToList()!;
+
+    private List<string> EnvironmentConfiguration(string environment) =>
+        ProjectGlobs.Match(_root, ProjectGlobs.EnvironmentConfiguration(environment)).Select(Path.GetFileName).ToList()!;
 
     [Fact]
-    public void BaseSchema_IncludesEverySqlFile_RecursivelyAndSorted()
+    public void Schema_IncludesEverySqlFile_RecursivelyAndSorted()
     {
         Write("b.sql");
         Write("a.sql");
         Write("nested/c.sql");
 
-        BaseSchema().ShouldBe(["a.sql", "b.sql", "c.sql"]);
+        Schema().ShouldBe(["a.sql", "b.sql", "c.sql"]);
     }
 
     [Fact]
-    public void BaseSchema_ExcludesEnvironmentOverlays()
+    public void Schema_ExcludesConfigurationFiles()
     {
-        // Overlay files (and only those) are kept out of the base set; a plain dotted name stays in.
+        // The .env. marker makes a file configuration; a plain dotted name stays in the schema set.
         Write("schema.sql");
         Write("public.users.sql");
-        Write("audit.env.prod.sql");
-        Write("seed.env.dev.sql");
+        Write("config.env.sql");
+        Write("nested/settings.env.sql");
+        Write("config.env.prod.sql");
+        Write("secrets.env.dev.sql");
 
-        BaseSchema().ShouldBe(["public.users.sql", "schema.sql"]);
+        Schema().ShouldBe(["public.users.sql", "schema.sql"]);
     }
 
     [Fact]
-    public void EnvironmentSchema_SelectsOnlyTheNamedEnvironmentsOverlays()
+    public void BaseConfiguration_SelectsEveryBaseConfigFile()
     {
+        // Multiple base configuration files may exist; all of them load, for every environment.
         Write("schema.sql");
-        Write("audit.env.prod.sql");
-        Write("seed.env.dev.sql");
-        // An inline deployment script declared in a prod overlay rides along when prod is selected.
-        Write("backfill.env.prod.sql");
+        Write("config.env.sql");
+        Write("nested/state.env.sql");
+        Write("config.env.prod.sql");
 
-        EnvironmentSchema("prod").ShouldBe(["audit.env.prod.sql", "backfill.env.prod.sql"]);
-        EnvironmentSchema("dev").ShouldBe(["seed.env.dev.sql"]);
-        EnvironmentSchema("staging").ShouldBeEmpty();
+        BaseConfiguration().ShouldBe(["config.env.sql", "state.env.sql"]);
+    }
+
+    [Fact]
+    public void EnvironmentConfiguration_SelectsOnlyTheNamedEnvironmentsFiles()
+    {
+        Write("config.env.sql");
+        Write("config.env.prod.sql");
+        Write("secrets.env.prod.sql");
+        Write("config.env.dev.sql");
+
+        EnvironmentConfiguration("prod").ShouldBe(["config.env.prod.sql", "secrets.env.prod.sql"]);
+        EnvironmentConfiguration("dev").ShouldBe(["config.env.dev.sql"]);
+        EnvironmentConfiguration("staging").ShouldBeEmpty();
     }
 }

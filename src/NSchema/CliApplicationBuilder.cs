@@ -2,10 +2,7 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diagnostics;
-using NSchema.Diff.Policies;
 using NSchema.Plugins;
-using NSchema.Policies;
 using NSchema.Services.Reporting;
 
 namespace NSchema;
@@ -31,7 +28,7 @@ internal sealed class CliApplicationBuilder
         _builder.UseProgressReporter(new ConsoleProgress(_messenger));
     }
 
-    public CliApplicationBuilder ConfigurePolicies(DestructiveActionPolicy? destructiveActions, PolicyEnforcement? dataHazards)
+    public CliApplicationBuilder ConfigurePolicies(PolicyEnforcement? destructiveActions, PolicyEnforcement? dataHazards)
     {
         if (destructiveActions is { } destructive)
         {
@@ -46,17 +43,9 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema(string? environment)
+    public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var root = Directory.GetCurrentDirectory();
-        _builder.AddDdlSchemas(root, ProjectGlobs.BaseSchema());
-
-        // Layer the selected environment's overlay files on top.
-        if (environment is not null)
-        {
-            _builder.AddDdlSchemas(root, ProjectGlobs.EnvironmentSchema(environment));
-        }
-
+        _builder.AddProjectSource(Directory.GetCurrentDirectory(), ProjectGlobs.Schema());
         return this;
     }
 
@@ -65,6 +54,23 @@ internal sealed class CliApplicationBuilder
         Throw(TryConfigureBackendState(state));
         return this;
     }
+
+    /// <summary>
+    /// Registers the in-memory state store (and its lock) for a run against a disposable database, standing in for
+    /// a configured <c>STATE</c> store.
+    /// </summary>
+    public CliApplicationBuilder ConfigureEphemeralState()
+    {
+        _builder.UseEphemeralState();
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the run's state store: the ephemeral in-memory store when <paramref name="ephemeral"/> is set
+    /// (<c>--ephemeral</c>), otherwise the configured backend.
+    /// </summary>
+    public CliApplicationBuilder ConfigureState(StateConfig? state, bool ephemeral) =>
+        ephemeral ? ConfigureEphemeralState() : ConfigureBackendState(state);
 
     public CliApplicationBuilder ConfigureDatabaseProvider(PluginReference? provider)
     {
@@ -80,7 +86,7 @@ internal sealed class CliApplicationBuilder
     /// </summary>
     public PluginDiagnostic? TryConfigureDatabaseProvider(PluginReference? provider) =>
         provider is { } reference
-            ? TryApply<INSchemaProviderPlugin>(reference, plugin => plugin.Configure(_builder, reference.Block))
+            ? TryApply<INSchemaDatabasePlugin>(reference, plugin => plugin.Configure(_builder, reference.Config))
             : null;
 
     /// <summary>
@@ -98,14 +104,14 @@ internal sealed class CliApplicationBuilder
         }
 
         return state?.Plugin is { } reference
-            ? TryApply<INSchemaBackendPlugin>(reference, plugin => plugin.Configure(_builder, reference.Block))
+            ? TryApply<INSchemaStatePlugin>(reference, plugin => plugin.Configure(_builder, reference.Config))
             : null;
     }
 
     // Configure lives on the two derived interfaces (not the shared base), so the caller supplies the call; this method
     // owns the resolve + non-throwing capture both the throwing wrappers and doctor build on. Resolution and the plugin's
-    // own Configure both report failure as data now, so there is nothing to catch — the diagnostic is composed, not caught.
-    private PluginDiagnostic? TryApply<TPlugin>(PluginReference reference, Func<TPlugin, PluginConfigureResult> configure)
+    // own Configure both report failure as data, so there is nothing to catch — the diagnostic is composed, not caught.
+    private PluginDiagnostic? TryApply<TPlugin>(PluginReference reference, Func<TPlugin, Result> configure)
         where TPlugin : class, INSchemaPlugin
     {
         var resolved = ResolvePlugin<TPlugin>(reference);
@@ -115,18 +121,18 @@ internal sealed class CliApplicationBuilder
         }
 
         var result = configure(resolved.Value);
-        return result.Succeeded ? null : new PluginDiagnostic(reference.Label, result.Errors);
+        return result.IsSuccess ? null : new PluginDiagnostic(reference.Label, result.Errors.Select(e => e.Message).ToList());
     }
 
     private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var loaded = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
+        var loaded = _plugins.Load(reference.PackageId, reference.Version, reference.RestoreVersion, _allowRestore);
         if (loaded.IsFailure)
         {
             return Result.Failure<TPlugin>(loaded.Diagnostics);
         }
 
-        var plugin = loaded.Value.OfType<TPlugin>().FirstOrDefault(p => string.Equals(p.Label, reference.Label, StringComparison.OrdinalIgnoreCase));
+        var plugin = loaded.Require().OfType<TPlugin>().FirstOrDefault();
         if (plugin is null)
         {
             return Diagnostic.Error(reference.PackageId,

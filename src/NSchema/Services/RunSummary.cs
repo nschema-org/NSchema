@@ -1,5 +1,5 @@
 using NSchema.Diff.Model;
-using NSchema.Sql.Model;
+using NSchema.Plan.Model;
 
 namespace NSchema.Services;
 
@@ -35,12 +35,12 @@ internal static class RunSummary
     }
 
     /// <summary>
-    /// Describes the changes in <paramref name="diff"/> together with the number of SQL statements that ran.
+    /// Describes the changes in <paramref name="plan"/> together with the number of SQL statements that ran.
     /// </summary>
-    public static string Describe(DatabaseDiff diff, SqlPlan sql)
+    public static string Describe(MigrationPlan plan)
     {
-        var count = sql.Statements.Count;
+        var count = plan.Statements.Count;
         var statements = count == 1 ? "1 statement" : $"{count} statements";
-        return $"{Describe(diff)} ({statements})";
+        return $"{Describe(plan.Diff)} ({statements})";
     }
 }

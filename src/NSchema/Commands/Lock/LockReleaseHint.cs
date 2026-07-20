@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text;
 using NSchema.Configuration;
+using NSchema.State.Locks;
 
 namespace NSchema.Commands.Lock;
 
@@ -13,7 +14,7 @@ internal static class LockReleaseHint
     /// Builds the release command for <paramref name="lockId"/>, carrying the arguments that select which lock
     /// is targeted (<c>--environment</c> and <c>--directory</c>) so pasting it verbatim releases the right one.
     /// </summary>
-    public static string Command(string lockId, string? environment, ParseResult parseResult)
+    public static string Command(LockId lockId, string? environment, ParseResult parseResult)
     {
         var sb = new StringBuilder("nschema lock release ").Append(lockId);
         if (!string.IsNullOrEmpty(environment))

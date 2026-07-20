@@ -25,30 +25,36 @@ internal static class ScaffoldCommand
 
         var loader = new PluginLoader();
 
-        // The provider plugin renders its own config block and supplies a dialect-specific sample schema. Resolve the
-        // latest version compatible with this CLI and pin it.
+        // The database plugin renders its own DATABASE statement and supplies a dialect-specific sample schema; the
+        // CLI authors the PLUGIN declaration, since it resolved the package and version. Resolve the latest version
+        // compatible with this CLI and pin it.
+        var plugins = new List<(string Label, string PackageId, string Version)>();
         var (providerPackage, providerLabel) = ProviderPackage(configuration.Provider);
         app.Messenger.Announce($"Resolving {providerPackage}...");
         var providerVersion = loader.ResolveLatestVersion(providerPackage);
-        var providerPlugin = Resolve<INSchemaProviderPlugin>(loader, providerPackage, providerLabel, providerVersion);
-        var providerBlock = providerPlugin.GetScaffoldTemplate(new ScaffoldContext { Version = providerVersion });
+        plugins.Add((providerLabel, providerPackage, providerVersion));
+        var providerPlugin = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
+        var providerBlock = providerPlugin.GetScaffoldTemplate(new ScaffoldContext());
         var sampleSchema = providerPlugin.GetSampleSchema();
 
-        // The local-file backend is built in; any other backend is a plugin that renders its own block (base + overlay).
+        // The local-file state store is built in; any other backend is a plugin that renders its own statements
+        // (base + overlay).
         (string Base, string Overlay)? pluginBackend = null;
         if (BackendPackage(configuration.Backend) is { } backend)
         {
             app.Messenger.Announce($"Resolving {backend.Package}...");
             var backendVersion = loader.ResolveLatestVersion(backend.Package);
-            var backendPlugin = Resolve<INSchemaBackendPlugin>(loader, backend.Package, backend.Label, backendVersion);
+            plugins.Add((backend.Label, backend.Package, backendVersion));
+            var backendPlugin = Resolve<INSchemaStatePlugin>(loader, backend.Package, backendVersion);
             pluginBackend = (
-                backendPlugin.GetScaffoldTemplate(new ScaffoldContext { Version = backendVersion }),
-                backendPlugin.GetScaffoldTemplate(new ScaffoldContext { Version = backendVersion, EnvironmentName = "prod" }));
+                backendPlugin.GetScaffoldTemplate(new ScaffoldContext()),
+                backendPlugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" }));
         }
 
         var created = await ProjectScaffolder.Scaffold(
             Directory.GetCurrentDirectory(),
             configuration.Force,
+            plugins,
             providerBlock,
             sampleSchema,
             pluginBackend,
@@ -67,7 +73,7 @@ internal static class ScaffoldCommand
         // band, so point the user at the right environment variable.
         if (configuration.Provider == ProviderKind.Sqlite)
         {
-            app.Messenger.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
+            app.Messenger.Announce($"Edit {"connection_string"} in {"config.env.sql"}, then run {"nschema plan"}.");
         }
         else
         {
@@ -75,12 +81,11 @@ internal static class ScaffoldCommand
         }
     }
 
-    private static TPlugin Resolve<TPlugin>(PluginLoader loader, string packageId, string label, string version)
+    // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
+    private static TPlugin Resolve<TPlugin>(PluginLoader loader, string packageId, string version)
         where TPlugin : class, INSchemaPlugin =>
-        loader.Load(packageId, version).ValueOrThrow()
-            .OfType<TPlugin>()
-            .FirstOrDefault(p => string.Equals(p.Label, label, StringComparison.OrdinalIgnoreCase))
-        ?? throw new InvalidOperationException($"The package '{packageId}' does not provide a plugin for '{label}'.");
+        loader.Load(packageId, version).Require().OfType<TPlugin>().FirstOrDefault()
+        ?? throw new InvalidOperationException($"The package '{packageId}' does not provide the expected plugin capability.");
 
     private static (string Package, string Label) ProviderPackage(ProviderKind provider) => provider switch
     {
@@ -90,7 +95,7 @@ internal static class ScaffoldCommand
         _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown provider."),
     };
 
-    // The file backend is built into the core, so it maps to no package; every other backend is a plugin.
+    // The file state store is built into the core, so it maps to no package; every other backend is a plugin.
     private static (string Package, string Label)? BackendPackage(BackendKind backend) => backend switch
     {
         BackendKind.File => null,

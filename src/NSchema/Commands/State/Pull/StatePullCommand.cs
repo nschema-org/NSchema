@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Policies;
-using NSchema.State.Storage;
+using NSchema.State;
 
 namespace NSchema.Commands.State.Pull;
 
@@ -50,7 +49,7 @@ internal static class StatePullCommand
         var result = await app.State.ReadRaw(new StateRawReadArguments(), cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+            app.Messenger.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 

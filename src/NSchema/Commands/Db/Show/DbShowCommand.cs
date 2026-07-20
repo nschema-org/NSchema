@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Schema;
 
 namespace NSchema.Commands.Db.Show;
 
@@ -23,7 +22,7 @@ internal static class DbShowCommand
         return config;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
@@ -34,8 +33,14 @@ internal static class DbShowCommand
         app.Messenger.ReportEnvironment(environment);
 
         app.Messenger.Announce($"Reading the live database schema.");
-        var schema = await app.CurrentSchema
-            .GetSchema(SchemaSourceMode.Online, configuration.Scope, required: true, cancellationToken);
-        app.Presenter.ReportSchema(schema);
+        var database = await app.Database.GetDatabase(configuration.Scope.ToPlanningScope(), cancellationToken);
+        if (database.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(database.Diagnostics);
+            return ExitCodes.Error;
+        }
+
+        app.Presenter.ReportSchema(database.Require());
+        return ExitCodes.NoChanges;
     }
 }

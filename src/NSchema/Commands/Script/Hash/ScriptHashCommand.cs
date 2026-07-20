@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Model;
 
 namespace NSchema.Commands.Script.Hash;
 
@@ -29,26 +30,26 @@ internal static class ScriptHashCommand
 
         // Only the project's DDL is read — no backend, no provider, no database, no lock.
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema(environment)
+            .ConfigureDesiredSchema()
             .Build();
 
-        var project = (await app.DesiredSchema.GetProject(cancellationToken: cancellationToken)).Project;
+        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).Require();
 
         if (name is null)
         {
             app.Messenger.ReportEnvironment(environment);
-            app.Messenger.ReportScriptHashes(project.All());
+            app.Messenger.ReportScriptHashes(project.ScriptHashes());
             return ExitCodes.NoChanges;
         }
 
         if (project.FindScript(name) is not { } declaration)
         {
-            app.Messenger.Warn($"Script '{name}' is not declared as a RUN ONCE script in this project.");
+            app.Messenger.Warn($"Script '{name}' is not declared in this project.");
             return ExitCodes.Error;
         }
 
         // The hash itself is the query's result: bare on stdout, so `$(nschema script hash x)` just works.
-        await Console.Out.WriteLineAsync(declaration.Hash);
+        await Console.Out.WriteLineAsync(declaration.Hash.Value);
         return ExitCodes.NoChanges;
     }
 }

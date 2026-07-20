@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.State;
-using NSchema.Schema;
+using NSchema.State;
 
 namespace NSchema.Commands.State.Show;
 
@@ -32,12 +32,11 @@ internal static class StateShowCommand
         return config;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         if (parseResult.GetValue(FileArgument) is { } file)
         {
-            await ShowStateFile(parseResult, file, cancellationToken);
-            return;
+            return await ShowStateFile(parseResult, file, cancellationToken);
         }
 
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
@@ -49,12 +48,10 @@ internal static class StateShowCommand
         app.Messenger.ReportEnvironment(environment);
 
         app.Messenger.Announce($"Showing recorded state. The live database will not be contacted.");
-        var schema = await app.CurrentSchema
-            .GetSchema(SchemaSourceMode.Offline, configuration.Scope, required: true, cancellationToken);
-        app.Presenter.ReportSchema(schema);
+        return await ShowRecordedState(app, configuration.Scope, cancellationToken);
     }
 
-    private static async Task ShowStateFile(ParseResult parseResult, string file, CancellationToken cancellationToken)
+    private static async Task<int> ShowStateFile(ParseResult parseResult, string file, CancellationToken cancellationToken)
     {
         // A state file is self-contained: point a file-backed store at it and read offline — no project config needed.
         StateShowOptions.Scope.TryGetValue(parseResult, out var scope);
@@ -64,8 +61,25 @@ internal static class StateShowCommand
             .Build();
 
         app.Messenger.Announce($"Showing state file {file}.");
-        var schema = await app.CurrentSchema
-            .GetSchema(SchemaSourceMode.Offline, scope, required: true, cancellationToken);
-        app.Presenter.ReportSchema(schema);
+        return await ShowRecordedState(app, scope, cancellationToken);
+    }
+
+    private static async Task<int> ShowRecordedState(CliApplication app, string[]? scope, CancellationToken cancellationToken)
+    {
+        var read = await app.State.Read(new StateReadArguments(), cancellationToken);
+        if (read.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(read.Diagnostics);
+            return ExitCodes.Error;
+        }
+
+        if (read.Require().State is not { } state)
+        {
+            app.Messenger.Warn($"No state has been recorded yet. Run refresh to capture the schema first.");
+            return ExitCodes.Error;
+        }
+
+        app.Presenter.ReportSchema(state.Database.ScopedTo(scope.ToPlanningScope()));
+        return ExitCodes.NoChanges;
     }
 }

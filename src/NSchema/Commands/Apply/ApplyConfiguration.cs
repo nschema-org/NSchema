@@ -1,10 +1,8 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
-using NSchema.Policies;
 
 namespace NSchema.Commands.Apply;
 
@@ -31,7 +29,7 @@ internal sealed class ApplyConfiguration : IBindable
     /// <summary>
     /// The policy applied when the plan contains destructive actions.
     /// </summary>
-    public DestructiveActionPolicy? DestructiveActionPolicy { get; private set; }
+    public PolicyEnforcement? DestructiveActionPolicy { get; private set; }
 
     /// <summary>
     /// The policy applied when the plan contains changes that can fail on existing data.
@@ -53,7 +51,13 @@ internal sealed class ApplyConfiguration : IBindable
     /// </summary>
     public bool NoLock { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    /// <summary>
+    /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
+    /// </summary>
+    // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
+    public bool Ephemeral { get; internal set; }
+
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;
@@ -63,5 +67,6 @@ internal sealed class ApplyConfiguration : IBindable
         ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
         ApplyOptions.NoLock.Bind(cli, n => NoLock = n);
+        ApplyOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

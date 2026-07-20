@@ -1,15 +1,15 @@
 using NSchema.Diff.Model;
+using NSchema.Diff.Model.Columns;
+using NSchema.Diff.Model.Schemas;
+using NSchema.Diff.Model.Tables;
+using NSchema.Model;
+using NSchema.Model.Columns;
+using NSchema.Model.Schemas;
+using NSchema.Model.Scripts;
+using NSchema.Model.Tables;
 using NSchema.Plan.Model;
-using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema.Model;
-using NSchema.Schema.Model.Columns;
-using NSchema.Schema.Model.Migrations;
-using NSchema.Schema.Model.Schemas;
-using NSchema.Schema.Model.Scripts;
-using NSchema.Schema.Model.Tables;
 using NSchema.Services.Reporting;
-using NSchema.Sql.Model;
 
 namespace NSchema.Tests.Services;
 
@@ -32,12 +32,12 @@ public sealed class MarkdownConsolePresenterTests
         [
             new TableDiff("app", "users", ChangeKind.Add, Columns:
             [
-                new ColumnDiff("id", ChangeKind.Add, Definition: new Column("id", SqlType.BigInt)),
+                new ColumnDiff("id", ChangeKind.Add, Definition: new Column { Name = "id", Type = SqlType.BigInt }),
             ]),
             new TableDiff("app", "orders", ChangeKind.Modify, Columns:
             [
                 new ColumnDiff("total", ChangeKind.Modify, Type: new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt)),
-                new ColumnDiff("legacy", ChangeKind.Remove, Definition: new Column("legacy", SqlType.Boolean)),
+                new ColumnDiff("legacy", ChangeKind.Remove, Definition: new Column { Name = "legacy", Type = SqlType.Boolean }),
             ]),
         ]),
         new SchemaDiff("scratch", ChangeKind.Remove),
@@ -60,13 +60,31 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
+    public Task ReportDiff_WithDeploymentScripts()
+    {
+        // The scripts ride the diff, annotated with their deployment event; a run-once script reads the same way.
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts =
+            [
+                new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre) { RunCondition = RunCondition.Once },
+                new DeploymentScript("refresh-views", "REFRESH MATERIALIZED VIEW app.stats;", ScopeSchema: null, DeploymentPhase.Post),
+            ],
+        };
+
+        _sut.ReportDiff(diff);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
     public Task ReportSqlPlan()
     {
-        _sut.ReportSqlPlan(new SqlPlan(
+        _sut.ReportSqlPlan(
         [
-            new SqlStatement("CREATE TABLE app.users (\n    id bigint NOT NULL\n)"),
+            new SqlStatement("CREATE TABLE app.users (\n    id bigint NOT NULL\n)", RunOutsideTransaction: false),
             new SqlStatement("CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)", RunOutsideTransaction: true),
-        ]));
+        ]);
 
         return Verify(_out.ToString());
     }
@@ -74,7 +92,7 @@ public sealed class MarkdownConsolePresenterTests
     [Fact]
     public Task ReportSqlPlan_EmptyPlan()
     {
-        _sut.ReportSqlPlan(new SqlPlan([]));
+        _sut.ReportSqlPlan([]);
 
         return Verify(_out.ToString());
     }
@@ -82,39 +100,17 @@ public sealed class MarkdownConsolePresenterTests
     [Fact]
     public Task ReportSchema()
     {
-        _sut.ReportSchema(new DatabaseSchema(
-        [
-            new SchemaDefinition("app", Tables: [new Table("widgets", Columns: [new Column("id", SqlType.BigInt)])]),
-        ]));
-
-        return Verify(_out.ToString());
-    }
-
-    [Fact]
-    public Task ReportPlan_WithDataMigrations()
-    {
-        var plan = new MigrationPlan(
+        _sut.ReportSchema(new Database
+        {
+            Schemas =
             [
-                new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';"),
-                new ExecuteDataMigration(null, DataMigrationTrigger.AddConstraint, "app", "users", "users_email_uq", "DELETE FROM app.users;"),
+                new Schema
+                {
+                    Name = "app",
+                    Tables = [new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] }],
+                },
             ],
-            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)],
-            []);
-
-        _sut.ReportPlan(plan);
-
-        return Verify(_out.ToString());
-    }
-
-    [Fact]
-    public Task ReportPlan_WithRunOnceScript()
-    {
-        var plan = new MigrationPlan(
-            [],
-            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],
-            [new Script("refresh-views", "REFRESH MATERIALIZED VIEW app.stats;", ScriptType.PostDeployment)]);
-
-        _sut.ReportPlan(plan);
+        });
 
         return Verify(_out.ToString());
     }
@@ -122,10 +118,12 @@ public sealed class MarkdownConsolePresenterTests
     [Fact]
     public Task ReportSavedPlan()
     {
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
+        };
         var envelope = new PlanFileEnvelope(
-            new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]),
-            new MigrationPlan([], [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)], []),
-            new SqlPlan([new SqlStatement("CREATE TABLE app.widgets ()")]),
+            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
             CreatedAt: default);
 
         _sut.ReportSavedPlan(envelope);

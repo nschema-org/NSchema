@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 
@@ -31,7 +31,7 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public bool Force { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;

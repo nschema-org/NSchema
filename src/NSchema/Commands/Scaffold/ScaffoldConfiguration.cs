@@ -1,6 +1,6 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 
 namespace NSchema.Commands.Scaffold;
 
@@ -24,7 +24,7 @@ internal sealed class ScaffoldConfiguration : IBindable
     /// </summary>
     public BackendKind Backend { get; set; } = BackendKind.File;
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         ScaffoldOptions.Force.Bind(cli, f => Force = f);
         ScaffoldOptions.Provider.Bind(cli, p => Provider = p);
