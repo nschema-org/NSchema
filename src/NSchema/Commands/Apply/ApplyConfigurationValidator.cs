@@ -13,11 +13,11 @@ internal sealed class ApplyConfigurationValidator : AbstractValidator<ApplyConfi
             .WithMessage("A database provider is required for apply.");
 
         // Apply records what it ran (the snapshot and the run-once ledger), so a state store is mandatory —
-        // unless --ephemeral-state stands one in for the run.
+        // unless --ephemeral stands one in for the run.
         RuleFor(x => x.State)
             .NotNull()
-            .When(x => !x.EphemeralState)
-            .WithMessage("A state store is required for apply: the applied schema and script ledger are recorded there. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral-state.");
+            .When(x => !x.Ephemeral)
+            .WithMessage("A state store is required for apply: the applied schema and script ledger are recorded there. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral.");
         RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
     }
 }

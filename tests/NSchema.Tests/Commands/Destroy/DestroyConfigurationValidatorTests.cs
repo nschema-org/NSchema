@@ -42,13 +42,13 @@ public sealed class DestroyConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_WithEphemeralState_InsteadOfAStore()
+    public void Valid_WithEphemeral_InsteadOfAStore()
     {
-        // Arrange — --ephemeral-state stands in for a configured store (CI against a disposable database).
+        // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
         var config = new DestroyConfiguration
         {
             Provider = TestConfigs.Provider(),
-            EphemeralState = true,
+            Ephemeral = true,
         };
 
         // Act

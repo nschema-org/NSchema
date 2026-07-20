@@ -1,8 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Diff.Policies;
-using NSchema.Policies;
 
 namespace NSchema.Commands.Plan;
 
@@ -13,10 +11,10 @@ internal static class PlanOptions
         .AllowMultipleArguments()
         .WithDescription("Limit the plan to specific database schemas (namespaces). May be specified multiple times.");
 
-    public static readonly OptionBinding<DestructiveActionPolicy?> Destructive = OptionBinding.Create<DestructiveActionPolicy?>()
+    public static readonly OptionBinding<PolicyEnforcement?> Destructive = OptionBinding.Create<PolicyEnforcement?>()
         .FromOption("--destructive-actions")
         .FromEnvironmentVariable(EnvironmentVariables.DestructiveActionPolicy)
-        .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, or Allow.");
+        .WithDescription("Policy when the plan contains destructive actions: Error (default), Warn, Allow, or Ignore.");
 
     public static readonly OptionBinding<PolicyEnforcement?> DataHazards = OptionBinding.Create<PolicyEnforcement?>()
         .FromOption("--data-hazards")
@@ -35,6 +33,10 @@ internal static class PlanOptions
         .FromOption("--detailed-exitcode")
         .WithDescription("Return a detailed exit code: 0 = no changes, 2 = changes present (errors remain 1). For CI gating.");
 
+    public static readonly OptionBinding<bool> Ephemeral = OptionBinding.Create<bool>()
+        .FromOption("--ephemeral")
+        .WithDescription("Run against an in-memory state store discarded when the command exits, instead of a configured STATE store — for CI runs against disposable databases. Run-once script history does not persist.");
+
     public static IEnumerable<Option> All =>
     [
         Scope.Option,
@@ -43,5 +45,6 @@ internal static class PlanOptions
         Destroy.Option,
         Out.Option,
         DetailedExitCode.Option,
+        Ephemeral.Option,
     ];
 }

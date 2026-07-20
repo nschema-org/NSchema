@@ -33,7 +33,7 @@ internal static class ScriptHashCommand
             .ConfigureDesiredSchema()
             .Build();
 
-        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).ValueOrThrow();
+        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).Require();
 
         if (name is null)
         {

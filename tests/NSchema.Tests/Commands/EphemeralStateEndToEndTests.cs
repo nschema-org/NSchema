@@ -6,13 +6,13 @@ using NSchema.Plugins;
 namespace NSchema.Tests.Commands;
 
 /// <summary>
-/// End-to-end coverage of <c>--ephemeral-state</c>: the CI bootstrap workflow where a disposable database is
+/// End-to-end coverage of <c>--ephemeral</c>: the CI bootstrap workflow where a disposable database is
 /// planned and applied with no <c>STATE</c> store configured. Loads the real published <c>NSchema.Sqlite</c>
 /// plugin (SDK + network/cache) and uses its own sample schema, so the whole path — config resolution, plugin
 /// load, plan, confirmation bypass, execution, ephemeral state capture — runs for real against a throwaway
 /// SQLite database. It sets the working directory (via <c>--directory</c>), restoring it on dispose.
 /// </summary>
-public sealed class EphemeralStateEndToEndTests : IDisposable
+public sealed class EphemeralEndToEndTests : IDisposable
 {
     private const string Version = "5.0.0-alpha.1";
 
@@ -26,7 +26,7 @@ public sealed class EphemeralStateEndToEndTests : IDisposable
     }
 
     [Fact]
-    public async Task PlanAndApply_WithEphemeralState_BootstrapADisposableDatabase()
+    public async Task PlanAndApply_WithEphemeral_BootstrapADisposableDatabase()
     {
         // Arrange — a project declaring a DATABASE but no STATE; the schema is the plugin's own sample.
         var plugin = new PluginLoader().Load("NSchema.Sqlite", Version)
@@ -51,10 +51,10 @@ public sealed class EphemeralStateEndToEndTests : IDisposable
         // ephemeral store in for a state backend.
         var invocation = new InvocationConfiguration { EnableDefaultExceptionHandler = false };
         var planExit = await NSchema.Commands.RootCommand.Create()
-            .Parse(["plan", "--ephemeral-state", "--directory", _projectDirectory])
+            .Parse(["plan", "--ephemeral", "--directory", _projectDirectory])
             .InvokeAsync(invocation, TestContext.Current.CancellationToken);
         var applyExit = await NSchema.Commands.RootCommand.Create()
-            .Parse(["apply", "--ephemeral-state", "--auto-approve", "--directory", _projectDirectory])
+            .Parse(["apply", "--ephemeral", "--auto-approve", "--directory", _projectDirectory])
             .InvokeAsync(invocation, TestContext.Current.CancellationToken);
 
         // Assert — both runs succeeded and the apply actually created the database.

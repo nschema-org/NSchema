@@ -39,7 +39,7 @@ internal static class PlanCommand
             .ConfigureDesiredSchema()
             .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureState(configuration.State, configuration.EphemeralState)
+            .ConfigureState(configuration.State, configuration.Ephemeral)
             .Build();
 
         app.Messenger.ReportEnvironment(environment);
@@ -55,7 +55,7 @@ internal static class PlanCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigurePolicies(PolicyEnforcement.Allow, configuration.DataHazardPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureState(configuration.State, configuration.EphemeralState)
+            .ConfigureState(configuration.State, configuration.Ephemeral)
             .Build();
 
         app.Messenger.ReportEnvironment(environment);

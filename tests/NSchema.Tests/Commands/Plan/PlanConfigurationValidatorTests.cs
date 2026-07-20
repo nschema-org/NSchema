@@ -63,14 +63,14 @@ public sealed class PlanConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_WithEphemeralState_InsteadOfAStore()
+    public void Valid_WithEphemeral_InsteadOfAStore()
     {
-        // Arrange — --ephemeral-state stands in for a configured store (CI against a disposable database).
+        // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
         var config = new PlanConfiguration
         {
             Provider = TestConfigs.Provider(),
             State = null,
-            EphemeralState = true,
+            Ephemeral = true,
         };
 
         // Act

@@ -13,11 +13,11 @@ internal sealed class DestroyConfigurationValidator : AbstractValidator<DestroyC
             .WithMessage("A database provider is required for destroy.");
 
         // A teardown converges the managed schema recorded in the state towards nothing, so a state store is
-        // mandatory — unless --ephemeral-state stands one in for the run.
+        // mandatory — unless --ephemeral stands one in for the run.
         RuleFor(x => x.State)
             .NotNull()
-            .When(x => !x.EphemeralState)
-            .WithMessage("A state store is required for destroy: the managed schema is read from the recorded state. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral-state.");
+            .When(x => !x.Ephemeral)
+            .WithMessage("A state store is required for destroy: the managed schema is read from the recorded state. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral.");
         RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
     }
 }

@@ -12,6 +12,34 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [Unreleased]
+
+v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes configuration, plugins, and planning. Changes below are relative to 4.5.1.
+
+### Added
+
+- **`--ephemeral`** on `plan`, `apply`, and `destroy` runs against an in-memory state store discarded when the command exits, standing in for a configured `STATE` store — for CI pipelines that bootstrap disposable databases. Run-once script history does not persist across runs in this mode.
+
+### Changed
+
+- **Configuration lives in configuration files.** The `.env.` marker in a file name makes it configuration: `<any>.env.sql` loads for every environment, and `<any>.env.<name>.sql` loads only when that environment is selected (multiple files of either kind may exist). Every other `.sql` file holds only schema DDL, and configuration statements no longer parse there.
+- **Environments select configuration, not schema.** `--environment` layers the environment's configuration files over the base; schema files are no longer overlaid per environment.
+- **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures. The built-in local-file store is `STATE file ( path = '…' );`.
+- **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` names the package and pins its version; `DATABASE`/`STATE` reference the label. The built-in label-to-package map is gone — every plugin is declared explicitly, and `version`/`source` no longer ride the configuring statement. A `version` may be an exact pin or a NuGet-style range (`[5.0,6.0)`).
+- **`ENGINE ( version = '…' );` asserts the engine version.** A project can require an engine version range; a mismatch fails with a pointer to `dotnet tool update`.
+- **Planning always diffs recorded state against the project**, so `plan` (and a fresh `apply`) now require both a database and a state store. Planning against the live database is no longer available; use `refresh` to capture the live schema first.
+- **`destroy` reads the managed schema from the recorded state.** The fallback to the working-directory schema when no store was configured is gone, and a state store is now required.
+- **Plan output folds scripts into the diff.** Deployment and change-event scripts are first-class parts of the diff, shown in the plan tree (and carried on the `diff` object in `--json`); the separate pre/post-deployment and data-migration sections are gone.
+- **Policy-blocked plans still render.** A plan blocked by policy shows the complete diff and SQL alongside the blocking diagnostics; error severity is what stops an apply.
+- **`--destructive-actions` accepts `Ignore`** alongside `Error`, `Warn`, and `Allow`.
+- **`apply` re-runs policies.** The policy flags now apply to `apply --plan-file` too, re-checking the saved plan before executing it.
+- **`script hash`, `script taint`, and `script untaint` operate on deployment scripts.** A template-scoped script is addressed as `schema.name`, as `script hash` lists it.
+- **`state show` reports an error when no state has been recorded yet** instead of failing on a missing source.
+
+### Fixed
+
+- Plugin loading now resolves a plugin's native libraries (e.g. SQLite's `e_sqlite3`) from its restored dependency closure.
+
 ## [4.5.1] - 2026-07-10
 
 ### Changed

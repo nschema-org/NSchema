@@ -43,17 +43,9 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureDesiredSchema(string? environment)
+    public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        var root = Directory.GetCurrentDirectory();
-        _builder.AddProjectSource(root, ProjectGlobs.BaseSchema());
-
-        // Layer the selected environment's overlay files on top.
-        if (environment is not null)
-        {
-            _builder.AddProjectSource(root, ProjectGlobs.EnvironmentSchema(environment));
-        }
-
+        _builder.AddProjectSource(Directory.GetCurrentDirectory(), ProjectGlobs.Schema());
         return this;
     }
 
@@ -62,6 +54,23 @@ internal sealed class CliApplicationBuilder
         Throw(TryConfigureBackendState(state));
         return this;
     }
+
+    /// <summary>
+    /// Registers the in-memory state store (and its lock) for a run against a disposable database, standing in for
+    /// a configured <c>STATE</c> store.
+    /// </summary>
+    public CliApplicationBuilder ConfigureEphemeralState()
+    {
+        _builder.UseEphemeralState();
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the run's state store: the ephemeral in-memory store when <paramref name="ephemeral"/> is set
+    /// (<c>--ephemeral</c>), otherwise the configured backend.
+    /// </summary>
+    public CliApplicationBuilder ConfigureState(StateConfig? state, bool ephemeral) =>
+        ephemeral ? ConfigureEphemeralState() : ConfigureBackendState(state);
 
     public CliApplicationBuilder ConfigureDatabaseProvider(PluginReference? provider)
     {

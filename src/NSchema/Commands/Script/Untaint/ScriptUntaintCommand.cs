@@ -90,7 +90,7 @@ internal static class ScriptUntaintCommand
 
         // The recorded identity is the declaration's name and body hash — the same values an apply would record,
         // read from the expanded desired project.
-        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).ValueOrThrow();
+        var project = (await app.ProjectDefinition.GetProject(PlanningScope.All, cancellationToken)).Require();
         var declaration = project.FindScript(name);
         if (declaration is null || declaration.RunCondition != RunCondition.Once)
         {

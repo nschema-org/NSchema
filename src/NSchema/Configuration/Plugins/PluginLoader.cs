@@ -94,7 +94,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         File.WriteAllText(projectPath, SynthProject(packageId, $"{hostMajor}.*-*"));
 
         // --force re-evaluates the floating range every time, so a newly published version is picked up.
-        RunDotnet("restore", projectPath, "--force").ThrowIfFailure();
+        RunDotnet("restore", projectPath, "--force").Require();
 
         return ReadResolvedVersion(Path.Combine(projectDir, "obj", "project.assets.json"), packageId);
     }
@@ -197,7 +197,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
          </Project>
          """;
 
-    private static Result RunDotnet(params string[] args)
+    private static Result<int> RunDotnet(params string[] args)
     {
         var startInfo = new ProcessStartInfo("dotnet")
         {
@@ -211,7 +211,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             startInfo.ArgumentList.Add(arg);
         }
 
-        Process process;
+        Process? process = null;
         try
         {
             process = Process.Start(startInfo)!;
@@ -219,8 +219,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         catch (Win32Exception)
         {
             // Launching the external 'dotnet' process is a genuine external-code boundary, so catching is correct here.
-            return Result.From(Diagnostic.Error("dotnet",
-                "NSchema needs the .NET SDK ('dotnet') on your PATH to restore plugins, but it could not be found."));
+            return Result.From(process?.ExitCode ?? -1, [Diagnostic.Error("dotnet",
+                "NSchema needs the .NET SDK ('dotnet') on your PATH to restore plugins, but it could not be found.")]);
         }
 
         var output = process.StandardOutput.ReadToEndAsync();
@@ -229,11 +229,11 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
         if (process.ExitCode != 0)
         {
-            return Result.From(Diagnostic.Error("dotnet",
-                $"Restoring an NSchema plugin failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{output.GetAwaiter().GetResult()}{error.GetAwaiter().GetResult()}"));
+            return Result.From(process.ExitCode, [Diagnostic.Error("dotnet",
+                $"Restoring an NSchema plugin failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{output.GetAwaiter().GetResult()}{error.GetAwaiter().GetResult()}")]);
         }
 
-        return Result.Success();
+        return Result.Success(0);
     }
 
     private sealed class PluginLoadContext(string entryAssemblyPath) : AssemblyLoadContext

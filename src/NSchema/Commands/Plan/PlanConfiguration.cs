@@ -59,7 +59,7 @@ internal sealed class PlanConfiguration : IBindable
     /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
     /// </summary>
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
-    public bool EphemeralState { get; internal set; }
+    public bool Ephemeral { get; internal set; }
 
     public void Bind(ProjectConfig project, ParseResult cli)
     {
@@ -71,6 +71,6 @@ internal sealed class PlanConfiguration : IBindable
         PlanOptions.Destroy.Bind(cli, d => Destroy = d);
         PlanOptions.Out.Bind(cli, o => OutFile = o);
         PlanOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);
-        PlanOptions.EphemeralState.Bind(cli, e => EphemeralState = e);
+        PlanOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

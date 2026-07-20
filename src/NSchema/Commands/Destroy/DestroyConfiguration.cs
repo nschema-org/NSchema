@@ -35,7 +35,7 @@ internal sealed class DestroyConfiguration : IBindable
     /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
     /// </summary>
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
-    public bool EphemeralState { get; internal set; }
+    public bool Ephemeral { get; internal set; }
 
     public void Bind(ProjectConfig project, ParseResult cli)
     {
@@ -43,6 +43,6 @@ internal sealed class DestroyConfiguration : IBindable
         State = project.State;
         DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         DestroyOptions.NoLock.Bind(cli, n => NoLock = n);
-        DestroyOptions.EphemeralState.Bind(cli, e => EphemeralState = e);
+        DestroyOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

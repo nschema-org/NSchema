@@ -84,7 +84,7 @@ internal static class ScaffoldCommand
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, string packageId, string version)
         where TPlugin : class, INSchemaPlugin =>
-        loader.Load(packageId, version).ValueOrThrow().OfType<TPlugin>().FirstOrDefault()
+        loader.Load(packageId, version).Require().OfType<TPlugin>().FirstOrDefault()
         ?? throw new InvalidOperationException($"The package '{packageId}' does not provide the expected plugin capability.");
 
     private static (string Package, string Label) ProviderPackage(ProviderKind provider) => provider switch
