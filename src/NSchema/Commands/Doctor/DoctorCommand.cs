@@ -1,8 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Operations.Doctor;
-using NSchema.Policies;
+using NSchema.Operations;
 
 namespace NSchema.Commands.Doctor;
 
@@ -62,17 +61,17 @@ internal static class DoctorCommand
         {
             if (result.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. result.Diagnostics]));
+                app.Messenger.ReportDiagnostics(result.Diagnostics);
             }
 
             return ExitCodes.Error;
         }
 
         // The run completed; the checks are the deliverable. Render them, then map their severity to an exit code.
-        var report = result.Value;
+        var report = result.Require();
         if (report.Checks.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(new PolicyDiagnostics([.. report.Checks]));
+            app.Messenger.ReportDiagnostics(report.Checks);
         }
 
         if (report.HasErrors)

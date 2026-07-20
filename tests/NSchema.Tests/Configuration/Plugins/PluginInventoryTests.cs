@@ -1,6 +1,6 @@
-using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
+using NSchema.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
 
@@ -20,7 +20,7 @@ public sealed class PluginInventoryTests : IDisposable
     }
 
     private static PluginReference Reference(string packageId, string version, string label) =>
-        new(packageId, version, label, new ConfigBlock(label == "s3" ? "backend" : "provider", label, new Dictionary<string, ConfigValue>()));
+        new(packageId, version, $"[{version}]", label, new PluginConfig(new PluginLabel(label), new Dictionary<AttributeKey, ConfigValue>()));
 
     private void Seed(string packageId, string version)
     {

@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Operations.Import;
+using NSchema.Operations;
 
 namespace NSchema.Commands.Import;
 
@@ -35,13 +35,14 @@ internal static class ImportCommand
 
         var args = new ImportArguments
         {
-            Schemas = configuration.Scope,
+            Scope = configuration.Scope.ToPlanningScope(),
             OutputDirectory = outputDirectory
         };
 
         var result = await app.Operations.Import(args, cancellationToken);
         if (result.IsFailure)
         {
+            app.Messenger.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 

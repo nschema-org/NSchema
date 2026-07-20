@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Services.Confirmation;
-using NSchema.State.Model;
 using Spectre.Console;
 
 namespace NSchema.Commands.Lock.Release;
@@ -54,9 +53,10 @@ internal static class LockReleaseCommand
         // Safe by default: when a lock id is named, it must still match the held one, so we never release a *different*
         // lock that was acquired since the caller read the id — and a redundant --force alongside an id is ignored. Only
         // when no id is given does --force take over and release whatever is held (the validator requires one or the other).
-        if (configuration.LockId is { } lockId && current.Id != lockId)
+        if (configuration.LockId is { } lockId && current.Id.Value != lockId)
         {
-            throw new StateLockMismatchException(lockId, current);
+            throw new InvalidOperationException(
+                $"The lock id '{lockId}' does not match the held lock '{current.Id.Value}' (held by {current.Who}, operation '{current.Operation}'). Check the current lock with 'nschema lock status'.");
         }
 
         ConsoleConfirmationPrompt.Require(console, configuration.AutoApprove,

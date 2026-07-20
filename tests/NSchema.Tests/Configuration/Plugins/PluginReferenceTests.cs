@@ -1,118 +1,84 @@
-using NSchema.Configuration;
+using NSchema.Config;
 using NSchema.Configuration.Plugins;
+using NSchema.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
 
 /// <summary>
-/// Pins how a <c>PROVIDER</c>/<c>BACKEND</c> block resolves to a plugin package: the built-in label map, the
-/// <c>source</c> override (open ecosystem — any package id), the required pinned <c>version</c>, and the
-/// stripping of those CLI-level attributes before the block reaches the plugin.
+/// Pins how a <c>DATABASE</c>/<c>STATE</c> statement's label resolves against the declared <c>PLUGIN</c>
+/// dependencies: the declaration supplies the package and pinned version, the statement supplies the settings.
 /// </summary>
 public sealed class PluginReferenceTests
 {
-    private static readonly Dictionary<string, string> BuiltIn =
-        new(StringComparer.OrdinalIgnoreCase) { ["postgres"] = "NSchema.Postgres" };
-
     [Fact]
-    public void FromBlock_KnownLabel_MapsToBuiltInPackage()
+    public void Resolve_DeclaredLabel_CarriesPackageVersionAndConfig()
     {
         // Arrange
-        var block = Block("postgres",
-            ("version", ConfigValue.OfString("4.0.0")),
-            ("connection_string", ConfigValue.OfString("Host=localhost")));
+        var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "5.0.0") };
+        var config = Config("postgres", ("connection_string", ConfigValue.OfString("Host=localhost")));
 
         // Act
-        var reference = PluginReference.FromBlock(block, BuiltIn);
+        var reference = PluginReference.Resolve(config, plugins);
 
         // Assert
         reference.PackageId.ShouldBe("NSchema.Postgres");
-        reference.Version.ShouldBe("4.0.0");
+        reference.Version.ShouldBe("5.0.0");
         reference.Label.ShouldBe("postgres");
+        reference.Config.Attribute("connection_string")!.AsString().ShouldBe("Host=localhost");
     }
 
     [Fact]
-    public void FromBlock_Source_OverridesBuiltInWithAnyPackage()
+    public void Resolve_ExactPin_UsesIntervalNotationForRestore()
     {
-        // Arrange — a third-party provider names its own package.
-        var block = Block("oracle",
-            ("source", ConfigValue.OfString("Acme.NSchema.Oracle")),
-            ("version", ConfigValue.OfString("1.2.3")));
+        // Arrange — an exact pin restores as "[x.y.z]" so NuGet treats it as exact, not a minimum.
+        var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "5.0.0-alpha.1") };
 
         // Act
-        var reference = PluginReference.FromBlock(block, BuiltIn);
+        var reference = PluginReference.Resolve(Config("postgres"), plugins);
 
         // Assert
-        reference.PackageId.ShouldBe("Acme.NSchema.Oracle");
-        reference.Label.ShouldBe("oracle");
+        reference.Version.ShouldBe("5.0.0-alpha.1");
+        reference.RestoreVersion.ShouldBe("[5.0.0-alpha.1]");
     }
 
     [Fact]
-    public void FromBlock_StripsVersionAndSource_SoThePluginNeverSeesThem()
+    public void Resolve_Range_KeepsCanonicalIntervalForBoth()
     {
         // Arrange
-        var block = Block("postgres",
-            ("version", ConfigValue.OfString("4.0.0")),
-            ("source", ConfigValue.OfString("NSchema.Postgres")),
-            ("connection_string", ConfigValue.OfString("Host=localhost")));
+        var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "[5.0,6.0)") };
 
         // Act
-        var reference = PluginReference.FromBlock(block, BuiltIn);
+        var reference = PluginReference.Resolve(Config("postgres"), plugins);
 
         // Assert
-        reference.Block.Attribute("version").ShouldBeNull();
-        reference.Block.Attribute("source").ShouldBeNull();
-        reference.Block.Attribute("connection_string").ShouldNotBeNull();
+        reference.Version.ShouldBe("[5.0.0,6.0.0)");
+        reference.RestoreVersion.ShouldBe("[5.0.0,6.0.0)");
     }
 
     [Fact]
-    public void FromBlock_LabelIsLowercased()
+    public void Resolve_LabelMatch_IsCaseInsensitive()
     {
         // Arrange
-        var block = Block("Postgres", ("version", ConfigValue.OfString("4.0.0")));
+        var plugins = new[] { Declaration("Postgres", "NSchema.Postgres", "5.0.0") };
 
         // Act
-        var reference = PluginReference.FromBlock(block, BuiltIn);
+        var reference = PluginReference.Resolve(Config("postgres"), plugins);
 
         // Assert
-        reference.Label.ShouldBe("postgres");
         reference.PackageId.ShouldBe("NSchema.Postgres");
     }
 
     [Fact]
-    public void FromBlock_UnknownLabelWithoutSource_ThrowsAndSuggestsSource()
+    public void Resolve_UndeclaredLabel_ThrowsAndSuggestsPluginStatement()
     {
-        // Arrange
-        var block = Block("oracle", ("version", ConfigValue.OfString("1.0.0")));
-
         // Act / Assert
-        Should.Throw<InvalidOperationException>(() => PluginReference.FromBlock(block, BuiltIn))
-            .Message.ShouldContain("source");
+        Should.Throw<InvalidOperationException>(() => PluginReference.Resolve(Config("oracle"), []))
+            .Message.ShouldContain("PLUGIN oracle");
     }
 
-    [Fact]
-    public void FromBlock_MissingVersion_Throws()
-    {
-        // Arrange
-        var block = Block("postgres", ("connection_string", ConfigValue.OfString("Host=localhost")));
+    private static PluginDeclaration Declaration(string label, string packageId, string version) =>
+        new(new PluginLabel(label), new PackageId(packageId), VersionRange.Parse(version));
 
-        // Act / Assert
-        Should.Throw<InvalidOperationException>(() => PluginReference.FromBlock(block, BuiltIn))
-            .Message.ShouldContain("version");
-    }
-
-    [Fact]
-    public void FromBlock_InvalidPackageId_Throws()
-    {
-        // Arrange
-        var block = Block("oracle",
-            ("source", ConfigValue.OfString("not a valid id")),
-            ("version", ConfigValue.OfString("1.0.0")));
-
-        // Act / Assert
-        Should.Throw<InvalidOperationException>(() => PluginReference.FromBlock(block, BuiltIn))
-            .Message.ShouldContain("valid NuGet package id");
-    }
-
-    private static ConfigBlock Block(string label, params (string Key, ConfigValue Value)[] attributes)
-        => new("provider", label, attributes.ToDictionary(a => a.Key, a => a.Value, StringComparer.OrdinalIgnoreCase));
+    private static PluginConfig Config(string label, params (string Key, ConfigValue Value)[] attributes)
+        => new(new PluginLabel(label), attributes.ToDictionary(a => new AttributeKey(a.Key), a => a.Value));
 }

@@ -7,24 +7,17 @@ internal sealed class PlanConfigurationValidator : AbstractValidator<PlanConfigu
 {
     public PlanConfigurationValidator()
     {
+        // The plan's SQL is rendered against the provider's dialect, so a provider is mandatory.
+        RuleFor(x => x.Provider)
+            .NotNull()
+            .WithMessage("A database provider is required for plan: the plan's SQL is rendered against it. Declare a DATABASE statement in a configuration (*.env.sql) file.");
+
+        // A plan always diffs the recorded state against the target, so a state store is mandatory —
+        // unless --ephemeral-state stands one in for the run.
+        RuleFor(x => x.State)
+            .NotNull()
+            .When(x => !x.EphemeralState)
+            .WithMessage("A state store is required for plan: the plan diffs the recorded state. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral-state.");
         RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
-
-        // A forward plan diffs the desired schema (the *.sql files under the working directory) against a current
-        // one, so it needs a current-schema source — a live provider or a state store.
-        When(x => !x.Destroy, () =>
-        {
-            RuleFor(x => x)
-                .Must(c => c.Provider is not null || c.State is not null)
-                .WithMessage("Plan needs a current schema source: configure a database provider (live) or a state store (offline).");
-        });
-
-        // --destroy previews the same teardown "destroy" runs: the SQL is rendered against the provider, so a provider
-        // is mandatory. The managed schema comes from the state store, or falls back to the working-directory schema.
-        When(x => x.Destroy, () =>
-        {
-            RuleFor(x => x.Provider)
-                .NotNull()
-                .WithMessage("A database provider is required for plan --destroy: the teardown SQL is rendered against it.");
-        });
     }
 }

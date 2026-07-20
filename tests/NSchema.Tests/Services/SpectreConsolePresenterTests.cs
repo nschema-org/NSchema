@@ -1,16 +1,15 @@
 using NSchema.Diff.Model;
+using NSchema.Diff.Model.Columns;
+using NSchema.Diff.Model.Schemas;
+using NSchema.Diff.Model.Tables;
+using NSchema.Model;
+using NSchema.Model.Columns;
+using NSchema.Model.Schemas;
+using NSchema.Model.Scripts;
+using NSchema.Model.Tables;
 using NSchema.Plan.Model;
-using NSchema.Plan.Model.Columns;
-using NSchema.Plan.Model.Migrations;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema.Model;
-using NSchema.Schema.Model.Columns;
-using NSchema.Schema.Model.Migrations;
-using NSchema.Schema.Model.Schemas;
-using NSchema.Schema.Model.Scripts;
-using NSchema.Schema.Model.Tables;
 using NSchema.Services.Reporting;
-using NSchema.Sql.Model;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
@@ -66,18 +65,44 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
+    public void ReportDiff_ListsTheDiffsDeploymentScripts()
+    {
+        // Arrange — the scripts ride the diff now, so the plan section carries them.
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts =
+            [
+                new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre),
+                new DeploymentScript("reindex", "REINDEX TABLE app.widgets;", ScopeSchema: null, DeploymentPhase.Post),
+            ],
+        };
+
+        // Act
+        _sut.ReportDiff(diff);
+
+        // Assert
+        _out.Output.ShouldContain("script seed-roles (on pre deployment)");
+        _out.Output.ShouldContain("script reindex (on post deployment)");
+    }
+
+    [Fact]
     public void ReportSchema_FramesTheRenderedSchemaInASection()
     {
         // Arrange
-        var schema = new DatabaseSchema([
-            new SchemaDefinition("app", Tables:
+        var database = new Database
+        {
+            Schemas =
             [
-                new Table("widgets", Columns: [new Column("id", SqlType.BigInt)]),
-            ]),
-        ]);
+                new Schema
+                {
+                    Name = "app",
+                    Tables = [new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] }],
+                },
+            ],
+        };
 
         // Act
-        _sut.ReportSchema(schema);
+        _sut.ReportSchema(database);
 
         // Assert
         _out.Output.ShouldContain("Schema");
@@ -88,15 +113,20 @@ public sealed class SpectreConsolePresenterTests
     public void ReportSchema_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
     {
         // Arrange — a column whose type is an array renders `text[]`, exercising markup escaping.
-        var schema = new DatabaseSchema([
-            new SchemaDefinition("app", Tables:
+        var database = new Database
+        {
+            Schemas =
             [
-                new Table("widgets", Columns: [new Column("tags", new SqlType("text[]"))]),
-            ]),
-        ]);
+                new Schema
+                {
+                    Name = "app",
+                    Tables = [new Table { Name = "widgets", Columns = [new Column { Name = "tags", Type = new SqlType("text[]") }] }],
+                },
+            ],
+        };
 
         // Act
-        _sut.ReportSchema(schema);
+        _sut.ReportSchema(database);
 
         // Assert
         _out.Output.ShouldContain("text[]");
@@ -106,10 +136,10 @@ public sealed class SpectreConsolePresenterTests
     public void ReportSqlPlan_FramesTheRenderedSqlInAPanel()
     {
         // Arrange
-        var plan = new SqlPlan([new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]);
+        var statements = new[] { new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false) };
 
         // Act
-        _sut.ReportSqlPlan(plan);
+        _sut.ReportSqlPlan(statements);
 
         // Assert
         _out.Output.ShouldContain("SQL");
@@ -120,14 +150,14 @@ public sealed class SpectreConsolePresenterTests
     public void ReportSqlPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
     {
         // Arrange
-        var plan = new SqlPlan(
-        [
+        var statements = new[]
+        {
             new SqlStatement("CREATE INDEX CONCURRENTLY ix ON app.widgets (id)", RunOutsideTransaction: true),
-            new SqlStatement("ANALYZE app.widgets"),
-        ]);
+            new SqlStatement("ANALYZE app.widgets", RunOutsideTransaction: false),
+        };
 
         // Act
-        _sut.ReportSqlPlan(plan);
+        _sut.ReportSqlPlan(statements);
 
         // Assert — headers number each statement; only the concurrent one is flagged, read from the model.
         var output = _out.Output;
@@ -140,11 +170,8 @@ public sealed class SpectreConsolePresenterTests
     [Fact]
     public void ReportSqlPlan_EmptyPlan_ReportsNothingToExecute()
     {
-        // Arrange
-        var plan = new SqlPlan([]);
-
         // Act
-        _sut.ReportSqlPlan(plan);
+        _sut.ReportSqlPlan([]);
 
         // Assert
         _out.Output.ShouldContain("SQL");
@@ -152,114 +179,15 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportPlan_ListsEachScriptNameUnderItsSection()
+    public void ReportSavedPlan_RendersDiffAndSqlSections()
     {
-        // Arrange
-        var plan = new MigrationPlan(
-            [],
-            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)],
-            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert
-        _out.Output.ShouldContain("Pre-deployment");
-        _out.Output.ShouldContain("seed-roles");
-        _out.Output.ShouldContain("Post-deployment");
-        _out.Output.ShouldContain("reindex");
-    }
-
-    [Fact]
-    public void ReportPlan_AnnotatesRunOnceScripts()
-    {
-        // Arrange — a script is marked so the reader knows it executes and is then recorded.
-        var plan = new MigrationPlan(
-            [],
-            [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment) { RunCondition = RunCondition.Once }],
-            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert
-        _out.Output.ShouldContain("seed-roles (run once)");
-        _out.Output.ShouldNotContain("reindex (run once)");
-    }
-
-    [Fact]
-    public void ReportPlan_SkipsSectionsWithNoScripts()
-    {
-        // Arrange
-        var plan = new MigrationPlan(
-            [],
-            [],
-            [new Script("reindex", "REINDEX TABLE app.widgets;", ScriptType.PostDeployment)]);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert
-        _out.Output.ShouldNotContain("Pre-deployment");
-        _out.Output.ShouldContain("Post-deployment");
-    }
-
-    [Fact]
-    public void ReportPlan_WritesNothing_WhenThereAreNoScripts()
-    {
-        // Arrange
-        var plan = new MigrationPlan([], [], []);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert
-        _out.Output.ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void ReportPlan_ListsDataMigrationsUnderTheirOwnSection()
-    {
-        // Arrange
-        var plan = new MigrationPlan(
-            [
-                new AddColumn("app", "users", new Column("email", SqlType.Text)),
-                new ExecuteDataMigration("backfill emails", DataMigrationTrigger.AddColumn, "app", "users", "email", "UPDATE app.users SET email = '';"),
-                new ExecuteDataMigration(null, DataMigrationTrigger.AddConstraint, "app", "users", "users_email_uq", "DELETE FROM app.users;"),
-            ],
-            [],
-            []);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert — matched migrations are listed by description; other actions are not listed here.
-        _out.Output.ShouldContain("Data migrations");
-        _out.Output.ShouldContain("backfill emails");
-        _out.Output.ShouldContain("ADD CONSTRAINT app.users.users_email_uq");
-    }
-
-    [Fact]
-    public void ReportPlan_SkipsDataMigrationSection_WhenThePlanHasNone()
-    {
-        // Arrange
-        var plan = new MigrationPlan([new AddColumn("app", "users", new Column("email", SqlType.Text))], [], []);
-
-        // Act
-        _sut.ReportPlan(plan);
-
-        // Assert
-        _out.Output.ShouldNotContain("Data migrations");
-    }
-
-    [Fact]
-    public void ReportSavedPlan_RendersDiffScriptsAndSqlSections()
-    {
-        // Arrange — humans still get all three sections; only --json collapses to a single object.
+        // Arrange — the scripts ride the plan's diff; only --json collapses to a single object.
+        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        {
+            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
+        };
         var envelope = new PlanFileEnvelope(
-            new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]),
-            new MigrationPlan([], [new Script("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScriptType.PreDeployment)], []),
-            new SqlPlan([new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]),
+            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]),
             CreatedAt: default);
 
         // Act
@@ -268,8 +196,7 @@ public sealed class SpectreConsolePresenterTests
         // Assert
         _out.Output.ShouldContain("Plan");
         _out.Output.ShouldContain("schema app");
-        _out.Output.ShouldContain("Pre-deployment");
-        _out.Output.ShouldContain("seed-roles");
+        _out.Output.ShouldContain("script seed-roles (on pre deployment)");
         _out.Output.ShouldContain("SQL");
         _out.Output.ShouldContain("CREATE TABLE app.widgets");
     }

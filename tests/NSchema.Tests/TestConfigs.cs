@@ -1,6 +1,6 @@
-using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
+using NSchema.Plugins;
 
 namespace NSchema.Tests;
 
@@ -11,11 +11,11 @@ namespace NSchema.Tests;
 internal static class TestConfigs
 {
     public static PluginReference Provider(string label = "postgres", string packageId = "NSchema.Postgres") =>
-        Reference("provider", label, packageId);
+        Reference(label, packageId);
 
     public static StateConfig S3State() =>
-        new() { Plugin = Reference("backend", "s3", "NSchema.Aws") };
+        new() { Plugin = Reference("s3", "NSchema.Aws") };
 
-    private static PluginReference Reference(string blockType, string label, string packageId) =>
-        new(packageId, "4.0.0", label, new ConfigBlock(blockType, label, new Dictionary<string, ConfigValue>()));
+    private static PluginReference Reference(string label, string packageId) =>
+        new(packageId, "5.0.0", "[5.0.0]", label, new PluginConfig(new PluginLabel(label), new Dictionary<AttributeKey, ConfigValue>()));
 }

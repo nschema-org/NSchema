@@ -1,8 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Diagnostics;
-using NSchema.Operations.Plan;
-using NSchema.Policies;
+using NSchema.Operations;
 using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plan;
@@ -38,65 +36,48 @@ internal static class PlanCommand
         }
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema(environment)
+            .ConfigureDesiredSchema()
             .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State, configuration.EphemeralState)
             .Build();
 
         app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { Schemas = configuration.Scope, OutFile = configuration.OutFile }, cancellationToken);
+        var result = await app.Operations.Plan(new PlanArguments { Scope = configuration.Scope.ToPlanningScope(), OutFile = configuration.OutFile }, cancellationToken);
         return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Plan saved to", configuration.DetailedExitCode);
     }
 
     private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
     {
-        var builder = CliApplicationBuilder.Create(parseResult)
+        // A teardown is fully destructive by design, so the destructive-action policy is set to Allow — the
+        // teardown's guard is destroy's confirmation prompt, not the policy.
+        using var app = CliApplicationBuilder.Create(parseResult)
+            .ConfigurePolicies(PolicyEnforcement.Allow, configuration.DataHazardPolicy)
             .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureBackendState(configuration.State);
+            .ConfigureState(configuration.State, configuration.EphemeralState)
+            .Build();
 
-        // The working-directory schema is only the teardown source when no state store is configured; otherwise omit
-        // it so we don't glob for schema files that aren't needed.
-        if (!configuration.HasStateStore)
-        {
-            builder.ConfigureDesiredSchema(environment);
-        }
-
-        using var app = builder.Build();
         app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { OutFile = configuration.OutFile, Target = PlanTarget.Teardown }, cancellationToken);
+        var result = await app.Operations.Plan(new PlanArguments { Scope = configuration.Scope.ToPlanningScope(), OutFile = configuration.OutFile, Target = PlanTarget.Empty }, cancellationToken);
         return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Planned destroy saved to", configuration.DetailedExitCode);
     }
 
-    // The operation returns its outcome (diff, generated SQL, diagnostics); the CLI renders them and maps the result
+    // The operation returns its outcome (the plan and its diagnostics); the CLI renders them and maps the result
     // to an exit code (failure → error, otherwise the detailed code reflects whether the plan has changes).
     private static int Finish(IConsolePresenter presenter, IConsoleMessenger messenger, Result<PlanResult> result, string? outFile, string savedPrefix, bool detailed)
     {
-        if (result.Value is { } plan)
+        // A policy-blocked result still carries the complete plan, so the offending change stays visible.
+        if (result.Value?.Plan is { } plan)
         {
-            // The diff is shown even on a policy failure, so the offending change is visible.
-            if (plan.Diff is not null)
-            {
-                presenter.ReportDiff(plan.Diff);
-            }
-
-            // The plan (its deployment scripts) and SQL are only present for a successful plan.
-            if (plan.Plan is not null)
-            {
-                presenter.ReportPlan(plan.Plan);
-            }
-
-            if (plan.Sql is not null)
-            {
-                presenter.ReportSqlPlan(plan.Sql);
-            }
+            presenter.ReportDiff(plan.Diff);
+            presenter.ReportSqlPlan(plan.Statements);
         }
 
         if (result.Diagnostics.Count > 0)
         {
-            messenger.ReportDiagnostics(new PolicyDiagnostics(result.Diagnostics));
+            messenger.ReportDiagnostics(result.Diagnostics);
         }
 
         if (result.IsFailure)
@@ -104,11 +85,11 @@ internal static class PlanCommand
             return ExitCodes.Error;
         }
 
-        if (outFile is not null && result.Value.Sql is not null)
+        if (outFile is not null)
         {
             messenger.Success($"{savedPrefix} {outFile}. Apply it later with this file to execute exactly this plan.");
         }
 
-        return detailed && result.Value.HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+        return detailed && result.Require().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;
     }
 }

@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 
@@ -25,7 +25,7 @@ internal sealed class PluginShowConfiguration : IBindable
     /// </summary>
     public string? Label { get; set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         State = project.State;

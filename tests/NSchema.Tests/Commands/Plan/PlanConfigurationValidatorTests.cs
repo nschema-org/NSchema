@@ -7,14 +7,16 @@ public sealed class PlanConfigurationValidatorTests
 {
     private readonly PlanConfigurationValidator _sut = new();
 
+    private static StateConfig FileState() => new() { File = new FileStateConfig { Path = "./state.json" } };
+
     [Fact]
-    public void Valid_WithProviderOnly()
+    public void Valid_WithProviderAndState()
     {
-        // Arrange
+        // Arrange — a plan renders SQL against the provider and diffs the recorded state, so it needs both.
         var config = new PlanConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = null,
+            State = FileState(),
         };
 
         // Act
@@ -25,29 +27,30 @@ public sealed class PlanConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_WithStateOnly_ForOfflinePlanning()
+    public void Invalid_WhenProviderMissing()
     {
         // Arrange
         var config = new PlanConfiguration
         {
             Provider = null,
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = FileState(),
         };
 
         // Act
         var result = _sut.Validate(config);
 
         // Assert
-        result.IsValid.ShouldBeTrue();
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("database provider is required"));
     }
 
     [Fact]
-    public void Invalid_WhenNeitherProviderNorStateConfigured()
+    public void Invalid_WhenStateMissing()
     {
-        // Arrange
+        // Arrange — planning always diffs the recorded state, so a store is mandatory.
         var config = new PlanConfiguration
         {
-            Provider = null,
+            Provider = TestConfigs.Provider(),
             State = null,
         };
 
@@ -56,18 +59,18 @@ public sealed class PlanConfigurationValidatorTests
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("current schema source"));
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("state store is required"));
     }
 
     [Fact]
-    public void Valid_ForDestroy_WithProviderAndStateOnly()
+    public void Valid_WithEphemeralState_InsteadOfAStore()
     {
-        // Arrange — --destroy tears down the recorded state.
+        // Arrange — --ephemeral-state stands in for a configured store (CI against a disposable database).
         var config = new PlanConfiguration
         {
-            Destroy = true,
             Provider = TestConfigs.Provider(),
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = null,
+            EphemeralState = true,
         };
 
         // Act
@@ -78,14 +81,14 @@ public sealed class PlanConfigurationValidatorTests
     }
 
     [Fact]
-    public void Valid_ForDestroy_WithProviderOnly_FallsBackToWorkingDirectorySchema()
+    public void Valid_ForDestroy_WithProviderAndState()
     {
-        // Arrange — with no state store, --destroy falls back to the working-directory schema as the teardown source.
+        // Arrange — --destroy tears down the managed schema recorded in the state.
         var config = new PlanConfiguration
         {
             Destroy = true,
             Provider = TestConfigs.Provider(),
-            State = null,
+            State = FileState(),
         };
 
         // Act
@@ -102,26 +105,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Provider = TestConfigs.Provider(),
-            State = null,
-            OutFile = "plan.nschema",
-        };
-
-        // Act
-        var result = _sut.Validate(config);
-
-        // Assert
-        result.IsValid.ShouldBeTrue();
-    }
-
-    [Fact]
-    public void Valid_ForDestroy_WithOutFile()
-    {
-        // Arrange — a teardown preview can also be saved for later replay (PlanDestroyArguments.OutFile).
-        var config = new PlanConfiguration
-        {
-            Destroy = true,
-            Provider = TestConfigs.Provider(),
-            State = null,
+            State = FileState(),
             OutFile = "plan.nschema",
         };
 
@@ -140,7 +124,7 @@ public sealed class PlanConfigurationValidatorTests
         {
             Destroy = true,
             Provider = null,
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = FileState(),
         };
 
         // Act
@@ -149,5 +133,24 @@ public sealed class PlanConfigurationValidatorTests
         // Assert
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("database provider is required"));
+    }
+
+    [Fact]
+    public void Invalid_ForDestroy_WhenStateMissing()
+    {
+        // Arrange — the managed schema is read from the recorded state, so a store is required.
+        var config = new PlanConfiguration
+        {
+            Destroy = true,
+            Provider = TestConfigs.Provider(),
+            State = null,
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(failure => failure.ErrorMessage.Contains("state store is required"));
     }
 }

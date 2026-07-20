@@ -1,8 +1,10 @@
+using NSchema.Deployment;
+using NSchema.Operations;
 using NSchema.Plan.PlanFile;
-using NSchema.Schema;
+using NSchema.Project;
 using NSchema.Services.Reporting;
 using NSchema.State;
-using NSchema.State.Storage;
+using NSchema.State.Locks;
 
 namespace NSchema;
 
@@ -23,19 +25,19 @@ internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger m
     public INSchemaOperations Operations => app.Operations;
 
     /// <inheritdoc cref="NSchemaApplication.Locks"/>
-    public IStateLockCoordinator Locks => app.Locks;
+    public IStateLockManager Locks => app.Locks;
 
-    /// <inheritdoc cref="NSchemaApplication.CurrentSchema"/>
-    public ICurrentSchemaProvider CurrentSchema => app.CurrentSchema;
+    /// <inheritdoc cref="NSchemaApplication.Database"/>
+    public IDatabaseProvider Database => app.Database;
 
-    /// <inheritdoc cref="NSchemaApplication.DesiredSchema"/>
-    public IDesiredSchemaProvider DesiredSchema => app.DesiredSchema;
+    /// <inheritdoc cref="NSchemaApplication.ProjectDefinition"/>
+    public IProjectProvider ProjectDefinition => app.ProjectDefinition;
 
     /// <inheritdoc cref="NSchemaApplication.PlanFile"/>
-    public IPlanFileWriter PlanFile => app.PlanFile;
+    public IPlanFileManager PlanFile => app.PlanFile;
 
     /// <inheritdoc cref="NSchemaApplication.State"/>
-    public ISchemaStateManager State => app.State;
+    public IDatabaseStateManager State => app.State;
 
     /// <inheritdoc cref="NSchemaApplication.Services"/>
     public IServiceProvider Services => app.Services;

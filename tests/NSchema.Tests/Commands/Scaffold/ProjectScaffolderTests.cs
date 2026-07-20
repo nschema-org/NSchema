@@ -1,21 +1,24 @@
 using NSchema.Commands.Scaffold;
-using NSchema.Configuration.Ddl;
-using NSchema.Schema.Ddl;
+using NSchema.Configuration;
+using NSchema.Project.Nsql;
+using NSchema.Project.Nsql.Syntax.Tables;
 
 namespace NSchema.Tests.Commands.Scaffold;
 
 /// <summary>
-/// <see cref="ProjectScaffolder"/> is pure composition: given plugin-rendered config blocks and a sample schema it
-/// lays out the project files (and supplies the built-in file backend). These tests pin that composition without
-/// loading real plugins — the live plugin resolution lives in <c>ScaffoldCommand</c> and is exercised end-to-end by
-/// the plugin-loader/smoke tests.
+/// <see cref="ProjectScaffolder"/> is pure composition: given plugin-rendered config statements and a sample schema
+/// it lays out the project files (authoring the <c>PLUGIN</c> declarations and supplying the built-in file state
+/// store). These tests pin that composition without loading real plugins — the live plugin resolution lives in
+/// <c>ScaffoldCommand</c> and is exercised end-to-end by the plugin-loader/smoke tests.
 /// </summary>
 public sealed class ProjectScaffolderTests : IDisposable
 {
+    private static readonly IReadOnlyList<(string Label, string PackageId, string Version)> Plugins =
+        [("postgres", "NSchema.Postgres", "5.0.0-test")];
+
     private const string ProviderBlock =
         """
-        PROVIDER postgres (
-          version           = '4.0.0-test',
+        DATABASE postgres (
           connection_string = ''
         );
         """;
@@ -33,19 +36,17 @@ public sealed class ProjectScaffolderTests : IDisposable
 
     private const string S3BackendBlock =
         """
-        BACKEND s3 (
-          version = '4.0.0-test',
-          bucket  = 'my-nschema-state',
-          key     = 'nschema.state.json'
+        STATE s3 (
+          bucket = 'my-nschema-state',
+          key    = 'nschema.state.json'
         );
         """;
 
     private const string S3OverlayBlock =
         """
-        BACKEND s3 (
-          version = '4.0.0-test',
-          bucket  = 'my-nschema-state',
-          key     = 'prod/nschema.state.json'
+        STATE s3 (
+          bucket = 'my-nschema-state',
+          key    = 'prod/nschema.state.json'
         );
         """;
 
@@ -53,8 +54,11 @@ public sealed class ProjectScaffolderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private Task<IReadOnlyList<string>> Scaffold(bool force = false, (string Base, string Overlay)? pluginBackend = null) =>
-        ProjectScaffolder.Scaffold(_directory, force, ProviderBlock, SampleSchema, pluginBackend, TestContext.Current.CancellationToken);
+    private Task<IReadOnlyList<string>> Scaffold(
+        bool force = false,
+        (string Base, string Overlay)? pluginBackend = null,
+        IReadOnlyList<(string Label, string PackageId, string Version)>? plugins = null) =>
+        ProjectScaffolder.Scaffold(_directory, force, plugins ?? Plugins, ProviderBlock, SampleSchema, pluginBackend, TestContext.Current.CancellationToken);
 
     private Task<string> ReadAsync(string relativePath) =>
         File.ReadAllTextAsync(Path.Combine(_directory, relativePath), TestContext.Current.CancellationToken);
@@ -64,20 +68,23 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         var created = await Scaffold();
 
-        created.ShouldBe(["config.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql")]);
-        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
+        created.ShouldBe(["config.env.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql")]);
+        File.Exists(Path.Combine(_directory, "config.env.sql")).ShouldBeTrue();
         File.Exists(Path.Combine(_directory, "config.env.prod.sql")).ShouldBeTrue();
         File.Exists(Path.Combine(_directory, "schemas", "example.sql")).ShouldBeTrue();
     }
 
     [Fact]
-    public async Task Scaffold_Config_ContainsProviderBlockAndBuiltInFileBackend()
+    public async Task Scaffold_Config_ContainsPluginDeclarationDatabaseStatementAndBuiltInFileStore()
     {
         await Scaffold();
 
-        var config = await ReadAsync("config.sql");
-        config.ShouldContain("PROVIDER postgres");
-        config.ShouldContain("BACKEND file"); // the built-in default backend, owned by the CLI
+        var config = await ReadAsync("config.env.sql");
+        config.ShouldContain("PLUGIN postgres");
+        config.ShouldContain("source  = 'NSchema.Postgres'");
+        config.ShouldContain("version = '5.0.0-test'");
+        config.ShouldContain("DATABASE postgres");
+        config.ShouldContain("STATE file"); // the built-in default state store, owned by the CLI
     }
 
     [Fact]
@@ -89,14 +96,17 @@ public sealed class ProjectScaffolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Scaffold_WithPluginBackend_WritesItsBlocksInsteadOfTheFileBackend()
+    public async Task Scaffold_WithPluginBackend_WritesItsStatementsInsteadOfTheFileStore()
     {
-        await Scaffold(pluginBackend: (S3BackendBlock, S3OverlayBlock));
+        await Scaffold(
+            pluginBackend: (S3BackendBlock, S3OverlayBlock),
+            plugins: [("postgres", "NSchema.Postgres", "5.0.0-test"), ("s3", "NSchema.Aws", "5.0.0-test")]);
 
-        var config = await ReadAsync("config.sql");
-        config.ShouldContain("BACKEND s3");
-        config.ShouldNotContain("BACKEND file");
-        (await ReadAsync("config.env.prod.sql")).ShouldContain("key     = 'prod/nschema.state.json'");
+        var config = await ReadAsync("config.env.sql");
+        config.ShouldContain("PLUGIN s3");
+        config.ShouldContain("STATE s3");
+        config.ShouldNotContain("STATE file");
+        (await ReadAsync("config.env.prod.sql")).ShouldContain("key    = 'prod/nschema.state.json'");
     }
 
     [Fact]
@@ -104,9 +114,10 @@ public sealed class ProjectScaffolderTests : IDisposable
     {
         await Scaffold();
 
-        var config = await DdlProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        var config = await ProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
         config.Provider.ShouldNotBeNull();
         config.Provider!.Label.ShouldBe("postgres");
+        config.Provider.Version.ShouldBe("5.0.0-test");
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
@@ -114,9 +125,11 @@ public sealed class ProjectScaffolderTests : IDisposable
     [Fact]
     public async Task Scaffold_GeneratedOverlay_RoundTripsThroughTheReader()
     {
-        await Scaffold(pluginBackend: (S3BackendBlock, S3OverlayBlock));
+        await Scaffold(
+            pluginBackend: (S3BackendBlock, S3OverlayBlock),
+            plugins: [("postgres", "NSchema.Postgres", "5.0.0-test"), ("s3", "NSchema.Aws", "5.0.0-test")]);
 
-        var config = await DdlProjectConfigReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken);
+        var config = await ProjectConfigReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken);
         config.State!.Plugin.ShouldNotBeNull();
         config.State.Plugin!.Label.ShouldBe("s3");
     }
@@ -127,11 +140,11 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         var ddl = await ReadAsync(Path.Combine("schemas", "example.sql"));
-        var schema = DdlReader.Instance.Read(ddl).Schema;
+        var document = NsqlReader.Read(ddl);
 
-        var table = schema.Schemas.ShouldHaveSingleItem().Tables.ShouldHaveSingleItem();
-        table.Name.ShouldBe("widgets");
-        table.PrimaryKey!.ColumnNames.ShouldBe(["id"]);
+        document.IsSuccess.ShouldBeTrue();
+        var table = document.Require().Statements.OfType<CreateTableStatement>().ShouldHaveSingleItem();
+        table.Name.Name.Value.ShouldBe("widgets");
     }
 
     [Fact]
@@ -150,6 +163,6 @@ public sealed class ProjectScaffolderTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_directory, "existing.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
 
         await Should.NotThrowAsync(() => Scaffold(force: true));
-        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
+        File.Exists(Path.Combine(_directory, "config.env.sql")).ShouldBeTrue();
     }
 }

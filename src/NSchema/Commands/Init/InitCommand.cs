@@ -49,7 +49,7 @@ internal static class InitCommand
                 app.Messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
             }
 
-            loader.Load(reference.PackageId, reference.Version).ThrowIfFailure();
+            loader.Load(reference.PackageId, reference.Version, reference.RestoreVersion).Require();
 
             if (alreadyInstalled)
             {

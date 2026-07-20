@@ -1,5 +1,4 @@
 using NSchema.Commands.Db.Show;
-using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Commands.Db.Show;
@@ -8,8 +7,7 @@ public sealed class DbShowConfigurationValidatorTests
 {
     private readonly DbShowConfigurationValidator _sut = new();
 
-    private static PluginReference Postgres() =>
-        new("NSchema.Postgres", "4.0.0", "postgres", new ConfigBlock("provider", "postgres", new Dictionary<string, ConfigValue>()));
+    private static PluginReference Postgres() => TestConfigs.Provider();
 
     [Fact]
     public void Valid_WithProvider()

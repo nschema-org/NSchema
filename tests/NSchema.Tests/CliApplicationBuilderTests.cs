@@ -1,13 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Commands;
-using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Diff.Policies;
-using NSchema.Policies;
+using NSchema.Plan.Policies;
+using NSchema.Plugins;
 using NSchema.Services.Reporting;
-using NSchema.State;
+using NSchema.State.Backends;
 
 namespace NSchema.Tests;
 
@@ -43,11 +42,11 @@ public sealed class CliApplicationBuilderTests
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(DestructiveActionPolicy.Warn, null).Build();
+        using var app = _sut.ConfigurePolicies(PolicyEnforcement.Warn, null).Build();
 
         // Assert
         var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
-        options.Policy.ShouldBe(DestructiveActionPolicy.Warn);
+        options.Policy.ShouldBe(PolicyEnforcement.Warn);
     }
 
     [Fact]
@@ -69,7 +68,7 @@ public sealed class CliApplicationBuilderTests
 
         // Assert
         app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value
-            .Policy.ShouldBe(DestructiveActionPolicy.Error);
+            .Policy.ShouldBe(PolicyEnforcement.Error);
         app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value
             .Policy.ShouldBe(PolicyEnforcement.Warn);
     }
@@ -84,7 +83,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.ConfigureBackendState(state).Build();
 
         // Assert
-        app.Services.GetService<ISchemaStateStore>().ShouldNotBeNull();
+        app.Services.GetService<IDatabaseStateStore>().ShouldNotBeNull();
     }
 
     [Fact]
@@ -94,7 +93,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.ConfigureBackendState(new StateConfig()).Build();
 
         // Assert
-        app.Services.GetService<ISchemaStateStore>().ShouldBeNull();
+        app.Services.GetService<IDatabaseStateStore>().ShouldBeNull();
     }
 
     [Fact]
@@ -117,9 +116,9 @@ public sealed class CliApplicationBuilderTests
         Environment.SetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING", null);
         try
         {
-            // Arrange — a postgres PROVIDER block missing the required connection_string.
-            var reference = new PluginReference("NSchema.Postgres", "4.0.0-alpha.2", "postgres",
-                new ConfigBlock("provider", "postgres", new Dictionary<string, ConfigValue>()));
+            // Arrange — a postgres DATABASE statement missing the required connection_string.
+            var reference = new PluginReference("NSchema.Postgres", "5.0.0-alpha.1", "[5.0.0-alpha.1]", "postgres",
+                new PluginConfig(new PluginLabel("postgres"), new Dictionary<AttributeKey, ConfigValue>()));
 
             // Act
             var diagnostic = _sut.TryConfigureDatabaseProvider(reference);
@@ -135,6 +134,6 @@ public sealed class CliApplicationBuilderTests
         }
     }
 
-    // ConfigureDesiredSchema is a thin delegation to the core's AddDdlSchemas (which the core tests cover end to end);
-    // the CLI-specific logic is which files each glob selects — exercised by ProjectGlobsTests.
+    // ConfigureDesiredSchema is a thin delegation to the core's AddProjectSource (which the core tests cover end to
+    // end); the CLI-specific logic is which files each glob selects — exercised by ProjectGlobsTests.
 }

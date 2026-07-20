@@ -1,8 +1,6 @@
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Diagnostics;
-using NSchema.Policies;
-using NSchema.Sql.Model;
+using NSchema.State.Locks;
 using NSchema.State.Model;
 using Spectre.Console;
 
@@ -81,7 +79,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         }
     }
 
-    public void ReportScripts(IReadOnlyList<ScriptRecord> scripts)
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
     {
         if (scripts.Count == 0)
         {
@@ -98,15 +96,15 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         foreach (var script in scripts)
         {
             table.AddRow(
-                new Markup(Markup.Escape(script.Name)),
+                new Markup(Markup.Escape(script.Script.Value)),
                 new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
-                new Markup($"[grey]{Markup.Escape(script.Hash)}[/]"));
+                new Markup($"[grey]{Markup.Escape(script.Hash.Value)}[/]"));
         }
 
         _out.Write(table);
     }
 
-    public void ReportScriptHashes(IReadOnlyList<ScriptHash> scripts)
+    public void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts)
     {
         if (scripts.Count == 0)
         {
@@ -222,7 +220,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
     public void ReportException(Exception exception) =>
         _error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
 
-    public void ReportDiagnostics(PolicyDiagnostics diagnostics)
+    public void ReportDiagnostics(IReadOnlyList<Diagnostic> diagnostics)
     {
         // Diagnostics that warrant attention (warnings, errors) belong on stderr, matching the default reporter.
         var notable = diagnostics.Any(d => d.Severity is DiagnosticSeverity.Warning or DiagnosticSeverity.Error);

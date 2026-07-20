@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Operations.Drift;
+using NSchema.Operations;
 using NSchema.Services;
 
 namespace NSchema.Commands.Drift;
@@ -34,14 +34,15 @@ internal static class DriftCommand
             .Build();
         app.Messenger.ReportEnvironment(environment);
 
-        var result = await app.Operations.Drift(new DriftArguments { Schemas = configuration.Scope }, cancellationToken);
+        var result = await app.Operations.Drift(new DriftArguments { Scope = configuration.Scope.ToPlanningScope() }, cancellationToken);
         if (result.IsFailure)
         {
+            app.Messenger.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
         // The operation returns the diff; the CLI renders it and the outcome line.
-        var drift = result.Value;
+        var drift = result.Require();
         app.Presenter.ReportDiff(drift.Diff);
         if (drift.HasDrift)
         {

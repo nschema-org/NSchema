@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration;
 
 namespace NSchema.Commands.Script.Hash;
 
@@ -9,7 +9,7 @@ namespace NSchema.Commands.Script.Hash;
 /// </summary>
 internal sealed class ScriptHashConfiguration : IBindable
 {
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
     }
 }

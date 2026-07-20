@@ -1,13 +1,12 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
 
 namespace NSchema.Configuration;
 
 internal static class ConfigurationFactory
 {
     /// <summary>
-    /// Loads a command's configuration, reading the project's <c>.sql</c> config blocks layered with the given
+    /// Loads a command's configuration, reading the project's configuration files layered with the given
     /// <paramref name="environment"/>'s overlay (if any), then binding environment variables and CLI options on top.
     /// </summary>
     /// <param name="args">The parsed command line.</param>
@@ -18,7 +17,7 @@ internal static class ConfigurationFactory
         ApplyWorkingDirectory(args);
 
         var currentDirectory = Directory.GetCurrentDirectory();
-        var projectConfig = await DdlProjectConfigReader.Read(currentDirectory, environment, cancellationToken);
+        var projectConfig = await ProjectConfigReader.Read(currentDirectory, environment, cancellationToken);
         var config = new T();
         config.Bind(projectConfig, args);
         return config;

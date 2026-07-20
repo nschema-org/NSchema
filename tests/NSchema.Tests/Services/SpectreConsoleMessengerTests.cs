@@ -1,8 +1,8 @@
 using NSchema.Configuration.Plugins;
-using NSchema.Diagnostics;
-using NSchema.Policies;
+using NSchema.Model;
+using NSchema.Model.Scripts;
 using NSchema.Services.Reporting;
-using NSchema.Sql.Model;
+using NSchema.State.Locks;
 using NSchema.State.Model;
 using Spectre.Console.Testing;
 
@@ -125,7 +125,7 @@ public sealed class SpectreConsoleMessengerTests
     [Fact]
     public void ReportLockInfo_Held_WritesLockDetailLinesToOutput()
     {
-        var info = new StateLockInfo("abc123", "apply", "tom@dev", DateTimeOffset.UnixEpoch);
+        var info = new StateLockInfo(new LockId("abc123"), "apply", new LockHolder("tom@dev"), DateTimeOffset.UnixEpoch, ExpiresUtc: null);
 
         _sut.ReportLockInfo(info);
 
@@ -148,7 +148,7 @@ public sealed class SpectreConsoleMessengerTests
     [Fact]
     public void ReportScriptExecutions_WritesTheLedgerTableToOutput()
     {
-        _sut.ReportScripts([new ScriptRecord("seed-users", "abc123", DateTimeOffset.UnixEpoch)]);
+        _sut.ReportScripts([new ScriptExecution(new ScopedAddress(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
 
         // The ledger's data as a table on stdout — name, execution time, and body hash.
         _out.Output.ShouldContain("seed-users");
@@ -169,7 +169,7 @@ public sealed class SpectreConsoleMessengerTests
     [Fact]
     public void ReportScriptHashes_WritesTheDeclarationTableToOutput()
     {
-        _sut.ReportScriptHashes([new ScriptHash("seed-users", "abc123")]);
+        _sut.ReportScriptHashes([new ScriptHashEntry("seed-users", "abc123")]);
 
         _out.Output.ShouldContain("seed-users");
         _out.Output.ShouldContain("abc123");
@@ -251,7 +251,7 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportDiagnostics_WritesPlaceholder_WhenEmpty()
     {
         // Act
-        _sut.ReportDiagnostics(new PolicyDiagnostics());
+        _sut.ReportDiagnostics([]);
 
         // Assert
         _out.Output.ShouldContain("No policy diagnostics.");
@@ -261,7 +261,7 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportDiagnostics_WritesInfoToOutput()
     {
         // Arrange
-        var diagnostics = new PolicyDiagnostics([new Diagnostic("style", "Naming hint", DiagnosticSeverity.Info)]);
+        var diagnostics = (Diagnostic[])[new Diagnostic("style", "Naming hint", DiagnosticSeverity.Info)];
 
         // Act
         _sut.ReportDiagnostics(diagnostics);
@@ -275,10 +275,10 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportDiagnostics_RoutesWarningsAndErrorsToErrorConsole()
     {
         // Arrange
-        var diagnostics = new PolicyDiagnostics(
+        var diagnostics = (Diagnostic[])
         [
             new Diagnostic("destructive", "Dropping column id", DiagnosticSeverity.Error),
-        ]);
+        ];
 
         // Act
         _sut.ReportDiagnostics(diagnostics);

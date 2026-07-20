@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration;
 using NSchema.Configuration.State;
 
 namespace NSchema.Commands.Script.Taint;
@@ -20,7 +20,7 @@ internal sealed class ScriptTaintConfiguration : IBindable
     /// </summary>
     public bool NoLock { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         State = project.State;
         ScriptTaintOptions.NoLock.Bind(cli, n => NoLock = n);

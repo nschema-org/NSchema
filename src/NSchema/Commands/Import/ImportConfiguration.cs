@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Commands.Import;
@@ -30,7 +30,7 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public bool Force { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         ImportOptions.Scope.Bind(cli, s => Scope = s);

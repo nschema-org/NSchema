@@ -1,29 +1,29 @@
 using System.Text;
-using NSchema.Schema.Model;
-using NSchema.Schema.Model.Columns;
-using NSchema.Schema.Model.Indexes;
-using NSchema.Schema.Model.Routines;
-using NSchema.Schema.Model.Schemas;
-using NSchema.Schema.Model.Sequences;
-using NSchema.Schema.Model.Tables;
-using NSchema.Schema.Model.Triggers;
-using NSchema.Schema.Model.Views;
+using NSchema.Model;
+using NSchema.Model.Columns;
+using NSchema.Model.Indexes;
+using NSchema.Model.Routines;
+using NSchema.Model.Schemas;
+using NSchema.Model.Sequences;
+using NSchema.Model.Tables;
+using NSchema.Model.Triggers;
+using NSchema.Model.Views;
 
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// Renders a <see cref="DatabaseSchema"/> as human-readable text, presenting it as an indented tree.
+/// Renders a <see cref="Database"/> as human-readable text, presenting it as an indented tree.
 /// </summary>
 internal static class SchemaRenderer
 {
     private const string Indent = "  ";
 
     /// <summary>
-    /// Renders the given schema as human-readable text.
+    /// Renders the given database as human-readable text.
     /// </summary>
-    public static string Render(DatabaseSchema schema)
+    public static string Render(Database database)
     {
-        if (schema.Schemas.Count == 0 && schema.Extensions.Count == 0)
+        if (database.Schemas.Count == 0 && database.Extensions.Count == 0)
         {
             return "Schema is empty.";
         }
@@ -31,7 +31,7 @@ internal static class SchemaRenderer
         var sb = new StringBuilder();
 
         // Extensions are database-global, so they render at the root before any schema.
-        foreach (var extension in schema.Extensions)
+        foreach (var extension in database.Extensions)
         {
             sb.AppendLine();
             sb.Append("extension ").Append(extension.Name);
@@ -42,7 +42,7 @@ internal static class SchemaRenderer
             sb.AppendLine(CommentSuffix(extension.Comment));
         }
 
-        foreach (var definition in schema.Schemas)
+        foreach (var definition in database.Schemas)
         {
             RenderSchema(sb, definition);
         }
@@ -50,14 +50,14 @@ internal static class SchemaRenderer
         return sb.ToString().Trim();
     }
 
-    private static void RenderSchema(StringBuilder sb, SchemaDefinition schema)
+    private static void RenderSchema(StringBuilder sb, Schema schema)
     {
         sb.AppendLine();
         sb.Append("schema ").Append(schema.Name).AppendLine(CommentSuffix(schema.Comment));
 
         foreach (var grant in schema.Grants)
         {
-            sb.Append(Indent).Append("grant usage to ").AppendLine(grant.Role);
+            sb.Append(Indent).Append("grant usage to ").Append(grant.Role).AppendLine();
         }
 
         foreach (var table in schema.Tables)
@@ -117,7 +117,7 @@ internal static class SchemaRenderer
         // Routines render as kind + name + arguments only; the definition is opaque and arbitrarily long.
         foreach (var routine in schema.Routines)
         {
-            var label = routine.Kind == RoutineKind.Procedure ? "procedure" : "function";
+            var label = routine.RoutineKind == RoutineKind.Procedure ? "procedure" : "function";
             sb.Append(Indent).Append(label).Append(' ').Append(routine.Name)
                 .Append('(').Append(routine.Arguments).Append(')')
                 .AppendLine(CommentSuffix(routine.Comment));
@@ -171,7 +171,7 @@ internal static class SchemaRenderer
         sb.Append(Indent).Append(label).Append(' ').Append(view.Name).AppendLine(CommentSuffix(view.Comment));
         foreach (var dependency in view.DependsOn)
         {
-            sb.Append(Indent).Append(Indent).Append("reads ").Append(dependency.Schema).Append('.').AppendLine(dependency.Name);
+            sb.Append(Indent).Append(Indent).Append("reads ").AppendLine(dependency.Value);
         }
         foreach (var index in view.Indexes)
         {
@@ -201,7 +201,7 @@ internal static class SchemaRenderer
             sb.Append(Indent).Append(Indent)
                 .Append("foreign key ").Append(fk.Name)
                 .Append(" (").Append(string.Join(", ", fk.ColumnNames)).Append(") -> ")
-                .Append(fk.ReferencedSchema).Append('.').Append(fk.ReferencedTable)
+                .Append(fk.References.Value)
                 .Append(" (").Append(string.Join(", ", fk.ReferencedColumnNames)).Append(')')
                 .AppendLine(CommentSuffix(fk.Comment));
         }
@@ -231,7 +231,7 @@ internal static class SchemaRenderer
                 sb.Append(" using ").Append(method);
             }
             sb.Append(" (").Append(string.Join(", ", exclusion.Elements.Select(e =>
-                $"{(e.IsExpression ? $"({e.Expression})" : e.Expression)} with {e.Operator}"))).Append(')');
+                $"{(e.Expression is { } expression ? $"({expression})" : $"{e.Column}")} with {e.Operator}"))).Append(')');
             sb.AppendLine(CommentSuffix(exclusion.Comment));
         }
 
@@ -252,7 +252,7 @@ internal static class SchemaRenderer
         {
             sb.Append(Indent).Append(Indent)
                 .Append("grant ").Append(FormatPrivileges(grant.Privileges))
-                .Append(" to ").AppendLine(grant.Role);
+                .Append(" to ").Append(grant.Role).AppendLine();
         }
     }
 
@@ -265,7 +265,8 @@ internal static class SchemaRenderer
             _ => "instead of",
         };
         var level = trigger.Level == TriggerLevel.Row ? "row" : "statement";
-        return $"{timing} {FormatTriggerEvents(trigger)} {level} -> {trigger.Function}";
+        var action = trigger.Function is { } function ? $"-> {function}" : "-> (inline body)";
+        return $"{timing} {FormatTriggerEvents(trigger)} {level} {action}";
     }
 
     private static string FormatTriggerEvents(Trigger trigger)
@@ -330,7 +331,7 @@ internal static class SchemaRenderer
 
     private static string FormatIndexKey(IndexColumn column)
     {
-        var text = column.IsExpression ? $"({column.Expression})" : column.Expression;
+        var text = column.Expression is { } expression ? $"({expression})" : $"{column.Column}";
         text += column.Sort switch
         {
             IndexSort.Ascending => " asc",

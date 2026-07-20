@@ -20,7 +20,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
     public async Task Load_HonorsDirectory_ForConfigDiscovery()
     {
         // Arrange — a project whose config blocks live in its own directory, not the shell's.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "BACKEND file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), "STATE file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
@@ -33,16 +33,16 @@ public sealed class ConfigurationFactoryTests : IDisposable
     [Fact]
     public async Task Load_Environment_LayersOverlayOverBase()
     {
-        // Base config picks a file backend; the prod overlay (selected via --environment) replaces it with S3.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"),
-            "BACKEND file ( path = './state.json' );", TestContext.Current.CancellationToken);
+        // Base config picks the file store; the prod overlay (selected via --environment) replaces it with S3.
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"),
+            "PLUGIN s3 ( source = 'NSchema.Aws', version = '5.0.0' );\nSTATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.prod.sql"),
-            "BACKEND s3 ( version = '4.0.0', bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
+            "STATE s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory, "--environment", "prod"]);
 
         var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         config.State!.File.ShouldBeNull();
-        config.State.Plugin!.Block.Attribute("bucket")!.AsString().ShouldBe("prod-bucket");
+        config.State.Plugin!.Config.Attribute("bucket")!.AsString().ShouldBe("prod-bucket");
     }
 }

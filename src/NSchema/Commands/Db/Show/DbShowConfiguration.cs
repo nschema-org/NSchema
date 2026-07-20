@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
-using NSchema.Configuration.Ddl;
+using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Commands.Db.Show;
@@ -20,7 +20,7 @@ internal sealed class DbShowConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(DdlProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfig project, ParseResult cli)
     {
         Provider = project.Provider;
         DbShowOptions.Scope.Bind(cli, s => Scope = s);
