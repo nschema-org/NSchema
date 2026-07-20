@@ -1,6 +1,6 @@
 using System.CommandLine;
-using NSchema.Configuration.Binding;
 using NSchema.Configuration;
+using NSchema.Configuration.Binding;
 
 namespace NSchema.Commands.Scaffold;
 
