@@ -29,8 +29,8 @@ internal static class DriftCommand
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabaseProvider(configuration.Provider)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureDatabase(configuration.Database)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

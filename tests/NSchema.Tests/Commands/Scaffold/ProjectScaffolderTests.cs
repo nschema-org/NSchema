@@ -1,5 +1,7 @@
 using NSchema.Commands.Scaffold;
 using NSchema.Configuration;
+using NSchema.Configuration.Model;
+using NSchema.Configuration.Plugins;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Tables;
 
@@ -66,8 +68,15 @@ public sealed class ProjectScaffolderTests : IDisposable
     private Task<string> ReadAsync(string relativePath) =>
         File.ReadAllTextAsync(Path.Combine(_directory, relativePath), TestContext.Current.CancellationToken);
 
+    // The generated config carries exact pins; a read requires them locked (what the scaffold command's init step does).
+    private Task WriteLock(params (string Source, string Version)[] plugins) =>
+        LockFileManager.Write(
+            ProjectConfigurationReader.LockFilePath(_directory),
+            new LockFile([.. plugins.Select(p => new LockedPlugin { Source = new PackageId(p.Source), Version = SemanticVersion.Parse(p.Version) })]),
+            TestContext.Current.CancellationToken);
+
     [Fact]
-    public async Task Scaffold_CreatesConfigOverlayAndSample()
+    public async Task Scaffold_CreatesConfigurationOverlayAndSample()
     {
         var created = await Scaffold();
 
@@ -78,7 +87,7 @@ public sealed class ProjectScaffolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Scaffold_Config_ContainsPluginDeclarationDatabaseStatementAndBuiltInFileStore()
+    public async Task Scaffold_Configuration_ContainsPluginDeclarationDatabaseStatementAndBuiltInFileStore()
     {
         await Scaffold();
 
@@ -115,14 +124,15 @@ public sealed class ProjectScaffolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Scaffold_GeneratedConfig_RoundTripsThroughTheReader()
+    public async Task Scaffold_GeneratedConfiguration_RoundTripsThroughTheReader()
     {
         await Scaffold();
+        await WriteLock(("NSchema.Postgres", "5.0.0-test"));
 
-        var config = await ProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
-        config.Provider.ShouldNotBeNull();
-        config.Provider!.Label.ShouldBe("postgres");
-        config.Provider.Version.ShouldBe("5.0.0-test");
+        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        config.Database.ShouldNotBeNull();
+        config.Database!.Label.ShouldBe("postgres");
+        config.Database.Version.ToString().ShouldBe("5.0.0-test");
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }
@@ -133,8 +143,9 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold(
             pluginBackend: (S3BackendBlock, S3OverlayBlock),
             plugins: [("postgres", "NSchema.Postgres", "5.0.0-test"), ("s3", "NSchema.Aws", "5.0.0-test")]);
+        await WriteLock(("NSchema.Postgres", "5.0.0-test"), ("NSchema.Aws", "5.0.0-test"));
 
-        var config = await ProjectConfigReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken);
+        var config = await ProjectConfigurationReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken);
         config.State!.Plugin.ShouldNotBeNull();
         config.State.Plugin!.Label.ShouldBe("s3");
     }

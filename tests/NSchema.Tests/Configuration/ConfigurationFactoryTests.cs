@@ -1,5 +1,7 @@
 using NSchema.Commands.Plan;
 using NSchema.Configuration;
+using NSchema.Configuration.Model;
+using NSchema.Configuration.Plugins;
 using RootCommand = NSchema.Commands.RootCommand;
 
 namespace NSchema.Tests.Configuration;
@@ -17,7 +19,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_HonorsDirectory_ForConfigDiscovery()
+    public async Task Load_HonorsDirectory_ForConfigurationDiscovery()
     {
         // Arrange — a project whose config blocks live in its own directory, not the shell's.
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), "STATE file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
@@ -38,11 +40,13 @@ public sealed class ConfigurationFactoryTests : IDisposable
             "PLUGIN s3 ( source = 'NSchema.Aws', version = '5.0.0' );\nSTATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.prod.sql"),
             "STATE s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);
+        await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_projectDirectory),
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Aws"), Version = SemanticVersion.Parse("5.0.0") }]), TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory, "--environment", "prod"]);
 
         var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         config.State!.File.ShouldBeNull();
-        config.State.Plugin!.Config.Attribute("bucket")!.AsString().ShouldBe("prod-bucket");
+        config.State.Plugin!.Settings.Attribute("bucket")!.ShouldBe("prod-bucket");
     }
 }

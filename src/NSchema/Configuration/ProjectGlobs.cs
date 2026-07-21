@@ -18,37 +18,37 @@ internal static class ProjectGlobs
     /// <summary>
     /// The base configuration files, loaded for every environment.
     /// </summary>
-    public const string BaseConfig = "**/*.env.sql";
+    public const string BaseConfigurationGlob = "**/*.env.sql";
 
     /// <summary>
     /// Any environment-specific configuration file, for any environment.
     /// </summary>
-    public const string AnyEnvironmentConfig = "**/*.env.*.sql";
+    public const string AnyEnvironmentConfigurationGlob = "**/*.env.*.sql";
 
     /// <summary>
     /// The configuration glob for a single environment.
     /// </summary>
-    public static string EnvironmentConfig(string environment) => $"**/*.env.{environment}.sql";
+    public static string EnvironmentConfigurationGlob(string environment) => $"**/*.env.{environment}.sql";
 
     /// <summary>
     /// Matches the schema files: every <c>.sql</c> file except configuration files.
     /// </summary>
     public static Matcher Schema() => new Matcher()
         .AddInclude(AllSql)
-        .AddExclude(BaseConfig)
-        .AddExclude(AnyEnvironmentConfig);
+        .AddExclude(BaseConfigurationGlob)
+        .AddExclude(AnyEnvironmentConfigurationGlob);
 
     /// <summary>
     /// Matches the base configuration files.
     /// </summary>
     public static Matcher BaseConfiguration() => new Matcher()
-        .AddInclude(BaseConfig);
+        .AddInclude(BaseConfigurationGlob);
 
     /// <summary>
     /// Matches a single environment's configuration files.
     /// </summary>
     public static Matcher EnvironmentConfiguration(string environment) => new Matcher()
-        .AddInclude(EnvironmentConfig(environment));
+        .AddInclude(EnvironmentConfigurationGlob(environment));
 
     /// <summary>
     /// Runs <paramref name="matcher"/> against <paramref name="root"/> and returns the matched files as sorted absolute paths.

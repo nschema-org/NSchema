@@ -14,12 +14,12 @@ internal sealed class PlanConfiguration : IBindable
     /// <summary>
     /// The database provider rendering the plan's SQL; absent when no DATABASE statement is declared.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store holding the recorded state the plan diffs against.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the plan to specific database schemas (namespaces).
@@ -61,9 +61,9 @@ internal sealed class PlanConfiguration : IBindable
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
     public bool Ephemeral { get; internal set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
         PlanOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
         PlanOptions.DataHazards.Bind(cli, p => DataHazardPolicy = p);

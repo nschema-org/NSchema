@@ -17,9 +17,9 @@ internal static class ConfigurationFactory
         ApplyWorkingDirectory(args);
 
         var currentDirectory = Directory.GetCurrentDirectory();
-        var projectConfig = await ProjectConfigReader.Read(currentDirectory, environment, cancellationToken);
+        var projectConfiguration = await ProjectConfigurationReader.Read(currentDirectory, environment, cancellationToken);
         var config = new T();
-        config.Bind(projectConfig, args);
+        config.Bind(projectConfiguration, args);
         return config;
     }
 
@@ -33,7 +33,7 @@ internal static class ConfigurationFactory
     /// <summary>
     /// Sets the current directory based on <c>--directory</c> before anything is resolved.
     /// </summary>
-    private static void ApplyWorkingDirectory(ParseResult args)
+    internal static void ApplyWorkingDirectory(ParseResult args)
     {
         if (!CommonOptions.Directory.TryGetValue(args, out var directory))
         {

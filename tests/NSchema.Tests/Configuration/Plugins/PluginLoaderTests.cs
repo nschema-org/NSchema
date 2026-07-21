@@ -1,8 +1,7 @@
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Plan.Backends;
 using NSchema.Plugins;
-using NSchema.Plugins.Model;
-using NSchema.Plugins.Model.Config;
 
 namespace NSchema.Tests.Configuration.Plugins;
 
@@ -14,7 +13,8 @@ namespace NSchema.Tests.Configuration.Plugins;
 /// </summary>
 public sealed class PluginLoaderTests : IDisposable
 {
-    private const string Version = "5.0.0-alpha.2";
+    private static readonly PackageId Package = new("NSchema.Postgres");
+    private static readonly SemanticVersion Version = SemanticVersion.Parse("5.0.0-alpha.5");
 
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
 
@@ -33,16 +33,16 @@ public sealed class PluginLoaderTests : IDisposable
         var loader = new PluginLoader(_cacheRoot);
 
         // Act — restore + load + discover by capability (a plugin has no name of its own).
-        var plugin = loader.Load("NSchema.Postgres", Version)
+        var plugin = loader.Load(Package, Version)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
 
         // Act — drive the plugin (in its own ALC) against the host's builder
         var builder = NSchemaApplication.CreateBuilder();
-        var config = new PluginConfig(new PluginLabel("postgres"), new Dictionary<AttributeKey, ConfigValue>
+        var config = new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>
         {
-            [new AttributeKey("connection_string")] = ConfigValue.OfString("Host=localhost;Database=app"),
+            ["connection_string"] = "Host=localhost;Database=app",
         });
         var result = plugin.Configure(builder, config);
 
@@ -60,10 +60,10 @@ public sealed class PluginLoaderTests : IDisposable
         var loader = new PluginLoader(_cacheRoot);
 
         // Act — floats NSchema.Postgres within this CLI's NSchema.Core major and reads back the resolved version.
-        var version = loader.ResolveLatestVersion("NSchema.Postgres");
+        var version = loader.ResolveLatestVersion(Package);
 
         // Assert — a concrete 5.x version is pinned (the exact build floats as new ones publish).
-        version.ShouldStartWith("5.");
+        version.ToString().ShouldStartWith("5.");
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class PluginLoaderTests : IDisposable
         // Act — race the restore. Before the cross-process restore lock this collided inside `dotnet publish`
         // ("the process cannot access the file ... because it is being used by another process").
         Parallel.For(0, concurrency, i => loaded[i] = new PluginLoader(_cacheRoot)
-            .Load("NSchema.Postgres", Version)
+            .Load(Package, Version)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Any());
@@ -95,7 +95,7 @@ public sealed class PluginLoaderTests : IDisposable
 
         // Act — allowRestore: false (the --no-init path) must not reach the network; it fails fast as a diagnostic,
         // not an exception. No restore happens here, so this case needs neither the SDK nor network.
-        var result = loader.Load("NSchema.Postgres", Version, allowRestore: false);
+        var result = loader.Load(Package, Version, allowRestore: false);
 
         // Assert
         result.IsFailure.ShouldBeTrue();
@@ -107,10 +107,10 @@ public sealed class PluginLoaderTests : IDisposable
     {
         // Arrange — warm the cache with a normal (restoring) load.
         var loader = new PluginLoader(_cacheRoot);
-        loader.Load("NSchema.Postgres", Version).Require();
+        loader.Load(Package, Version).Require();
 
         // Act — a subsequent cache-only load (the --no-init path) succeeds without restoring.
-        var plugins = loader.Load("NSchema.Postgres", Version, allowRestore: false).Require();
+        var plugins = loader.Load(Package, Version, allowRestore: false).Require();
 
         // Assert
         plugins.OfType<INSchemaDatabasePlugin>().ShouldHaveSingleItem();

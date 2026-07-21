@@ -1,3 +1,4 @@
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Model;
 using NSchema.Model.Scripts;
@@ -190,12 +191,45 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportProjectPlugins_WritesATableOfPlugins()
     {
         // Act
-        _sut.ReportProjectPlugins([new ProjectPlugin("provider", "postgres", "NSchema.Postgres", "4.0.0", true, "/c")]);
+        _sut.ReportProjectPlugins([new ProjectPlugin("provider", "postgres", "NSchema.Postgres", SemanticVersion.Parse("4.0.0"), true, "/c")]);
 
         // Assert
         _out.Output.ShouldContain("postgres");
         _out.Output.ShouldContain("NSchema.Postgres");
         _out.Output.ShouldContain("4.0.0");
+    }
+
+    [Fact]
+    public void ReportOutdatedPlugins_Empty_WritesNoPluginsMessage()
+    {
+        // Act
+        _sut.ReportOutdatedPlugins([]);
+
+        // Assert
+        _out.Output.ShouldContain("No provider or backend plugins");
+    }
+
+    [Fact]
+    public void ReportOutdatedPlugins_WritesCurrentWantedLatestAndUpdateHint()
+    {
+        // Act
+        _sut.ReportOutdatedPlugins([new OutdatedPlugin("provider", "postgres", "NSchema.Postgres", SemanticVersion.Parse("5.0.0"), SemanticVersion.Parse("5.2.0"), SemanticVersion.Parse("5.2.0"), Outdated: true)]);
+
+        // Assert
+        _out.Output.ShouldContain("postgres");
+        _out.Output.ShouldContain("5.0.0");
+        _out.Output.ShouldContain("5.2.0");
+        _out.Output.ShouldContain("plugin update");
+    }
+
+    [Fact]
+    public void ReportOutdatedPlugins_AllCurrent_WritesUpToDate()
+    {
+        // Act
+        _sut.ReportOutdatedPlugins([new OutdatedPlugin("provider", "postgres", "NSchema.Postgres", SemanticVersion.Parse("5.2.0"), SemanticVersion.Parse("5.2.0"), SemanticVersion.Parse("5.2.0"), Outdated: false)]);
+
+        // Assert
+        _out.Output.ShouldContain("up to date");
     }
 
     [Fact]
@@ -213,7 +247,7 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportCachedPlugins_WritesPackageVersionAndHumanReadableSize()
     {
         // Act — 2 MiB renders as a compact binary size.
-        _sut.ReportCachedPlugins("/cache/root", [new CachedPlugin("NSchema.Postgres", "4.0.0", "/c", 2 * 1024 * 1024)]);
+        _sut.ReportCachedPlugins("/cache/root", [new CachedPlugin("NSchema.Postgres", SemanticVersion.Parse("4.0.0"), "/c", 2 * 1024 * 1024)]);
 
         // Assert
         _out.Output.ShouldContain("NSchema.Postgres");
@@ -225,7 +259,7 @@ public sealed class SpectreConsoleMessengerTests
     public void ReportPluginDetail_NotRestored_HintsToRunInit()
     {
         // Act
-        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", "4.0.0", false, null));
+        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", SemanticVersion.Parse("4.0.0"), false, null));
 
         // Assert
         _out.Output.ShouldContain("s3");

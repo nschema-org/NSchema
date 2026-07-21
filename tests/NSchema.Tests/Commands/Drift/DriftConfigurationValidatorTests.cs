@@ -13,8 +13,8 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = TestConfigs.Provider(),
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = TestConfigurations.Provider(),
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -30,8 +30,8 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = null,
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = null,
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -48,7 +48,7 @@ public sealed class DriftConfigurationValidatorTests
         // Arrange
         var config = new DriftConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
         };
 

@@ -13,14 +13,14 @@ internal sealed class StateShowConfiguration : IBindable
     /// <summary>
     /// The state store the recorded schema is read from (the configured backend).
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the output to specific database schemas (namespaces).
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         State = project.State;
         StateShowOptions.Scope.Bind(cli, s => Scope = s);

@@ -147,9 +147,9 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         {
             table.AddRow(
                 new Markup(Markup.Escape(plugin.Role)),
-                new Markup(Markup.Escape(plugin.Label)),
-                new Markup(Markup.Escape(plugin.PackageId)),
-                new Markup(Markup.Escape(plugin.Version)),
+                new Markup(Markup.Escape(plugin.Label.Value)),
+                new Markup(Markup.Escape(plugin.PackageId.Value)),
+                new Markup(Markup.Escape(plugin.Version.ToString())),
                 new Markup(RestoredLabel(plugin.Restored)));
         }
 
@@ -191,13 +191,49 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         foreach (var plugin in plugins)
         {
             table.AddRow(
-                Markup.Escape(plugin.PackageId),
-                Markup.Escape(plugin.Version),
+                Markup.Escape(plugin.PackageId.Value),
+                Markup.Escape(plugin.Version.ToString()),
                 Markup.Escape(FormatSize(plugin.SizeBytes)));
         }
 
         _out.Write(table);
         Detail($"{plugins.Count} cached, {FormatSize(plugins.Sum(p => p.SizeBytes))} total. Remove with: nschema plugin cache remove <package> [version]");
+    }
+
+    public void ReportOutdatedPlugins(IReadOnlyList<OutdatedPlugin> plugins)
+    {
+        if (plugins.Count == 0)
+        {
+            _out.MarkupLine("[grey]No provider or backend plugins are configured for this project.[/]");
+            return;
+        }
+
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Role")
+            .AddColumn("Plugin")
+            .AddColumn("Package")
+            .AddColumn("Current")
+            .AddColumn("Wanted")
+            .AddColumn("Latest");
+
+        foreach (var plugin in plugins)
+        {
+            table.AddRow(
+                new Markup(Markup.Escape(plugin.Role)),
+                new Markup(Markup.Escape(plugin.Label.Value)),
+                new Markup(Markup.Escape(plugin.PackageId.Value)),
+                new Markup(Markup.Escape(plugin.Current.ToString())),
+                new Markup(Markup.Escape(plugin.Wanted.ToString())),
+                new Markup(plugin.Outdated ? $"[yellow]{Markup.Escape(plugin.Latest.ToString())}[/]" : $"[green]{Markup.Escape(plugin.Latest.ToString())}[/]"));
+        }
+
+        _out.Write(table);
+
+        var outdated = plugins.Count(plugin => plugin.Outdated);
+        Detail(outdated == 0
+            ? (ConsoleMessage)$"All plugins are up to date."
+            : $"{outdated} outdated. Widen the range or run: nschema plugin update");
     }
 
     private static string RestoredLabel(bool restored) => restored ? "[green]yes[/]" : "[yellow]no[/]";

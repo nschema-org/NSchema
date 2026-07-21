@@ -7,7 +7,7 @@ public sealed class DbShowConfigurationValidatorTests
 {
     private readonly DbShowConfigurationValidator _sut = new();
 
-    private static PluginReference Postgres() => TestConfigs.Provider();
+    private static PluginReference Postgres() => TestConfigurations.Provider();
 
     [Fact]
     public void Valid_WithProvider()

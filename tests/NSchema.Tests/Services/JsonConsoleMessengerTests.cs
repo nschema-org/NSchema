@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Model;
 using NSchema.Model.Scripts;
@@ -134,7 +135,7 @@ public sealed class JsonConsoleMessengerTests
         // Arrange
         var plugins = new[]
         {
-            new ProjectPlugin("provider", "postgres", "NSchema.Postgres", "4.0.0", Restored: true, CachePath: "/c"),
+            new ProjectPlugin("provider", "postgres", "NSchema.Postgres", SemanticVersion.Parse("4.0.0"), Restored: true, CachePath: "/c"),
         };
 
         // Act
@@ -152,7 +153,7 @@ public sealed class JsonConsoleMessengerTests
     public void ReportCachedPlugins_EmitsRootAndPluginsArray()
     {
         // Arrange
-        var cached = new[] { new CachedPlugin("NSchema.Postgres", "4.0.0", "/c", 2048) };
+        var cached = new[] { new CachedPlugin("NSchema.Postgres", SemanticVersion.Parse("4.0.0"), "/c", 2048) };
 
         // Act
         _sut.ReportCachedPlugins("/root", cached);
@@ -167,7 +168,7 @@ public sealed class JsonConsoleMessengerTests
     public void ReportPluginDetail_EmitsSingleObject_OmittingNullCachePath()
     {
         // Act
-        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", "4.0.0", Restored: false, CachePath: null));
+        _sut.ReportPluginDetail(new ProjectPlugin("backend", "s3", "NSchema.Aws", SemanticVersion.Parse("4.0.0"), Restored: false, CachePath: null));
 
         // Assert
         var evt = StdoutEvents().ShouldHaveSingleItem();
@@ -194,5 +195,26 @@ public sealed class JsonConsoleMessengerTests
         _sut.ReportDiagnostics([]);
 
         _out.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReportOutdatedPlugins_EmitsArrayWithCurrentWantedLatest()
+    {
+        // Arrange
+        var plugins = new[]
+        {
+            new OutdatedPlugin("provider", "postgres", "NSchema.Postgres", SemanticVersion.Parse("5.0.0"), SemanticVersion.Parse("5.2.0"), SemanticVersion.Parse("5.2.0"), Outdated: true),
+        };
+
+        // Act
+        _sut.ReportOutdatedPlugins(plugins);
+
+        // Assert — a single clean array (a structured query result, not the NDJSON log stream).
+        var array = StdoutEvents().ShouldHaveSingleItem();
+        array.ValueKind.ShouldBe(JsonValueKind.Array);
+        array[0].GetProperty("current").GetString().ShouldBe("5.0.0");
+        array[0].GetProperty("wanted").GetString().ShouldBe("5.2.0");
+        array[0].GetProperty("latest").GetString().ShouldBe("5.2.0");
+        array[0].GetProperty("outdated").GetBoolean().ShouldBeTrue();
     }
 }

@@ -13,8 +13,8 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange
         var config = new DoctorConfiguration
         {
-            Provider = TestConfigs.Provider(),
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = TestConfigurations.Provider(),
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -30,7 +30,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — doctor can check just the database when no state store is declared.
         var config = new DoctorConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
         };
 
@@ -47,8 +47,8 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — doctor can check just the state store when no provider is declared (offline project).
         var config = new DoctorConfiguration
         {
-            Provider = null,
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = null,
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -64,7 +64,7 @@ public sealed class DoctorConfigurationValidatorTests
         // Arrange — neither a provider nor a state store means there is nothing for doctor to probe.
         var config = new DoctorConfiguration
         {
-            Provider = null,
+            Database = null,
             State = null,
         };
 

@@ -14,12 +14,12 @@ internal sealed class RefreshConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store the live schema is written to.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Whether to refresh without acquiring the state lock.
@@ -31,9 +31,9 @@ internal sealed class RefreshConfiguration : IBindable
     /// </summary>
     public bool Force { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
         RefreshOptions.NoLock.Bind(cli, n => NoLock = n);
         RefreshOptions.Force.Bind(cli, f => Force = f);

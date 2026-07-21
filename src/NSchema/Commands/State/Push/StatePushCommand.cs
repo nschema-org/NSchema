@@ -39,7 +39,7 @@ internal static class StatePushCommand
         var payload = await File.ReadAllBytesAsync(file, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Pushing state from {file}. The recorded state will be replaced.");

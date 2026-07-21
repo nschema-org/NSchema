@@ -70,6 +70,11 @@ internal interface IConsoleMessenger
     void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins);
 
     /// <summary>
+    /// Reports each project plugin's pinned, range-wanted, and latest available versions.
+    /// </summary>
+    void ReportOutdatedPlugins(IReadOnlyList<OutdatedPlugin> plugins);
+
+    /// <summary>
     /// Reports an error. Receives the original <see cref="Exception"/> so the messenger can present it however suits its format.
     /// </summary>
     void ReportException(Exception exception);

@@ -29,8 +29,8 @@ internal static class RefreshCommand
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureState(configuration.State)
+            .ConfigureDatabase(configuration.Database)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

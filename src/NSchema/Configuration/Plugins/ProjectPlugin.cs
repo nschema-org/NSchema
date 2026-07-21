@@ -1,3 +1,5 @@
+using NSchema.Configuration.Model;
+
 namespace NSchema.Configuration.Plugins;
 
 /// <summary>
@@ -6,9 +8,9 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 internal sealed record ProjectPlugin(
     string Role,
-    string Label,
-    string PackageId,
-    string Version,
+    PluginLabel Label,
+    PackageId PackageId,
+    SemanticVersion Version,
     bool Restored,
     string? CachePath
 );

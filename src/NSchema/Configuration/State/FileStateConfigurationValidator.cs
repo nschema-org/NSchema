@@ -2,9 +2,9 @@ using FluentValidation;
 
 namespace NSchema.Configuration.State;
 
-internal sealed class FileStateConfigValidator : AbstractValidator<FileStateConfig>
+internal sealed class FileStateConfigurationValidator : AbstractValidator<FileStateConfiguration>
 {
-    public FileStateConfigValidator()
+    public FileStateConfigurationValidator()
     {
         RuleFor(x => x.Path)
             .NotEmpty()

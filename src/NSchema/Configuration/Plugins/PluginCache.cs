@@ -1,3 +1,5 @@
+using NSchema.Configuration.Model;
+
 namespace NSchema.Configuration.Plugins;
 
 /// <summary>
@@ -5,8 +7,7 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 internal sealed class PluginCache(string? root = null)
 {
-    // ResolveLatestVersion floats a restore into this subdirectory of a package's folder. It is not a real pinned
-    // version, so listings skip it.
+    // A leftover scratch dir some earlier resolutions floated into; it is not a real pinned version, so listings skip it.
     internal const string ResolveDirectoryName = "_resolve";
 
     private const string PublishDirectoryName = "publish";
@@ -23,39 +24,31 @@ internal sealed class PluginCache(string? root = null)
     /// </summary>
     public string Root { get; } = root ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nschema", "plugins");
 
-    public string VersionDirectory(string packageId, string version) => Path.Combine(Root, packageId, version);
+    public string VersionDirectory(PackageId packageId, SemanticVersion version) => Path.Combine(Root, packageId.Value, version.ToString());
 
-    public string PublishDirectory(string packageId, string version) =>
+    public string PublishDirectory(PackageId packageId, SemanticVersion version) =>
         Path.Combine(VersionDirectory(packageId, version), PublishDirectoryName);
 
-    public string ProjectDirectory(string packageId, string version) =>
+    public string ProjectDirectory(PackageId packageId, SemanticVersion version) =>
         Path.Combine(VersionDirectory(packageId, version), ProjectDirectoryName);
 
-    public string StagingDirectory(string packageId, string version) =>
+    public string StagingDirectory(PackageId packageId, SemanticVersion version) =>
         Path.Combine(VersionDirectory(packageId, version), StagingDirectoryName);
-
-    public string ResolveDirectory(string packageId) => Path.Combine(Root, packageId, ResolveDirectoryName);
 
     /// <summary>
     /// The lock file serializing a given version's restore. Its parent (the version directory) must exist first.
     /// </summary>
-    public string LockFile(string packageId, string version) =>
+    public string LockFile(PackageId packageId, SemanticVersion version) =>
         Path.Combine(VersionDirectory(packageId, version), LockFileName);
 
-    /// <summary>
-    /// The lock file serializing latest-version resolution for a package. Its parent (the resolve directory) must
-    /// exist first.
-    /// </summary>
-    public string ResolveLockFile(string packageId) => Path.Combine(ResolveDirectory(packageId), LockFileName);
-
     // A plugin counts as restored once its own assembly sits in the publish closure — the same probe the loader makes.
-    public string PluginAssembly(string packageId, string version) =>
-        Path.Combine(PublishDirectory(packageId, version), packageId + ".dll");
+    public string PluginAssembly(PackageId packageId, SemanticVersion version) =>
+        Path.Combine(PublishDirectory(packageId, version), packageId.Value + ".dll");
 
     /// <summary>
     /// Whether the given package version has been restored into the cache.
     /// </summary>
-    public bool Contains(string packageId, string version) => File.Exists(PluginAssembly(packageId, version));
+    public bool Contains(PackageId packageId, SemanticVersion version) => File.Exists(PluginAssembly(packageId, version));
 
     /// <summary>
     /// Enumerates the restored plugins in the cache, ordered by package then version.
@@ -70,13 +63,22 @@ internal sealed class PluginCache(string? root = null)
         var cached = new List<CachedPlugin>();
         foreach (var packageDir in Directory.EnumerateDirectories(Root))
         {
-            var packageId = Path.GetFileName(packageDir);
+            var packageName = Path.GetFileName(packageDir);
+            if (!PackageId.IsValid(packageName))
+            {
+                continue;
+            }
+
+            var packageId = new PackageId(packageName);
             foreach (var versionDir in Directory.EnumerateDirectories(packageDir))
             {
-                var version = Path.GetFileName(versionDir);
+                var versionName = Path.GetFileName(versionDir);
 
-                // Skip the _resolve scratch dir and any half-finished restore that never produced the plugin assembly.
-                if (version == ResolveDirectoryName || !File.Exists(Path.Combine(versionDir, PublishDirectoryName, packageId + ".dll")))
+                // Skip the _resolve scratch dir, any dir that isn't a version, and any half-finished restore that
+                // never produced the plugin assembly.
+                if (versionName == ResolveDirectoryName
+                    || !SemanticVersion.TryParse(versionName, out var version)
+                    || !File.Exists(Path.Combine(versionDir, PublishDirectoryName, packageName + ".dll")))
                 {
                     continue;
                 }
@@ -86,8 +88,8 @@ internal sealed class PluginCache(string? root = null)
         }
 
         return cached
-            .OrderBy(p => p.PackageId, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(p => p.Version, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p.PackageId.Value, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(p => p.Version)
             .ToList();
     }
 
@@ -95,11 +97,10 @@ internal sealed class PluginCache(string? root = null)
     /// Removes a package from the cache: a single <paramref name="version"/>, or every restored version when it is
     /// <see langword="null"/>. Returns the entries removed (empty when nothing matched).
     /// </summary>
-    public IReadOnlyList<CachedPlugin> Remove(string packageId, string? version)
+    public IReadOnlyList<CachedPlugin> Remove(PackageId packageId, SemanticVersion? version)
     {
         var removed = List()
-            .Where(p => p.PackageId.Equals(packageId, StringComparison.OrdinalIgnoreCase)
-                        && (version is null || p.Version.Equals(version, StringComparison.OrdinalIgnoreCase)))
+            .Where(p => p.PackageId == packageId && (version is null || p.Version == version))
             .ToList();
 
         foreach (var entry in removed)
@@ -109,9 +110,8 @@ internal sealed class PluginCache(string? root = null)
 
         // Once no restored versions remain, drop the whole package folder so leftovers (the _resolve scratch dir, a
         // half-finished restore) don't linger and the cache listing stays clean.
-        var packageDir = Path.Combine(Root, packageId);
-        if (Directory.Exists(packageDir)
-            && !List().Any(p => p.PackageId.Equals(packageId, StringComparison.OrdinalIgnoreCase)))
+        var packageDir = Path.Combine(Root, packageId.Value);
+        if (Directory.Exists(packageDir) && List().All(p => p.PackageId != packageId))
         {
             Directory.Delete(packageDir, recursive: true);
         }

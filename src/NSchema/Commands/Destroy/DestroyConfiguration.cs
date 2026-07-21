@@ -14,12 +14,12 @@ internal sealed class DestroyConfiguration : IBindable
     /// <summary>
     /// The database provider the teardown is generated and executed against.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store the managed schema is read from and the post-destroy snapshot is written to.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Whether to skip the interactive confirmation prompt before tearing down the schema.
@@ -37,9 +37,9 @@ internal sealed class DestroyConfiguration : IBindable
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
     public bool Ephemeral { get; internal set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
         DestroyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         DestroyOptions.NoLock.Bind(cli, n => NoLock = n);

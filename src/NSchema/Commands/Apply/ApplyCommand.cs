@@ -37,7 +37,7 @@ internal static class ApplyCommand
         // saved plan too. Replaying a saved plan runs exactly the SQL captured at plan time, so the desired schema
         // is not consulted again — the *.sql files needn't even be present. A fresh apply computes the plan now.
         var builder = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Database)
             .ConfigureState(configuration.State, configuration.Ephemeral)
             .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy);
 

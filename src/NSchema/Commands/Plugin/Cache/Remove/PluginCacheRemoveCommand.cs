@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Services.Reporting;
 
@@ -34,7 +35,17 @@ internal static class PluginCacheRemoveCommand
         var version = parseResult.GetValue(VersionArgument);
 
         var messenger = ReporterFactory.CreateMessenger(parseResult);
-        var removed = new PluginCache().Remove(package, version);
+
+        // A malformed id or version can't match a cached entry (every cache dir is a valid id/version), so treat it
+        // as a miss and fall through to the "nothing removed" reporting below rather than throwing.
+        SemanticVersion? parsedVersion = null;
+        var matchable = PackageId.IsValid(package) && (version is null || SemanticVersion.TryParse(version, out parsedVersion));
+
+        IReadOnlyList<CachedPlugin> removed = [];
+        if (matchable)
+        {
+            removed = new PluginCache().Remove(new PackageId(package), parsedVersion);
+        }
 
         if (removed.Count == 0)
         {

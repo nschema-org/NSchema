@@ -20,9 +20,9 @@ internal sealed class DbShowConfiguration : IBindable
     /// </summary>
     public string[]? Scope { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Provider = project.Database;
         DbShowOptions.Scope.Bind(cli, s => Scope = s);
     }
 }

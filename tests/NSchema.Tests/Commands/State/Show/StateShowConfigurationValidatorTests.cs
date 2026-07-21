@@ -13,7 +13,7 @@ public sealed class StateShowConfigurationValidatorTests
         // Arrange — without a file, the recorded state comes from the configured store.
         var config = new StateShowConfiguration
         {
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act

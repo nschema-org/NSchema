@@ -14,12 +14,12 @@ internal sealed class ApplyConfiguration : IBindable
     /// <summary>
     /// The database provider the plan is applied against.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store the post-apply snapshot is written to; offline when no section is populated.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the migration to specific database schemas (namespaces).
@@ -57,9 +57,9 @@ internal sealed class ApplyConfiguration : IBindable
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
     public bool Ephemeral { get; internal set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
         ApplyOptions.Destructive.Bind(cli, p => DestructiveActionPolicy = p);
         ApplyOptions.DataHazards.Bind(cli, p => DataHazardPolicy = p);

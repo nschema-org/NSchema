@@ -38,7 +38,7 @@ internal static class PlanCommand
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDesiredSchema()
             .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Database)
             .ConfigureState(configuration.State, configuration.Ephemeral)
             .Build();
 
@@ -54,7 +54,7 @@ internal static class PlanCommand
         // teardown's guard is destroy's confirmation prompt, not the policy.
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigurePolicies(PolicyEnforcement.Allow, configuration.DataHazardPolicy)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Database)
             .ConfigureState(configuration.State, configuration.Ephemeral)
             .Build();
 

@@ -43,7 +43,7 @@ internal static class StateShowCommand
         var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 
@@ -57,7 +57,7 @@ internal static class StateShowCommand
         StateShowOptions.Scope.TryGetValue(parseResult, out var scope);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(new StateConfig { File = new FileStateConfig { Path = file } })
+            .ConfigureState(new StateConfiguration { File = new FileStateConfiguration { Path = file } })
             .Build();
 
         app.Messenger.Announce($"Showing state file {file}.");

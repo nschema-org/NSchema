@@ -17,14 +17,15 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void PluginGroup_RegistersListShowAndCache()
+    public void PluginGroup_RegistersInspectionUpdateAndCache()
     {
-        // Act — the plugin noun groups project-plugin inspection (list/show) and the cache sub-noun.
+        // Act — the plugin noun groups project-plugin inspection (list/show/outdated), lock maintenance (update),
+        // and the cache sub-noun.
         var pluginCommand = _sut.Subcommands.Single(command => command.Name == "plugin");
         var names = pluginCommand.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["list", "show", "cache"], ignoreOrder: true);
+        names.ShouldBe(["list", "show", "update", "outdated", "cache"], ignoreOrder: true);
     }
 
     [Fact]
@@ -43,6 +44,18 @@ public sealed class RootCommandTests
     public void PluginCacheClear_TakesNoArguments()
         // clear wipes the whole cache; the destructive "all" is its own named verb, not a bare `remove`.
         => _sut.Parse(["plugin", "cache", "clear"]).Errors.ShouldBeEmpty();
+
+    [Fact]
+    public void PluginUpdate_TakesAnOptionalLabel()
+    {
+        // A bare update refreshes every range; a named update targets one plugin.
+        _sut.Parse(["plugin", "update"]).Errors.ShouldBeEmpty();
+        _sut.Parse(["plugin", "update", "postgres"]).Errors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void PluginOutdated_TakesNoArguments()
+        => _sut.Parse(["plugin", "outdated"]).Errors.ShouldBeEmpty();
 
     [Fact]
     public void PluginShow_RequiresALabel()
@@ -124,12 +137,12 @@ public sealed class RootCommandTests
     [InlineData("state show")]
     [InlineData("db show")]
     [InlineData("drift")]
-    public void ProviderAndStateOptions_AreNotCliFlags(string command)
+    public void DatabaseAndStateOptions_AreNotCliFlags(string command)
     {
         // The live database (PROVIDER block) and state store (BACKEND block) are defined in the project's .sql config
         // blocks — with the connection string overridable via NSCHEMA_POSTGRES_CONNECTION_STRING — so these are
         // rejected as unknown flags.
-        var result = _sut.Parse([.. command.Split(' '), "--provider", "postgres", "--connection-string", "x", "--state-file", "s"]);
+        var result = _sut.Parse([.. command.Split(' '), "--database", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
         result.Errors.ShouldNotBeEmpty();

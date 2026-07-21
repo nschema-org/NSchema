@@ -36,7 +36,7 @@ internal static class StatePullCommand
         var file = parseResult.GetValue(FileArgument);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
 
         // Without a file the payload itself is the output, so narration is suppressed to keep

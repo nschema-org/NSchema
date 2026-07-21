@@ -27,7 +27,7 @@ internal static class ScriptListCommand
         var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

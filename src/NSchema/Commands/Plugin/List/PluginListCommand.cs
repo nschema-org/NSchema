@@ -20,7 +20,7 @@ internal static class PluginListCommand
         var configuration = await ConfigurationFactory.Load<PluginListConfiguration>(parseResult, environment, cancellationToken);
 
         var messenger = ReporterFactory.CreateMessenger(parseResult);
-        var plugins = PluginInventory.ForProject(configuration.Provider, configuration.State, new PluginCache());
+        var plugins = PluginInventory.ForProject(configuration.Database, configuration.State, new PluginCache());
         messenger.ReportProjectPlugins(plugins);
     }
 }

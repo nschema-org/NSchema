@@ -37,7 +37,7 @@ internal static class ScriptTaintCommand
         var name = parseResult.GetValue(NameArgument)!;
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

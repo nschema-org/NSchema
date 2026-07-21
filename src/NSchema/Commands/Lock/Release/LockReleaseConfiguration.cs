@@ -13,7 +13,7 @@ internal sealed class LockReleaseConfiguration : IBindable
     /// <summary>
     /// The state store whose lock is released. Releasing only touches the lock and never contacts the live database.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// The id of the lock to release. Required unless <see cref="Force"/> is set.
@@ -30,7 +30,7 @@ internal sealed class LockReleaseConfiguration : IBindable
     /// </summary>
     public bool AutoApprove { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         State = project.State;
         LockId = cli.GetValue(LockReleaseCommand.LockIdArgument);

@@ -11,6 +11,6 @@ internal sealed class StateShowConfigurationValidator : AbstractValidator<StateS
         RuleFor(x => x.State)
             .NotNull()
             .WithMessage("A state store is required to show the recorded state. Add a BACKEND file or BACKEND s3 block to a .sql file, or pass a state file path to show it directly.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

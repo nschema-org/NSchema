@@ -13,9 +13,9 @@ internal sealed class ScriptListConfiguration : IBindable
     /// <summary>
     /// The state store the execution ledger is read from (the configured backend).
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         State = project.State;
     }

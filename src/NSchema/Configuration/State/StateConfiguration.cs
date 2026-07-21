@@ -1,20 +1,19 @@
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
-using NSchema.Plugins.Model;
-using NSchema.Plugins.Model.Config;
 
 namespace NSchema.Configuration.State;
 
 /// <summary>
 /// Configures a backend store used to keep state snapshots.
 /// </summary>
-internal sealed class StateConfig
+internal sealed class StateConfiguration
 {
     private static readonly PluginLabel _fileLabel = new("file");
 
     /// <summary>
     /// Local-file state store settings (built in; needs no plugin).
     /// </summary>
-    public FileStateConfig? File { get; set; }
+    public FileStateConfiguration? File { get; set; }
 
     /// <summary>
     /// The resolved state-store plugin reference; <see langword="null"/> for the built-in file store.
@@ -26,8 +25,9 @@ internal sealed class StateConfig
     /// </summary>
     /// <param name="config">The statement's translated settings.</param>
     /// <param name="plugins">The project's <c>PLUGIN</c> declarations.</param>
-    public static StateConfig Resolve(PluginConfig config, IReadOnlyList<PluginDeclaration> plugins) =>
+    /// <param name="resolve">Resolves a declared range to a concrete version.</param>
+    public static StateConfiguration Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, SemanticVersion> resolve) =>
         config.Label == _fileLabel
-            ? new StateConfig { File = FileStateConfig.FromConfig(config) }
-            : new StateConfig { Plugin = PluginReference.Resolve(config, plugins) };
+            ? new StateConfiguration { File = FileStateConfiguration.FromSettings(config) }
+            : new StateConfiguration { Plugin = PluginReference.Resolve(config, plugins, resolve) };
 }

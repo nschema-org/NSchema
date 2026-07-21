@@ -13,22 +13,22 @@ internal sealed class PluginShowConfiguration : IBindable
 {
     /// <summary>
     /// The provider plugin; <see langword="null"/> when none is configured.</summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state backend; only its plugin (if any) is a plugin — the file store is built in.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// The label of the plugin to show (e.g. <c>postgres</c>, <c>s3</c>).
     /// </summary>
     public string? Label { get; set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
-        Label = cli.GetValue(PluginShowCommand.LabelArgument);
+        Label = cli.GetValue(PluginShowCommand._labelArgument);
     }
 }

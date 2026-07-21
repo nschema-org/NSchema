@@ -3,7 +3,7 @@ namespace NSchema.Commands.Scaffold;
 /// <summary>
 /// The state backend a scaffolded project is configured for.
 /// </summary>
-internal enum BackendKind
+internal enum StateKind
 {
     /// <summary>
     /// A local state file.
