@@ -117,7 +117,7 @@ public sealed class CliApplicationBuilderTests
         try
         {
             // Arrange — a postgres DATABASE statement missing the required connection_string.
-            var reference = new PluginReference("NSchema.Postgres", "5.0.0-alpha.1", "[5.0.0-alpha.1]", "postgres",
+            var reference = new PluginReference("NSchema.Postgres", "5.0.0-alpha.2", "[5.0.0-alpha.2]", "postgres",
                 new PluginConfig(new PluginLabel("postgres"), new Dictionary<AttributeKey, ConfigValue>()));
 
             // Act

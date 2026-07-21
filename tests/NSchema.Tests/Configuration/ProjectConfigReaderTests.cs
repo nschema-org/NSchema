@@ -66,12 +66,12 @@ public sealed class ProjectConfigReaderTests : IDisposable
     {
         var config = await Read(
             """
-            PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0-alpha.1' );
+            PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0-alpha.2' );
             DATABASE postgres ( connection_string = 'x' );
             """);
 
-        config.Provider!.Version.ShouldBe("5.0.0-alpha.1");
-        config.Provider!.RestoreVersion.ShouldBe("[5.0.0-alpha.1]");
+        config.Provider!.Version.ShouldBe("5.0.0-alpha.2");
+        config.Provider!.RestoreVersion.ShouldBe("[5.0.0-alpha.2]");
     }
 
     [Fact]

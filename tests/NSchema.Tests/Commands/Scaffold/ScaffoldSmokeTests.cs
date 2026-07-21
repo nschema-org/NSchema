@@ -19,7 +19,7 @@ namespace NSchema.Tests.Commands.Scaffold;
 /// </summary>
 public sealed class ScaffoldSmokeTests : IDisposable
 {
-    private const string Version = "5.0.0-alpha.1";
+    private const string Version = "5.0.0-alpha.2";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-scaffold-smoke-").FullName;
 
