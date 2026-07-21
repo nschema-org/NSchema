@@ -32,7 +32,7 @@ public sealed class DoctorCommandTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), """
             PLUGIN postgres (
               source  = 'NSchema.Postgres',
-              version = '5.0.0-alpha.1'
+              version = '5.0.0-alpha.2'
             );
 
             DATABASE postgres ();

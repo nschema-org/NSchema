@@ -31,14 +31,14 @@ public sealed class PluginReferenceTests
     public void Resolve_ExactPin_UsesIntervalNotationForRestore()
     {
         // Arrange — an exact pin restores as "[x.y.z]" so NuGet treats it as exact, not a minimum.
-        var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "5.0.0-alpha.1") };
+        var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "5.0.0-alpha.2") };
 
         // Act
         var reference = PluginReference.Resolve(Config("postgres"), plugins);
 
         // Assert
-        reference.Version.ShouldBe("5.0.0-alpha.1");
-        reference.RestoreVersion.ShouldBe("[5.0.0-alpha.1]");
+        reference.Version.ShouldBe("5.0.0-alpha.2");
+        reference.RestoreVersion.ShouldBe("[5.0.0-alpha.2]");
     }
 
     [Fact]

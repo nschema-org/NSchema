@@ -14,7 +14,7 @@ namespace NSchema.Tests.Commands;
 /// </summary>
 public sealed class EphemeralEndToEndTests : IDisposable
 {
-    private const string Version = "5.0.0-alpha.1";
+    private const string Version = "5.0.0-alpha.2";
 
     private readonly string _projectDirectory = Directory.CreateTempSubdirectory("nschema-ephemeral-").FullName;
     private readonly string _originalDirectory = Directory.GetCurrentDirectory();
