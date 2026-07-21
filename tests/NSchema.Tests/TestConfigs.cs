@@ -1,6 +1,7 @@
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
-using NSchema.Plugins;
+using NSchema.Plugins.Model;
+using NSchema.Plugins.Model.Config;
 
 namespace NSchema.Tests;
 

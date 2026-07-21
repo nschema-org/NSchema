@@ -1,7 +1,8 @@
 using NSchema.Configuration.Plugins;
-using NSchema.Extensions;
 using NSchema.Plan.Backends;
 using NSchema.Plugins;
+using NSchema.Plugins.Model;
+using NSchema.Plugins.Model.Config;
 
 namespace NSchema.Tests.Configuration.Plugins;
 

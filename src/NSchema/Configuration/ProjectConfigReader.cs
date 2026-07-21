@@ -1,4 +1,5 @@
 using NSchema.Config;
+using NSchema.Plugins.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Project.Nsql;

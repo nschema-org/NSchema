@@ -4,7 +4,8 @@ using NSchema.Commands;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Plan.Policies;
-using NSchema.Plugins;
+using NSchema.Plugins.Model;
+using NSchema.Plugins.Model.Config;
 using NSchema.Services.Reporting;
 using NSchema.State.Backends;
 

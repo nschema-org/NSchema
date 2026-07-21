@@ -1,7 +1,6 @@
 using NSchema.Commands.Scaffold;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Extensions;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Tables;

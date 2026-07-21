@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration.Plugins;
-using NSchema.Extensions;
 using NSchema.Plugins;
 
 namespace NSchema.Tests.Commands;
