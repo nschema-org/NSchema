@@ -54,6 +54,7 @@ internal static class ScaffoldCommand
         var created = await ProjectScaffolder.Scaffold(
             Directory.GetCurrentDirectory(),
             configuration.Force,
+            EngineRequirement(),
             plugins,
             providerBlock,
             sampleSchema,
@@ -79,6 +80,13 @@ internal static class ScaffoldCommand
         {
             app.Messenger.Announce($"Set {ConnectionStringEnvVar(configuration.Provider)}, then run {"nschema plan"}.");
         }
+    }
+
+    // The engine is compiled into the CLI, so a project scaffolded now requires this CLI's engine major: [X.0, X+1.0).
+    private static string EngineRequirement()
+    {
+        var version = typeof(NSchemaApplication).Assembly.GetName().Version!;
+        return $"[{version.Major}.0,{version.Major + 1}.0)";
     }
 
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.

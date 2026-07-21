@@ -16,9 +16,9 @@ internal static class ProjectScaffolder
 
     private const string ConfigHeader =
         """
-        -- NSchema project configuration. These statements declare the plugins the
-        -- project depends on, which database to connect to, and where to keep state.
-        -- The .env. marker makes a file configuration: *.env.sql loads for every
+        -- NSchema project configuration. These statements declare the engine version the
+        -- project needs, the plugins it depends on, which database to connect to, and where
+        -- to keep state. The .env. marker makes a file configuration: *.env.sql loads for every
         -- environment, *.env.<name>.sql only for that one. Every other .sql file is schema DDL.
         """;
 
@@ -50,6 +50,7 @@ internal static class ProjectScaffolder
     /// </summary>
     /// <param name="directory">The directory to scaffold into.</param>
     /// <param name="force">Force the scaffolding even if the directory is not empty.</param>
+    /// <param name="engineRequirement">The version range the scaffolded <c>ENGINE</c> statement asserts (e.g. <c>[5.0,6.0)</c>).</param>
     /// <param name="plugins">The <c>PLUGIN</c> declarations to author: each plugin's label, package id, and pinned version.</param>
     /// <param name="providerBlock">The provider's <c>DATABASE</c> statement, rendered by the database plugin.</param>
     /// <param name="sampleSchema">The provider's dialect-specific sample schema.</param>
@@ -62,6 +63,7 @@ internal static class ProjectScaffolder
     public static async Task<IReadOnlyList<string>> Scaffold(
         string directory,
         bool force,
+        string engineRequirement,
         IReadOnlyList<(string Label, string PackageId, string Version)> plugins,
         string providerBlock,
         string sampleSchema,
@@ -77,7 +79,7 @@ internal static class ProjectScaffolder
         var overlayBackendBlock = pluginBackend?.Overlay ?? FileBackendOverlayBlock;
 
         var configPath = Path.Combine(directory, ConfigFileName);
-        await File.WriteAllTextAsync(configPath, Compose(ConfigHeader, [PluginDeclarations(plugins), providerBlock, backendBlock]), cancellationToken);
+        await File.WriteAllTextAsync(configPath, Compose(ConfigHeader, [EngineDeclaration(engineRequirement), PluginDeclarations(plugins), providerBlock, backendBlock]), cancellationToken);
 
         var overlayPath = Path.Combine(directory, EnvironmentOverlayFileName);
         await File.WriteAllTextAsync(overlayPath, Compose(OverlayHeader, [overlayBackendBlock]), cancellationToken);
@@ -89,6 +91,11 @@ internal static class ProjectScaffolder
 
         return [ConfigFileName, EnvironmentOverlayFileName, sampleRelativePath];
     }
+
+    // The host authors the ENGINE assertion: the engine is compiled into the CLI, so it knows the version range a
+    // project scaffolded now requires.
+    private static string EngineDeclaration(string engineRequirement) =>
+        $"ENGINE (\n  version = '{engineRequirement}'\n);";
 
     // The host authors the PLUGIN statements: it resolved the packages, so it knows the pins.
     private static string PluginDeclarations(IReadOnlyList<(string Label, string PackageId, string Version)> plugins) =>

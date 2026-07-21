@@ -37,7 +37,7 @@ public sealed class ScaffoldSmokeTests : IDisposable
         var sampleSchema = plugin.GetSampleSchema();
 
         // Act — compose the project (file state store, like the default `nschema scaffold`).
-        await ProjectScaffolder.Scaffold(_directory, force: false, [("postgres", "NSchema.Postgres", Version)],
+        await ProjectScaffolder.Scaffold(_directory, force: false, "[5.0,6.0)", [("postgres", "NSchema.Postgres", Version)],
             providerBlock, sampleSchema, pluginBackend: null, TestContext.Current.CancellationToken);
 
         // Assert — the generated config round-trips, pinning the resolved version.

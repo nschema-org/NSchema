@@ -54,11 +54,14 @@ public sealed class ProjectScaffolderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
+    // A range covering the running engine major, so the generated config round-trips through the reader's validation.
+    private const string EngineRequirement = "[5.0,6.0)";
+
     private Task<IReadOnlyList<string>> Scaffold(
         bool force = false,
         (string Base, string Overlay)? pluginBackend = null,
         IReadOnlyList<(string Label, string PackageId, string Version)>? plugins = null) =>
-        ProjectScaffolder.Scaffold(_directory, force, plugins ?? Plugins, ProviderBlock, SampleSchema, pluginBackend, TestContext.Current.CancellationToken);
+        ProjectScaffolder.Scaffold(_directory, force, EngineRequirement, plugins ?? Plugins, ProviderBlock, SampleSchema, pluginBackend, TestContext.Current.CancellationToken);
 
     private Task<string> ReadAsync(string relativePath) =>
         File.ReadAllTextAsync(Path.Combine(_directory, relativePath), TestContext.Current.CancellationToken);
@@ -80,6 +83,8 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         var config = await ReadAsync("config.env.sql");
+        config.ShouldContain("ENGINE (");
+        config.ShouldContain("version = '[5.0,6.0)'");
         config.ShouldContain("PLUGIN postgres");
         config.ShouldContain("source  = 'NSchema.Postgres'");
         config.ShouldContain("version = '5.0.0-test'");
