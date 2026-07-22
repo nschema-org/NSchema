@@ -8,7 +8,7 @@ internal sealed class ApplyConfigurationValidator : AbstractValidator<ApplyConfi
     public ApplyConfigurationValidator()
     {
         // Apply writes to a live database, so a provider is mandatory.
-        RuleFor(x => x.Provider)
+        RuleFor(x => x.Database)
             .NotNull()
             .WithMessage("A database provider is required for apply.");
 
@@ -18,6 +18,6 @@ internal sealed class ApplyConfigurationValidator : AbstractValidator<ApplyConfi
             .NotNull()
             .When(x => !x.Ephemeral)
             .WithMessage("A state store is required for apply: the applied schema and script ledger are recorded there. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

@@ -13,7 +13,7 @@ public sealed class LockStatusConfigurationValidatorTests
         // Arrange
         var config = new LockStatusConfiguration
         {
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act

@@ -23,21 +23,21 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
 
 1. **Does it orchestrate a reusable multi-step sequence** — composing the provider, planner, and/or state store into a
    pipeline whose result any front-end (GUI, CI library) must reproduce identically? → **Core operation.** *(apply,
-   plan, plan --destroy, drift, refresh, destroy, import, doctor; and validate, which parses+diffs the
-   `DatabaseSchema` despite touching no infrastructure.)*
+   plan, plan --destroy, drift, refresh, destroy, import, doctor; and validate, which parses the project and runs its
+   policies despite touching no infrastructure.)*
 2. **Else, is it a thin pass-through to an existing Core primitive** — a single public interface call (e.g.
-   `app.Locks`'s `Acquire`/`Peek`/`Release`, `app.CurrentSchema.GetSchema`, `app.PlanFile.Read`) plus presentation
+   `app.Locks`'s `Acquire`/`Peek`/`Release`, `app.Database.GetSchema`, `app.PlanFile.Read`) plus presentation
    — **or local developer plumbing** (filesystem scaffolding, source-text formatting, shell integration,
    config/IO/rendering, **plugin resolution & cache management**)? → **CLI command.** *(lock status / acquire / release —
-   thin over the public `IStateLockCoordinator` (`app.Locks`); show — thin over `app.CurrentSchema`/`app.PlanFile`;
+   thin over the public `IStateLockManager` (`app.Locks`); show — thin over `app.Database`/`app.PlanFile`;
    state pull / push and script list / taint / untaint — read → mutate → write loops over the public
-   `ISchemaStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.DesiredSchema`;
+   `IDatabaseStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.ProjectDefinition`;
    plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
    project config; init, fmt, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
-deliberate API decision (e.g. `show` re-publicized `ICurrentSchemaProvider`/`IPlanFileWriter`/`PlanFileEnvelope`) — weigh
+deliberate API decision (e.g. `show` re-publicized `IDatabaseProvider`/`IPlanFileManager`/`PlanFileEnvelope`) — weigh
 it against API-surface stability, not just the boundary rule.
 
 **Presentation lives in the CLI**, split by *what* is being written (`Services/Reporting/`), with a Spectre face and a
@@ -54,7 +54,7 @@ it against API-surface stability, not just the boundary rule.
 - The messenger and presenter are **stateless console utilities the CLI owns directly, not container services**:
   `ReporterFactory` builds the right (Spectre or `--json`) pair, and they hang off the **`CliApplication`** handle
   (`app.Messenger`/`app.Presenter`) next to the engine members it forwards (`app.Operations`/`app.Locks`/
-  `app.CurrentSchema`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()` returns — the built core
+  `app.Database`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()` returns — the built core
   `NSchemaApplication` paired with the console surfaces, so a command reaches engine and console through one handle.
 - **Core-operation progress** (the live narration a long run emits) flows through the core's `IProgress<OperationProgress>`,
   implemented CLI-side by `Services/Reporting/ConsoleProgress` (wrapping the messenger) and registered via the builder's
@@ -85,23 +85,27 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 
 ## Configuration resolution (the heart of the CLI)
 
-Project configuration lives in the project's `.sql` files as **`PROVIDER` / `BACKEND` config blocks** (config-in-SQL —
-there is no `nschema.json`, no `--config`, and as of v4 **no `NSCHEMA` block**). `ConfigurationFactory.Load<T>(ParseResult)`
-drives resolution. It first honors **`--directory`** (the recursive root option; it `SetCurrentDirectory`s so the
-project's `.sql` files and the relative paths in them resolve against the project dir, Terraform-`-chdir`-style — the one
-chokepoint every command funnels through, so it holds whether the CLI runs via `Program` or is invoked directly in a
-test). It then reads the config blocks via `DdlProjectConfigReader` (globs the `.sql` files; the core captures generic
-`ConfigBlock`s; the reader maps `PROVIDER` → a `PluginReference` and `BACKEND` → a `StateConfig`), producing a typed
-`DdlProjectConfig`. Finally it constructs `T` and calls `T.Bind(project, cli)`.
+Project configuration lives in the project's **configuration files** — those whose name carries the `.env.` marker
+(`*.env.sql` loads for every environment, `*.env.<name>.sql` overlays only that one) — as **`DATABASE` / `STATE`
+statements** (config-in-SQL — there is no `nschema.json` and no `--config`). A configuration file holds only
+configuration statements (`DATABASE`, `STATE`, `PLUGIN`, `ENGINE`); every other `.sql` file is schema DDL.
+`ConfigurationFactory.Load<T>(ParseResult)` drives resolution. It first honors **`--directory`** (the recursive root
+option; it `SetCurrentDirectory`s so the project's `.sql` files and the relative paths in them resolve against the
+project dir, Terraform-`-chdir`-style — the one chokepoint every command funnels through, so it holds whether the CLI
+runs via `Program` or is invoked directly in a test). It then reads the configuration statements via
+`ProjectConfigReader` (globs the config files, layering an environment's overlay over the base; the core parses them
+into a config definition; the reader maps `DATABASE` → a `PluginReference` and `STATE` → a `StateConfig`), producing a
+typed `ProjectConfig`. Finally it constructs `T` and calls `T.Bind(project, cli)`.
 
 Two kinds of config are resolved differently:
 
-- **Where the schema lives** (`PROVIDER` / `BACKEND`) is **project-only** — `T.Bind` copies it straight off the
-  `DdlProjectConfig` (`Provider = project.Provider; State = project.State;`), with no CLI-level env/CLI override. A
-  `PROVIDER` block names a plugin by label, **pins its package `version`** (optionally `source`), and carries the
-  provider's own settings (connection string, etc.); those settings are read by **the plugin**, not the CLI (the plugin
-  also owns its own `NSCHEMA_<PROVIDER>_*` env vars). A `PROVIDER` block is **mandatory** to use a provider — the
-  connection-string env var no longer self-identifies one.
+- **Where the schema lives** (`DATABASE` / `STATE`) is **project-only** — `T.Bind` copies it straight off the
+  `ProjectConfig` (`Provider = project.Provider; State = project.State;`), with no CLI-level env/CLI override. A
+  `DATABASE` statement names a plugin by label and carries the provider's own settings (connection string, etc.); a
+  matching `PLUGIN <label> ( source = '…', version = '…' );` declaration pins the package (its `version`, and optional
+  `source`). Those settings are read by **the plugin**, not the CLI (the plugin also owns its own
+  `NSCHEMA_<PROVIDER>_*` env vars). A `DATABASE` statement is **mandatory** to use a provider — the connection-string
+  env var no longer self-identifies one.
 - **Command leaf flags** (`--scope`, `--destructive-actions`, `--auto-approve`, …) are resolved per-flag through
   `Configuration/Binding/OptionBinding<T>`, which layers **environment variable < CLI option** (CLI wins; env via the
   `EnvironmentVariables` allow-list). As of v4 `OptionBinding` has **no project-config layer** — the only setting that
@@ -117,7 +121,7 @@ Env parsing is automatic (enums case-insensitively, strings by identity; pass a 
 ## From config to a run
 
 There is **no single superset config type**. Each command owns its own `*Configuration` model (`Commands/<Name>/`)
-implementing `IBindable` (`void Bind(DdlProjectConfig, ParseResult)`) and composing only what it needs. A command's
+implementing `IBindable` (`void Bind(ProjectConfig, ParseResult)`) and composing only what it needs. A command's
 `Bind` assigns the project slices directly and binds its **own** leaf flags through its command-local `*Options`
 (`Provider = project.Provider; State = project.State; ApplyOptions.Scope.Bind(cli, s => Scope = s);`). The handler's
 `Resolve` calls `ConfigurationFactory.Load<TConfiguration>`, runs the FluentValidation `*ConfigurationValidator` via
@@ -126,13 +130,13 @@ implementing `IBindable` (`void Bind(DdlProjectConfig, ParseResult)`) and compos
 The provider/backend slices are now **plain data**, not `IBindable`:
 
 - **Provider** is a `PluginReference?` (`Configuration/Plugins/PluginReference`) — the resolved package id, pinned
-  `version`, label, and the block's remaining attributes (with `version`/`source` stripped, so the plugin never sees
-  them). `null` means offline. `PluginReference.FromBlock` resolves it: a built-in label maps to its first-party package
-  (`postgres → NSchema.Postgres`, …; the maps live on `PluginReference.ForProvider`/`ForBackend`), a `source` attribute
-  overrides it with any package, and a `version` is required. There is **no `ProviderConfig` slice**.
+  `version` (and the `RestoreVersion` range), label, and the `DATABASE` statement's attributes as a `PluginConfig` (which
+  the plugin reads). `null` means offline. `PluginReference.Resolve` resolves it by matching the statement's label
+  against the project's `PLUGIN` declarations (each names the package `source` and pins a `version`); there is **no
+  built-in label→package map** — every plugin is declared explicitly. There is **no `ProviderConfig` slice**.
 - **State** is a `StateConfig?` — a small union of `FileStateConfig? File` (the built-in local-file store) **xor**
-  `PluginReference? Plugin` (every other backend, e.g. `s3 → NSchema.Aws`). `null` means online-only. `file` is the lone
-  built-in: no plugin, no `version`.
+  `PluginReference? Plugin` (every other backend, e.g. an `s3` label declared as `NSchema.Aws` via a `PLUGIN`). `null`
+  means online-only. `file` is the lone built-in: no plugin, no `version`.
 
 Presence is just a null check (`Provider is not null`, `State is not null`) — there is no `ConfiguredSectionCount` /
 `IsConfigured`. Each command validator adds its **presence** rules on top: `apply` requires a provider
@@ -148,22 +152,23 @@ The file backend applies directly via the core's `UseFileStateStore`; a `null` p
 
 ### Provider & backend plugins
 
-A provider/backend is a NuGet package implementing a contract from `NSchema.Core`: **`INSchemaProviderPlugin`**
-(introspection + SQL generation) or **`INSchemaBackendPlugin`** (state store), both exposing a `Label`, a
-`GetScaffoldTemplate(ScaffoldContext)`, and a `Configure(NSchemaApplicationBuilder, ConfigBlock)` returning a
-`PluginConfigureResult` (success, or aggregated errors — it does **not** throw, so `doctor` can report a misconfigured
+A provider/backend is a NuGet package implementing a contract from `NSchema.Core`: **`INSchemaDatabasePlugin`**
+(introspection + SQL generation) or **`INSchemaStatePlugin`** (state store), both exposing a `Label`, a
+`GetScaffoldTemplate(ScaffoldContext)`, and a `Configure(NSchemaApplicationBuilder, PluginConfig)` returning a
+`Result` (success, or aggregated errors — it does **not** throw, so `doctor` can report a misconfigured
 plugin). `Configuration/Plugins/PluginLoader` turns a `PluginReference` into live instances: it synthesizes an
 `EnableDynamicLoading` project, shells `dotnet publish` to materialise the pinned package's dependency closure into a
 per-version cache under `~/.nschema/plugins` (whose on-disk layout is owned by `Configuration/Plugins/PluginCache` — the
 loader delegates all path math to it), and loads it into an isolated `AssemblyLoadContext` that **defers
 `NSchema.Core` + the framework assemblies to the host** (so contract types unify across the boundary) while isolating the
 plugin's own deps (Npgsql, the AWS SDK, …). The host rejects a plugin whose referenced `NSchema.Core` **major** differs.
-`CliApplicationBuilder.ResolvePlugin` matches the discovered plugin by label and calls `Configure`; a failed result
-becomes a thrown error (the CLI is the single error presenter). The provider's config vocabulary (block attributes + its
-own env vars) and validation live **in the plugin**, not the CLI.
+`CliApplicationBuilder` resolves the plugin by capability (the package's `INSchemaDatabasePlugin` /
+`INSchemaStatePlugin`) and calls `Configure`; a failed result becomes a thrown error (the CLI is the single error
+presenter). The provider's config vocabulary (statement attributes + its own env vars) and validation live **in the
+plugin**, not the CLI.
 
-**Adding a provider/backend is a new package**, not a CLI change: implement the contract, and either name it via the
-block's `source` attribute or (for a first-party engine) add it to the built-in label→package map on `PluginReference`.
+**Adding a provider/backend is a new package**, not a CLI change: implement the contract, then declare it with a
+`PLUGIN` statement naming the package via `source` and reference it by label from `DATABASE`/`STATE`.
 
 The **`plugin` command group** (`Commands/Plugin/`) is the management surface over this, all thin CLI per the boundary
 rule (config + cache inspection, no Core op): `plugin list` / `plugin show <label>` cross-reference the project's pinned
@@ -187,7 +192,7 @@ Options split by **source**, not just by command. A command's own CLI **flags** 
 `--destructive-actions`, etc. — are owned by its `Commands/<Name>/<Name>Options` class, one `OptionBinding` each, with the
 description tailored to that command. Duplication of a flag across commands (both `apply` and `plan` declare their own
 `--scope`) is the deliberate cost of per-command contextual help. (Provider/backend settings are **not** CLI bindings at
-all — they live in the `PROVIDER`/`BACKEND` blocks and are read by the plugin; the CLI keeps only command flags plus the
+all — they live in the `DATABASE`/`STATE` statements and are read by the plugin; the CLI keeps only command flags plus the
 harness-level options.) `Configuration/CommonOptions` holds the harness-level flags not bound to any command:
 `Directory` and `NoColor`, read recursively at the root. Each `*Options` exposes `All` (its CLI bindings);
 `*Command.Create` registers it with `command.Options.AddRange(<Name>Options.All)` (the `AddRange` extension lives in
@@ -198,10 +203,10 @@ are owned by the plugins, not listed here.)
 
 ## Desired-schema files
 
-The desired schema is every `*.sql` file found recursively under the project directory (the `--directory` root),
-written in **NSchema DDL** — the core's canonical, SQL-flavoured `DatabaseSchema` serialization (format key `"sql"`,
-registered by the core; the CLI no longer offers YAML or JSON). Column types are canonical compact strings (`bigint`,
-`text`, `varchar(255)`). There is no format, directory, or glob to configure. See `README.md` for a worked example.
+The desired schema is every schema `.sql` file found recursively under the project directory (the `--directory` root) —
+every `.sql` file without the `.env.` configuration marker — written in **NSchema DDL** (**NSQL**), the core's canonical,
+SQL-flavoured schema serialization. Column types are canonical compact strings (`bigint`, `text`, `varchar(255)`). There
+is no format, directory, or glob to configure. See `README.md` for a worked example.
 
 **Scripts** are declared **inline** in the DDL with the unified `SCRIPT '<name>' RUN [ALWAYS | ONCE] ON <event>
 [(run_outside_transaction = true)] AS $$…$$;` statement (Core 4.4+). The event is a deployment bookend
@@ -209,18 +214,18 @@ registered by the core; the CLI no longer offers YAML or JSON). Column types are
 with a `schema.table.member` path — the data-migration form, spliced into the plan only when the matching change is
 planned). `RUN ONCE` scripts are recorded in the state backend on a successful apply and skipped by later plans (skip
 = `run-once` Info diagnostic; a changed body warns and stays skipped). Script names are unique project-wide. The
-pre-4.4 spellings (`PRE|POST DEPLOYMENT 'name' AS $$…$$;`, `MIGRATION ['name'] FOR <trigger> <path> AS $$…$$;`) still
-parse but surface `deprecations` warnings — removal in 5.0. The CLI does **almost nothing special** with any of this:
-scripts ride the same `*.sql` glob into the core's parser, the core plans/executes/records them (the run-once manifest
-travels on `SqlPlan` inside the plan result and plan file, so apply needs no extra wiring), and the CLI's only additions
-are presentation — the pre/post plan sections annotate run-once scripts (`(run once)`; `runCondition` in `--json`), and
-the `run-once`/`deprecations` diagnostics render through the standard diagnostics table.
+pre-4.4 spellings (`PRE|POST DEPLOYMENT 'name' AS $$…$$;`, `MIGRATION ['name'] FOR <trigger> <path> AS $$…$$;`) were
+removed in 5.0. The CLI does **almost nothing special** with any of this: scripts ride the same `.sql` glob into the
+core's parser, the core plans/executes/records them (the run-once manifest travels on `MigrationPlan` inside the plan
+result and plan file, so apply needs no extra wiring), and the CLI's only additions are presentation — scripts are
+folded into the plan's diff (run-once ones annotated `(run once)`; `runCondition` in `--json`), and the `run-once`
+diagnostics render through the standard diagnostics table.
 
 The **`script` command group** (`Commands/Script/`) manages the recorded ledger, all thin CLI over `app.State`
-(`ISchemaStateManager`): `script list` renders the recorded executions (a query — single bare array in `--json`),
+(`IDatabaseStateManager`): `script list` renders the recorded executions (a query — single bare array in `--json`),
 `script taint <name>` removes an execution (read → `RemoveScript` → write), and `script untaint <name>` records a
 run-once script as executed without running it — the name + body `Hash` come from the script's declaration, read
-through `app.DesiredSchema` (the expanded desired project), so no provider or plan is involved; untaint on an
+through `app.ProjectDefinition` (the expanded desired project), so no provider or plan is involved; untaint on an
 already-recorded script deliberately errors with "taint first, then untaint" rather than silently overwriting the
 recorded hash. `script hash [name]` computes the same declaration hashes for hand-editing pulled state (bare hash on
 stdout with a name, table/array without) — the shared name-matching lives in `RunOnceDeclarations`, used by both

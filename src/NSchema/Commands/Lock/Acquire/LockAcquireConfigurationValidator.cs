@@ -11,7 +11,7 @@ internal sealed class LockAcquireConfigurationValidator : AbstractValidator<Lock
         RuleFor(x => x.State)
             .NotNull()
             .WithMessage("A state store is required for lock acquire: the lock is held there.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
 
         RuleFor(x => x.Reason).NotEmpty();
 

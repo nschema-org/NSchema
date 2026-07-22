@@ -14,16 +14,16 @@ internal sealed class DoctorConfiguration : IBindable
     /// <summary>
     /// The database provider whose connectivity doctor probes, when one is declared.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store whose reachability, recorded state, and lock doctor probes, when one is declared.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
     }
 }

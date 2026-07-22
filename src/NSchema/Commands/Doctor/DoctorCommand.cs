@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Plugins;
 using NSchema.Operations;
 
 namespace NSchema.Commands.Doctor;
@@ -30,22 +29,23 @@ internal static class DoctorCommand
         // Configure the plugins without throwing, so a misconfigured one becomes a reportable diagnostic — doctor's
         // whole job — rather than aborting the health check on the first failure.
         var builder = CliApplicationBuilder.Create(parseResult);
-        var diagnostics = new[]
+        var results = new[]
         {
-            builder.TryConfigureDatabaseProvider(configuration.Provider),
-            builder.TryConfigureBackendState(configuration.State),
-        }.OfType<PluginDiagnostic>().ToList();
+            builder.TryConfigureDatabase(configuration.Database),
+            builder.TryConfigureState(configuration.State),
+        };
         using var app = builder.Build();
 
         app.Messenger.ReportEnvironment(environment);
 
-        if (diagnostics.Count > 0)
+        var failures = results.SelectMany(result => result.Errors).ToList();
+        if (failures.Count > 0)
         {
             // The plugins didn't fully wire up, so the live database/state checks can't run meaningfully — report every
             // plugin problem and stop, rather than following them with misleading "not configured" lines.
-            foreach (var diagnostic in diagnostics)
+            foreach (var plugin in failures.GroupBy(error => error.Source))
             {
-                app.Messenger.Warn($"Plugin '{diagnostic.Label}': {string.Join("; ", diagnostic.Errors)}");
+                app.Messenger.Warn($"Plugin '{plugin.Key}': {string.Join("; ", plugin.Select(error => error.Message))}");
             }
 
             return ExitCodes.Error;

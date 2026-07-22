@@ -28,7 +28,7 @@ internal static class DbShowCommand
         var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Provider)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

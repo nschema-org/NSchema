@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NSchema.Configuration.Model;
 using NSchema.Model;
 
 namespace NSchema.Services.Reporting;
@@ -18,8 +19,18 @@ internal static class JsonOutput
         // SQL bodies contain quotes and angle brackets; relaxed escaping keeps them readable (\" not ") — this is
         // CLI output, not HTML, so the extra-cautious default encoder isn't needed.
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase), new ValueObjectConverter() },
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase), new ValueObjectConverter(), new SemanticVersionConverter() },
     };
+
+    // SemanticVersion is a structured record rather than a ValueObject<T>, so serialize it as its canonical text.
+    private sealed class SemanticVersionConverter : JsonConverter<SemanticVersion>
+    {
+        public override SemanticVersion Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw new NotSupportedException("CLI output is write-only.");
+
+        public override void Write(Utf8JsonWriter writer, SemanticVersion value, JsonSerializerOptions options) =>
+            writer.WriteStringValue(value.ToString());
+    }
 
     public static void Write(TextWriter writer, object @event) => writer.WriteLine(JsonSerializer.Serialize(@event, Options));
 

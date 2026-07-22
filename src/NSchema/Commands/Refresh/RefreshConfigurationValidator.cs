@@ -8,7 +8,7 @@ internal sealed class RefreshConfigurationValidator : AbstractValidator<RefreshC
     public RefreshConfigurationValidator()
     {
         // Refresh reads the live schema, so a provider is mandatory.
-        RuleFor(x => x.Provider)
+        RuleFor(x => x.Database)
             .NotNull()
             .WithMessage("A database provider is required for refresh.");
 
@@ -16,6 +16,6 @@ internal sealed class RefreshConfigurationValidator : AbstractValidator<RefreshC
         RuleFor(x => x.State)
             .NotNull()
             .WithMessage("A state store is required for refresh: the live schema is written there.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

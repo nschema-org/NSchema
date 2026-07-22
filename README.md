@@ -6,7 +6,7 @@
 
 NSchema is a declarative database schema migration tool. Write the schema you want in plain SQL, point NSchema at your database, and it will compute and apply the migration to get there.
 
-It borrows the same `plan`, `apply` pattern from Terraform, and includes a lot of similar features like backend state, providers, and saved plan files.
+It borrows the same `plan`, `apply` pattern from Terraform, and includes a lot of similar features like backend state, database providers, and saved plan files.
 
 Full documentation and provider support is available at **[nschema.dev](https://nschema.dev)**.
 
@@ -21,9 +21,10 @@ This installs the `nschema` command.
 ## Quickstart
 
 ```sh
-nschema init     # scaffold a project (config + sample schema)
-nschema plan     # preview the migration
-nschema apply    # apply it
+nschema scaffold  # scaffold a project (config + sample schema)
+nschema init      # restore the pinned database/state plugins
+nschema plan      # preview the migration
+nschema apply     # apply it
 ```
 
 ## Documentation
@@ -33,7 +34,7 @@ Full documentation lives at **[nschema.dev](https://nschema.dev)**:
 - [Quickstart](https://nschema.dev/start/quickstart/) — from empty directory to applied schema
 - [CLI reference](https://nschema.dev/cli/) — every command, flag, and exit code
 - [DDL language](https://nschema.dev/ddl/defining-schemas/) — how to declare schemas
-- [Configuration](https://nschema.dev/cli/configuration/) — providers, backends, and environment variables
+- [Configuration](https://nschema.dev/cli/configuration/) — databases, state, and environment variables
 
 ## License
 

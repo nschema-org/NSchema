@@ -37,7 +37,7 @@ internal static class DestroyCommand
         // working-directory schema is not consulted.
         var builder = CliApplicationBuilder.Create(parseResult)
             .ConfigurePolicies(PolicyEnforcement.Allow, dataHazards: null)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Database)
             .ConfigureState(configuration.State, configuration.Ephemeral);
 
         using var app = builder.Build();

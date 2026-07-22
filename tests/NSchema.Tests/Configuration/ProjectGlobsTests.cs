@@ -49,7 +49,7 @@ public sealed class ProjectGlobsTests : IDisposable
     }
 
     [Fact]
-    public void BaseConfiguration_SelectsEveryBaseConfigFile()
+    public void BaseConfiguration_SelectsEveryBaseConfigurationFile()
     {
         // Multiple base configuration files may exist; all of them load, for every environment.
         Write("schema.sql");

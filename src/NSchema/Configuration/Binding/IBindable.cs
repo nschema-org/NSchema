@@ -12,5 +12,5 @@ internal interface IBindable
     /// </summary>
     /// <param name="project">The project config to bind.</param>
     /// <param name="cli">The args to bind.</param>
-    void Bind(ProjectConfig project, ParseResult cli);
+    void Bind(ProjectConfiguration project, ParseResult cli);
 }

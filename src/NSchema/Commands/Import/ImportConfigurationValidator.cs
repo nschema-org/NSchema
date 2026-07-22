@@ -7,7 +7,7 @@ internal sealed class ImportConfigurationValidator : AbstractValidator<ImportCon
     public ImportConfigurationValidator()
     {
         // Import reads from a live database, so a provider is mandatory.
-        RuleFor(x => x.Provider)
+        RuleFor(x => x.Database)
             .NotNull()
             .WithMessage("A database provider is required for import.");
     }

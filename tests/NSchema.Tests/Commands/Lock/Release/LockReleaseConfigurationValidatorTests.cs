@@ -7,9 +7,9 @@ public sealed class LockReleaseConfigurationValidatorTests
 {
     private readonly LockReleaseConfigurationValidator _sut = new();
 
-    private static LockReleaseConfiguration Config(string? lockId = null, bool force = false) => new()
+    private static LockReleaseConfiguration Configuration(string? lockId = null, bool force = false) => new()
     {
-        State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+        State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         LockId = lockId,
         Force = force,
     };
@@ -18,7 +18,7 @@ public sealed class LockReleaseConfigurationValidatorTests
     public void Valid_WithLockId()
     {
         // Arrange — naming the lock is the safe default.
-        var config = Config(lockId: "9f8e7d6c");
+        var config = Configuration(lockId: "9f8e7d6c");
 
         // Act
         var result = _sut.Validate(config);
@@ -31,7 +31,7 @@ public sealed class LockReleaseConfigurationValidatorTests
     public void Valid_WithForce()
     {
         // Arrange — --force releases whatever lock is held, no id needed.
-        var config = Config(force: true);
+        var config = Configuration(force: true);
 
         // Act
         var result = _sut.Validate(config);
@@ -44,7 +44,7 @@ public sealed class LockReleaseConfigurationValidatorTests
     public void Invalid_WhenNeitherLockIdNorForce()
     {
         // Arrange — safe by default: releasing requires naming the lock or opting out with --force.
-        var config = Config();
+        var config = Configuration();
 
         // Act
         var result = _sut.Validate(config);
@@ -58,7 +58,7 @@ public sealed class LockReleaseConfigurationValidatorTests
     public void Valid_WithBothLockIdAndForce()
     {
         // Arrange — a redundant --force alongside an id is ignored, not an error; the id takes precedence.
-        var config = Config(lockId: "9f8e7d6c", force: true);
+        var config = Configuration(lockId: "9f8e7d6c", force: true);
 
         // Act
         var result = _sut.Validate(config);

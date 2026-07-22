@@ -28,7 +28,7 @@ internal static class LockStatusCommand
         var configuration = await Resolve(parseResult, environment, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
 
         var info = await app.Locks.Peek(cancellationToken);

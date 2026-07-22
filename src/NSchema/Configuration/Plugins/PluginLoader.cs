@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text.Json;
+using NSchema.Configuration.Model;
 using NSchema.Plugins;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Configuration.Plugins;
 
@@ -28,11 +30,11 @@ internal sealed class PluginLoader(string? cacheRoot = null)
     /// </summary>
     /// <param name="packageId">The plugin's NuGet package id.</param>
     /// <param name="version">The pinned version, keying the cache layout.</param>
-    /// <param name="restoreVersion">The version in NuGet notation for the restore; defaults to <paramref name="version"/>.</param>
     /// <param name="allowRestore">Whether a missing plugin may be restored, or must already be cached.</param>
-    public Result<IReadOnlyList<INSchemaPlugin>> Load(string packageId, string version, string? restoreVersion = null, bool allowRestore = true)
+    public Result<IReadOnlyList<INSchemaPlugin>> Load(PackageId packageId, SemanticVersion version, bool allowRestore = true)
     {
-        var published = EnsurePublished(packageId, version, restoreVersion ?? version, allowRestore);
+        // Restore the exact pin ("[x.y.z]") so NuGet treats it as exact, not a minimum.
+        var published = EnsurePublished(packageId, version, $"[{version}]", allowRestore);
         if (published.IsFailure)
         {
             return Result.Failure<IReadOnlyList<INSchemaPlugin>>(published.Diagnostics);
@@ -44,7 +46,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         try
         {
             var context = new PluginLoadContext(Path.Combine(published.Value, SynthAssemblyName + ".dll"));
-            var assembly = context.LoadFromAssemblyName(new AssemblyName(packageId));
+            var assembly = context.LoadFromAssemblyName(new AssemblyName(packageId.Value));
 
             // The engine handshake rejects a plugin built against an incompatible NSchema.Core before any of its
             // types are instantiated.
@@ -61,61 +63,90 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
             if (plugins.Count == 0)
             {
-                return Diagnostic.Error(packageId, $"The package '{packageId}' does not contain an NSchema plugin.");
+                return Diagnostic.Error(packageId.Value, $"The package '{packageId}' does not contain an NSchema plugin.");
             }
 
             return Result.Success<IReadOnlyList<INSchemaPlugin>>(plugins);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(packageId, $"The plugin '{packageId}' {version} could not be loaded: {ex.Message}");
+            return Diagnostic.Error(packageId.Value, $"The plugin '{packageId}' {version} could not be loaded: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Resolves the latest available version of <paramref name="packageId"/> that shares this host's NSchema.Core
-    /// major version, by floating-restoring it and reading the resolved version back from the lock file. Used when
-    /// scaffolding, where no version is pinned yet and a single failure aborts the command.
+    /// Restores each reference into the cache, narrating whether it was freshly fetched or already present.
     /// </summary>
-    public string ResolveLatestVersion(string packageId)
+    public void Restore(IEnumerable<PluginReference> references, IConsoleMessenger messenger)
     {
-        var hostMajor = typeof(INSchemaPlugin).Assembly.GetName().Version?.Major
-            ?? throw new InvalidOperationException("Could not determine the host NSchema.Core major version.");
+        foreach (var reference in references)
+        {
+            // Probe before loading so the narration distinguishes a real fetch from an instant cache hit; either way
+            // the plugin is loaded (and so revalidated).
+            var alreadyInstalled = Cache.Contains(reference.PackageId, reference.Version);
+            if (!alreadyInstalled)
+            {
+                messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
+            }
 
-        var projectDir = Cache.ResolveDirectory(packageId);
-        Directory.CreateDirectory(projectDir);
-        var projectPath = Path.Combine(projectDir, SynthAssemblyName + ".csproj");
+            Load(reference.PackageId, reference.Version).Require();
 
-        // Concurrent runs share this scratch dir, so serialize the restore across processes.
-        using var resolveLock = FileLock.Acquire(Cache.ResolveLockFile(packageId), _restoreLockTimeout)
-            ?? throw new InvalidOperationException($"Timed out waiting for another process to finish resolving the latest version of plugin '{packageId}'.");
-
-        // Float within the host major (prereleases included) so the pin always matches a plugin this CLI can load.
-        File.WriteAllText(projectPath, SynthProject(packageId, $"{hostMajor}.*-*"));
-
-        // --force re-evaluates the floating range every time, so a newly published version is picked up.
-        RunDotnet("restore", projectPath, "--force").Require();
-
-        return ReadResolvedVersion(Path.Combine(projectDir, "obj", "project.assets.json"), packageId);
+            if (alreadyInstalled)
+            {
+                messenger.Success($"{reference.PackageId} {reference.Version} (already installed)");
+            }
+            else
+            {
+                messenger.Success($"{reference.PackageId} {reference.Version} (installed)");
+            }
+        }
     }
 
-    private static string ReadResolvedVersion(string assetsPath, string packageId)
+    /// <summary>
+    /// The newest version of <paramref name="packageId"/> the configured feeds offer that this host can load (its
+    /// NSchema.Core major), prereleases included. Used when scaffolding, where no version is pinned yet.
+    /// </summary>
+    public SemanticVersion ResolveLatestVersion(PackageId packageId) =>
+        AvailableVersions(packageId.Value).Max()
+        ?? throw new InvalidOperationException($"No version of '{packageId}' is available for NSchema {HostMajor}.x.");
+
+    /// <summary>
+    /// The highest available version of <paramref name="package"/> that <paramref name="range"/> admits, within this
+    /// host's NSchema.Core major. Resolution is ours: the feed enumerates the candidates, the range makes the pick.
+    /// </summary>
+    public SemanticVersion ResolveHighest(PackageId package, VersionRange range) =>
+        range.Highest(AvailableVersions(package.Value))
+        ?? throw new InvalidOperationException($"No version of '{package}' satisfying '{range}' is available for NSchema {HostMajor}.x.");
+
+    // Every version of the package the configured feeds offer, within this host's Core major — the candidate set our
+    // own resolution picks from. 'dotnet package search' honours the user's NuGet sources; prereleases are enumerated
+    // so the range decides whether they count, not the feed query.
+    private IReadOnlyList<SemanticVersion> AvailableVersions(PackageId packageId)
     {
-        using var document = JsonDocument.Parse(File.ReadAllText(assetsPath));
-        foreach (var library in document.RootElement.GetProperty("libraries").EnumerateObject())
+        var json = RunDotnet("package", "search", packageId.Value, "--exact-match", "--prerelease", "--format", "json").Require();
+
+        using var document = JsonDocument.Parse(json);
+        var versions = new List<SemanticVersion>();
+        foreach (var source in document.RootElement.GetProperty("searchResult").EnumerateArray())
         {
-            // Library keys are "Id/Version"; match the package id case-insensitively.
-            var separator = library.Name.IndexOf('/');
-            if (separator > 0 && library.Name.AsSpan(0, separator).Equals(packageId, StringComparison.OrdinalIgnoreCase))
+            foreach (var package in source.GetProperty("packages").EnumerateArray())
             {
-                return library.Name[(separator + 1)..];
+                if (SemanticVersion.TryParse(package.GetProperty("version").GetString() ?? string.Empty, out var version)
+                    && version.Major == HostMajor)
+                {
+                    versions.Add(version);
+                }
             }
         }
 
-        throw new InvalidOperationException($"Could not resolve a version for plugin package '{packageId}'.");
+        return versions;
     }
 
-    private Result<string> EnsurePublished(string packageId, string version, string restoreVersion, bool allowRestore)
+    private static int HostMajor =>
+        typeof(INSchemaPlugin).Assembly.GetName().Version?.Major
+        ?? throw new InvalidOperationException("Could not determine the host NSchema.Core major version.");
+
+    private Result<string> EnsurePublished(PackageId packageId, SemanticVersion version, string restoreVersion, bool allowRestore)
     {
         var publishDir = Cache.PublishDirectory(packageId, version);
         var pluginAssembly = Cache.PluginAssembly(packageId, version);
@@ -129,7 +160,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         // --no-init: stay offline and require the plugin to be cached already.
         if (!allowRestore)
         {
-            return Diagnostic.Error(packageId,
+            return Diagnostic.Error(packageId.Value,
                 $"Plugin '{packageId}' {version} is not restored, and --no-init was specified. Run 'nschema init' (or drop --no-init) to restore it first.");
         }
 
@@ -138,7 +169,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         using var restoreLock = FileLock.Acquire(Cache.LockFile(packageId, version), _restoreLockTimeout);
         if (restoreLock is null)
         {
-            return Diagnostic.Error(packageId, $"Timed out waiting for another process to finish restoring plugin '{packageId}' {version}.");
+            return Diagnostic.Error(packageId.Value, $"Timed out waiting for another process to finish restoring plugin '{packageId}' {version}.");
         }
 
         // Re-check under the lock: another process may have completed the restore while we were waiting for it.
@@ -149,7 +180,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
         var projectDir = Cache.ProjectDirectory(packageId, version);
         Directory.CreateDirectory(projectDir);
-        File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId, restoreVersion));
+        File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId.Value, restoreVersion));
 
         // Publish into a staging dir and atomically rename it onto the publish dir, so the lock-free fast path above
         // never sees a partially-populated closure.
@@ -165,9 +196,9 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             return Result.Failure<string>(publish.Diagnostics);
         }
 
-        if (!File.Exists(Path.Combine(staging, packageId + ".dll")))
+        if (!File.Exists(Path.Combine(staging, packageId.Value + ".dll")))
         {
-            return Diagnostic.Error(packageId,
+            return Diagnostic.Error(packageId.Value,
                 $"Restored package '{packageId}' {version} but its assembly '{packageId}.dll' was not found — is the package an NSchema plugin?");
         }
 
@@ -197,7 +228,9 @@ internal sealed class PluginLoader(string? cacheRoot = null)
          </Project>
          """;
 
-    private static Result<int> RunDotnet(params string[] args)
+    // Runs 'dotnet' and returns its standard output on success. Launching the external process is a genuine
+    // external-code boundary, so catching a missing SDK is correct here.
+    private static Result<string> RunDotnet(params string[] args)
     {
         var startInfo = new ProcessStartInfo("dotnet")
         {
@@ -211,29 +244,29 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             startInfo.ArgumentList.Add(arg);
         }
 
-        Process? process = null;
+        Process process;
         try
         {
             process = Process.Start(startInfo)!;
         }
         catch (Win32Exception)
         {
-            // Launching the external 'dotnet' process is a genuine external-code boundary, so catching is correct here.
-            return Result.From(process?.ExitCode ?? -1, [Diagnostic.Error("dotnet",
-                "NSchema needs the .NET SDK ('dotnet') on your PATH to restore plugins, but it could not be found.")]);
+            return Diagnostic.Error("dotnet",
+                "NSchema needs the .NET SDK ('dotnet') on your PATH to resolve plugins, but it could not be found.");
         }
 
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
+        var stdout = output.GetAwaiter().GetResult();
 
         if (process.ExitCode != 0)
         {
-            return Result.From(process.ExitCode, [Diagnostic.Error("dotnet",
-                $"Restoring an NSchema plugin failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{output.GetAwaiter().GetResult()}{error.GetAwaiter().GetResult()}")]);
+            return Result.From(stdout, [Diagnostic.Error("dotnet",
+                $"An NSchema plugin operation failed (dotnet exit code {process.ExitCode}):{Environment.NewLine}{stdout}{error.GetAwaiter().GetResult()}")]);
         }
 
-        return Result.Success(0);
+        return Result.Success(stdout);
     }
 
     private sealed class PluginLoadContext(string entryAssemblyPath) : AssemblyLoadContext

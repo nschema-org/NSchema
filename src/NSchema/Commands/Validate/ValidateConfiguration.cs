@@ -9,7 +9,7 @@ namespace NSchema.Commands.Validate;
 /// </summary>
 internal sealed class ValidateConfiguration : IBindable
 {
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
     }
 }

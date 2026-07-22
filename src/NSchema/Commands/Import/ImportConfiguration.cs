@@ -13,7 +13,7 @@ internal sealed class ImportConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema to import.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The directory to write into.
@@ -30,9 +30,9 @@ internal sealed class ImportConfiguration : IBindable
     /// </summary>
     public bool Force { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         ImportOptions.Scope.Bind(cli, s => Scope = s);
         ImportOptions.OutputDirectory.Bind(cli, o => OutputDirectory = o);
         ImportOptions.Force.Bind(cli, f => Force = f);

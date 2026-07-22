@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Commands;
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Plan.Policies;
-using NSchema.Plugins;
 using NSchema.Services.Reporting;
 using NSchema.State.Backends;
 
@@ -77,10 +77,10 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureBackendState_RegistersStateStore_ForFile()
     {
         // Arrange
-        var state = new StateConfig { File = new FileStateConfig { Path = "./state.json" } };
+        var state = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } };
 
         // Act
-        using var app = _sut.ConfigureBackendState(state).Build();
+        using var app = _sut.ConfigureState(state).Build();
 
         // Assert
         app.Services.GetService<IDatabaseStateStore>().ShouldNotBeNull();
@@ -90,7 +90,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureBackendState_RegistersNoStateStore_WhenNoStoreConfigured()
     {
         // Act
-        using var app = _sut.ConfigureBackendState(new StateConfig()).Build();
+        using var app = _sut.ConfigureState(new StateConfiguration()).Build();
 
         // Assert
         app.Services.GetService<IDatabaseStateStore>().ShouldBeNull();
@@ -117,16 +117,16 @@ public sealed class CliApplicationBuilderTests
         try
         {
             // Arrange — a postgres DATABASE statement missing the required connection_string.
-            var reference = new PluginReference("NSchema.Postgres", "5.0.0-alpha.2", "[5.0.0-alpha.2]", "postgres",
-                new PluginConfig(new PluginLabel("postgres"), new Dictionary<AttributeKey, ConfigValue>()));
+            var reference = new PluginReference(new PackageId("NSchema.Postgres"), SemanticVersion.Parse("5.0.0-alpha.5"), new PluginLabel("postgres"),
+                new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>()));
 
             // Act
-            var diagnostic = _sut.TryConfigureDatabaseProvider(reference);
+            var result = _sut.TryConfigureDatabase(reference);
 
-            // Assert — captured (not thrown), carrying the plugin's own error.
-            diagnostic.ShouldNotBeNull();
-            diagnostic.Label.ShouldBe("postgres");
-            diagnostic.Errors.ShouldContain(error => error.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
+            // Assert — captured (not thrown) as a failed Result, its errors labelled with the plugin block.
+            result.IsFailure.ShouldBeTrue();
+            result.Errors.ShouldAllBe(error => error.Source == "postgres");
+            result.Errors.ShouldContain(error => error.Message.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

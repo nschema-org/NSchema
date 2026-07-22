@@ -67,6 +67,8 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
     public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins) =>
         JsonOutput.Write(_out, new { cacheRoot, plugins });
 
+    public void ReportOutdatedPlugins(IReadOnlyList<OutdatedPlugin> plugins) => JsonOutput.Write(_out, plugins);
+
     public void ReportDiagnostics(IReadOnlyList<Diagnostic> diagnostics)
     {
         if (diagnostics.Count == 0)

@@ -19,6 +19,9 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 ### Added
 
 - **`--ephemeral`** on `plan`, `apply`, and `destroy` runs against an in-memory state store discarded when the command exits, standing in for a configured `STATE` store — for CI pipelines that bootstrap disposable databases. Run-once script history does not persist across runs in this mode.
+- **A lockfile (`nschema.lock`) pins declared plugin versions to concrete versions.** `init` resolves each `PLUGIN` — a range to the highest available version, an exact pin to itself — and records it; later commands read the pin, so a plugin without a lockfile entry is an error that points to `init`.
+- **`plugin update [<label>]`** re-resolves ranges to their highest available version and rewrites the lockfile — every plugin, or a single one by label.
+- **`plugin outdated`** shows each plugin's pinned version against the newest its range allows (what `update` would install) and the newest available for this engine.
 
 ### Changed
 
@@ -27,6 +30,8 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures. The built-in local-file store is `STATE file ( path = '…' );`.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` names the package and pins its version; `DATABASE`/`STATE` reference the label. The built-in label-to-package map is gone — every plugin is declared explicitly, and `version`/`source` no longer ride the configuring statement. A `version` may be an exact pin or a NuGet-style range (`[5.0,6.0)`).
 - **`ENGINE ( version = '…' );` asserts the engine version.** A project can require an engine version range; a mismatch fails with a pointer to `dotnet tool update`.
+- **`scaffold` authors the `ENGINE` assertion.** A scaffolded project pins the engine to the CLI's current major (e.g. `ENGINE ( version = '[5.0,6.0)' );`), so it fails fast on an incompatible tool.
+- **`scaffold` runs `init` afterwards**, resolving and locking the plugins it declared so the project is ready to `plan` immediately. Pass `--no-init` to skip it for an offline or edit-first workflow.
 - **Planning always diffs recorded state against the project**, so `plan` (and a fresh `apply`) now require both a database and a state store. Planning against the live database is no longer available; use `refresh` to capture the live schema first.
 - **`destroy` reads the managed schema from the recorded state.** The fallback to the working-directory schema when no store was configured is gone, and a state store is now required.
 - **Plan output folds scripts into the diff.** Deployment and change-event scripts are first-class parts of the diff, shown in the plan tree (and carried on the `diff` object in `--json`); the separate pre/post-deployment and data-migration sections are gone.
@@ -183,7 +188,7 @@ Version 4.0.0 changes the provider and backend model to function as plugins reso
 
 ### Added
 
-- **Init options.** The `init` command now accepts `--provider` (`postgres`, `sqlite`, `sqlserver`) and `--backend` (`file`, `s3`) options to scaffold
+- **Init options.** The `init` command now accepts `--database` (`postgres`, `sqlite`, `sqlserver`) and `--backend` (`file`, `s3`) options to scaffold
   configuration for a specific provider/backend combination.
 - **S3-compatible state stores.** The `BACKEND s3` block accepts a `force_path_style` attribute for S3-compatible stores (such as MinIO) that require
   path-style addressing. The endpoint, region, and credentials continue to come from the ambient AWS configuration (`AWS_ENDPOINT_URL_S3`, `AWS_REGION`,

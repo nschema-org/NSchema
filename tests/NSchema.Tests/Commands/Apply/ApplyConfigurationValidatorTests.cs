@@ -13,8 +13,8 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange — apply executes against the database and records what it ran in the state store.
         var config = new ApplyConfiguration
         {
-            Provider = TestConfigs.Provider(),
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = TestConfigurations.Provider(),
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -30,7 +30,7 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange — an apply that cannot record what it ran would silently lose history.
         var config = new ApplyConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
         };
 
@@ -48,7 +48,7 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
         var config = new ApplyConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
             Ephemeral = true,
         };
@@ -66,7 +66,7 @@ public sealed class ApplyConfigurationValidatorTests
         // Arrange
         var config = new ApplyConfiguration
         {
-            Provider = null,
+            Database = null,
             State = null,
         };
 

@@ -7,7 +7,7 @@ namespace NSchema.Commands.Plugin.Show;
 
 internal static class PluginShowCommand
 {
-    internal static readonly Argument<string> LabelArgument = new("label")
+    internal static readonly Argument<string> _labelArgument = new("label")
     {
         Description = "The label of the plugin to show, as declared by its PLUGIN statement (e.g. postgres, s3).",
     };
@@ -15,7 +15,7 @@ internal static class PluginShowCommand
     public static Command Create()
     {
         var command = new Command("show", "Show the detail of one of the project's plugins, including its cache status.");
-        command.Arguments.Add(LabelArgument);
+        command.Arguments.Add(_labelArgument);
         command.SetAction(Run);
         return command;
     }
@@ -25,8 +25,8 @@ internal static class PluginShowCommand
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await ConfigurationFactory.Load<PluginShowConfiguration>(parseResult, environment, cancellationToken);
 
-        var plugins = PluginInventory.ForProject(configuration.Provider, configuration.State, new PluginCache());
-        var match = plugins.FirstOrDefault(p => p.Label.Equals(configuration.Label, StringComparison.OrdinalIgnoreCase));
+        var plugins = PluginInventory.ForProject(configuration.Database, configuration.State, new PluginCache());
+        var match = plugins.FirstOrDefault(p => p.Label == configuration.Label);
         if (match is null)
         {
             var configured = plugins.Count == 0 ? "none are configured" : string.Join(", ", plugins.Select(p => p.Label));

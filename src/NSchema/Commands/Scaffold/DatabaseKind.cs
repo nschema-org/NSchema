@@ -3,7 +3,7 @@ namespace NSchema.Commands.Scaffold;
 /// <summary>
 /// The database provider a scaffolded project is configured for.
 /// </summary>
-internal enum ProviderKind
+internal enum DatabaseKind
 {
     /// <summary>
     /// PostgreSQL.

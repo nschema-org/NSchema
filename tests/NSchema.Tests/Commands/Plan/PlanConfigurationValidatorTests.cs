@@ -7,7 +7,7 @@ public sealed class PlanConfigurationValidatorTests
 {
     private readonly PlanConfigurationValidator _sut = new();
 
-    private static StateConfig FileState() => new() { File = new FileStateConfig { Path = "./state.json" } };
+    private static StateConfiguration FileState() => new() { File = new FileStateConfiguration { Path = "./state.json" } };
 
     [Fact]
     public void Valid_WithProviderAndState()
@@ -15,7 +15,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange — a plan renders SQL against the provider and diffs the recorded state, so it needs both.
         var config = new PlanConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = FileState(),
         };
 
@@ -32,7 +32,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange
         var config = new PlanConfiguration
         {
-            Provider = null,
+            Database = null,
             State = FileState(),
         };
 
@@ -50,7 +50,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange — planning always diffs the recorded state, so a store is mandatory.
         var config = new PlanConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
         };
 
@@ -68,7 +68,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
         var config = new PlanConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
             Ephemeral = true,
         };
@@ -87,7 +87,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = FileState(),
         };
 
@@ -104,7 +104,7 @@ public sealed class PlanConfigurationValidatorTests
         // Arrange — a forward plan can be saved for later replay.
         var config = new PlanConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = FileState(),
             OutFile = "plan.nschema",
         };
@@ -123,7 +123,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = null,
+            Database = null,
             State = FileState(),
         };
 
@@ -142,7 +142,7 @@ public sealed class PlanConfigurationValidatorTests
         var config = new PlanConfiguration
         {
             Destroy = true,
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             State = null,
         };
 

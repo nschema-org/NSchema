@@ -14,16 +14,16 @@ internal sealed class PluginListConfiguration : IBindable
     /// <summary>
     /// The provider plugin; <see langword="null"/> when none is configured.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state backend; only its plugin (if any) is a plugin — the file store is built in.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
     }
 }

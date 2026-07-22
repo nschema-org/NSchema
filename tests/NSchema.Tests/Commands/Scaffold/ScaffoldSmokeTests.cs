@@ -1,7 +1,7 @@
 using NSchema.Commands.Scaffold;
 using NSchema.Configuration;
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
-using NSchema.Extensions;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Tables;
@@ -19,7 +19,7 @@ namespace NSchema.Tests.Commands.Scaffold;
 /// </summary>
 public sealed class ScaffoldSmokeTests : IDisposable
 {
-    private const string Version = "5.0.0-alpha.2";
+    private const string Version = "5.0.0-alpha.5";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-scaffold-smoke-").FullName;
 
@@ -29,7 +29,7 @@ public sealed class ScaffoldSmokeTests : IDisposable
     public async Task Scaffold_WithRealPostgresPlugin_ProducesAValidFormattedProject()
     {
         // Arrange — load the real plugin and render exactly what the scaffold command would.
-        var plugin = new PluginLoader().Load("NSchema.Postgres", Version)
+        var plugin = new PluginLoader().Load(new PackageId("NSchema.Postgres"), SemanticVersion.Parse(Version))
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
@@ -37,14 +37,16 @@ public sealed class ScaffoldSmokeTests : IDisposable
         var sampleSchema = plugin.GetSampleSchema();
 
         // Act — compose the project (file state store, like the default `nschema scaffold`).
-        await ProjectScaffolder.Scaffold(_directory, force: false, [("postgres", "NSchema.Postgres", Version)],
-            providerBlock, sampleSchema, pluginBackend: null, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(_directory, force: false, "[5.0,6.0)", [("postgres", "NSchema.Postgres", Version)],
+            providerBlock, sampleSchema, statePlugin: null, TestContext.Current.CancellationToken);
+        await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_directory),
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse(Version) }]), TestContext.Current.CancellationToken);
 
         // Assert — the generated config round-trips, pinning the resolved version.
-        var config = await ProjectConfigReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
-        config.Provider.ShouldNotBeNull();
-        config.Provider!.Label.ShouldBe("postgres");
-        config.Provider.Version.ShouldBe(Version);
+        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        config.Database.ShouldNotBeNull();
+        config.Database!.Label.ShouldBe("postgres");
+        config.Database.Version.ToString().ShouldBe(Version);
         config.State!.File.ShouldNotBeNull();
 
         // Assert — the sample schema parses.

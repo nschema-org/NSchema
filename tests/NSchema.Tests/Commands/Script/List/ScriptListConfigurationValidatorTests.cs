@@ -13,7 +13,7 @@ public sealed class ScriptListConfigurationValidatorTests
         // Arrange
         var config = new ScriptListConfiguration
         {
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act

@@ -23,7 +23,7 @@ internal static class ImportCommand
         new ImportConfigurationValidator().ValidateOrThrow(configuration);
 
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabaseProvider(configuration.Provider)
+            .ConfigureDatabase(configuration.Database)
             .Build();
 
         app.Messenger.ReportEnvironment(environment);

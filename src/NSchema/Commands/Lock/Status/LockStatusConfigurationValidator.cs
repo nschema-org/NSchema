@@ -11,6 +11,6 @@ internal sealed class LockStatusConfigurationValidator : AbstractValidator<LockS
         RuleFor(x => x.State)
             .NotNull()
             .WithMessage("A state store is required for lock status: the lock is held there.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

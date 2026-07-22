@@ -8,7 +8,7 @@ internal sealed class DestroyConfigurationValidator : AbstractValidator<DestroyC
     public DestroyConfigurationValidator()
     {
         // Destroy generates and executes SQL against a live database, so a provider is mandatory.
-        RuleFor(x => x.Provider)
+        RuleFor(x => x.Database)
             .NotNull()
             .WithMessage("A database provider is required for destroy.");
 
@@ -18,6 +18,6 @@ internal sealed class DestroyConfigurationValidator : AbstractValidator<DestroyC
             .NotNull()
             .When(x => !x.Ephemeral)
             .WithMessage("A state store is required for destroy: the managed schema is read from the recorded state. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

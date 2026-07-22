@@ -49,9 +49,9 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
-    public CliApplicationBuilder ConfigureBackendState(StateConfig? state)
+    public CliApplicationBuilder ConfigureState(StateConfiguration? state)
     {
-        Throw(TryConfigureBackendState(state));
+        Throw(TryConfigureState(state));
         return this;
     }
 
@@ -69,64 +69,65 @@ internal sealed class CliApplicationBuilder
     /// Configures the run's state store: the ephemeral in-memory store when <paramref name="ephemeral"/> is set
     /// (<c>--ephemeral</c>), otherwise the configured backend.
     /// </summary>
-    public CliApplicationBuilder ConfigureState(StateConfig? state, bool ephemeral) =>
-        ephemeral ? ConfigureEphemeralState() : ConfigureBackendState(state);
+    public CliApplicationBuilder ConfigureState(StateConfiguration? state, bool ephemeral) =>
+        ephemeral ? ConfigureEphemeralState() : ConfigureState(state);
 
-    public CliApplicationBuilder ConfigureDatabaseProvider(PluginReference? provider)
+    public CliApplicationBuilder ConfigureDatabase(PluginReference? provider)
     {
-        Throw(TryConfigureDatabaseProvider(provider));
+        Throw(TryConfigureDatabase(provider));
         return this;
     }
 
     /// <summary>
-    /// Configures the database provider WITHOUT throwing: applies it on success, or returns a
-    /// <see cref="PluginDiagnostic"/> if it failed to restore or configure. Returns <see langword="null"/> when it
-    /// succeeds or no provider is configured (a valid offline setup). The fluent <see cref="ConfigureDatabaseProvider"/>
-    /// is the throwing wrapper; callers that want to report failures rather than abort (doctor) use this.
+    /// Configures the database provider WITHOUT throwing: a <see cref="Result"/> that fails, carrying the plugin's
+    /// diagnostics, if it could not restore or configure. Success also covers "no provider configured" (a valid
+    /// offline setup). The fluent <see cref="ConfigureDatabase"/> is the throwing wrapper; callers that report
+    /// failures rather than abort (doctor) use this.
     /// </summary>
-    public PluginDiagnostic? TryConfigureDatabaseProvider(PluginReference? provider) =>
+    public Result TryConfigureDatabase(PluginReference? provider) =>
         provider is { } reference
-            ? TryApply<INSchemaDatabasePlugin>(reference, plugin => plugin.Configure(_builder, reference.Config))
-            : null;
+            ? TryApply<INSchemaDatabasePlugin>(reference, plugin => plugin.Configure(_builder, reference.Settings))
+            : Result.Success();
 
     /// <summary>
     /// Configures the state backend WITHOUT throwing. The built-in local-file store always succeeds; every other backend
-    /// is a plugin, which may fail — returning a <see cref="PluginDiagnostic"/> (<see langword="null"/> on success or
-    /// when no backend is configured). The fluent <see cref="ConfigureBackendState"/> is the throwing wrapper.
+    /// is a plugin, which may fail — a <see cref="Result"/> that fails carrying its diagnostics (success also covers no
+    /// backend configured). The fluent <see cref="ConfigureState(NSchema.Configuration.State.StateConfiguration?)"/> is the throwing wrapper.
     /// </summary>
-    public PluginDiagnostic? TryConfigureBackendState(StateConfig? state)
+    public Result TryConfigureState(StateConfiguration? state)
     {
         // The local-file store is built into the core and always available; every other backend is a plugin.
         if (state?.File is { } file)
         {
             _builder.UseFileStateStore(file.Path);
-            return null;
+            return Result.Success();
         }
 
         return state?.Plugin is { } reference
-            ? TryApply<INSchemaStatePlugin>(reference, plugin => plugin.Configure(_builder, reference.Config))
-            : null;
+            ? TryApply<INSchemaStatePlugin>(reference, plugin => plugin.Configure(_builder, reference.Settings))
+            : Result.Success();
     }
 
     // Configure lives on the two derived interfaces (not the shared base), so the caller supplies the call; this method
     // owns the resolve + non-throwing capture both the throwing wrappers and doctor build on. Resolution and the plugin's
-    // own Configure both report failure as data, so there is nothing to catch — the diagnostic is composed, not caught.
-    private PluginDiagnostic? TryApply<TPlugin>(PluginReference reference, Func<TPlugin, Result> configure)
+    // own Configure both report failure as data, so there is nothing to catch — the result is composed, not caught.
+    private Result TryApply<TPlugin>(PluginReference reference, Func<TPlugin, Result> configure)
         where TPlugin : class, INSchemaPlugin
     {
         var resolved = ResolvePlugin<TPlugin>(reference);
-        if (resolved.IsFailure)
-        {
-            return new PluginDiagnostic(reference.Label, resolved.Errors.Select(e => e.Message).ToList());
-        }
-
-        var result = configure(resolved.Value);
-        return result.IsSuccess ? null : new PluginDiagnostic(reference.Label, result.Errors.Select(e => e.Message).ToList());
+        return resolved.IsFailure
+            ? Labelled(reference.Label, resolved.Diagnostics)
+            : Labelled(reference.Label, configure(resolved.Value).Diagnostics);
     }
+
+    // A plugin failure is reported under the block label the configuration declares it with (e.g. 'postgres'/'s3') —
+    // what the user wrote and can act on — rather than the package id or the plugin's own diagnostic source.
+    private static Result Labelled(PluginLabel label, IEnumerable<Diagnostic> diagnostics) =>
+        Result.From(diagnostics.Select(diagnostic => diagnostic with { Source = label.Value }));
 
     private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var loaded = _plugins.Load(reference.PackageId, reference.Version, reference.RestoreVersion, _allowRestore);
+        var loaded = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
         if (loaded.IsFailure)
         {
             return Result.Failure<TPlugin>(loaded.Diagnostics);
@@ -135,19 +136,19 @@ internal sealed class CliApplicationBuilder
         var plugin = loaded.Require().OfType<TPlugin>().FirstOrDefault();
         if (plugin is null)
         {
-            return Diagnostic.Error(reference.PackageId,
+            return Diagnostic.Error(reference.PackageId.Value,
                 $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
         }
 
         return plugin;
     }
 
-    private static void Throw(PluginDiagnostic? diagnostic)
+    private static void Throw(Result result)
     {
-        if (diagnostic is { } problem)
+        if (result.IsFailure)
         {
             throw new InvalidOperationException(
-                $"The '{problem.Label}' plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, problem.Errors)}");
+                $"A plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, result.Errors.Select(e => $"'{e.Source}': {e.Message}"))}");
         }
     }
 

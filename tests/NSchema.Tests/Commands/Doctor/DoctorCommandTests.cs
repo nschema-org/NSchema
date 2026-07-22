@@ -1,4 +1,7 @@
 using System.CommandLine;
+using NSchema.Configuration;
+using NSchema.Configuration.Model;
+using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Commands.Doctor;
 
@@ -32,11 +35,13 @@ public sealed class DoctorCommandTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), """
             PLUGIN postgres (
               source  = 'NSchema.Postgres',
-              version = '5.0.0-alpha.2'
+              version = '5.0.0-alpha.5'
             );
 
             DATABASE postgres ();
             """, TestContext.Current.CancellationToken);
+        await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_projectDirectory),
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse("5.0.0-alpha.5") }]), TestContext.Current.CancellationToken);
 
         var parseResult = NSchema.Commands.RootCommand.Create().Parse(["doctor", "--directory", _projectDirectory]);
 

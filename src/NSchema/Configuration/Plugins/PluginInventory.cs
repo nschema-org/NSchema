@@ -7,24 +7,24 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 internal static class PluginInventory
 {
-    public const string ProviderRole = "provider";
-    public const string BackendRole = "backend";
+    public const string DatabaseRole = "database";
+    public const string StateRole = "state";
 
     /// <summary>
     /// Lists the plugins the project pins, each checked against the <paramref name="cache"/>.
     /// </summary>
-    public static IReadOnlyList<ProjectPlugin> ForProject(PluginReference? provider, StateConfig? state, PluginCache cache)
+    public static IReadOnlyList<ProjectPlugin> ForProject(PluginReference? provider, StateConfiguration? state, PluginCache cache)
     {
         var plugins = new List<ProjectPlugin>();
 
         if (provider is not null)
         {
-            plugins.Add(Describe(ProviderRole, provider, cache));
+            plugins.Add(Describe(DatabaseRole, provider, cache));
         }
 
         if (state?.Plugin is { } backend)
         {
-            plugins.Add(Describe(BackendRole, backend, cache));
+            plugins.Add(Describe(StateRole, backend, cache));
         }
 
         return plugins;

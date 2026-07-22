@@ -13,14 +13,14 @@ internal sealed class ScriptUntaintConfiguration : IBindable
     /// <summary>
     /// The state store holding the execution ledger (the configured backend).
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Whether to untaint without taking the state lock.
     /// </summary>
     public bool NoLock { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         State = project.State;
         ScriptUntaintOptions.NoLock.Bind(cli, n => NoLock = n);

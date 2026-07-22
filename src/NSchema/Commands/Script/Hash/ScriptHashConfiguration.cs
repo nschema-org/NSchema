@@ -9,7 +9,7 @@ namespace NSchema.Commands.Script.Hash;
 /// </summary>
 internal sealed class ScriptHashConfiguration : IBindable
 {
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
     }
 }

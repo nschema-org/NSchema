@@ -11,7 +11,7 @@ internal sealed class LockReleaseConfigurationValidator : AbstractValidator<Lock
         RuleFor(x => x.State)
             .NotNull()
             .WithMessage("A state store is required for lock release: the lock is held there.");
-        RuleFor(x => x.State!).SetValidator(new StateConfigValidator());
+        RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
 
         // Safe by default: you must name the lock you mean to release. --force is the explicit opt-out for when you
         // can't read the id first (e.g. clearing a stale lock in CI). Naming an id takes precedence — a redundant

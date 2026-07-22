@@ -38,7 +38,7 @@ internal static class LockReleaseCommand
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         var configuration = await Resolve(parseResult, environment, cancellationToken);
         using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         var console = AnsiConsole.Console;
         app.Messenger.ReportEnvironment(environment);

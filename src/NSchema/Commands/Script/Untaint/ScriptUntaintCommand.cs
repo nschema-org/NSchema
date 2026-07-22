@@ -41,7 +41,7 @@ internal static class ScriptUntaintCommand
         // The desired schema is configured because the hash to record comes from the script's declaration.
         using var app = CliApplicationBuilder.Create(parseResult)
             .ConfigureDesiredSchema()
-            .ConfigureBackendState(configuration.State)
+            .ConfigureState(configuration.State)
             .Build();
         app.Messenger.ReportEnvironment(environment);
 

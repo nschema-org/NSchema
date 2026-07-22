@@ -14,12 +14,12 @@ internal sealed class DriftConfiguration : IBindable
     /// <summary>
     /// The database provider supplying the live schema the recorded state is compared against.
     /// </summary>
-    public PluginReference? Provider { get; set; }
+    public PluginReference? Database { get; set; }
 
     /// <summary>
     /// The state store holding the recorded schema the live database is compared against.
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
     /// <summary>
     /// Optional scope filter limiting the drift check to specific database schemas (namespaces).
@@ -31,9 +31,9 @@ internal sealed class DriftConfiguration : IBindable
     /// </summary>
     public bool DetailedExitCode { get; private set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
-        Provider = project.Provider;
+        Database = project.Database;
         State = project.State;
         DriftOptions.Scope.Bind(cli, s => Scope = s);
         DriftOptions.DetailedExitCode.Bind(cli, d => DetailedExitCode = d);

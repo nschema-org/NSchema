@@ -13,9 +13,9 @@ internal sealed class StatePullConfiguration : IBindable
     /// <summary>
     /// The state store the recorded state is pulled from (the configured backend).
     /// </summary>
-    public StateConfig? State { get; set; }
+    public StateConfiguration? State { get; set; }
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         State = project.State;
     }

@@ -13,7 +13,7 @@ public sealed class ScriptUntaintConfigurationValidatorTests
         // Arrange — no provider needed: the recorded hash comes from the script's declaration.
         var config = new ScriptUntaintConfiguration
         {
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act

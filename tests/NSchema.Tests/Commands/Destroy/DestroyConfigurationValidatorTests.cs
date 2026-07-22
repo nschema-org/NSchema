@@ -13,8 +13,8 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange
         var config = new DestroyConfiguration
         {
-            Provider = TestConfigs.Provider(),
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = TestConfigurations.Provider(),
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act
@@ -30,7 +30,7 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange — the managed schema is read from the recorded state, so a store is required.
         var config = new DestroyConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
         };
 
         // Act
@@ -47,7 +47,7 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange — --ephemeral stands in for a configured store (CI against a disposable database).
         var config = new DestroyConfiguration
         {
-            Provider = TestConfigs.Provider(),
+            Database = TestConfigurations.Provider(),
             Ephemeral = true,
         };
 
@@ -64,8 +64,8 @@ public sealed class DestroyConfigurationValidatorTests
         // Arrange
         var config = new DestroyConfiguration
         {
-            Provider = null,
-            State = new StateConfig { File = new FileStateConfig { Path = "./state.json" } },
+            Database = null,
+            State = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } },
         };
 
         // Act

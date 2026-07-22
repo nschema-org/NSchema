@@ -17,17 +17,23 @@ internal sealed class ScaffoldConfiguration : IBindable
     /// <summary>
     /// The database provider to scaffold configuration and a sample schema for.
     /// </summary>
-    public ProviderKind Provider { get; set; } = ProviderKind.Postgres;
+    public DatabaseKind Database { get; set; } = DatabaseKind.Postgres;
 
     /// <summary>
     /// The state backend to scaffold configuration for.
     /// </summary>
-    public BackendKind Backend { get; set; } = BackendKind.File;
+    public StateKind State { get; set; } = StateKind.File;
 
-    public void Bind(ProjectConfig project, ParseResult cli)
+    /// <summary>
+    /// Whether to skip the automatic <c>init</c> that resolves and locks the scaffolded plugins.
+    /// </summary>
+    public bool NoInit { get; set; }
+
+    public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         ScaffoldOptions.Force.Bind(cli, f => Force = f);
-        ScaffoldOptions.Provider.Bind(cli, p => Provider = p);
-        ScaffoldOptions.Backend.Bind(cli, b => Backend = b);
+        ScaffoldOptions.Database.Bind(cli, p => Database = p);
+        ScaffoldOptions.State.Bind(cli, b => State = b);
+        ScaffoldOptions.NoInit.Bind(cli, n => NoInit = n);
     }
 }

@@ -1,3 +1,4 @@
+using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
@@ -17,13 +18,19 @@ public sealed class PluginCacheTests : IDisposable
         }
     }
 
+    private static SemanticVersion V(string version) => SemanticVersion.Parse(version);
+
     // Seeds a restored plugin by writing the publish/<id>.dll marker that List/Contains probe for.
     private void Seed(string packageId, string version)
     {
-        var publish = _sut.PublishDirectory(packageId, version);
+        var publish = _sut.PublishDirectory(packageId, V(version));
         Directory.CreateDirectory(publish);
         File.WriteAllText(Path.Combine(publish, packageId + ".dll"), "x");
     }
+
+    // The scratch dir some earlier resolutions left behind, which listings must skip.
+    private void SeedResolveScratch(string packageId) =>
+        Directory.CreateDirectory(Path.Combine(_root, packageId, PluginCache.ResolveDirectoryName));
 
     [Fact]
     public void List_MissingRoot_ReturnsEmpty()
@@ -44,7 +51,7 @@ public sealed class PluginCacheTests : IDisposable
         var listed = _sut.List();
 
         // Assert
-        listed.Select(p => (p.PackageId, p.Version))
+        listed.Select(p => (p.PackageId.Value, p.Version.ToString()))
             .ShouldBe([("NSchema.Aws", "4.0.0"), ("NSchema.Postgres", "4.0.0"), ("NSchema.Postgres", "4.1.0")]);
     }
 
@@ -53,11 +60,11 @@ public sealed class PluginCacheTests : IDisposable
     {
         // Arrange — one real restore, the _resolve scratch dir, and a version dir with no plugin assembly.
         Seed("NSchema.Postgres", "4.0.0");
-        Directory.CreateDirectory(_sut.ResolveDirectory("NSchema.Postgres"));
-        Directory.CreateDirectory(_sut.PublishDirectory("NSchema.Postgres", "4.9.0"));
+        SeedResolveScratch("NSchema.Postgres");
+        Directory.CreateDirectory(_sut.PublishDirectory("NSchema.Postgres", V("4.9.0")));
 
         // Act + Assert
-        _sut.List().ShouldHaveSingleItem().Version.ShouldBe("4.0.0");
+        _sut.List().ShouldHaveSingleItem().Version.ToString().ShouldBe("4.0.0");
     }
 
     [Fact]
@@ -67,8 +74,8 @@ public sealed class PluginCacheTests : IDisposable
         Seed("NSchema.Postgres", "4.0.0");
 
         // Act + Assert
-        _sut.Contains("NSchema.Postgres", "4.0.0").ShouldBeTrue();
-        _sut.Contains("NSchema.Postgres", "4.1.0").ShouldBeFalse();
+        _sut.Contains("NSchema.Postgres", V("4.0.0")).ShouldBeTrue();
+        _sut.Contains("NSchema.Postgres", V("4.1.0")).ShouldBeFalse();
     }
 
     [Fact]
@@ -79,11 +86,11 @@ public sealed class PluginCacheTests : IDisposable
         Seed("NSchema.Postgres", "4.1.0");
 
         // Act
-        var removed = _sut.Remove("NSchema.Postgres", "4.0.0");
+        var removed = _sut.Remove("NSchema.Postgres", V("4.0.0"));
 
         // Assert
-        removed.ShouldHaveSingleItem().Version.ShouldBe("4.0.0");
-        _sut.List().ShouldHaveSingleItem().Version.ShouldBe("4.1.0");
+        removed.ShouldHaveSingleItem().Version.ToString().ShouldBe("4.0.0");
+        _sut.List().ShouldHaveSingleItem().Version.ToString().ShouldBe("4.1.0");
     }
 
     [Fact]
@@ -92,16 +99,16 @@ public sealed class PluginCacheTests : IDisposable
         // Arrange — two restored versions plus a leftover _resolve scratch dir.
         Seed("NSchema.Postgres", "4.0.0");
         Seed("NSchema.Postgres", "4.1.0");
-        Directory.CreateDirectory(_sut.ResolveDirectory("NSchema.Postgres"));
+        SeedResolveScratch("NSchema.Postgres");
 
         // Act
         var removed = _sut.Remove("NSchema.Postgres", version: null);
 
         // Assert
-        removed.Select(p => p.Version).ShouldBe(["4.0.0", "4.1.0"], ignoreOrder: true);
+        removed.Select(p => p.Version.ToString()).ShouldBe(["4.0.0", "4.1.0"], ignoreOrder: true);
         _sut.List().ShouldBeEmpty();
         // The whole package folder is pruned once empty, taking the _resolve scratch dir with it.
-        Directory.Exists(System.IO.Path.Combine(_root, "NSchema.Postgres")).ShouldBeFalse();
+        Directory.Exists(Path.Combine(_root, "NSchema.Postgres")).ShouldBeFalse();
     }
 
     [Fact]
@@ -110,13 +117,13 @@ public sealed class PluginCacheTests : IDisposable
         // Arrange — two packages plus a leftover scratch dir.
         Seed("NSchema.Postgres", "4.0.0");
         Seed("NSchema.Aws", "4.0.0");
-        Directory.CreateDirectory(_sut.ResolveDirectory("NSchema.Postgres"));
+        SeedResolveScratch("NSchema.Postgres");
 
         // Act
         var cleared = _sut.Clear();
 
         // Assert
-        cleared.Select(p => p.PackageId).ShouldBe(["NSchema.Aws", "NSchema.Postgres"], ignoreOrder: true);
+        cleared.Select(p => p.PackageId.Value).ShouldBe(["NSchema.Aws", "NSchema.Postgres"], ignoreOrder: true);
         _sut.List().ShouldBeEmpty();
         Directory.Exists(_root).ShouldBeFalse();
     }
@@ -135,7 +142,7 @@ public sealed class PluginCacheTests : IDisposable
         Seed("NSchema.Postgres", "4.0.0");
 
         // Act
-        var removed = _sut.Remove("NSchema.Postgres", "9.9.9");
+        var removed = _sut.Remove("NSchema.Postgres", V("9.9.9"));
 
         // Assert
         removed.ShouldBeEmpty();
