@@ -1,5 +1,5 @@
-using NSchema.Configuration.Plugins;
 using NSchema.Configuration.Model;
+using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
 
