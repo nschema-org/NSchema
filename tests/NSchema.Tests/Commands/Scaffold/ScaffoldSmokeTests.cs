@@ -33,7 +33,7 @@ public sealed class ScaffoldSmokeTests : IDisposable
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
-        var providerBlock = plugin.GetScaffoldTemplate(new ScaffoldContext());
+        var providerBlock = ScaffoldCommand.Render(plugin.GetScaffoldTemplate(new ScaffoldContext()));
         var sampleSchema = plugin.GetSampleSchema();
 
         // Act — compose the project (file state store, like the default `nschema scaffold`).
@@ -59,7 +59,7 @@ public sealed class ScaffoldSmokeTests : IDisposable
         foreach (var file in new[] { "config.env.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql") })
         {
             var content = await File.ReadAllTextAsync(Path.Combine(_directory, file), TestContext.Current.CancellationToken);
-            NsqlFormatter.Format(content).ShouldBe(content, $"{file} should be formatter-canonical");
+            NsqlWriter.Format(content).Require().ShouldBe(content, $"{file} should be formatter-canonical");
         }
     }
 }

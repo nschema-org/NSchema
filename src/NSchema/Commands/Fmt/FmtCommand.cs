@@ -48,13 +48,34 @@ internal static class FmtCommand
     private static int FormatStdin(bool check)
     {
         var input = Console.In.ReadToEnd();
-        var formatted = NsqlFormatter.Format(input);
+        if (Format(input, "<stdin>") is not { } formatted)
+        {
+            return ExitCodes.Error;
+        }
         if (check)
         {
             return formatted == input ? ExitCodes.NoChanges : ExitCodes.HasChanges;
         }
         Console.Out.Write(formatted);
         return ExitCodes.NoChanges;
+    }
+
+    /// <summary>
+    /// The canonical formatting of <paramref name="source"/>, or <see langword="null"/> when it does not parse —
+    /// a syntax error is reported rather than rewritten over, since the render would not be the whole document.
+    /// </summary>
+    private static string? Format(string source, string origin)
+    {
+        var result = NsqlWriter.Format(source);
+        if (result.IsFailure)
+        {
+            foreach (var error in result.Errors)
+            {
+                Console.Error.WriteLine($"{origin}({error.Position.Line},{error.Position.Column}): {error.Message}");
+            }
+            return null;
+        }
+        return result.Value;
     }
 
     /// <summary>
@@ -67,8 +88,7 @@ internal static class FmtCommand
         foreach (var file in ResolveFiles(path))
         {
             var original = File.ReadAllText(file);
-            var formatted = NsqlFormatter.Format(original);
-            if (formatted == original)
+            if (Format(original, file) is not { } formatted || formatted == original)
             {
                 continue;
             }

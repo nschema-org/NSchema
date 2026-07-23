@@ -13,7 +13,7 @@ internal static class ScopeExtensions
         /// The planning scope covering the named schemas, or <see cref="PlanningScope.All"/> when none are named.
         /// </summary>
         public PlanningScope ToPlanningScope() => scope is { Length: > 0 }
-            ? PlanningScope.To(scope.Select(s => new SqlIdentifier(s)))
+            ? PlanningScope.To(scope.Select(s => new SchemaAddress(s)))
             : PlanningScope.All;
     }
 }
