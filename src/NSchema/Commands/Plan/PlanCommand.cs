@@ -43,8 +43,15 @@ internal static class PlanCommand
             .Build();
 
         app.Messenger.ReportEnvironment(environment);
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
         app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { Scope = configuration.Scope.ToPlanningScope(), OutFile = configuration.OutFile }, cancellationToken);
+        var result = await app.Operations.Plan(new PlanArguments { Scope = scope.Require(), OutFile = configuration.OutFile }, cancellationToken);
         return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Plan saved to", configuration.DetailedExitCode);
     }
 
@@ -59,8 +66,15 @@ internal static class PlanCommand
             .Build();
 
         app.Messenger.ReportEnvironment(environment);
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
         app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { Scope = configuration.Scope.ToPlanningScope(), OutFile = configuration.OutFile, Target = PlanTarget.Empty }, cancellationToken);
+        var result = await app.Operations.Plan(new PlanArguments { Scope = scope.Require(), OutFile = configuration.OutFile, Target = PlanTarget.Empty }, cancellationToken);
         return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Planned destroy saved to", configuration.DetailedExitCode);
     }
 

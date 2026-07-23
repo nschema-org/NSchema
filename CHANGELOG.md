@@ -18,6 +18,7 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 
 ### Added
 
+- **`--scope` takes an object, not just a schema.** A value is an address — `--scope app` for a whole schema, `--scope app.orders` for one object. Read under the NSQL identifier rules, so a quoted segment can carry dots and spaces (`--scope '"my.schema"."Order Details"'`).
 - **`--ephemeral`** on `plan`, `apply`, and `destroy` runs against an in-memory state store discarded when the command exits, standing in for a configured `STATE` store — for CI pipelines that bootstrap disposable databases. Run-once script history does not persist across runs in this mode.
 - **A lockfile (`nschema.lock`) pins declared plugin versions to concrete versions.** `init` resolves each `PLUGIN` — a range to the highest available version, an exact pin to itself — and records it; later commands read the pin, so a plugin without a lockfile entry is an error that points to `init`.
 - **`plugin update [<label>]`** re-resolves ranges to their highest available version and rewrites the lockfile — every plugin, or a single one by label.

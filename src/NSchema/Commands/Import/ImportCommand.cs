@@ -31,11 +31,18 @@ internal static class ImportCommand
         var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
         GuardAgainstOverwrite(outputDirectory, configuration.Force);
 
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
         app.Messenger.Announce($"Importing schema from database...");
 
         var args = new ImportArguments
         {
-            Scope = configuration.Scope.ToPlanningScope(),
+            Scope = scope.Require(),
             OutputDirectory = outputDirectory
         };
 

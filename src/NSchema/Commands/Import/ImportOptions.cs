@@ -8,7 +8,7 @@ internal static class ImportOptions
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope", "-s")
         .AllowMultipleArguments()
-        .WithDescription("Limit the import to specific database schema namespaces. May be specified multiple times.");
+        .WithDescription("Limit the import to a schema ('app') or an object ('app.orders'). May be specified multiple times.");
 
     public static readonly OptionBinding<string> OutputDirectory = OptionBinding.Create<string>()
         .FromOption("--out-dir", "-o")

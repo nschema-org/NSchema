@@ -175,9 +175,20 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task SchemaStatementInConfigurationFile_Throws()
-        // A configuration file holds only configuration statements; DDL belongs in the schema files.
-        => await Should.ThrowAsync<InvalidOperationException>(() => Read("CREATE SCHEMA app;"));
+    public async Task SchemaStatementBesideConfiguration_IsRead()
+    {
+        // One grammar: declarations and configuration blocks may sit side by side, and the configuration
+        // reader takes the statements it understands rather than rejecting the rest.
+        await WriteLock(Locked("NSchema.Postgres", "5.0.0-alpha.2"));
+        var config = await Read(
+            """
+            CREATE SCHEMA app;
+            PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0-alpha.2' );
+            DATABASE postgres ( connection_string = 'host=db' );
+            """);
+
+        config.Database!.PackageId.ShouldBe("NSchema.Postgres");
+    }
 
     [Fact]
     public async Task DuplicateDatabase_Throws()

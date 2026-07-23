@@ -9,7 +9,7 @@ internal static class PlanOptions
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope", "-s")
         .AllowMultipleArguments()
-        .WithDescription("Limit the plan to specific database schemas (namespaces). May be specified multiple times.");
+        .WithDescription("Limit the plan to a schema ('app') or an object ('app.orders'). May be specified multiple times.");
 
     public static readonly OptionBinding<PolicyEnforcement?> Destructive = OptionBinding.Create<PolicyEnforcement?>()
         .FromOption("--destructive-actions")

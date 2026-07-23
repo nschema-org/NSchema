@@ -79,7 +79,14 @@ internal static class StateShowCommand
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportSchema(state.Database.ScopedTo(scope.ToPlanningScope()));
+        var planningScope = scope.ToPlanningScope();
+        if (planningScope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(planningScope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
+        app.Presenter.ReportSchema(state.Database.ScopedTo(planningScope.Require()));
         return ExitCodes.NoChanges;
     }
 }
