@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>5.0.0-alpha.5</Version>
+    <Version>5.0.0-alpha.6</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
