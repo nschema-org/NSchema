@@ -45,7 +45,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        _builder.AddProjectSource(Directory.GetCurrentDirectory(), ProjectGlobs.Schema());
+        _builder.AddProjectSource(Directory.GetCurrentDirectory(), ProjectGlobs.Base());
         return this;
     }
 

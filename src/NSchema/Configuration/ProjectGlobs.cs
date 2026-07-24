@@ -16,11 +16,6 @@ internal static class ProjectGlobs
     public const string AllSql = "**/*.sql";
 
     /// <summary>
-    /// The base configuration files, loaded for every environment.
-    /// </summary>
-    public const string BaseConfigurationGlob = "**/*.env.sql";
-
-    /// <summary>
     /// Any environment-specific configuration file, for any environment.
     /// </summary>
     public const string AnyEnvironmentConfigurationGlob = "**/*.env.*.sql";
@@ -31,18 +26,11 @@ internal static class ProjectGlobs
     public static string EnvironmentConfigurationGlob(string environment) => $"**/*.env.{environment}.sql";
 
     /// <summary>
-    /// Matches the schema files: every <c>.sql</c> file except configuration files.
+    /// Matches the base files: every <c>.sql</c> file except environment files.
     /// </summary>
-    public static Matcher Schema() => new Matcher()
+    public static Matcher Base() => new Matcher()
         .AddInclude(AllSql)
-        .AddExclude(BaseConfigurationGlob)
         .AddExclude(AnyEnvironmentConfigurationGlob);
-
-    /// <summary>
-    /// Matches the base configuration files.
-    /// </summary>
-    public static Matcher BaseConfiguration() => new Matcher()
-        .AddInclude(BaseConfigurationGlob);
 
     /// <summary>
     /// Matches a single environment's configuration files.

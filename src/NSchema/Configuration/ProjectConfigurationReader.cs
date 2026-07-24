@@ -76,7 +76,7 @@ internal static class ProjectConfigurationReader
     {
         var layers = new List<ConfigurationLayer>
         {
-            new(ProjectGlobs.Match(root, ProjectGlobs.BaseConfiguration())),
+            new(ProjectGlobs.Match(root, ProjectGlobs.Base())),
         };
 
         if (environment is not null)
