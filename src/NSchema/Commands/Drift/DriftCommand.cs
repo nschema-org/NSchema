@@ -34,7 +34,14 @@ internal static class DriftCommand
             .Build();
         app.Messenger.ReportEnvironment(environment);
 
-        var result = await app.Operations.Drift(new DriftArguments { Scope = configuration.Scope.ToPlanningScope() }, cancellationToken);
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
+        var result = await app.Operations.Drift(new DriftArguments { Scope = scope.Require() }, cancellationToken);
         if (result.IsFailure)
         {
             app.Messenger.ReportDiagnostics(result.Diagnostics);

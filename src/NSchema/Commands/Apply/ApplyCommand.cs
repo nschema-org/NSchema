@@ -92,7 +92,14 @@ internal static class ApplyCommand
         }
         else
         {
-            var planResult = await app.Operations.Plan(new PlanArguments { Scope = configuration.Scope.ToPlanningScope() }, cancellationToken);
+            var scope = configuration.Scope.ToPlanningScope();
+            if (scope.IsFailure)
+            {
+                app.Messenger.ReportDiagnostics(scope.Diagnostics);
+                return ExitCodes.Error;
+            }
+
+            var planResult = await app.Operations.Plan(new PlanArguments { Scope = scope.Require() }, cancellationToken);
 
             // Show the diff first — even on a policy error, the result carries the complete plan — so the offending
             // change is visible.

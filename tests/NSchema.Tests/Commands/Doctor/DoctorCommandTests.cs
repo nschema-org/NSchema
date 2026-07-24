@@ -35,13 +35,13 @@ public sealed class DoctorCommandTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), """
             PLUGIN postgres (
               source  = 'NSchema.Postgres',
-              version = '5.0.0-alpha.5'
+              version = '5.0.0-alpha.6'
             );
 
             DATABASE postgres ();
             """, TestContext.Current.CancellationToken);
         await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_projectDirectory),
-            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse("5.0.0-alpha.5") }]), TestContext.Current.CancellationToken);
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse("5.0.0-alpha.6") }]), TestContext.Current.CancellationToken);
 
         var parseResult = NSchema.Commands.RootCommand.Create().Parse(["doctor", "--directory", _projectDirectory]);
 

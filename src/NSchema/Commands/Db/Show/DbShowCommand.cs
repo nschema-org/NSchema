@@ -32,8 +32,15 @@ internal static class DbShowCommand
             .Build();
         app.Messenger.ReportEnvironment(environment);
 
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
         app.Messenger.Announce($"Reading the live database schema.");
-        var database = await app.Database.GetDatabase(configuration.Scope.ToPlanningScope(), cancellationToken);
+        var database = await app.Database.GetDatabase(scope.Require(), cancellationToken);
         if (database.IsFailure)
         {
             app.Messenger.ReportDiagnostics(database.Diagnostics);

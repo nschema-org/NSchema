@@ -14,7 +14,7 @@ namespace NSchema.Tests.Configuration.Plugins;
 public sealed class PluginLoaderTests : IDisposable
 {
     private static readonly PackageId Package = new("NSchema.Postgres");
-    private static readonly SemanticVersion Version = SemanticVersion.Parse("5.0.0-alpha.5");
+    private static readonly SemanticVersion Version = SemanticVersion.Parse("5.0.0-alpha.6");
 
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
 

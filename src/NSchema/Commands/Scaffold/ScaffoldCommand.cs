@@ -4,6 +4,8 @@ using NSchema.Configuration;
 using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
+using NSchema.Project.Nsql;
+using NSchema.Project.Nsql.Syntax.Blocks;
 using Spectre.Console;
 
 namespace NSchema.Commands.Scaffold;
@@ -37,7 +39,7 @@ internal static class ScaffoldCommand
         var providerVersion = loader.ResolveLatestVersion(providerPackage);
         plugins.Add((providerLabel, providerPackage.Value, providerVersion.ToString()));
         var providerPlugin = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
-        var providerBlock = providerPlugin.GetScaffoldTemplate(new ScaffoldContext());
+        var providerBlock = Render(providerPlugin.GetScaffoldTemplate(new ScaffoldContext()));
         var sampleSchema = providerPlugin.GetSampleSchema();
 
         // The local-file state store is built in; any other backend is a plugin that renders its own statements
@@ -51,8 +53,8 @@ internal static class ScaffoldCommand
             plugins.Add((backend.Label, backendPackage.Value, backendVersion.ToString()));
             var backendPlugin = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
             pluginBackend = (
-                backendPlugin.GetScaffoldTemplate(new ScaffoldContext()),
-                backendPlugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" }));
+                Render(backendPlugin.GetScaffoldTemplate(new ScaffoldContext())),
+                Render(backendPlugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" })));
         }
 
         var created = await ProjectScaffolder.Scaffold(
@@ -99,6 +101,10 @@ internal static class ScaffoldCommand
         var major = HostVersion.Current.Major;
         return $"[{major}.0,{major + 1}.0)";
     }
+
+    // A plugin returns its statement rather than text now; a hand-built tree carries no trivia, so the writer
+    // is what synthesizes the separators between its tokens.
+    internal static string Render(BlockStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
 
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)
