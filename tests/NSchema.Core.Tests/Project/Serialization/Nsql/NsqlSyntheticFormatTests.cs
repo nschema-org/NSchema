@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model.Services;
 using NSchema.Model;
 using NSchema.Model.Schemas;
@@ -18,7 +19,7 @@ namespace NSchema.Tests.Project.Serialization.Nsql;
 /// </summary>
 public sealed class NsqlSyntheticFormatTests
 {
-    private readonly DatabaseComparer _comparer = new(NullLogger<DatabaseComparer>.Instance);
+    private readonly DatabaseComparer _comparer = new(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence());
 
     [Fact]
     public void Format_SyntheticSchema_IsValidAndRoundTrips()

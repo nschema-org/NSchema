@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model.Services;
 using NSchema.Project.Nsql;
 using DatabaseComparer = NSchema.Diff.Model.Services.DatabaseComparer;
@@ -15,7 +16,7 @@ namespace NSchema.Tests.EndToEnd;
 /// </summary>
 public sealed class RoundTripDriftTests
 {
-    private readonly DatabaseComparer _comparer = new(NullLogger<DatabaseComparer>.Instance);
+    private readonly DatabaseComparer _comparer = new(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence());
 
     [Fact]
     public void NsqlRoundTrip_OfRichSchema_ProducesNoDiff()

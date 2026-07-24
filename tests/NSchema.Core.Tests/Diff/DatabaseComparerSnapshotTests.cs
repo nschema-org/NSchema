@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model;
 using NSchema.Diff.Model.Services;
 using NSchema.Model;
@@ -28,7 +29,7 @@ namespace NSchema.Tests.Diff;
 /// </summary>
 public sealed class DatabaseComparerSnapshotTests
 {
-    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance);
+    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence());
 
     [Fact]
     public Task Compare_RichSchemas_ProjectsFullDiffTree()

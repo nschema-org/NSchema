@@ -82,7 +82,7 @@ internal sealed partial class DatabaseComparer
     private partial void LogColumnDefaultUnchanged(ObjectAddress owner, SqlIdentifier column, string @default);
 
     [LoggerMessage(EventId = 40, Level = LogLevel.Information, Message = "Column '{Owner}.{Column}' default changed: '{OldDefault}' -> '{NewDefault}'")]
-    private partial void LogColumnDefaultChanged(ObjectAddress owner, SqlIdentifier column, SqlText? oldDefault, SqlText? newDefault);
+    private partial void LogColumnDefaultChanged(ObjectAddress owner, SqlIdentifier column, SqlDefaultExpression? oldDefault, SqlDefaultExpression? newDefault);
 
     [LoggerMessage(EventId = 41, Level = LogLevel.Information, Message = "Column '{Owner}.{Column}' comment changed")]
     private partial void LogColumnCommentChanged(ObjectAddress owner, SqlIdentifier column);

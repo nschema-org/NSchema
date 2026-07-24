@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model.Services;
 using NSchema.Diff.Model.Tables;
 using NSchema.Model;
@@ -17,7 +18,7 @@ namespace NSchema.Tests.Diff;
 /// </summary>
 public class ChangeScriptAttachmentTests
 {
-    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance);
+    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence());
 
     /// <summary>Diffs the given current/desired <c>app.users</c> tables, steered by the given change scripts.</summary>
     private TableDiff Diff(Table current, Table desired, params ChangeScript[] scripts)

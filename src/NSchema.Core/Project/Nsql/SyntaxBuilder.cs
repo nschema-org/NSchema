@@ -116,7 +116,7 @@ internal static class SyntaxBuilder
         {
             var node = new Syn.Domains.CreateDomainStatement(Qualified(schema.Name, domain.Name), Type(domain.DataType), domain.NotNull,
                 domain.Checks.Select(c => new Syn.Constraints.CheckDefinition(Name(c.Name), c.Expression)).ToList(),
-                domain.Default)
+                Default(domain.Default))
             {
                 Doc = domain.Comment,
                 DocComment = DocToken(domain.Comment),
@@ -176,7 +176,7 @@ internal static class SyntaxBuilder
         foreach (var column in table.Columns)
         {
             var node = new Syn.Tables.ColumnDefinition(Name(column.Name), Type(column.Type), column.IsNullable, column.IsIdentity,
-                Options(column.IdentityOptions), column.DefaultExpression, column.GeneratedExpression)
+                Options(column.IdentityOptions), Default(column.DefaultExpression), column.GeneratedExpression)
             {
                 Doc = column.Comment,
                 DocComment = DocToken(column.Comment),
@@ -354,6 +354,8 @@ internal static class SyntaxBuilder
     /// Decomposes a type's canonical text (<c>varchar(100)</c>, <c>app.status</c>) into the written form;
     /// the renderer reassembles the same text, so the round-trip is exact.
     /// </summary>
+    private static SqlText? Default(SqlDefaultExpression? @default) => @default != null ? new SqlText(@default.Value) : null;
+
     private static TypeName Type(SqlType type)
     {
         // The type carries its qualifier and arguments as components, so read them straight across — no

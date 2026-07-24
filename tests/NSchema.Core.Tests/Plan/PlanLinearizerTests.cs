@@ -91,7 +91,7 @@ public sealed class PlanLinearizerTests
         SqlIdentifier? renamedFrom = null,
         ValueChange<SqlType>? type = null,
         ValueChange<bool>? nullability = null,
-        ValueChange<SqlText>? @default = null,
+        ValueChange<SqlDefaultExpression>? @default = null,
         ValueChange<IdentityOptions>? identity = null,
         ValueChange<string>? comment = null,
         ValueChange<SqlText>? generated = null,
@@ -413,7 +413,7 @@ public sealed class PlanLinearizerTests
 
     [Fact]
     public void Linearize_ColumnDefaultChange_EmitsSetColumnDefault()
-        => LinearizeColumn(ModifiedColumn("status", @default: new ValueChange<SqlText>(null, "'active'")))
+        => LinearizeColumn(ModifiedColumn("status", @default: new ValueChange<SqlDefaultExpression>(null, "'active'")))
             .OfType<SetColumnDefault>().ShouldHaveSingleItem()
             .ShouldSatisfyAllConditions(a => a.OldDefault.ShouldBeNull(), a => a.NewDefault.ShouldBe("'active'"));
 
@@ -446,7 +446,7 @@ public sealed class PlanLinearizerTests
             renamedFrom: "identifier",
             type: new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt),
             nullability: new ValueChange<bool>(true, false),
-            @default: new ValueChange<SqlText>(null, "0"),
+            @default: new ValueChange<SqlDefaultExpression>(null, "0"),
             identity: new ValueChange<IdentityOptions>(null, new IdentityOptions(1, 1, 1)),
             comment: new ValueChange<string>(null, "pk"));
 
@@ -952,7 +952,7 @@ public sealed class PlanLinearizerTests
                 [
                     ModifiedColumn("status",
                         type: new ValueChange<SqlType>(SqlType.Text, SqlType.Custom("status")),
-                        @default: new ValueChange<SqlText>(null, "'a'")),
+                        @default: new ValueChange<SqlDefaultExpression>(null, "'a'")),
                 ]),
             ],
             enums: [new EnumDiff("app", "status", ChangeKind.Modify, AddedValues: [new EnumValueAddition("a")])]));

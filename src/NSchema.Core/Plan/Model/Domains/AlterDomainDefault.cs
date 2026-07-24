@@ -8,4 +8,4 @@ namespace NSchema.Plan.Model.Domains;
 /// <param name="Domain">The address of the domain.</param>
 /// <param name="OldDefault">The previous default expression, if any.</param>
 /// <param name="NewDefault">The new default expression, or <see langword="null"/> to drop it.</param>
-public sealed record AlterDomainDefault(ObjectAddress Domain, SqlText? OldDefault, SqlText? NewDefault) : MigrationAction;
+public sealed record AlterDomainDefault(ObjectAddress Domain, SqlDefaultExpression? OldDefault, SqlDefaultExpression? NewDefault) : MigrationAction;

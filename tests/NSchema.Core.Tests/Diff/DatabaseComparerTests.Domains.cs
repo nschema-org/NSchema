@@ -56,7 +56,7 @@ public partial class DatabaseComparerTests
         var diff = DiffDomains([new DomainType { Name = "d", DataType = SqlType.Text, Default = "'a'" }], [new DomainType { Name = "d", DataType = SqlType.Text, Default = "'b'" }]);
 
         diff!.RequiresRecreate.ShouldBeFalse();
-        diff.Default.ShouldBe(new ValueChange<SqlText>("'a'", "'b'"));
+        diff.Default.ShouldBe(new ValueChange<SqlDefaultExpression>("'a'", "'b'"));
         diff.Definition.ShouldBeNull();
     }
 

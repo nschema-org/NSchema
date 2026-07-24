@@ -26,7 +26,7 @@ public sealed class Column : DatabaseMember, IEquatable<Column>
     /// <summary>
     /// An optional default expression for the column.
     /// </summary>
-    public SqlText? DefaultExpression { get; set; }
+    public SqlDefaultExpression? DefaultExpression { get; set; }
 
     /// <summary>
     /// An optional set of options for identity columns, such as seed and increment values.

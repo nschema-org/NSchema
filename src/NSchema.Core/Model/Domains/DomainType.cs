@@ -21,7 +21,7 @@ public sealed class DomainType : DatabaseObject, IEquatable<DomainType>
     /// <summary>
     /// An optional default expression, stored verbatim (opaque SQL); <see langword="null"/> when none.
     /// </summary>
-    public SqlText? Default { get; set; }
+    public SqlDefaultExpression? Default { get; set; }
 
     /// <summary>
     /// Whether the domain forbids <c>NULL</c>.

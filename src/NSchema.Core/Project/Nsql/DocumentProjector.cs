@@ -65,7 +65,7 @@ internal static class DocumentProjector
                 {
                     var (schema, name) = Bind(s.Name, context);
                     DatabaseMemberCollection<CheckConstraint> checks = [.. s.Checks.Select(c => new CheckConstraint { Name = Name(c.Name), Expression = c.Expression })];
-                    schemas.AddDomain(schema, new DomainType { Name = name, DataType = ParseType(s.Type), Default = s.Default, NotNull = s.NotNull, Checks = checks, Comment = s.Doc }, s.Name.Position);
+                    schemas.AddDomain(schema, new DomainType { Name = name, DataType = ParseType(s.Type), Default = ProjectDefault(s.Default), NotNull = s.NotNull, Checks = checks, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
             case Syn.CompositeTypes.CreateCompositeTypeStatement s:
@@ -127,7 +127,7 @@ internal static class DocumentProjector
                         Type = ParseType(m.Type),
                         IsNullable = m.IsNullable,
                         IsIdentity = m.IsIdentity,
-                        DefaultExpression = m.Default,
+                        DefaultExpression = ProjectDefault(m.Default),
                         IdentityOptions = ProjectIdentityOptions(m.IdentityOptions),
                         GeneratedExpression = m.Generated,
                         Comment = m.Doc,
@@ -311,6 +311,9 @@ internal static class DocumentProjector
     // --- name binding and small mappers ----------------------------------------------
 
     private static SqlIdentifier Name(Syn.Identifier identifier) => identifier.Value;
+
+    private static SqlDefaultExpression? ProjectDefault(SqlText? @default) =>
+        @default != null ? new SqlDefaultExpression(@default.Value) : null;
 
     private static SqlIdentifier? OptionalName(Syn.Identifier? identifier) => identifier?.Value;
 

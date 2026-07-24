@@ -18,8 +18,8 @@ layer determines its config surface:**
 - Lint is designed and moving ([[nsql-linting]]). Project/plan come later — **that's where plugin support
   lands**, because those checks run inside the plan/apply pipeline where the ALC rails already operate.
   Lint has no plugin story; its rules register compile-time via the builder.
-- One package shipping many rule sets remains the plausible driver for the qualified plugin form
-  ([[plugin-maturation]]).
+- One package shipping many rule sets remains a plausible use of the qualified plugin form (the
+  plugin-maturation work has since shipped).
 
 ## The motivating finding, corrected
 
@@ -69,5 +69,5 @@ The unsolved piece, and the reason project-policy config is TBD.
    kebab vs `schema_lint` underscore). Decide whether `Source` respells to match, or the id prefix and
    `Source` are simply never the same thing.
 
-ErrorOr's wider lessons — factories, implicit conversions, `Match`/`Switch` — remain in
-[result ergonomics](result-ergonomics.md). Only the rule-id half landed here.
+ErrorOr's wider lessons — factories, implicit conversions, `Match`/`Switch` — shipped with the
+result-ergonomics work. Only the rule-id half landed here.

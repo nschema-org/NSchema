@@ -63,7 +63,7 @@ public sealed class DiffReaderTests
         SqlIdentifier? renamedFrom = null,
         ValueChange<SqlType>? type = null,
         ValueChange<bool>? nullability = null,
-        ValueChange<SqlText>? @default = null,
+        ValueChange<SqlDefaultExpression>? @default = null,
         ValueChange<IdentityOptions>? identity = null,
         ValueChange<string>? comment = null)
         => new(name, ChangeKind.Modify, null, renamedFrom, type, nullability, @default, identity, comment);
@@ -215,7 +215,7 @@ public sealed class DiffReaderTests
     [Fact]
     public void Read_ColumnDefaultChange_EmitsNoneForNull()
         => ShouldHaveLine(WithTable(Table("users", ChangeKind.Modify,
-                columns: [ModifyColumn("status", @default: new ValueChange<SqlText>(null, "'active'"))])), ChangeKind.Modify, "status default: <none> → 'active'");
+                columns: [ModifyColumn("status", @default: new ValueChange<SqlDefaultExpression>(null, "'active'"))])), ChangeKind.Modify, "status default: <none> → 'active'");
 
     [Fact]
     public void Read_ColumnIdentityChange_EmitsOptionParts()

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model;
 using NSchema.Diff.Model.Services;
 using NSchema.Model;
@@ -23,7 +24,7 @@ public sealed class ProjectComparerTests
     private static readonly Database _emptySchema = new Database { Schemas = [] };
     private static readonly DatabaseDiff _emptyDiff = new([]);
 
-    private ProjectComparer Sut => new(new DatabaseComparer(NullLogger<DatabaseComparer>.Instance));
+    private ProjectComparer Sut => new(new DatabaseComparer(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence()));
 
     /// <summary>Current <c>app.users(id)</c> — the table a column-add migration targets.</summary>
     private static CurrentState UsersWithId() => new(new Database

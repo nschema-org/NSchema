@@ -48,7 +48,7 @@ public partial class DatabaseComparerTests
     {
         var column = DiffColumn(new Column { Name = "status", Type = SqlType.Text }, new Column { Name = "status", Type = SqlType.Text, DefaultExpression = "'new'" });
 
-        column!.Default.ShouldBe(new ValueChange<SqlText>(null, "'new'"));
+        column!.Default.ShouldBe(new ValueChange<SqlDefaultExpression>(null, "'new'"));
     }
 
     [Fact]

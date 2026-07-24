@@ -26,12 +26,14 @@ internal sealed partial class DatabaseComparer
     // dropped to be modified.
     private DomainDiff? BuildModifiedDomain(SqlIdentifier schema, DomainType current, DomainType desired, SqlIdentifier? renamedFrom)
     {
-        var dataType = current.DataType == desired.DataType ? null : new ValueChange<SqlType>(current.DataType, desired.DataType);
+        var dataType = equivalence.Types.Equals(current.DataType, desired.DataType) ? null : new ValueChange<SqlType>(current.DataType, desired.DataType);
         var comment = ValueChange.Between(current.Comment, desired.Comment);
         var requiresRecreate = dataType is not null;
 
         // On a recreate the default/not-null/checks are rebuilt from the definition, so they are not diffed in place.
-        var @default = requiresRecreate ? null : ValueChange.Between(current.Default, desired.Default);
+        var @default = requiresRecreate || equivalence.Defaults.Equals(current.Default, desired.Default)
+            ? null
+            : new ValueChange<SqlDefaultExpression>(current.Default, desired.Default);
         var notNull = requiresRecreate || current.NotNull == desired.NotNull
             ? null
             : new ValueChange<bool>(current.NotNull, desired.NotNull);

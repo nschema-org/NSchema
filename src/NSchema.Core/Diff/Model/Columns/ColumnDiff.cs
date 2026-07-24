@@ -24,7 +24,7 @@ public sealed record ColumnDiff(
     SqlIdentifier? RenamedFrom = null,
     ValueChange<SqlType>? Type = null,
     ValueChange<bool>? Nullability = null,
-    ValueChange<SqlText>? Default = null,
+    ValueChange<SqlDefaultExpression>? Default = null,
     ValueChange<IdentityOptions>? Identity = null,
     ValueChange<string>? Comment = null,
     ValueChange<SqlText>? Generated = null

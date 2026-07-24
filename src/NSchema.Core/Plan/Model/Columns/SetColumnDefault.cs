@@ -10,6 +10,6 @@ namespace NSchema.Plan.Model.Columns;
 /// <param name="NewDefault">The new default value to be set on the column after modification. This can be null if the default value is being removed.</param>
 public sealed record SetColumnDefault(
     MemberAddress Column,
-    SqlText? OldDefault,
-    SqlText? NewDefault
+    SqlDefaultExpression? OldDefault,
+    SqlDefaultExpression? NewDefault
 ) : MigrationAction;

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSchema.Apply;
+using NSchema.Diff.Backends;
 using NSchema.Operations.Progress;
 using NSchema.Plan.Backends;
 using NSchema.Plan.Policies;
@@ -43,6 +44,16 @@ public partial class NSchemaApplicationBuilder
     public NSchemaApplicationBuilder UseSqlDialect<T>() where T : SqlDialect
     {
         Services.Replace(ServiceDescriptor.Singleton<SqlDialect, T>());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the <see cref="SqlEquivalence"/> the application compares schemas with,
+    /// replacing any previously set one. Typically called by a database-provider extension.
+    /// </summary>
+    public NSchemaApplicationBuilder UseSqlEquivalence<T>() where T : SqlEquivalence
+    {
+        Services.Replace(ServiceDescriptor.Singleton<SqlEquivalence, T>());
         return this;
     }
 

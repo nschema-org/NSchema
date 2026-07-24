@@ -41,7 +41,7 @@ public sealed class PlanLinearizerDomainTests
     public void DefaultAndNotNullChange_EmitInPlaceAlters()
     {
         var plan = Linearize(new DomainDiff("app", "d", ChangeKind.Modify,
-            Default: new ValueChange<SqlText>(null, "0"),
+            Default: new ValueChange<SqlDefaultExpression>(null, "0"),
             NotNull: new ValueChange<bool>(false, true)));
 
         plan.OfType<RecreateDomain>().ShouldBeEmpty();

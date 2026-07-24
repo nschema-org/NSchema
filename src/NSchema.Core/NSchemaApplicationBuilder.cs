@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSchema.Apply;
 using NSchema.Deployment;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model.Services;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
@@ -95,6 +96,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
     private static void ApplyServices(IServiceCollection services)
     {
         // Diffing
+        services.TryAddSingleton<SqlEquivalence>();
         services.TryAddSingleton<IDatabaseComparer, DatabaseComparer>();
         services.TryAddSingleton<IProjectComparer, ProjectComparer>();
 

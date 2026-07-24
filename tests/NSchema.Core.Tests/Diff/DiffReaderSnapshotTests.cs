@@ -288,7 +288,7 @@ public sealed class DiffReaderSnapshotTests
                         Definition: new DomainType { Name = "code", DataType = SqlType.VarChar(8) },
                         DataType: new ValueChange<SqlType>(SqlType.Text, SqlType.VarChar(8))),
                     new DomainDiff("app", "amount", ChangeKind.Modify,
-                        Default: new ValueChange<SqlText>(null, "0"),
+                        Default: new ValueChange<SqlDefaultExpression>(null, "0"),
                         NotNull: new ValueChange<bool>(false, true),
                         Checks: [new CheckConstraintDiff(ChangeKind.Add, "amount_pos", new CheckConstraint { Name = "amount_pos", Expression = "VALUE >= 0" })]),
                     new DomainDiff("app", "email", ChangeKind.Modify,

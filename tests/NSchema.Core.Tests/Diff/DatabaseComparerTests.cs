@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model;
 using NSchema.Diff.Model.Columns;
 using NSchema.Diff.Model.Services;
@@ -23,7 +24,7 @@ namespace NSchema.Tests.Diff;
 /// </summary>
 public partial class DatabaseComparerTests
 {
-    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance);
+    private readonly DatabaseComparer _sut = new(NullLogger<DatabaseComparer>.Instance, new SqlEquivalence());
 
     private static Database Db(params Schema[] schemas) => new Database { Schemas = [.. schemas] };
 

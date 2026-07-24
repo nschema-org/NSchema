@@ -73,6 +73,8 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 ### Added
 
+- **The comparison seam is the `SqlEquivalence` class.** A provider can register (`UseSqlEquivalence<T>()`) one equality comparer per comparison context, deciding when two spellings mean the same thing. The neutral base compares types structurally and defaults on cosmetics-normalized text.
+- **Default expressions are `SqlDefaultExpression` now.** `Column.DefaultExpression` and `DomainType.Default` graduate from `SqlText` to their own value object, so equivalence rules register against the specific context.
 - **Change-script targets are value objects.** `ChangeScript` now takes a `ChangeTarget` instead of separate trigger and path values.
 - **Atomic table-fragment merge.** `Table.TryMergeMembers` applies a complete table-member fragment or reports its conflicts.
 - **SQL type conversion risk.** `SqlType.ConversionRiskTo` assesses whether converting stored values can fail.

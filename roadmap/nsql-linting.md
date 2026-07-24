@@ -78,8 +78,8 @@ The first *actual* lint rules (nothing shipped today qualifies).
 - The formatter is better than remembered (comment attachment, blank-line capping) but is a token
   stream. **Token-level rules ship first:** keyword case is a pure token transform, indent/newline
   properties replace hardcoded constants.
-- **Structural reformatting** (wrapping column lists, aligning) needs a lossless tree — gated on the CST
-  rework in [[language-package]], not a prerequisite here.
+- **Structural reformatting** (wrapping column lists, aligning) needs a lossless tree — the CST rework
+  has shipped, so it's unblocked.
 - Division of labor, per `dotnet format`: auto-fixable style lives in the formatter, non-fixable
   convention (naming) lives in lint, editorconfig governs both.
 

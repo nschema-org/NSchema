@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NSchema.Diff.Backends;
 using NSchema.Diff.Model.Schemas;
 using NSchema.Diff.Model.Tables;
 using NSchema.Model;
@@ -9,7 +10,7 @@ namespace NSchema.Diff.Model.Services;
 /// <summary>
 /// Produces the structured <see cref="DatabaseDiff"/> from a current and desired schema.
 /// </summary>
-internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger) : IDatabaseComparer
+internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger, SqlEquivalence equivalence) : IDatabaseComparer
 {
     public DatabaseDiff Compare(AlignedDatabase current, Database desired)
     {

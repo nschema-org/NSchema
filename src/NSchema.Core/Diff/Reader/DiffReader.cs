@@ -475,7 +475,7 @@ public static class DiffReader
         ? $"{diff.Schema}.{diff.Name}"
         : $"{diff.Schema}.{diff.RenamedFrom} → {diff.Name}";
 
-    private static string FormatDefault(SqlText? value) => value?.Value ?? "<none>";
+    private static string FormatDefault(ValueObject<string>? value) => value?.Value ?? "<none>";
 
     private static string FormatNullability(bool? nullable) => nullable == true ? "null" : "not null";
 

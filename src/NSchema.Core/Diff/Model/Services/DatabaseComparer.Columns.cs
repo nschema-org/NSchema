@@ -58,7 +58,7 @@ internal sealed partial class DatabaseComparer
         }
 
         ValueChange<SqlType>? type = null;
-        if (current.Type == desired.Type)
+        if (equivalence.Types.Equals(current.Type, desired.Type))
         {
             LogColumnTypeUnchanged(owner, desired.Name, desired.Type);
         }
@@ -79,15 +79,15 @@ internal sealed partial class DatabaseComparer
             nullability = new ValueChange<bool>(current.IsNullable, desired.IsNullable);
         }
 
-        ValueChange<SqlText>? @default = null;
-        if (current.DefaultExpression == desired.DefaultExpression)
+        ValueChange<SqlDefaultExpression>? @default = null;
+        if (equivalence.Defaults.Equals(current.DefaultExpression, desired.DefaultExpression))
         {
             LogColumnDefaultUnchanged(owner, desired.Name, desired.DefaultExpression?.Value ?? "no default");
         }
         else
         {
             LogColumnDefaultChanged(owner, desired.Name, current.DefaultExpression, desired.DefaultExpression);
-            @default = new ValueChange<SqlText>(current.DefaultExpression, desired.DefaultExpression);
+            @default = new ValueChange<SqlDefaultExpression>(current.DefaultExpression, desired.DefaultExpression);
         }
 
         ValueChange<string>? comment = null;
