@@ -72,6 +72,13 @@ internal sealed class NsqlLexer(string source)
             return ReadDollarString(pos, tag);
         }
 
+        // A '[' opens a bracket-quoted identifier unless the brackets are empty, in which case it falls through to
+        // the Symbol catch-all below.
+        if (ch == '[' && ReadBracketedIdentifier(pos) is { } bracketed)
+        {
+            return bracketed;
+        }
+
         switch (ch)
         {
             case '(': Advance(); return new Token(TokenKind.LeftParen, NsqlSymbols.LeftParen, pos);
@@ -294,68 +301,73 @@ internal sealed class NsqlLexer(string source)
         }
     }
 
-    private Token ReadQuotedIdentifier(SourcePosition pos)
+    /// <summary>
+    /// Scans a delimited run at the cursor without consuming it, returning the decoded value and the raw length.
+    /// A doubled closing delimiter escapes a literal one. <paramref name="what"/> names the run when it is unterminated.
+    /// </summary>
+    private (string Value, int Length) ScanDelimited(SourcePosition pos, char close, string what)
     {
-        Advance(); // consume opening quote
         var builder = new StringBuilder();
+        var ahead = 1; // past the opening delimiter
         while (true)
         {
-            if (AtEnd)
+            if (_offset + ahead >= _source.Length)
             {
-                throw new NsqlSyntaxException("Unterminated quoted identifier", pos);
+                throw new NsqlSyntaxException($"Unterminated {what}", pos);
             }
 
-            var c = Current;
-            if (c == '"')
+            var c = Peek(ahead);
+            if (c == close)
             {
-                if (Peek(1) == '"')
+                if (Peek(ahead + 1) == close)
                 {
-                    builder.Append('"');
-                    Advance(); Advance();
+                    builder.Append(close);
+                    ahead += 2;
                     continue;
                 }
-
-                Advance(); // consume closing quote
-                if (builder.Length == 0)
-                {
-                    throw new NsqlSyntaxException("A quoted identifier cannot be empty", pos);
-                }
-                return new Token(TokenKind.QuotedIdentifier, builder.ToString(), pos);
+                return (builder.ToString(), ahead + 1);
             }
 
             builder.Append(c);
-            Advance();
+            ahead++;
         }
+    }
+
+    private Token ReadQuotedIdentifier(SourcePosition pos)
+    {
+        var (value, length) = ScanDelimited(pos, '"', "quoted identifier");
+        if (value.Length == 0)
+        {
+            throw new NsqlSyntaxException("A quoted identifier cannot be empty", pos);
+        }
+        ConsumeLength(length);
+        return new Token(TokenKind.QuotedIdentifier, value, pos);
+    }
+
+    /// <summary>
+    /// Reads a bracketed identifier at the cursor, or returns <see langword="null"/> without consuming anything when
+    /// the brackets hold no name.
+    /// </summary>
+    /// <remarks>
+    /// An empty <c>[]</c> is left to the caller because it is how an array type is spelled, and one of those may sit
+    /// inside an opaque expression the lexer must scan through.
+    /// </remarks>
+    private Token? ReadBracketedIdentifier(SourcePosition pos)
+    {
+        var (value, length) = ScanDelimited(pos, ']', "bracketed identifier");
+        if (value.Length == 0)
+        {
+            return null;
+        }
+        ConsumeLength(length);
+        return new Token(TokenKind.QuotedIdentifier, value, pos);
     }
 
     private Token ReadString(SourcePosition pos)
     {
-        Advance(); // consume opening quote
-        var builder = new StringBuilder();
-        while (true)
-        {
-            if (AtEnd)
-            {
-                throw new NsqlSyntaxException("Unterminated string literal", pos);
-            }
-
-            var c = Current;
-            if (c == '\'')
-            {
-                if (Peek(1) == '\'')
-                {
-                    builder.Append('\'');
-                    Advance(); Advance();
-                    continue;
-                }
-
-                Advance(); // consume closing quote
-                return new Token(TokenKind.String, builder.ToString(), pos);
-            }
-
-            builder.Append(c);
-            Advance();
-        }
+        var (value, length) = ScanDelimited(pos, '\'', "string literal");
+        ConsumeLength(length);
+        return new Token(TokenKind.String, value, pos);
     }
 
     private Token ReadInteger(SourcePosition pos)

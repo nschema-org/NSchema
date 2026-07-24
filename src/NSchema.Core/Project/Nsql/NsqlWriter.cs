@@ -47,19 +47,6 @@ public static class NsqlWriter
     }
 
     /// <summary>
-    /// Whether a statement hugs the statement above it with no blank line between — a grant, trigger, standalone
-    /// index, or rename renders directly under its subject.
-    /// </summary>
-    private static bool Attached(NsqlStatement statement) => statement
-        is Syntax.Schemas.GrantSchemaUsageStatement
-        or GrantTableStatement
-        or Syntax.Triggers.CreateTriggerStatement
-        or Syntax.Indexes.CreateIndexStatement
-        or Syntax.RenameObjectStatement
-        or Syntax.Schemas.RenameSchemaStatement
-        or RenameColumnStatement;
-
-    /// <summary>
     /// Renders an already-built document tree to canonical text — no re-parse. A synthetic (factory-built) tree
     /// carries no trivia, so the output is syntactically valid but unstyled beyond the structural rules; a parsed
     /// tree formats exactly as <see cref="Format(string)"/>'s value.
@@ -97,8 +84,8 @@ public static class NsqlWriter
         {
             if (i > 0)
             {
-                // An attached statement hugs the one above it (a single newline); everything else gets a blank line.
-                sb.Append(items[i].Source is { } source && Attached(source) ? "\n" : "\n\n");
+                // Put a blank line between statements.
+                sb.Append("\n\n");
             }
             AppendItem(sb, items[i]);
         }
@@ -112,7 +99,7 @@ public static class NsqlWriter
     /// first statement or one that hugs its subject, one otherwise) and a body that renders to exactly its source.
     /// </summary>
     private static bool IsFormatted(NsqlStatement statement, bool first) =>
-        LeadingBlankLines(statement) == (first || Attached(statement) ? 0 : 1)
+        LeadingBlankLines(statement) == (first ? 0 : 1)
         && RenderStatement(statement) == statement.ToSource().Trim();
 
     /// <summary>The canonical rendering of one statement (leading comments, body, trailing comment), no outer blanks.</summary>

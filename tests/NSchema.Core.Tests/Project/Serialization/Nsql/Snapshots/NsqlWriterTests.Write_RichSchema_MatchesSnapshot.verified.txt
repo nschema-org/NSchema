@@ -8,6 +8,7 @@ CREATE EXTENSION "uuid-ossp";
 
 --- application schema
 CREATE SCHEMA app;
+
 GRANT USAGE ON SCHEMA app TO app_role;
 
 --- order lifecycle
@@ -66,10 +67,14 @@ CREATE TABLE app.users (
   --- covering balance index
   INDEX users_balance_ix USING btree(balance DESC NULLS LAST, (lower(name))) INCLUDE (code)
 );
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON app.users TO readers;
+
 --- audit row changes
 CREATE TRIGGER users_audit AFTER INSERT OR UPDATE OF (name, balance) ON app.users FOR EACH ROW WHEN (new.balance > 0) EXECUTE FUNCTION app.log_change();
+
 CREATE TRIGGER users_stamp BEFORE UPDATE ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.touch_updated_at();
+
 --- block deletes
 CREATE TRIGGER users_guard INSTEAD OF DELETE ON app.users AS $$
 BEGIN
@@ -85,14 +90,24 @@ CREATE VIEW app.user_directory AS SELECT name FROM app.active_users;
 
 --- balances rollup
 CREATE MATERIALIZED VIEW app.daily_balances AS SELECT name, balance FROM app.users;
+
 --- by name
 CREATE UNIQUE INDEX daily_balances_name_ix ON app.daily_balances(name);
+
 RENAME SCHEMA legacy_app TO app;
+
 RENAME TABLE legacy_app.members TO users;
+
 RENAME VIEW legacy_app.legacy_directory TO user_directory;
+
 RENAME ENUM legacy_app.importance TO priority;
+
 RENAME SEQUENCE legacy_app.bill_id TO invoice_id;
+
 RENAME ROUTINE legacy_app.clean_code TO normalize_code;
+
 RENAME DOMAIN legacy_app.legacy_id TO typeid;
+
 RENAME TYPE legacy_app.legacy_address TO address;
+
 RENAME COLUMN legacy_app.members.short_code TO code;

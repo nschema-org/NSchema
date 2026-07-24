@@ -13,7 +13,9 @@ CREATE TABLE billing.events (
   CONSTRAINT pk_events PRIMARY KEY (id),
   CONSTRAINT chk_audit CHECK (updated_at >= created_at)
 );
+
 GRANT SELECT, INSERT ON billing.events TO svc;
+
 CREATE TRIGGER trg_notify AFTER INSERT ON billing.events FOR EACH ROW EXECUTE FUNCTION billing.outbox_notify();
 
 CREATE TABLE billing.event_locks (
@@ -37,7 +39,9 @@ CREATE TABLE ordering.events (
   CONSTRAINT pk_events PRIMARY KEY (id),
   CONSTRAINT chk_audit CHECK (updated_at >= created_at)
 );
+
 GRANT SELECT, INSERT ON ordering.events TO svc;
+
 CREATE TRIGGER trg_notify AFTER INSERT ON ordering.events FOR EACH ROW EXECUTE FUNCTION ordering.outbox_notify();
 
 CREATE TABLE ordering.event_locks (

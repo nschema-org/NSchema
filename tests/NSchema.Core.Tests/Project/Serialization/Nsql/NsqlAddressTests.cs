@@ -65,6 +65,13 @@ public sealed class NsqlAddressTests
     }
 
     [Fact]
+    public void ReadAddress_BracketedSegments_AreTheSameAddress()
+    {
+        // Assert — an address accepts the bracketed spelling too.
+        NsqlReader.ReadAddress("[app].[orders]").Value.ShouldBe(NsqlReader.ReadAddress("app.orders").Value);
+    }
+
+    [Fact]
     public void ReadAddress_PreservesCase()
     {
         // Assert

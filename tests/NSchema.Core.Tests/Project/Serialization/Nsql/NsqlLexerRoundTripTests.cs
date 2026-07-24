@@ -73,6 +73,9 @@ public sealed class NsqlLexerRoundTripTests
         yield return "(){},;.=-";
         yield return "'it''s here'";
         yield return "\"Order Details\"";
+        yield return "[Order Details]";
+        yield return "[weird ]]col]]]";
+        yield return "'{}'::text[]";
         yield return "1024";
         yield return "a > b && c";
 

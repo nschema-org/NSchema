@@ -175,6 +175,16 @@ public sealed class NsqlFormatterTests
         => Format("create schema a;\ncreate schema b;\ncreate schema c;")
             .ShouldBe("create schema a;\n\ncreate schema b;\n\ncreate schema c;\n");
 
+    [Fact]
+    public void Format_SchemaGrant_IsSeparatedFromTheSchemaDeclaration()
+        => Format("CREATE SCHEMA claims;\nGRANT USAGE ON SCHEMA claims TO api;")
+            .ShouldBe("CREATE SCHEMA claims;\n\nGRANT USAGE ON SCHEMA claims TO api;\n");
+
+    [Fact]
+    public void Format_TableGrant_IsSeparatedFromTheTableDeclaration()
+        => Format("CREATE TABLE app.t (id int NOT NULL);\nGRANT SELECT ON app.t TO api;")
+            .ShouldBe("CREATE TABLE app.t (\n  id int NOT NULL\n);\n\nGRANT SELECT ON app.t TO api;\n");
+
     // -------------------------------------------------------------------------
     // Verbatim (non-breaking) statements keep their bodies
     // -------------------------------------------------------------------------

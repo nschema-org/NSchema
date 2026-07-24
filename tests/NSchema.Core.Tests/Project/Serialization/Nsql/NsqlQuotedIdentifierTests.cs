@@ -8,7 +8,8 @@ namespace NSchema.Tests.Project.Serialization.Nsql;
 
 /// <summary>
 /// Quoted identifiers: quoting carries the characters a bare identifier cannot (and escapes the vocabulary) —
-/// it never changes identity, which is the exact written text either way.
+/// it never changes identity, which is the exact written text either way. Both spellings of the delimiters,
+/// <c>"…"</c> and <c>[…]</c>, are read the same way.
 /// </summary>
 public sealed class NsqlQuotedIdentifierTests
 {
@@ -151,5 +152,112 @@ public sealed class NsqlQuotedIdentifierTests
         // Assert — the formatter emits source verbatim between structural breaks, quotes intact.
         formatted.ShouldContain("\"Order Details\"");
         formatted.ShouldContain("\"weird \"\"col\"\"\"");
+    }
+
+    [Fact]
+    public void Parse_BracketedNames_CarryTheUnbracketedText()
+    {
+        // Arrange
+        var project = new TestNsqlParser(
+            """
+            CREATE SCHEMA [My Schema];
+            CREATE TABLE [My Schema].[Order Details] ([weird ]]col]]] int NOT NULL);
+            """).Parse();
+
+        // Assert
+        var schema = project.Database.Schemas.ShouldHaveSingleItem();
+        schema.Name.ShouldBe("My Schema");
+        var table = schema.Tables.ShouldHaveSingleItem();
+        table.Name.ShouldBe("Order Details");
+        table.Columns.ShouldHaveSingleItem().Name.ShouldBe("weird ]col]");
+    }
+
+    [Fact]
+    public void Parse_BracketedQuotedAndBareSpellings_AreTheSameName()
+    {
+        // Arrange — the delimiters are syntax, not identity: [users], "users" and users are the same name.
+        var project = new TestNsqlParser(
+            """
+            CREATE SCHEMA app;
+            CREATE TABLE app.[users] (id int NOT NULL);
+            CREATE TABLE [app]."orders" (id int NOT NULL);
+            """).Parse();
+
+        // Assert
+        var schema = project.Database.Schemas.ShouldHaveSingleItem();
+        schema.Name.ShouldBe("app");
+        schema.Tables.Select(t => t.Name.Value).ShouldBe(["users", "orders"]);
+    }
+
+    [Fact]
+    public void Parse_BracketedKeyword_IsAColumnNotAKeyword()
+    {
+        // Arrange — bracketing escapes the vocabulary just as quoting does.
+        var project = new TestNsqlParser(
+            """
+            CREATE SCHEMA app;
+            CREATE TABLE app.t ([constraint] int NOT NULL, [include] int NOT NULL);
+            """).Parse();
+
+        // Assert
+        project.Database.Schemas.Single().Tables.Single().Columns
+            .Select(c => c.Name.Value).ShouldBe(["constraint", "include"]);
+    }
+
+    [Fact]
+    public void Parse_UnterminatedBracket_Throws()
+        => Should.Throw<NsqlSyntaxException>(() => new TestNsqlParser("CREATE SCHEMA [app;").Parse())
+            .Message.ShouldContain("Unterminated bracketed identifier");
+
+    [Fact]
+    public void Parse_EmptyBrackets_AreNotAName()
+        => Should.Throw<NsqlSyntaxException>(() => new TestNsqlParser("CREATE SCHEMA [];").Parse())
+            .Message.ShouldContain("Expected a schema name");
+
+    [Fact]
+    public void Parse_ArrayTypeInAnOpaqueExpression_IsUnaffected()
+    {
+        // Arrange — '[]' in an opaque span stays punctuation, so an array cast still lexes.
+        var project = new TestNsqlParser(
+            """
+            CREATE SCHEMA app;
+            CREATE TABLE app.t (tags text NOT NULL DEFAULT '{}'::text[]);
+            """).Parse();
+
+        // Assert
+        project.Database.Schemas.Single().Tables.Single().Columns.Single()
+            .DefaultExpression.ShouldNotBeNull().Value.ShouldBe("'{}'::text[]");
+    }
+
+    [Fact]
+    public void Write_BracketedNames_RoundTripAsQuoted()
+    {
+        // Arrange — brackets are an accepted input spelling; the writer has one output spelling.
+        var project = new TestNsqlParser(
+            """
+            CREATE SCHEMA [My Schema];
+            CREATE TABLE [My Schema].[Order Details] ([constraint] int NOT NULL);
+            """).Parse();
+
+        // Act
+        var written = NsqlWriter.Write(project.Database);
+
+        // Assert
+        written.ShouldContain("CREATE TABLE \"My Schema\".\"Order Details\"");
+        written.ShouldContain("\"constraint\" int NOT NULL");
+    }
+
+    [Fact]
+    public void Format_PreservesBracketedIdentifiers()
+    {
+        // Arrange
+        const string source = "CREATE TABLE app.[Order Details] ([weird ]]col]]] int NOT NULL);";
+
+        // Act
+        var formatted = NsqlWriter.Format(source).Value!;
+
+        // Assert — formatting is a layout pass, so it never respells a name it was given.
+        formatted.ShouldContain("[Order Details]");
+        formatted.ShouldContain("[weird ]]col]]]");
     }
 }

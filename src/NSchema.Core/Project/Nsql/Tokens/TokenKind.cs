@@ -12,7 +12,8 @@ public enum TokenKind
     Identifier,
 
     /// <summary>
-    /// A double-quoted identifier (<c>"Order Details"</c>; <c>""</c> escapes a quote).
+    /// A delimited identifier, either double-quoted (<c>"Order Details"</c>; <c>""</c> escapes a quote) or
+    /// bracketed (<c>[Order Details]</c>; <c>]]</c> escapes a bracket).
     /// </summary>
     QuotedIdentifier,
 

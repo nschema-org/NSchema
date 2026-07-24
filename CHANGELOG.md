@@ -16,13 +16,13 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Better domain mode naming.** `Database` and `Schema` are now the main entry points into the domain model.
 - **The SQL dialect seam is the abstract `SqlDialect` class.** A dialect overrides one method per migration action. Standard SQL is rendered by the base through an overridable identifier-quoting kernel.
 - **Identifiers are case-sensitive.** An identifier's identity is its exact written text: `users` and `Users` are no-longer considered equivalent.
-- **Identifiers can be quoted.** `CREATE TABLE app."Order Details" ("weird ""col""" int)` all work, and lets a name collide with a keyword. Quotes are syntax, not identity: casing is significant with or without them. The writer (and import) quotes only names that need it, and extension names now render as quoted identifiers rather than string literals.
+- **Identifiers can be quoted.** `CREATE TABLE app."Order Details" ("weird ""col""" int)` all work, and lets a name collide with a keyword. Square brackets are accepted as an alternative spelling, so `CREATE TABLE app.[Order Details] ([weird ]]col]]] int)` reads the same (`]]` escapes a bracket). Quotes and brackets are syntax, not identity: casing is significant with or without them, and either spelling names the same object. The writer (and import) quotes only names that need it, always with double quotes, and extension names now render as quoted identifiers rather than string literals.
 - **Parsing is lossless.** The syntax tree now preserves every character of the source, including comments, whitespace, and layout.
-- **Management directives.** The language now separates *declarations* (what the schema is) from *directives* (how the difference is managed). This includes RENAME, DROP and SCRIPT.
+- **Management directives.** The language now separates *declarations* (what the schema is) from *directives* (how the difference is managed). This includes RENAME and SCRIPT.
 - **Every namespace has moved.** Namespaces are vertically sliced of the form `NSchema.<Feature>.<Capability>`.
 - **The schema model is `NSchema.Model` now.** It owns the top-level domain model for databases.
 - **DataMigrations are Scripts now.** This reflects the syntax changes introduce in [4.4.0] so the model becomes consistent.
-- **Templates accept object-level directives.** A `TEMPLATE` body may now contain the object-level `RENAME` and `DROP` directives (table, column, enum, domain, type, sequence, routine) alongside its declarations and scripts.
+- **Templates accept object-level directives.** A `TEMPLATE` body may now contain the object-level `RENAME` directive (table, column, view, enum, domain, type, sequence, routine) alongside its declarations and scripts.
 - **Scripts split into `ChangeScript` and `DeploymentScript`.** `Script` is now an abstract base carrying the common behavior (name, SQL, scope, hash, reference, run condition);
 - **"Desired" is Project now." `IDesiredSchemaProvider` becomes `IProjectProvider` the project is the desired state by definition.
 - **`AddDdlSchemas` is `AddProjectSource` now.** The files describe the whole project (schema, scripts, templates, config), not just schema DDL.
@@ -45,9 +45,9 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **A qualified type's schema is a component now.** `SqlType` carries the schema of a user-defined type (e.g. `app` in `app.order_status`) as a structural `Schema` property rather than folded into its nam.
 - **`PolicyEnforcement` absorbs `DestructiveActionPolicy`.** `WithDestructiveActionPolicy` takes the shared enum, gaining `Ignore`.
 - **The state ledger field is `scripts` now.** Pre-5.0 `executedScripts` payloads read as an empty ledger. Refresh (or untaint) existing state under the state-format compatibility policy's major-version rules.
-- **Configuration lives in configuration files.** DATABASE and STATE statements now parse under their own grammar. A configuration file holds only configuration statements, and vice versa.
+- **Configuration is part of the language.** `ENGINE`, `PLUGIN`, `DATABASE` and `STATE` parse as ordinary statements, in the one grammar that carries declarations and directives. Which statements a given file *should* hold is a consumer's rule, not the parser's: each subsystem picks out the statements it understands and ignores the rest.
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures rather than the role that supplies it.
-- **Plugins receive `PluginConfig`.** `Configure` takes a typed `PluginConfig` (label + attributes), translated from the parsed statement by the configuration assembly.
+- **Plugins receive `PluginSettings`.** `Configure` takes the statement's label and attributes as a flat key/value map, translated from the parsed statement by the configuration assembly. `settings.Get<T>()` binds them onto an options type — snake_case keys match properties, dotted keys nest, identifiers map to enum members — and reports an unbindable value, an unknown attribute, and a failed `[Required]`/`[Range]` as error diagnostics, so a plugin declares its options rather than parsing them.
 - **`INSchemaDatabasePlugin` and `INSchemaStatePlugin` replace `INSchemaProviderPlugin` and `INSchemaBackendPlugin`.** Each is named for the statement that configures it.
 - **Plugins are resolved by capability, not by name.** `INSchemaPlugin.Label` is gone — the statement kind selects the capability interface, and the label in configuration is the user's local name for a declared `PLUGIN`, never the plugin's own. `ScaffoldContext.Version` is gone with it: the host authors the `PLUGIN` statement (it knows the package and the resolved version), so a plugin's scaffold template contributes only its own configuration block.
 - **`NsqlReader` replaces `DdlReader` and diagnostics are structural.** `NsqlReader.Read`/`ReadFile` return `Result<NsqlDocument, NsqlDiagnostic>`, the new diagnostic-typed result, with each finding carrying its source position.
@@ -92,13 +92,14 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **`ConfigurationProvider.Load` loads a configuration.** One call from ordered configuration *layers* (a later layer overrides an earlier one) to a validated `ConfigurationDefinition`.
 - **The plugin lockfile.** `LockFileManager` reads and writes `nschema.lock` (a `LOCK ( source = '…', version = '…' );` grammar) as a `LockFile` of `LockedPlugin` pins. `LockFile.Resolve(declaration)` resolves a declaration against the lock.
 - **`VersionRange.IsExact` / `ExactVersion` / `Highest`.** Report whether a range pins a single version and the version it pins, and select the highest of a supplied set of versions that the range admits.
-- **Plugins split from configuration.** The provider interfaces stay in `NSchema.Plugins` (`INSchemaPlugin` and friends, the handshake, `ScaffoldContext`); everything a project *declares*, now lives under `NSchema.Configuration`. `PluginConfig` is in `NSchema.Configuration.Settings`.
+- **Plugins split from configuration.** The provider interfaces stay in `NSchema.Plugins` (`INSchemaPlugin` and friends, the handshake, `ScaffoldContext`); everything a project *declares*, now lives under `NSchema.Configuration`. `PluginSettings` is in `NSchema.Configuration.Plugins`.
 
 ### Removed
 
 - `PRE|POST DEPLOYMENT '<name>' AS $$…$$;` and `MIGRATION ['<name>'] FOR <event> <path> AS $$…$$;` no longer parse.
-- The `DROP` statements (`DROP SCHEMA|TABLE|VIEW|ENUM|DOMAIN|TYPE|SEQUENCE|FUNCTION|PROCEDURE|ROUTINE|EXTENSION`) and `PARTIAL SCHEMA` no longer parse. Remove the declaration instead.
-- `RENAMED FROM` clauses and `CREATE PARTIAL SCHEMA` no longer parse. Renames and partials are directive statements now (see Management directives above).
+- The `DROP` statements (`DROP SCHEMA|TABLE|VIEW|ENUM|DOMAIN|TYPE|SEQUENCE|FUNCTION|PROCEDURE|ROUTINE|EXTENSION`) no longer parse. Remove the declaration instead.
+- `CREATE PARTIAL SCHEMA` no longer parses. The managed identity set covers what it was reaching for: an object the state does not record as managed is never dropped, declared or not.
+- `RENAMED FROM` clauses no longer parse. A rename is a `RENAME` directive now (see Management directives above).
 - The `NSCHEMA` configuration block no longer parses.
 - `DataMigration` has been folded into `Script` and now requires a name for so they can maintain a stable identity.
 - **Narrowed public surface.** A variety of types that should never have been exposed have been made internal.
