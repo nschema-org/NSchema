@@ -15,7 +15,7 @@ namespace NSchema.Tests.Commands;
 /// </summary>
 public sealed class EphemeralEndToEndTests : IDisposable
 {
-    private const string Version = "5.0.0-alpha.6";
+    private const string SqliteVersion = "5.0.0-alpha.7";
 
     private readonly string _projectDirectory = Directory.CreateTempSubdirectory("nschema-ephemeral-").FullName;
     private readonly string _originalDirectory = Directory.GetCurrentDirectory();
@@ -30,7 +30,7 @@ public sealed class EphemeralEndToEndTests : IDisposable
     public async Task PlanAndApply_WithEphemeral_BootstrapADisposableDatabase()
     {
         // Arrange — a project declaring a DATABASE but no STATE; the schema is the plugin's own sample.
-        var plugin = new PluginLoader().Load(new PackageId("NSchema.Sqlite"), SemanticVersion.Parse(Version))
+        var plugin = new PluginLoader().Load(new PackageId("NSchema.Sqlite"), SemanticVersion.Parse(SqliteVersion))
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
@@ -39,13 +39,13 @@ public sealed class EphemeralEndToEndTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), $"""
             PLUGIN sqlite (
               source  = 'NSchema.Sqlite',
-              version = '{Version}'
+              version = '{SqliteVersion}'
             );
 
             DATABASE sqlite ( connection_string = 'Data Source={databasePath}' );
             """, TestContext.Current.CancellationToken);
         await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_projectDirectory),
-            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Sqlite"), Version = SemanticVersion.Parse(Version) }]), TestContext.Current.CancellationToken);
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Sqlite"), Version = SemanticVersion.Parse(SqliteVersion) }]), TestContext.Current.CancellationToken);
         Directory.CreateDirectory(Path.Combine(_projectDirectory, "schemas"));
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "schemas", "example.sql"),
             plugin.GetSampleSchema(), TestContext.Current.CancellationToken);
