@@ -1,19 +1,19 @@
 using NSchema.Model;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Columns;
-using NSchema.Plan.Model.CompositeTypes;
-using NSchema.Plan.Model.Constraints;
-using NSchema.Plan.Model.Domains;
-using NSchema.Plan.Model.Enums;
-using NSchema.Plan.Model.Extensions;
-using NSchema.Plan.Model.Indexes;
-using NSchema.Plan.Model.Routines;
-using NSchema.Plan.Model.Schemas;
-using NSchema.Plan.Model.Scripts;
-using NSchema.Plan.Model.Sequences;
-using NSchema.Plan.Model.Tables;
-using NSchema.Plan.Model.Triggers;
-using NSchema.Plan.Model.Views;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Columns;
+using NSchema.Plan.Domain.CompositeTypes;
+using NSchema.Plan.Domain.Constraints;
+using NSchema.Plan.Domain.Domains;
+using NSchema.Plan.Domain.Enums;
+using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Indexes;
+using NSchema.Plan.Domain.Routines;
+using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Scripts;
+using NSchema.Plan.Domain.Sequences;
+using NSchema.Plan.Domain.Tables;
+using NSchema.Plan.Domain.Triggers;
+using NSchema.Plan.Domain.Views;
 
 namespace NSchema.Plan.Backends;
 

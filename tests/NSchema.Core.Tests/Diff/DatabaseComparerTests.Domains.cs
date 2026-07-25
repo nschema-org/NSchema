@@ -1,11 +1,11 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Domains;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Domains;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Domains;
 using NSchema.Model.Schemas;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Diff;
 

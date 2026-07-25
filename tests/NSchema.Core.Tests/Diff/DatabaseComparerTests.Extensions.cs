@@ -1,5 +1,5 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Extensions;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Extensions;
 using NSchema.Model;
 using NSchema.Model.Extensions;
 

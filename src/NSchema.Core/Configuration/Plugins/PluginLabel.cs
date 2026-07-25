@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using NSchema.Model;
-using NSchema.Model.Services;
+using NSchema.Model.Serialization;
 
 namespace NSchema.Configuration.Plugins;
 
@@ -42,5 +42,5 @@ public sealed record PluginLabel : ValueObject<string>, IParsable<PluginLabel>
     /// Wraps the label as written. One-way: a label never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator PluginLabel?(string? value) => value is null ? null : new(value);
+    public static implicit operator PluginLabel?(string? value) => value is null ? null : new PluginLabel(value);
 }

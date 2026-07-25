@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSchema.Apply;
+using NSchema.Deployment.Backends;
 using NSchema.Diff.Backends;
 using NSchema.Operations.Progress;
 using NSchema.Plan.Backends;
@@ -11,20 +12,20 @@ namespace NSchema;
 public partial class NSchemaApplicationBuilder
 {
     /// <summary>
-    /// Configures the policy to apply when a destructive action is detected in the migration plan.
+    /// Configures how destructive actions are handled in the migration.
     /// </summary>
-    public NSchemaApplicationBuilder WithDestructiveActionPolicy(PolicyEnforcement policy)
+    public NSchemaApplicationBuilder WithDestructiveActions(PolicyEnforcement enforcement)
     {
-        Services.Configure<DestructiveActionOptions>(o => o.Policy = policy);
+        Services.Configure<DestructiveActionOptions>(o => o.Policy = enforcement);
         return this;
     }
 
     /// <summary>
-    /// Configures the policy to apply when the migration plan contains a change that can fail on existing data.
+    /// Configures how changes that can fail on existing data are handled..
     /// </summary>
-    public NSchemaApplicationBuilder WithDataHazardPolicy(PolicyEnforcement policy)
+    public NSchemaApplicationBuilder WithDataHazards(PolicyEnforcement enforcement)
     {
-        Services.Configure<DataHazardOptions>(o => o.Policy = policy);
+        Services.Configure<DataHazardOptions>(o => o.Policy = enforcement);
         return this;
     }
 
@@ -54,6 +55,16 @@ public partial class NSchemaApplicationBuilder
     public NSchemaApplicationBuilder UseSqlEquivalence<T>() where T : SqlEquivalence
     {
         Services.Replace(ServiceDescriptor.Singleton<SqlEquivalence, T>());
+        return this;
+    }
+
+    /// <summary>
+    /// Registers the <see cref="IDatabaseIntrospector"/> that reads the live database schema (the online source).
+    /// Typically called by a database-provider extension.
+    /// </summary>
+    public NSchemaApplicationBuilder UseDatabaseIntrospector<T>() where T : class, IDatabaseIntrospector
+    {
+        Services.Replace(ServiceDescriptor.Singleton<IDatabaseIntrospector, T>());
         return this;
     }
 

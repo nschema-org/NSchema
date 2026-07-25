@@ -1,9 +1,9 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Routines;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Routines;
 using NSchema.Model;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Diff;
 
@@ -30,8 +30,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_NewFunction_IsAddCarryingDefinition()
     {
+        // Act
         var diff = DiffRoutines([], [Fn("f", "a int", Def)]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Add);
         diff.RoutineKind.ShouldBe(RoutineKind.Function);
         diff.Definition!.Arguments.ShouldBe("a int");
@@ -45,7 +47,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_RemovedRoutine_IsRemoveCarryingKind()
     {
+        // Act
         var diff = DiffRoutines([Proc("p", "", ProcDef)], []);
+
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Remove);
         diff.RoutineKind.ShouldBe(RoutineKind.Procedure);
     }
@@ -57,10 +62,14 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_BodyChange_IsReplaceNotRecreate()
     {
+        // Arrange
         var diff = DiffRoutines(
             [Fn("f", "a int", "RETURNS int AS $$ SELECT 1 $$")],
+
+            // Act
             [Fn("f", "a int", "RETURNS int AS $$ SELECT 2 $$")]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Modify);
         diff.Definition.ShouldNotBeNull();
         diff.Arguments.ShouldBeNull();
@@ -70,8 +79,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ArgumentsChange_RequiresRecreate()
     {
+        // Act
         var diff = DiffRoutines([Fn("f", "a int", Def)], [Fn("f", "a int, b text", Def)]);
 
+        // Assert
         diff!.Arguments.ShouldBe(new ValueChange<SqlText>("a int", "a int, b text"));
         diff.Definition.ShouldNotBeNull(); // the desired definition rides along for the recreate
         diff.RequiresRecreate.ShouldBeTrue();
@@ -98,8 +109,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_CommentOnlyChange_IsModifyWithoutDefinition()
     {
+        // Act
         var diff = DiffRoutines([Proc("p", "", ProcDef, comment: "old")], [Proc("p", "", ProcDef, comment: "new")]);
 
+        // Assert
         diff!.Comment.ShouldBe(new ValueChange<string>("old", "new"));
         diff.Definition.ShouldBeNull();
     }
@@ -107,10 +120,12 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_FunctionSwappedToProcedureSameName_IsRecreate()
     {
+        // Act
         // Functions and procedures share one name space, so a same-name swap matches by name and is a kind
         // change — applied as a drop + recreate (there is no in-place conversion).
         var diff = DiffRoutines([Fn("r", "", Def)], [Proc("r", "", ProcDef)]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Modify);
         diff.RoutineKind.ShouldBe(RoutineKind.Procedure);
         diff.RequiresRecreate.ShouldBeTrue();

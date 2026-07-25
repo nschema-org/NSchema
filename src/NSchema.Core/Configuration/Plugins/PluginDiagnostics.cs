@@ -1,4 +1,4 @@
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Configuration.Plugins;

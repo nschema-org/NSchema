@@ -30,9 +30,13 @@ public sealed class FormattedTextTests
     [Fact]
     public void Interpolation_SplicesNestedFormattedText()
     {
+        // Arrange
         FormattedText inner = $"table '{"users"}'";
+
+        // Act
         FormattedText outer = $"context: {inner} (at 3:14).";
 
+        // Assert
         outer.ToString().ShouldBe("context: table 'users' (at 3:14).");
         outer.Spans.Count(s => s.IsValue).ShouldBe(1);
         outer.Spans.Single(s => s.IsValue).Text.ShouldBe("users");

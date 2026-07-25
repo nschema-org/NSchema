@@ -30,5 +30,5 @@ public sealed record SqlIdentifier : ValueObject<string>, IComparable<SqlIdentif
     /// Wraps the name as written. One-way: a name never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator SqlIdentifier?(string? value) => value is null ? null : new(value);
+    public static implicit operator SqlIdentifier?(string? value) => value is null ? null : new SqlIdentifier(value);
 }

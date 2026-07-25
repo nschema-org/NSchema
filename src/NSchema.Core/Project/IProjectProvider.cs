@@ -1,5 +1,5 @@
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Project;
 

@@ -1,7 +1,8 @@
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax;
+using NSchema.Project.Projection;
 using Syn = NSchema.Project.Nsql.Syntax;
 
 namespace NSchema.Project;

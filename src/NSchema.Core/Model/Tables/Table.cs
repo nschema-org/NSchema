@@ -38,7 +38,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<Column> Columns
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<Column>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -47,7 +47,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<ForeignKey> ForeignKeys
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<ForeignKey>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -56,7 +56,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<UniqueConstraint> UniqueConstraints
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<UniqueConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -65,7 +65,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<CheckConstraint> CheckConstraints
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<CheckConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -74,7 +74,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<ExclusionConstraint> ExclusionConstraints
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<ExclusionConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -83,7 +83,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<TableIndex> Indexes
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<TableIndex>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -97,7 +97,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// </summary>
     public DatabaseMemberCollection<Trigger> Triggers
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<Trigger>(this);
         init { value.Attach(this); field = value; }
     }
 

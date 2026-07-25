@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 
 namespace NSchema.Plan.Backends;
 

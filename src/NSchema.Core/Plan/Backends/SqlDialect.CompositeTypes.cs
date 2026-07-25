@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.CompositeTypes;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.CompositeTypes;
 
 namespace NSchema.Plan.Backends;
 

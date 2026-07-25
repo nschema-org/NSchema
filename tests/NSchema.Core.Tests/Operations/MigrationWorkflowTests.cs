@@ -1,6 +1,6 @@
 using NSchema.Deployment;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
@@ -8,13 +8,13 @@ using NSchema.Model.Tables;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Services;
 using NSchema.Project;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.State;
 using NSchema.State.Backends;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Operations;
 
@@ -22,12 +22,12 @@ public sealed class MigrationWorkflowTests
 {
     private readonly IMigrationPlanner _planner = Substitute.For<IMigrationPlanner>();
     private readonly IProgress<OperationProgress> _progress = Substitute.For<IProgress<OperationProgress>>();
-    private readonly IDatabaseProvider _currentProvider = Substitute.For<IDatabaseProvider>();
-    private readonly IProjectProvider _desiredProvider = Substitute.For<IProjectProvider>();
+    private readonly IDatabaseProvider _liveDatabase = Substitute.For<IDatabaseProvider>();
+    private readonly IProjectProvider _projectProvider = Substitute.For<IProjectProvider>();
     private readonly IDatabaseStateSerializer _stateSerializer = new DatabaseStateSerializer();
 
     private MigrationWorkflow BuildSut(IDatabaseStateStore? store) =>
-        new(_planner, _progress, _currentProvider, _desiredProvider, new DatabaseStateManager(_stateSerializer, store));
+        new(_planner, _progress, _liveDatabase, _projectProvider, new DatabaseStateManager(_stateSerializer, store));
 
     /// <summary>Planning requires a store, so the default fixture carries an empty in-memory one.</summary>
     private MigrationWorkflow BuildSut() => BuildSut(new EphemeralStateStore());
@@ -49,11 +49,11 @@ public sealed class MigrationWorkflowTests
 
     public MigrationWorkflowTests()
     {
-        _currentProvider
+        _liveDatabase
             .GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(new Database { Schemas = [] });
 
-        _desiredProvider
+        _projectProvider
             .GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(ProjectDefinition(new Database { Schemas = [] }));
 
@@ -78,11 +78,11 @@ public sealed class MigrationWorkflowTests
     }
 
     [Fact]
-    public async Task ValidateDesiredSchema_ReturnsNoFindings_WhenNoPolicyErrors()
+    public async Task Validate_ReturnsNoFindings_WhenNoPolicyErrors()
     {
         // Arrange
         var desired = new Database { Schemas = [new Schema { Name = "app" }] };
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(ProjectDefinition(desired));
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(ProjectDefinition(desired));
 
         // Act
         var findings = await _sut.Validate(TestContext.Current.CancellationToken);
@@ -93,7 +93,7 @@ public sealed class MigrationWorkflowTests
     }
 
     [Fact]
-    public async Task ValidateDesiredSchema_PolicyViolation_ReturnsErrorFindings_WithoutReporting()
+    public async Task Validate_PolicyViolation_ReturnsErrorFindings_WithoutReporting()
     {
         // Arrange
         _planner.Validate(Arg.Any<ProjectDefinition>()).Returns(Result.From(Diagnostic.Error("P1", "msg")));
@@ -107,7 +107,7 @@ public sealed class MigrationWorkflowTests
     }
 
     [Fact]
-    public async Task ValidateDesiredSchema_NonErrorDiagnostics_AreCarriedInTheFindings()
+    public async Task Validate_NonErrorDiagnostics_AreCarriedInTheFindings()
     {
         // Arrange
         _planner.Validate(Arg.Any<ProjectDefinition>())
@@ -122,11 +122,11 @@ public sealed class MigrationWorkflowTests
     }
 
     [Fact]
-    public async Task ValidateDesiredSchema_ProjectDiagnostics_AreCarriedInTheFindings()
+    public async Task Validate_ProjectDiagnostics_AreCarriedInTheFindings()
     {
         // Arrange — findings raised while reading the DDL (e.g. deprecated syntax) arrive on the read result.
         var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
 
         // Act
         var findings = await _sut.Validate(TestContext.Current.CancellationToken);
@@ -137,13 +137,13 @@ public sealed class MigrationWorkflowTests
     }
 
     [Fact]
-    public async Task ValidateDesiredSchema_DoesNotContactCurrentProvider()
+    public async Task Validate_DoesNotContactTheLiveDatabase()
     {
         // Act
         await _sut.Validate(TestContext.Current.CancellationToken);
 
         // Assert
-        await _currentProvider.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
+        await _liveDatabase.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class MigrationWorkflowTests
         await _sut.ComputePlan(target, PlanningScope.All, TestContext.Current.CancellationToken);
 
         // Assert
-        await _currentProvider.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
+        await _liveDatabase.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
         _planner.Received(1).Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>());
     }
 
@@ -197,7 +197,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         var desired = new Database { Schemas = [new Schema { Name = "app", Tables = [new Table { Name = "users" }, new Table { Name = "orders" }] }] };
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(
                 TestProjects.Project(desired, [new DeploymentScript("seed", "select 1", null, DeploymentPhase.Post)])));
         var sut = SutWithRecordedSchema(new Database { Schemas = [new Schema { Name = "app" }] });
@@ -206,8 +206,8 @@ public sealed class MigrationWorkflowTests
         await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
 
         // Assert — verbose census is transient narration, emitted as Detail-level progress.
-        _progress.Received().Report(OperationProgress.Detail("Desired schema: 1 schema, 2 tables, 1 script."));
-        _progress.Received().Report(OperationProgress.Detail("Current schema: 1 schema, 0 tables."));
+        _progress.Received().Report(OperationProgress.Detail("Declared: 1 schema, 2 tables, 1 script."));
+        _progress.Received().Report(OperationProgress.Detail("Recorded state: 1 schema, 0 tables."));
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public sealed class MigrationWorkflowTests
         await _sut.ComputePlan(PlanTarget.Empty, PlanningScope.All, TestContext.Current.CancellationToken);
 
         // Assert
-        await _desiredProvider.DidNotReceive().GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
+        await _projectProvider.DidNotReceive().GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange — the pure planner never sees read provenance; this shell merges it into the outcome.
         var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.From(EmptyPlan(),
                 [Diagnostic.Warning("data-hazards", "hazard")]));
@@ -329,7 +329,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.Failure<MigrationPlan>([Diagnostic.Error("P1", "blocked")]));
 
@@ -350,7 +350,7 @@ public sealed class MigrationWorkflowTests
         var store = Substitute.For<IDatabaseStateStore>();
         store.Read(Arg.Any<CancellationToken>())
             .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, executions)));
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(project));
         return BuildSut(store);
     }
@@ -617,7 +617,7 @@ public sealed class MigrationWorkflowTests
         {
             Schemas = [new Schema { Name = "app" }, new Schema { Name = "admin" }],
         };
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new ProjectDefinition(desired)));
         var sut = SutWithRecordedState(new DatabaseState(new Database
         {
@@ -645,7 +645,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         PlanningScope? desiredScope = null;
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(call => { desiredScope = call.Arg<PlanningScope>(); return ProjectDefinition(new Database { Schemas = [] }); });
 
         // Act
@@ -680,7 +680,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         PlanningScope? desiredScope = null;
-        _desiredProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(call => { desiredScope = call.Arg<PlanningScope>(); return ProjectDefinition(new Database { Schemas = [] }); });
 
         // Act
@@ -697,7 +697,7 @@ public sealed class MigrationWorkflowTests
         // Arrange
         var schema = new Database { Schemas = [new Schema { Name = "app" }] };
         var store = Substitute.For<IDatabaseStateStore>();
-        _currentProvider
+        _liveDatabase
             .GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(schema);
         var sut = BuildSut(store);
@@ -709,7 +709,7 @@ public sealed class MigrationWorkflowTests
 
         // Assert
         capture.ShouldNotBeNull();
-        await _currentProvider.Received(1).GetDatabase(Arg.Is<PlanningScope>(s => s!.IsUnscoped), Arg.Any<CancellationToken>());
+        await _liveDatabase.Received(1).GetDatabase(Arg.Is<PlanningScope>(s => s!.IsUnscoped), Arg.Any<CancellationToken>());
         await store.Received(1).Write(
             Arg.Is<ReadOnlyMemory<byte>>(m => m.ToArray().SequenceEqual(expected)), Arg.Any<CancellationToken>());
     }
@@ -726,6 +726,6 @@ public sealed class MigrationWorkflowTests
         // Assert: fails (never throws) and does not touch the live database.
         capture.IsFailure.ShouldBeTrue();
         capture.Errors.ShouldHaveSingleItem().Message.ShouldContain("without a configured state store");
-        await _currentProvider.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
+        await _liveDatabase.DidNotReceive().GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>());
     }
 }

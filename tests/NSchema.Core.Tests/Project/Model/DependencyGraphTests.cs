@@ -32,7 +32,7 @@ public class DependencyGraphTests
         {
             Name = Id(name),
             Columns = [new Column { Name = Id("id"), Type = SqlType.Int }],
-            ForeignKeys = [new ForeignKey { Name = Id(constraint), ColumnNames = [Id("id")], References = new(Id(toSchema), Id(toTable)), ReferencedColumnNames = [Id("id")] }],
+            ForeignKeys = [new ForeignKey { Name = Id(constraint), ColumnNames = [Id("id")], References = new ObjectAddress(Id(toSchema), Id(toTable)), ReferencedColumnNames = [Id("id")] }],
         };
 
     /// <summary>app.users, and billing.orders pointing an FK at it.</summary>

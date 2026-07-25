@@ -33,7 +33,7 @@ public sealed class DomainType : DatabaseObject, IEquatable<DomainType>
     /// </summary>
     public DatabaseMemberCollection<CheckConstraint> Checks
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<CheckConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 

@@ -1,17 +1,17 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Constraints;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Columns;
-using NSchema.Plan.Model.Constraints;
-using NSchema.Plan.Model.Scripts;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Columns;
+using NSchema.Plan.Domain.Constraints;
+using NSchema.Plan.Domain.Scripts;
+using NSchema.Plan.Domain.Services;
 
 namespace NSchema.Tests.Plan;
 
@@ -25,10 +25,10 @@ public sealed class PlanLinearizerDataMigrationTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> LinearizeTable(TableDiff table)
-        => _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", Tables: [table])]));
+        => _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [table] }]));
 
     private IReadOnlyList<MigrationAction> LinearizeColumn(ColumnDiff column)
-        => LinearizeTable(new TableDiff("app", "users", ChangeKind.Modify, Columns: [column]));
+        => LinearizeTable(TableDiff.Modified("app", "users") with { Columns = [column] });
 
     private static ChangeScript Migration(ChangeTrigger trigger, string member, string? name = null, string? sql = null) =>
         new(name ?? member, sql ?? $"UPDATE app.users -- {member}", new ChangeTarget("app", "users", member, trigger));
@@ -39,7 +39,7 @@ public sealed class PlanLinearizerDataMigrationTests
         // Arrange — a NOT NULL, no-default column with a matched backfill cannot land in one step against a
         // populated table: it is added nullable, backfilled, then tightened.
         var migration = Migration(ChangeTrigger.AddColumn, "email", name: "backfill_emails");
-        var column = new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text }) { MigrationScript = migration };
+        var column = ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text }) with { MigrationScript = migration };
 
         // Act
         var plan = LinearizeColumn(column);
@@ -63,7 +63,7 @@ public sealed class PlanLinearizerDataMigrationTests
     {
         // Arrange — a nullable add needs no decomposition: the column lands as declared, then the migration runs.
         var migration = Migration(ChangeTrigger.AddColumn, "email");
-        var column = new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, IsNullable = true }) { MigrationScript = migration };
+        var column = ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, IsNullable = true }) with { MigrationScript = migration };
 
         // Act
         var plan = LinearizeColumn(column);
@@ -90,7 +90,7 @@ public sealed class PlanLinearizerDataMigrationTests
             _ => new Column { Name = "email", Type = SqlType.Text, GeneratedExpression = "lower(name)" },
         };
         var migration = Migration(ChangeTrigger.AddColumn, "email");
-        var column = new ColumnDiff("email", ChangeKind.Add, definition) { MigrationScript = migration };
+        var column = ColumnDiff.Added(definition) with { MigrationScript = migration };
 
         // Act
         var plan = LinearizeColumn(column);
@@ -107,10 +107,11 @@ public sealed class PlanLinearizerDataMigrationTests
     {
         // Arrange — the migration's SQL prepares the data for the cast, so it must run first.
         var migration = Migration(ChangeTrigger.AlterColumnType, "total");
-        var column = new ColumnDiff("total", ChangeKind.Modify,
-            new Column { Name = "total", Type = SqlType.Int },
-            Type: new ValueChange<SqlType>(SqlType.Text, SqlType.Int))
-        { MigrationScript = migration };
+        var column = ColumnDiff.Modified(new Column { Name = "total", Type = SqlType.Int }) with
+        {
+            Type = new ValueChange<SqlType>(SqlType.Text, SqlType.Int),
+            MigrationScript = migration,
+        };
 
         // Act
         var plan = LinearizeColumn(column);
@@ -128,12 +129,12 @@ public sealed class PlanLinearizerDataMigrationTests
     {
         // Arrange — the migration de-duplicates the data the constraint depends on.
         var migration = Migration(ChangeTrigger.AddConstraint, "users_email_uq");
-        var constraint = new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq",
-            new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
+        var constraint = UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
+        with
         { MigrationScript = migration };
 
         // Act
-        var plan = LinearizeTable(new TableDiff("app", "users", ChangeKind.Modify, UniqueConstraints: [constraint]));
+        var plan = LinearizeTable(TableDiff.Modified("app", "users") with { UniqueConstraints = [constraint] });
 
         // Assert
         plan.Count.ShouldBe(2);
@@ -146,17 +147,19 @@ public sealed class PlanLinearizerDataMigrationTests
     {
         // Arrange — two annotated column adds; their migrations share a priority band, so the stable sort
         // preserves the diff's declaration order.
-        var first = new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, IsNullable = true })
+        var first = ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, IsNullable = true })
+        with
         {
             MigrationScript = Migration(ChangeTrigger.AddColumn, "email", name: "first"),
         };
-        var second = new ColumnDiff("phone", ChangeKind.Add, new Column { Name = "phone", Type = SqlType.Text, IsNullable = true })
+        var second = ColumnDiff.Added(new Column { Name = "phone", Type = SqlType.Text, IsNullable = true })
+        with
         {
             MigrationScript = Migration(ChangeTrigger.AddColumn, "phone", name: "second"),
         };
 
         // Act
-        var plan = LinearizeTable(new TableDiff("app", "users", ChangeKind.Modify, Columns: [first, second]));
+        var plan = LinearizeTable(TableDiff.Modified("app", "users") with { Columns = [first, second] });
 
         // Assert
         plan.OfType<ExecuteScript>().Select(m => m.Script.Name).ShouldBe(["first", "second"]);
@@ -171,12 +174,12 @@ public sealed class PlanLinearizerDataMigrationTests
         {
             RunOutsideTransaction = true,
         };
-        var constraint = new PrimaryKeyDiff(ChangeKind.Add, "users_pk",
-            new PrimaryKey { Name = "users_pk", ColumnNames = ["id"] })
+        var constraint = PrimaryKeyDiff.Added(new PrimaryKey { Name = "users_pk", ColumnNames = ["id"] })
+            with
         { MigrationScript = migration };
 
         // Act
-        var plan = LinearizeTable(new TableDiff("app", "users", ChangeKind.Modify, PrimaryKey: [constraint]));
+        var plan = LinearizeTable(TableDiff.Modified("app", "users") with { PrimaryKeys = [constraint] });
 
         // Assert — the action carries the declared script itself, nothing copied field-by-field.
         plan.OfType<ExecuteScript>().ShouldHaveSingleItem().Script.ShouldBe(migration);

@@ -32,7 +32,7 @@ public sealed class StructuralIntegrityPolicyTests
             Name = "orders",
             PrimaryKey = new PrimaryKey { Name = "orders_pk", ColumnNames = ["id"] },
             Columns = [Col("id"), Col("user_id")],
-            ForeignKeys = [new ForeignKey { Name = "orders_users_fk", ColumnNames = ["user_id"], References = new("public", "users"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "orders_users_fk", ColumnNames = ["user_id"], References = new ObjectAddress("public", "users"), ReferencedColumnNames = ["id"] }],
         };
 
         // Act
@@ -177,7 +177,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "t",
             Columns = [Col("id")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ghost"], References = new("public", "t"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ghost"], References = new ObjectAddress("public", "t"), ReferencedColumnNames = ["id"] }],
         };
 
         // Act
@@ -196,7 +196,7 @@ public sealed class StructuralIntegrityPolicyTests
             Name = "t",
             PrimaryKey = new PrimaryKey { Name = "pk", ColumnNames = ["id"] },
             Columns = [Col("id"), Col("a"), Col("b")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["a", "b"], References = new("public", "t"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["a", "b"], References = new ObjectAddress("public", "t"), ReferencedColumnNames = ["id"] }],
         };
 
         // Act
@@ -214,7 +214,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "t",
             Columns = [Col("id"), Col("ref")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ref"], References = new("public", "absent"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ref"], References = new ObjectAddress("public", "absent"), ReferencedColumnNames = ["id"] }],
         };
 
         // Act
@@ -234,7 +234,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "t",
             Columns = [Col("id"), Col("ref")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ref"], References = new("external", "other"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["ref"], References = new ObjectAddress("external", "other"), ReferencedColumnNames = ["id"] }],
         };
 
         // Act
@@ -253,7 +253,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "source",
             Columns = [Col("id"), Col("code")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new("public", "target"), ReferencedColumnNames = ["code"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new ObjectAddress("public", "target"), ReferencedColumnNames = ["code"] }],
         };
 
         // Act
@@ -278,7 +278,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "source",
             Columns = [Col("id"), Col("code")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new("public", "target"), ReferencedColumnNames = ["code"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new ObjectAddress("public", "target"), ReferencedColumnNames = ["code"] }],
         };
 
         // Act
@@ -303,7 +303,7 @@ public sealed class StructuralIntegrityPolicyTests
         {
             Name = "source",
             Columns = [Col("id"), Col("code")],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new("public", "target"), ReferencedColumnNames = ["code"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["code"], References = new ObjectAddress("public", "target"), ReferencedColumnNames = ["code"] }],
         };
 
         // Act
@@ -359,6 +359,7 @@ public sealed class StructuralIntegrityPolicyTests
     [Fact]
     public void Error_WhenNameReusedAcrossObjectKinds()
     {
+        // Arrange
         // A table and a view called 'foo' cannot coexist — they share one name space in the database.
         var schema = new Database
         {
@@ -369,8 +370,10 @@ public sealed class StructuralIntegrityPolicyTests
         ],
         };
 
+        // Act
         var diagnostics = _sut.Validate(schema).ToList();
 
+        // Assert
         diagnostics.ShouldContain(d => d.Message.Contains("reuses the name 'foo'") && d.Message.Contains("table") && d.Message.Contains("view"));
     }
 

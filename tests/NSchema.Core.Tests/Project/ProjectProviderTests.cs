@@ -2,7 +2,6 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Project;
-using NSchema.Project.Model.Services;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project;
@@ -37,10 +36,13 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_NoMatchingFiles_FailsTheRead()
     {
+        // Arrange
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         project.IsFailure.ShouldBeTrue();
         project.Errors.ShouldHaveSingleItem().ShouldBe(ProjectDiagnostics.NoFilesMatched());
     }
@@ -48,12 +50,15 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_SyntaxError_FailsTheRead_AndNamesTheFile()
     {
+        // Arrange
         Write("good.sql", "CREATE SCHEMA app;");
         Write("bad.sql", "CREATE TABLE app.users (");
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         // The read fails, naming the broken file structurally — while the readable files still aggregate
         // into the carried project.
         project.IsFailure.ShouldBeTrue();
@@ -67,31 +72,38 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_AggregatesAllSources()
     {
+        // Arrange
         Write("a.sql", "CREATE SCHEMA a;");
         Write("b.sql", "CREATE SCHEMA b;");
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         project.Database.Schemas.Select(s => s.Name).ShouldBe(["a", "b"], ignoreOrder: true);
     }
 
     [Fact]
     public async Task GetProject_LayersMultipleSources()
     {
+        // Arrange
         // Mirrors the CLI's base + environment-overlay registration: two sources aggregate.
         Write("base.sql", "CREATE SCHEMA app;");
         Write("overlay.sql", "CREATE SCHEMA audit;");
         var sut = new ProjectProvider([Source(_root, "base.sql"), Source(_root, "overlay.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         project.Database.Schemas.Select(s => s.Name).ShouldBe(["app", "audit"], ignoreOrder: true);
     }
 
     [Fact]
     public async Task GetProject_SurfacesDeploymentScripts()
     {
+        // Arrange
         Write("schema.sql",
             """
             CREATE SCHEMA app;
@@ -99,8 +111,10 @@ public sealed class ProjectProviderTests : IDisposable
             """);
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         project.AllScripts().ShouldHaveSingleItem().Name.ShouldBe("backfill");
     }
 
@@ -118,6 +132,7 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_AggregatesMigrationsAcrossFiles()
     {
+        // Arrange
         // Two files, and a same-path pair distinguished only by trigger — all three aggregate (no false duplicate).
         Write("a.sql",
             """
@@ -128,14 +143,17 @@ public sealed class ProjectProviderTests : IDisposable
         Write("b.sql", "SCRIPT guard RUN ON ADD CONSTRAINT app.orders.total_positive AS $$ SELECT 3; $$;");
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         project.AllScripts().Select(m => m.Name).ShouldBe(["backfill", "retype", "guard"]);
     }
 
     [Fact]
     public async Task GetProject_DuplicateMigrationAcrossFiles_FailsTheRead()
     {
+        // Arrange
         Write("a.sql",
             """
             CREATE SCHEMA app;
@@ -144,8 +162,10 @@ public sealed class ProjectProviderTests : IDisposable
         Write("b.sql", "SCRIPT other RUN ON ADD COLUMN app.users.email AS $$ SELECT 2; $$;");
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var result = await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         result.IsFailure.ShouldBeTrue();
         result.Errors.ShouldContain(d => d.Message.Contains("Duplicate migration"));
     }
@@ -153,6 +173,7 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_CaseVariantMigrationTargets_AreDistinct()
     {
+        // Arrange
         // Identifiers are case-sensitive, so scripts addressing case-variant paths target different members
         // and are not duplicates of one another.
         Write("a.sql",
@@ -163,8 +184,10 @@ public sealed class ProjectProviderTests : IDisposable
         Write("b.sql", "SCRIPT upper RUN ON ADD COLUMN APP.Users.EMAIL AS $$ SELECT 2; $$;");
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var result = await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         result.Errors.ShouldNotContain(d => d.Message.Contains("Duplicate migration"));
         result.Value!.Directives.ChangeScripts.Count.ShouldBe(2);
     }
@@ -191,6 +214,7 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_ExpandsTemplatesAcrossFiles()
     {
+        // Arrange
         // Templates are location-agnostic: the definition, its application, and the target schemas may each live
         // in a different file — expansion runs on the aggregate.
         Write("templates.sql", "TEMPLATE outbox BEGIN CREATE TABLE outbox (id int NOT NULL); END;");
@@ -202,8 +226,10 @@ public sealed class ProjectProviderTests : IDisposable
             """);
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         project.Database.Schemas.Select(s => s.Name).ShouldBe(["billing", "ordering"], ignoreOrder: true);
         project.Database.Schemas.ShouldAllBe(s => s.Tables.Count == 1);
     }
@@ -211,6 +237,7 @@ public sealed class ProjectProviderTests : IDisposable
     [Fact]
     public async Task GetProject_ResolvesTableTemplateIncludesAcrossFiles()
     {
+        // Arrange
         Write("templates.sql",
             """
             TEMPLATE audit_columns FOR TABLE
@@ -225,8 +252,10 @@ public sealed class ProjectProviderTests : IDisposable
             """);
         var sut = new ProjectProvider([Source(_root, "**/*.sql")]);
 
+        // Act
         var project = (await sut.GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
 
+        // Assert
         var table = project.Database.Schemas.ShouldHaveSingleItem().Tables.ShouldHaveSingleItem();
         table.Columns.Select(c => c.Name).ShouldBe(["id", "created_at"]);
     }

@@ -1,6 +1,6 @@
 using NSchema.Model.Constraints;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Constraints;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Constraints;
 
 namespace NSchema.Plan.Backends;
 

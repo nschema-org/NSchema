@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using NSchema.Model;
-using NSchema.Model.Services;
+using NSchema.Model.Serialization;
 
 namespace NSchema.State.Locks;
 
@@ -27,5 +27,5 @@ public sealed record LockId : ValueObject<string>
     /// Wraps a rendered lock id. One-way: an id never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator LockId?(string? value) => value is null ? null : new(value);
+    public static implicit operator LockId?(string? value) => value is null ? null : new LockId(value);
 }

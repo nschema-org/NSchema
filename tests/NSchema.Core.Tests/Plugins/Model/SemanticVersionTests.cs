@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 
 namespace NSchema.Tests.Plugins.Model;
 

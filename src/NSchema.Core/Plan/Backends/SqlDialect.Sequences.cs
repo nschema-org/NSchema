@@ -1,7 +1,7 @@
 using System.Text;
 using NSchema.Model.Sequences;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Sequences;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Sequences;
 
 namespace NSchema.Plan.Backends;
 

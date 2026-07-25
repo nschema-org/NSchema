@@ -1,11 +1,13 @@
 using System.Text;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model.Columns;
 using NSchema.Model.Scripts;
-using NSchema.Plan.Model;
+using NSchema.Model.Tables;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 
 namespace NSchema.Tests.Plan.PlanFile;
@@ -22,10 +24,15 @@ public sealed class PlanFileManagerTests
         // statements with execution metadata, so the round-trip exercises the whole artifact.
         var backfill = new ChangeScript("backfill", "UPDATE app.users SET email = ''",
             new ChangeTarget("app", "users", "email", ChangeTrigger.AddColumn));
-        var email = new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text }) { MigrationScript = backfill };
-        var users = new TableDiff("app", "users", ChangeKind.Modify, Columns: [email]);
+        var email = ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text }) with { MigrationScript = backfill };
+        var key = PrimaryKeyDiff.Added(new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] });
+        var users = TableDiff.Modified("app", "users") with
+        {
+            Columns = [email],
+            PrimaryKeys = [key],
+        };
         var plan = new MigrationPlan(
-            new DatabaseDiff([new SchemaDiff("app", Tables: [users])])
+            new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [users] }])
             {
                 // Both deployment bookends at the root; the change script rides its column above.
                 DeploymentScripts =
@@ -46,11 +53,15 @@ public sealed class PlanFileManagerTests
     [Fact]
     public void Serialize_ThenDeserialize_RoundTripsTheWholeEnvelope()
     {
+        // Arrange
         var original = SampleEnvelope();
 
         var json = Json(original);
+
+        // Act
         var roundTripped = _sut.Deserialize(_sut.Serialize(original));
 
+        // Assert
         // A read + write cycle reproduces the exact same document, including the polymorphic script events and the diff.
         Json(roundTripped).ShouldBe(json);
     }
@@ -70,9 +81,11 @@ public sealed class PlanFileManagerTests
     [Fact]
     public void Serialize_StampsTheCurrentVersion_WithoutTheCallerSupplyingIt()
     {
+        // Act
         // The caller never passes a version; the format owns it.
         var roundTripped = _sut.Deserialize(_sut.Serialize(SampleEnvelope()));
 
+        // Assert
         roundTripped.Version.ShouldBe(PlanFileEnvelope.CurrentVersion);
         roundTripped.CreatedAt.ShouldBe(DateTimeOffset.UnixEpoch);
     }
@@ -80,19 +93,26 @@ public sealed class PlanFileManagerTests
     [Fact]
     public void Deserialize_RestoresConcreteScriptEventsInOrder()
     {
+        // Arrange
         var roundTripped = _sut.Deserialize(_sut.Serialize(SampleEnvelope()));
 
         // The discriminator must reconstruct each concrete script record, not the abstract base, and keep order.
         roundTripped.Plan.Diff.AllScripts().Select(s => s.GetType()).ShouldBe(
+
+            // Act
             [typeof(ChangeScript), typeof(DeploymentScript), typeof(DeploymentScript)]);
+
+        // Assert
         roundTripped.Plan.Diff.AllScripts().ShouldBe(SampleEnvelope().Plan.Diff.AllScripts());
     }
 
     [Fact]
     public void Deserialize_RestoresStatementDetail()
     {
+        // Act
         var roundTripped = _sut.Deserialize(_sut.Serialize(SampleEnvelope()));
 
+        // Assert
         roundTripped.Plan.Statements.ShouldBe(SampleEnvelope().Plan.Statements);
         roundTripped.Plan.Statements[1].RunOutsideTransaction.ShouldBeTrue();
     }
@@ -100,12 +120,16 @@ public sealed class PlanFileManagerTests
     [Fact]
     public async Task Write_ThenRead_RoundTripsThroughAFile()
     {
+        // Arrange
         var path = Path.Combine(Path.GetTempPath(), $"nschema-plan-{Guid.NewGuid():N}.json");
         try
         {
             await _sut.Write(path, SampleEnvelope(), TestContext.Current.CancellationToken);
+
+            // Act
             var roundTripped = await _sut.Read(path, TestContext.Current.CancellationToken);
 
+            // Assert
             Json(roundTripped.Require()).ShouldBe(Json(SampleEnvelope()));
         }
         finally
@@ -126,13 +150,17 @@ public sealed class PlanFileManagerTests
         };
         var diff = new DatabaseDiff(
         [
-            new SchemaDiff("app", Tables:
-            [
-                new TableDiff("app", "users", ChangeKind.Modify, Columns:
-                [
-                    new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text }) { MigrationScript = migration },
-                ]),
-            ]),
+            SchemaDiff.Containing("app") with
+            {
+                Tables = [
+                TableDiff.Modified("app", "users") with
+                {
+                    Columns = [
+                    ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text }) with{ MigrationScript = migration },
+                ],
+                },
+            ],
+            },
         ]);
         var envelope = new PlanFileEnvelope(
             new MigrationPlan(diff, [new SqlStatement("UPDATE app.users SET email = ''", RunOutsideTransaction: true)]),
@@ -149,8 +177,10 @@ public sealed class PlanFileManagerTests
     [Fact]
     public void Deserialize_Garbage_ThrowsPlanFileDeserializationException()
     {
+        // Act
         var garbage = Encoding.UTF8.GetBytes("not json at all");
 
+        // Assert
         Should.Throw<PlanFileDeserializationException>(() => _sut.Deserialize(garbage));
     }
 }

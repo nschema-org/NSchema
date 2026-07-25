@@ -1,9 +1,9 @@
 using NSchema.Configuration;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Engine;
-using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 
 namespace NSchema.Tests.Configuration;
 
@@ -42,7 +42,7 @@ public sealed class ConfigurationAssemblerTests
         result.IsSuccess.ShouldBeTrue();
         result.Value.Plugins.ShouldHaveSingleItem().ShouldBe(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") }));
         result.Value.Engine.ShouldBe(new EngineConfiguration { Version = VersionRange.Parse("[5.0,6.0)") });
-        result.Value.Database!.Attribute("host").ShouldBe("localhost");
+        result.Value.Database!.Value("host").ShouldBe("localhost");
         result.Value.State!.Label.ShouldBe("file");
     }
 
@@ -72,45 +72,55 @@ public sealed class ConfigurationAssemblerTests
         var database = ConfigurationAssembler.Assemble([document]).Value!.Database!;
 
         // Assert — every value kind flattens to its string form (the binder converts to the target type later).
-        database.Attribute("schema_search_path").ShouldBe("app");
-        database.Attribute("connection_timeout").ShouldBe("1000");
-        database.Attribute("statement_cache").ShouldBe("-1");
-        database.Attribute("prefer_simple").ShouldBe("true");
-        database.Attribute("ssl").ShouldBe("false");
-        database.Attribute("transaction_mode").ShouldBe("single");
-        database.Attribute("pool.max").ShouldBe("10");
+        database.Value("schema_search_path").ShouldBe("app");
+        database.Value("connection_timeout").ShouldBe("1000");
+        database.Value("statement_cache").ShouldBe("-1");
+        database.Value("prefer_simple").ShouldBe("true");
+        database.Value("ssl").ShouldBe("false");
+        database.Value("transaction_mode").ShouldBe("single");
+        database.Value("pool.max").ShouldBe("10");
     }
 
     [Fact]
     public void Assemble_AttributeLookup_IsCaseInsensitive()
     {
+        // Act
         var document = Doc($"{Plugin} DATABASE pg ( Dialect = 'postgres' );");
 
-        ConfigurationAssembler.Assemble([document]).Value!.Database!.Attribute("dialect").ShouldBe("postgres");
+        // Assert
+        ConfigurationAssembler.Assemble([document]).Value!.Database!.Value("dialect").ShouldBe("postgres");
     }
 
     [Fact]
     public void Assemble_RangeNotation_PassesThroughVerbatim()
     {
+        // Act
         var document = Doc("PLUGIN pg ( source = 'NSchema.Postgres', version = '[5.0,6.0)' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Value!.Plugins.Single().Package.Version.ShouldBe(VersionRange.Parse("[5.0,6.0)"));
     }
 
     [Fact]
     public void Assemble_BareVersion_MeansExact()
     {
+        // Act
         var document = Doc("ENGINE ( version = '5.1.0' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Value!.Engine!.Version.ShouldBe(VersionRange.Parse("[5.1.0]"));
     }
 
     [Fact]
     public void Assemble_HostVersion_BuildsTheHostRequirement()
     {
+        // Arrange
         var document = Doc("ENGINE ( host_version = '[5.0,6.0)' );");
 
+        // Act
         var engine = ConfigurationAssembler.Assemble([document]).Value!.Engine!;
+
+        // Assert
         engine.Version.ShouldBeNull();
         engine.HostVersion.ShouldBe(VersionRange.Parse("[5.0,6.0)"));
     }
@@ -118,8 +128,10 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_VersionAndHostVersion_BuildsBoth()
     {
+        // Act
         var document = Doc("ENGINE ( version = '[5.0,6.0)', host_version = '[5.1,6.0)' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Value!.Engine.ShouldBe(
             new EngineConfiguration { Version = VersionRange.Parse("[5.0,6.0)"), HostVersion = VersionRange.Parse("[5.1,6.0)") });
     }
@@ -127,9 +139,13 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_UnknownLabel_IsAnError()
     {
+        // Arrange
         var document = Doc("DATABASE pg ( host = 'localhost' );");
 
-        var label = document.Statements.OfType<BlockStatement>().Single().Label!;
+        // Act
+        var label = document.Statements.OfType<SettingsStatement>().Single().Label!;
+
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem()
             .ShouldBe(PluginDiagnostics.UnknownPluginLabel("DATABASE", "pg", label.Position));
     }
@@ -137,8 +153,10 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_UnlabelledReference_IsAnError()
     {
+        // Act
         var document = Doc("STATE ( path = 'x' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem()
             .ShouldBe(ConfigurationDiagnostics.UnlabelledReference("STATE", document.Statements.Single().Position));
     }
@@ -146,8 +164,10 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_DuplicatePluginLabel_IsAnError()
     {
+        // Act
         var document = Doc($"{Plugin} PLUGIN pg ( source = 'NSchema.Sqlite', version = '5.0.1' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem()
             .ShouldBe(PluginDiagnostics.DuplicatePluginLabel("pg", document.Statements[1].Position));
     }
@@ -155,8 +175,10 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_DuplicatePluginSource_IsAnError()
     {
+        // Act
         var document = Doc($"{Plugin} PLUGIN pg2 ( source = 'NSchema.Postgres', version = '5.0.2' );");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem()
             .ShouldBe(PluginDiagnostics.DuplicatePluginSource("NSchema.Postgres", document.Statements[1].Position));
     }
@@ -166,8 +188,10 @@ public sealed class ConfigurationAssemblerTests
     [InlineData("PLUGIN pg ( source = 'NSchema.Postgres', version = '5.0.1' ); DATABASE pg ( a = 1 ); DATABASE pg ( b = 2 );", "DATABASE")]
     public void Assemble_SecondSingletonStatement_IsAnError(string source, string keyword)
     {
+        // Act
         var document = Doc(source);
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem()
             .ShouldBe(ConfigurationDiagnostics.DuplicateStatement(keyword, document.Statements[^1].Position));
     }
@@ -175,9 +199,11 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_MissingPluginAttributes_ReportsEach()
     {
+        // Act
         // source and version are both required.
         var errors = ConfigurationAssembler.Assemble([Doc("PLUGIN pg ();")]).Errors.ToList();
 
+        // Assert
         errors.Count.ShouldBe(2);
         errors.ShouldContain(e => e.Message.Contains("Source"));
         errors.ShouldContain(e => e.Message.Contains("Version"));
@@ -231,8 +257,10 @@ public sealed class ConfigurationAssemblerTests
     [Fact]
     public void Assemble_StampsTheDocumentFile()
     {
+        // Act
         var document = Doc("DATABASE pg ( host = 'localhost' );", "config.env.prod.sql");
 
+        // Assert
         ConfigurationAssembler.Assemble([document]).Errors.ShouldHaveSingleItem().File.ShouldBe("config.env.prod.sql");
     }
 }

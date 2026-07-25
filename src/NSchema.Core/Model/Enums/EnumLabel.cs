@@ -27,5 +27,5 @@ public sealed record EnumLabel : ValueObject<string>
     /// Wraps the label as written. One-way: a label never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator EnumLabel?(string? value) => value is null ? null : new(value);
+    public static implicit operator EnumLabel?(string? value) => value is null ? null : new EnumLabel(value);
 }

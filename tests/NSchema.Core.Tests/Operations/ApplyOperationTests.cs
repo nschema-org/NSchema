@@ -1,11 +1,11 @@
 using NSchema.Apply;
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.Policies;
 using NSchema.State;
 using NSubstitute.ExceptionExtensions;
@@ -55,8 +55,10 @@ public sealed class ApplyOperationTests
     [Fact]
     public async Task Execute_RunsSqlThenRefreshesState()
     {
+        // Act
         var result = await _sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value!.AppliedPlan.ShouldBe(_plan);
         result.Value!.ChangesApplied.ShouldBeTrue();
@@ -68,8 +70,10 @@ public sealed class ApplyOperationTests
     [Fact]
     public async Task Execute_EmptyPlan_SkipsExecutionButStillRefreshes()
     {
+        // Act
         var result = await _sut.Execute(Args(_emptyPlan), TestContext.Current.CancellationToken);
 
+        // Assert
         // An empty plan applied nothing, but a first run against an already-matching target still initialises the store.
         result.Value!.ChangesApplied.ShouldBeFalse();
         result.Value!.StatementsExecuted.ShouldBe(0);
@@ -118,10 +122,13 @@ public sealed class ApplyOperationTests
     [Fact]
     public async Task Execute_NonEmptyPlanButNoExecutor_Fails()
     {
+        // Arrange
         var sut = BuildSut(executor: null);
 
+        // Act
         var result = await sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
 
+        // Assert
         result.IsFailure.ShouldBeTrue();
         result.Errors.ShouldHaveSingleItem().ShouldBe(ApplyDiagnostics.MissingExecutor);
     }

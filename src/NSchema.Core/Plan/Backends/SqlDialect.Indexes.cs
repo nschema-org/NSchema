@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Indexes;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Indexes;
 
 namespace NSchema.Plan.Backends;
 

@@ -53,7 +53,7 @@ public sealed class RefreshEndToEndTests : IDisposable
     {
         // 1. Capture the live schema to the store via Refresh.
         using (var capture = NSchemaApplication.CreateBuilder()
-            .UseFileStateStore(_statePath)
+            .UseFileState(_statePath)
             .Tap(b => b.Services.AddSingleton<IDatabaseIntrospector>(new InMemoryIntrospector(LiveSchema())))
             .Build())
         {
@@ -71,7 +71,7 @@ public sealed class RefreshEndToEndTests : IDisposable
             """);
 
         using var planner = NSchemaApplication.CreateBuilder(new NSchemaApplicationOptions())
-            .UseFileStateStore(_statePath)
+            .UseFileState(_statePath)
             .AddProjectSource(Path.GetDirectoryName(desired)!, Path.GetFileName(desired))
             .UseSqlDialect<StubSqlDialect>().Build();
 

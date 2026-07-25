@@ -40,6 +40,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             create schema app;
@@ -50,7 +51,10 @@ public sealed class NsqlFormatterTests
             ;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
     }
 
@@ -100,6 +104,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_Template_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             template outbox begin
@@ -109,7 +114,10 @@ public sealed class NsqlFormatterTests
               end;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
     }
 
@@ -145,6 +153,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_TableTemplate_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             template audit_columns for table begin
@@ -153,7 +162,10 @@ public sealed class NsqlFormatterTests
               end;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
     }
 
@@ -165,8 +177,11 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_PreservesKeywordCasingAndExpressionSpelling()
     {
+        // Act
         // Gentle: content is preserved verbatim (lowercase keywords, the '> 0' spacing inside the CHECK).
         const string input = "create table app.t (\n  qty int not null,\n  constraint c check (qty > 0)\n);";
+
+        // Assert
         Format(input).ShouldBe(input + "\n");
     }
 
@@ -222,7 +237,7 @@ public sealed class NsqlFormatterTests
     public void Format_Migration_StartsANewStatement()
     {
         // SCRIPT is a statement keyword: it must break away from the preceding statement with one blank line
-        // (rather than being mistaken for a configuration block or trailing content).
+        // (rather than being mistaken for a settings statement or trailing content).
         const string input =
             """
             create schema app;
@@ -246,6 +261,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_MigrationInsideTemplate_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             template outbox begin
@@ -256,7 +272,10 @@ public sealed class NsqlFormatterTests
             end;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
         once.ShouldContain("SCRIPT backfill");
     }
@@ -264,6 +283,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_Migration_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             create schema app;
@@ -272,7 +292,10 @@ public sealed class NsqlFormatterTests
             $$;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
     }
 
@@ -286,7 +309,7 @@ public sealed class NsqlFormatterTests
     // -------------------------------------------------------------------------
 
     [Fact]
-    public void Format_ConfigBlock_BreaksAttributesOnePerLine()
+    public void Format_SettingsStatement_BreaksSettingsOnePerLine()
         => Format("DATABASE ( dialect = postgres, colour = false );")
             .ShouldBe("DATABASE (\n  dialect = postgres,\n  colour = false\n);\n");
 
@@ -343,15 +366,21 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_LineCommentBeforeMemberComma_PutsCommaBeforeTheComment()
     {
+        // Act
         // The ',' must land before the line comment, never inside it (which would comment the ',' out).
         const string input = "create table app.t (\n  a int -- first\n, b int\n);";
+
+        // Assert
         Format(input).ShouldBe("create table app.t (\n  a int,  -- first\n  b int\n);\n");
     }
 
     [Fact]
     public void Format_OwnLineCommentBetweenMembers_IndentsWithTheMembers()
     {
+        // Act
         const string input = "create table app.t (\n  a int,\n  -- the b column\n  b int\n);";
+
+        // Assert
         Format(input).ShouldBe("create table app.t (\n  a int,\n  -- the b column\n  b int\n);\n");
     }
 
@@ -448,6 +477,7 @@ public sealed class NsqlFormatterTests
     [Fact]
     public void Format_RichDocument_IsIdempotent()
     {
+        // Arrange
         const string input =
             """
             DATABASE (   dialect = postgres   );
@@ -480,7 +510,10 @@ public sealed class NsqlFormatterTests
             $$;
             """;
 
+        // Act
         var once = Format(input);
+
+        // Assert
         Format(once).ShouldBe(once);
     }
 

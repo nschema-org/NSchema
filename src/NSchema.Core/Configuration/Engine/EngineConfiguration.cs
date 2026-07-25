@@ -1,4 +1,4 @@
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 
 namespace NSchema.Configuration.Engine;
 

@@ -11,7 +11,7 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql.Syntax;
 using NSchema.Project.Nsql.Tokens;
 using Syn = NSchema.Project.Nsql.Syntax;
@@ -69,7 +69,12 @@ internal static class SyntaxBuilder
         }
         foreach (var rename in directives.ObjectRenames)
         {
-            var kind = rename.From.Kind!.Value;
+            // An object rename always names the kind it renames; one without is not a rename we can write.
+            if (rename.From.Kind is not { } kind)
+            {
+                continue;
+            }
+
             statements.Add(new RenameObjectStatement(kind, Qualified(rename.From.Schema, rename.From.Name), Name(rename.To))
             {
                 KindKeywords = [Token.Keyword(KindKeyword(kind))],
@@ -277,12 +282,16 @@ internal static class SyntaxBuilder
         {
             action = new Syn.Triggers.InlineBodyAction(body) { BodyToken = DollarString(body) };
         }
-        else
+        else if (trigger.Function is { } function)
         {
             var fn = new Syn.Triggers.ExecuteFunctionAction(
-                new QualifiedName(OptionalName(trigger.Function!.Schema), Name(trigger.Function.Name)),
+                new QualifiedName(OptionalName(function.Schema), Name(function.Name)),
                 trigger.FunctionArguments ?? "");
             action = fn with { ActionToken = Token.Span(ExecuteFunctionText(fn)) };
+        }
+        else
+        {
+            throw new InvalidOperationException($"Trigger '{trigger.Name}' has neither a body nor a function to execute.");
         }
 
         var node = new Syn.Triggers.CreateTriggerStatement(Name(trigger.Name), Timing(trigger.Timing), Events(trigger.Events),

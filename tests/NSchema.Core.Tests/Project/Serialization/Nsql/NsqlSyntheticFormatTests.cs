@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Diff.Backends;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 using NSchema.Project.Nsql.Syntax.Tables;
 using NSchema.Project.Nsql.Syntax.Templates;
 using NSchema.Project.Nsql.Tokens;
-using DatabaseComparer = NSchema.Diff.Model.Services.DatabaseComparer;
+using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
 
@@ -76,11 +76,11 @@ public sealed class NsqlSyntheticFormatTests
     [Fact]
     public void Format_SyntheticBlock_IsValidAndRoundTrips()
     {
-        // Arrange — a factory-built lock block (the shape the lockfile writer will produce).
+        // Arrange — a factory-built LOCK statement (the shape the lockfile writer will produce).
         var document = new NsqlDocument([
-            new BlockStatement(BlockKeyword.Lock, null, new SeparatedSyntaxList<BlockAttribute>([
-                new BlockAttribute("source", "NSchema.Postgres"),
-                new BlockAttribute("version", "5.0.0-alpha.2"),
+            new SettingsStatement(SettingsKeyword.Lock, null, new SeparatedSyntaxList<Setting>([
+                new Setting("source", "NSchema.Postgres"),
+                new Setting("version", "5.0.0-alpha.2"),
             ])),
         ]);
 
@@ -90,9 +90,9 @@ public sealed class NsqlSyntheticFormatTests
         // Assert
         var read = NsqlReader.Read(text);
         read.IsSuccess.ShouldBeTrue(string.Join("; ", read.Errors.Select(e => e.Message)));
-        var block = read.Value.Statements.OfType<BlockStatement>().ShouldHaveSingleItem();
-        block.Keyword.ShouldBe(BlockKeyword.Lock);
-        block.Attributes.Select(a => (a.Key, a.Value)).ShouldBe([("source", "NSchema.Postgres"), ("version", "5.0.0-alpha.2")]);
+        var statement = read.Value.Statements.OfType<SettingsStatement>().ShouldHaveSingleItem();
+        statement.Keyword.ShouldBe(SettingsKeyword.Lock);
+        statement.Settings.Select(a => (a.Key, a.Value)).ShouldBe([("source", "NSchema.Postgres"), ("version", "5.0.0-alpha.2")]);
     }
 
     [Fact]

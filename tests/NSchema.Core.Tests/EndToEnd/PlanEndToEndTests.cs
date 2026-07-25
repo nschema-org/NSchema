@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Deployment.Backends;
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
@@ -40,6 +40,7 @@ public sealed class PlanEndToEndTests : IDisposable
     [Fact]
     public async Task Plan_ReportsStructuredDiffBetweenCurrentAndDesired()
     {
+        // Arrange
         // Current: app.users(id). Desired: app.users(id, email) + a new app.orders table.
         var current = new Database { Schemas = [new Schema { Name = "app", Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] }] };
 
@@ -66,7 +67,10 @@ public sealed class PlanEndToEndTests : IDisposable
         var schema = result.Value.ShouldNotBeNull().Plan.ShouldNotBeNull().Diff.Schemas.ShouldHaveSingleItem();
         schema.Name.ShouldBe("app");
 
+        // Act
         var users = schema.Tables.Single(t => t.Name.Value.Equals("users"));
+
+        // Assert
         users.Kind.ShouldBe(ChangeKind.Modify);
         users.Columns.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             c => c.Name.ShouldBe("email"),
@@ -132,6 +136,7 @@ public sealed class PlanEndToEndTests : IDisposable
     [Fact]
     public async Task Plan_PartialTeardown_SeversWhatItCostsOutsideItsScope()
     {
+        // Arrange
         // A scoped teardown is the one plan that can be asked to remove something another schema depends on.
         // billing.orders keeps its rows; only the constraint aimed into app goes.
         var current = new Database
@@ -142,7 +147,7 @@ public sealed class PlanEndToEndTests : IDisposable
                 new Table { Name = "orders", Columns = [new Column { Name = "id", Type = SqlType.Int }],
                     ForeignKeys = [
                         new ForeignKey { Name = "fk_orders_user", ColumnNames = ["id"],
-                            References = new("app", "users"), ReferencedColumnNames = ["id"] },
+                            References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] },
                     ] },
             ] },
         ],
@@ -167,8 +172,11 @@ public sealed class PlanEndToEndTests : IDisposable
         // app goes entirely...
         diff.Schemas.Single(s => s.Name.Value.Equals("app")).Kind.ShouldBe(ChangeKind.Remove);
 
+        // Act
         // ...and billing is disturbed, but not torn down: the table survives, minus the constraint.
         var billing = diff.Schemas.Single(s => s.Name.Value.Equals("billing"));
+
+        // Assert
         billing.Kind.ShouldBeNull();
         var orders = billing.Tables.ShouldHaveSingleItem();
         orders.Kind.ShouldBe(ChangeKind.Modify);

@@ -1,6 +1,6 @@
 using NSchema.Configuration;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Engine;
-using NSchema.Configuration.Model;
 using NSchema.Configuration.Plugins;
 using NSchema.Project.Nsql;
 
@@ -49,7 +49,7 @@ public sealed class ConfigurationProviderTests : IDisposable
         result.IsSuccess.ShouldBeTrue();
         result.Value.Plugins.ShouldHaveSingleItem().ShouldBe(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") }));
         result.Value.Engine.ShouldBe(new EngineConfiguration { Version = VersionRange.Parse("[5.0,6.0)") });
-        result.Value.Database!.Attribute("host").ShouldBe("localhost");
+        result.Value.Database!.Value("host").ShouldBe("localhost");
         result.Value.State!.Label.ShouldBe("file");
     }
 
@@ -110,17 +110,21 @@ public sealed class ConfigurationProviderTests : IDisposable
     [Fact]
     public async Task Load_HostVersionSatisfied_Succeeds()
     {
+        // Act
         var config = Write("config.sql", "ENGINE ( host_version = '[5.0,6.0)' );");
 
+        // Assert
         (await Load([config], SemanticVersion.Parse("5.1.0"))).IsSuccess.ShouldBeTrue();
     }
 
     [Fact]
     public async Task Load_HostVersion_WithoutAHost_IsNotApplicable()
     {
+        // Act
         // A host_version assertion has nothing to check when the engine is embedded directly (no host supplied).
         var config = Write("config.sql", "ENGINE ( host_version = '[5.2,6.0)' );");
 
+        // Assert
         (await Load([config], hostVersion: null)).IsSuccess.ShouldBeTrue();
     }
 
@@ -145,6 +149,6 @@ public sealed class ConfigurationProviderTests : IDisposable
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.State!.Label.ShouldBe("s3");
-        result.Value.State!.Attribute("bucket").ShouldBe("prod");
+        result.Value.State!.Value("bucket").ShouldBe("prod");
     }
 }

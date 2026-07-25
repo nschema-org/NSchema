@@ -2,7 +2,7 @@ using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -29,14 +29,20 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_Empty_ProducesEmptySchema()
     {
+        // Act
         var schema = Parse("");
+
+        // Assert
         schema.Schemas.ShouldBeEmpty();
     }
 
     [Fact]
     public void Parse_CreateSchema_ProducesSchema()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app;");
+
+        // Assert
         schema.Name.ShouldBe("app");
         schema.Comment.ShouldBeNull();
     }
@@ -82,12 +88,12 @@ public sealed class NsqlParserTests
             .Message.ShouldContain("Unknown statement 'PARTIAL'");
 
     // -------------------------------------------------------------------------
-    // Configuration statements — one grammar: a config block parses anywhere, and is ignored as project content
+    // Configuration statements — one grammar: a settings statement parses anywhere, and is ignored as project content
     // (the file-type restriction is the reader's, covered by NsqlConfigurationTests).
     // -------------------------------------------------------------------------
 
     [Fact]
-    public void Parse_ConfigBlock_InProjectSource_ParsesAndIsIgnored()
+    public void Parse_SettingsStatement_InProjectSource_ParsesAndIsIgnored()
         => Parse("DATABASE postgres ( dialect = 'postgres' );").Schemas.ShouldBeEmpty();
 
     [Fact]
@@ -101,11 +107,14 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_MultipleStatements_AccumulateInOrder()
     {
+        // Act
         var schema = Parse(
             """
             CREATE SCHEMA app;
             CREATE SCHEMA reporting;
             """);
+
+        // Assert
         schema.Schemas.Select(s => s.Name).ShouldBe(["app", "reporting"]);
     }
 
@@ -141,9 +150,14 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_StandaloneIndexOnTable_AttachesToTable()
     {
+        // Arrange
         var table = ParseSingleSchema(
             "CREATE SCHEMA app; CREATE TABLE app.users (id int NOT NULL, email text NOT NULL); " +
+
+            // Act
             "CREATE UNIQUE INDEX users_email_ix ON app.users (email) WHERE (email IS NOT NULL);")
+
+            // Assert
             .Tables.ShouldHaveSingleItem();
         var index = table.Indexes.ShouldHaveSingleItem();
         index.Name.ShouldBe("users_email_ix");
@@ -155,9 +169,14 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_StandaloneAndInlineIndexes_Coexist()
     {
+        // Arrange
         var table = ParseSingleSchema(
             "CREATE SCHEMA app; CREATE TABLE app.users (id int NOT NULL, email text NOT NULL, INDEX users_id_ix (id)); " +
+
+            // Act
             "CREATE INDEX users_email_ix ON app.users (email);")
+
+            // Assert
             .Tables.ShouldHaveSingleItem();
         table.Indexes.Select(i => i.Name).ShouldBe(["users_id_ix", "users_email_ix"], ignoreOrder: true);
     }
@@ -181,7 +200,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateView_CapturesBodyVerbatim()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.active AS SELECT id, name FROM app.users WHERE active;");
+
+        // Assert
         var view = schema.Views.ShouldHaveSingleItem();
         view.Name.ShouldBe("active");
         view.Body.ShouldBe("SELECT id, name FROM app.users WHERE active");
@@ -190,7 +212,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateView_ExtractsDependencies()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.report AS SELECT * FROM app.orders o JOIN app.customers c ON o.cid = c.id;");
+
+        // Assert
         var view = schema.Views.ShouldHaveSingleItem();
         view.DependsOn.Select(d => $"{d.Schema}.{d.Name}").ShouldBe(["app.orders", "app.customers"]);
     }
@@ -204,7 +229,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateView_WithDocComment_AttachesComment()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app;\n--- active users\nCREATE VIEW app.active AS SELECT * FROM app.users;");
+
+        // Assert
         schema.Views.ShouldHaveSingleItem().Comment.ShouldBe("active users");
     }
 
@@ -220,16 +248,22 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_ViewBodyWithSemicolonInString_StopsAtRealTerminator()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.v AS SELECT ';' AS marker FROM app.t;");
+
+        // Assert
         schema.Views.ShouldHaveSingleItem().Body.ShouldBe("SELECT ';' AS marker FROM app.t");
     }
 
     [Fact]
     public void Parse_ViewBodyWithSemicolonInComment_StopsAtRealTerminator_AndKeepsTheComment()
     {
+        // Act
         // A ';' inside a line comment is not a terminator (the lexer skips the comment, so no ';' token is produced),
         // and the comment text survives verbatim because the body is recovered by slicing the source.
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.v AS SELECT 1 -- a; b\nFROM app.t;");
+
+        // Assert
         schema.Views.ShouldHaveSingleItem().Body.ShouldBe("SELECT 1 -- a; b\nFROM app.t");
     }
 
@@ -245,7 +279,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateEnum_CapturesOrderedValues()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE ENUM app.status ('pending', 'shipped', 'delivered');");
+
+        // Assert
         var enumType = schema.Enums.ShouldHaveSingleItem();
         enumType.Name.ShouldBe("status");
         enumType.Values.ShouldBe(["pending", "shipped", "delivered"]);
@@ -275,8 +312,13 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateSequence_WithEveryOption_CapturesThemAll()
     {
+        // Arrange
         var schema = ParseSingleSchema(
+
+            // Act
             "CREATE SCHEMA app; CREATE SEQUENCE app.order_id (AS bigint, START 100, INCREMENT 5, MINVALUE 1, MAXVALUE 999999, CACHE 10, CYCLE);");
+
+        // Assert
         schema.Sequences.ShouldHaveSingleItem().Options.ShouldBe(
             new SequenceOptions(SqlType.BigInt, StartWith: 100, IncrementBy: 5, MinValue: 1, MaxValue: 999999, Cache: 10, Cycle: true));
     }
@@ -284,7 +326,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateSequence_WithNegativeValues_ParsesSign()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE SEQUENCE app.countdown (START -1, INCREMENT -1, MINVALUE -100);");
+
+        // Assert
         schema.Sequences.ShouldHaveSingleItem().Options.ShouldBe(
             new SequenceOptions(StartWith: -1, IncrementBy: -1, MinValue: -100));
     }
@@ -303,8 +348,13 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateFunction_DollarQuotedBodyWithInternalSemicolons_RunsToTheRealTerminator()
     {
+        // Arrange
         var schema = ParseSingleSchema(
+
+            // Act
             "CREATE SCHEMA app; CREATE FUNCTION app.f() RETURNS int LANGUAGE plpgsql AS $body$ BEGIN RETURN 1; END; $body$; CREATE TABLE app.t (id int);");
+
+        // Assert
         schema.Routines.ShouldHaveSingleItem().Definition.Value.ShouldContain("BEGIN RETURN 1; END;");
         schema.Tables.ShouldHaveSingleItem(); // parsing resumed correctly after the function
     }
@@ -327,7 +377,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_RenameRoutine_AnySpelling_BecomesADirective()
     {
+        // Act
         var directives = Directives("CREATE SCHEMA app; CREATE FUNCTION app.f() RETURNS int AS $$ SELECT 1 $$; RENAME FUNCTION app.old_f TO f;");
+
+        // Assert
         directives.ObjectRenames.ShouldHaveSingleItem()
             .ShouldBe(new ObjectRenameDirective(new ObjectAddress("app", "old_f") with { Kind = ObjectKind.Routine }, "f"));
     }
@@ -345,7 +398,10 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_CreateProcedure_ParsesWithoutReturns()
     {
+        // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE PROCEDURE app.archive(before date) LANGUAGE sql AS $$ DELETE FROM app.t; $$;");
+
+        // Assert
         var procedure = schema.Routines.ShouldHaveSingleItem();
         procedure.Name.ShouldBe("archive");
         procedure.Arguments.ShouldBe("before date");

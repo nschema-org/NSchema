@@ -1,4 +1,3 @@
-
 namespace NSchema.Operations;
 
 /// <summary>

@@ -1,5 +1,5 @@
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql.Syntax;
 using NSchema.Project.Nsql.Tokens;
 
@@ -156,9 +156,9 @@ internal sealed partial class NsqlParser
         }
         // One grammar: configuration and lock blocks parse alongside declarations and directives. Which kinds a
         // given file admits is a file-type rule the reader enforces after parsing, not a property of the grammar.
-        if (CurrentBlockKeyword() is { } blockKeyword)
+        if (CurrentSettingsKeyword() is { } blockKeyword)
         {
-            return ParseBlock(blockKeyword, doc);
+            return ParseSettingsStatement(blockKeyword, doc);
         }
         if (_current.Kind == TokenKind.Identifier)
         {

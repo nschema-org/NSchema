@@ -132,32 +132,32 @@
             IsMaterialized: false,
             Name: active_users
           },
-          IsMaterialized: false,
-          RequiresRecreate: false,
           DependsOn: [
             app.users
-          ]
+          ],
+          IsMaterialized: false,
+          RequiresRecreate: false
         },
         {
           Schema: app,
           Name: old_summary,
           Kind: Remove,
-          IsMaterialized: false,
-          RequiresRecreate: false,
           DependsOn: [
             app.users
-          ]
+          ],
+          IsMaterialized: false,
+          RequiresRecreate: false
         },
         {
           Schema: app,
           Name: report,
           Kind: Modify,
           RenamedFrom: legacy_report,
-          IsMaterialized: false,
-          RequiresRecreate: false,
           DependsOn: [
             app.users
-          ]
+          ],
+          IsMaterialized: false,
+          RequiresRecreate: false
         },
         {
           Schema: app,
@@ -171,11 +171,11 @@
             IsMaterialized: false,
             Name: user_emails
           },
-          IsMaterialized: false,
-          RequiresRecreate: false,
           DependsOn: [
             app.active_users
-          ]
+          ],
+          IsMaterialized: false,
+          RequiresRecreate: false
         }
       ],
       Enums: [
@@ -183,6 +183,12 @@
           Schema: app,
           Name: order_status,
           Kind: Modify,
+          AddedValues: [
+            {
+              Value: delivered,
+              After: shipped
+            }
+          ],
           Values: {
             Old: [
               pending,
@@ -194,12 +200,6 @@
               delivered
             ]
           },
-          AddedValues: [
-            {
-              Value: delivered,
-              After: shipped
-            }
-          ],
           RequiresRecreate: false
         },
         {
@@ -433,11 +433,11 @@
           Schema: scratch,
           Name: temp_summary,
           Kind: Remove,
-          IsMaterialized: false,
-          RequiresRecreate: false,
           DependsOn: [
             scratch.temp_data
-          ]
+          ],
+          IsMaterialized: false,
+          RequiresRecreate: false
         }
       ],
       Enums: [

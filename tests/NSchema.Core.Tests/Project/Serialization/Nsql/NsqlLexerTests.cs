@@ -100,11 +100,16 @@ public sealed class NsqlLexerTests
     [Fact]
     public void Lex_OperatorCharacter_IsASymbolToken()
     {
+        // Arrange
         // The lexer is context-free: operator characters that only appear inside opaque expressions are returned as
         // single Symbol tokens rather than rejected. The parser recovers such expressions by source-slicing.
         var tokens = Tokens("a > b");
         tokens.Select(t => t.Kind).ShouldBe([TokenKind.Identifier, TokenKind.Symbol, TokenKind.Identifier]);
+
+        // Act
         var symbol = tokens[1];
+
+        // Assert
         symbol.Text.ShouldBe(">");
         symbol.Position.Column.ShouldBe(3);
     }
@@ -135,7 +140,10 @@ public sealed class NsqlLexerTests
     [Fact]
     public void Lex_DocLineComment_IsEmittedTrimmed()
     {
+        // Act
         var token = Tokens("---   All users.   \nusers")[0];
+
+        // Assert
         token.Kind.ShouldBe(TokenKind.DocComment);
         token.Text.ShouldBe("All users.");
     }
@@ -143,7 +151,10 @@ public sealed class NsqlLexerTests
     [Fact]
     public void Lex_ConsecutiveDocLines_MergeIntoOneComment()
     {
+        // Act
         var tokens = Tokens("--- Line one.\n--- Line two.\nusers");
+
+        // Assert
         tokens[0].Kind.ShouldBe(TokenKind.DocComment);
         tokens[0].Text.ShouldBe("Line one.\nLine two.");
         tokens[1].Text.ShouldBe("users");
@@ -152,7 +163,10 @@ public sealed class NsqlLexerTests
     [Fact]
     public void Lex_DocBlockComment_IsEmittedTrimmed()
     {
+        // Act
         var token = Tokens("/** Owning org. */ users")[0];
+
+        // Assert
         token.Kind.ShouldBe(TokenKind.DocComment);
         token.Text.ShouldBe("Owning org.");
     }
@@ -176,7 +190,10 @@ public sealed class NsqlLexerTests
     [Fact]
     public void Lex_TracksLineAndColumnAcrossNewlines()
     {
+        // Act
         var tokens = Tokens("CREATE\n  users");
+
+        // Assert
         tokens[0].Position.ShouldBe(new SourcePosition(0, 1, 1));
         tokens[1].Position.Line.ShouldBe(2);
         tokens[1].Position.Column.ShouldBe(3);

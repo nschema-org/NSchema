@@ -1,13 +1,13 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Constraints;
-using NSchema.Diff.Model.Enums;
-using NSchema.Diff.Model.Indexes;
-using NSchema.Diff.Model.Routines;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Sequences;
-using NSchema.Diff.Model.Tables;
-using NSchema.Diff.Model.Views;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Enums;
+using NSchema.Diff.Domain.Indexes;
+using NSchema.Diff.Domain.Routines;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Sequences;
+using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Domain.Views;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
@@ -17,7 +17,7 @@ using NSchema.Model.Routines;
 using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain.Services;
 
 namespace NSchema.Tests.Plan;
 
@@ -37,105 +37,129 @@ public sealed class PlanLinearizerSnapshotTests
     [Fact]
     public Task Linearize_RichDiff_OrdersActionsSafely()
     {
+        // Arrange
         // A new schema; a newly-added table (columns, PK and constraints carried inline on Definition, with a
         // separate index and grant); a modified table (add/drop/retype columns, new index, dropped FK); two added
         // views (one reading the other), a renamed view, and a dropped view; a dropped schema carrying its own
         // table, view, enum and sequence (all dropped before the schema). Enough cross-kind work to exercise the
         // priority ordering and the view dependency sort.
-        var newTable = new TableDiff("app", "users", ChangeKind.Add, null, null,
-            Columns: [],
-            Grants: [new GrantChange(ChangeKind.Add, "readers", TablePrivilege.Select)],
-            Indexes: [new IndexDiff(ChangeKind.Add, "users_name_ix", new TableIndex { Name = "users_name_ix", Columns = ["name"], IsUnique = true }, null)],
-            UniqueConstraints: [new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })],
-            Definition: new Table
-            {
-                Name = "users",
-                PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] },
-                Columns = [
+        var newTable = TableDiff.Added("app", new Table
+        {
+            Name = "users",
+            PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] },
+            Columns = [
                     new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) },
                     new Column { Name = "name", Type = SqlType.VarChar(255) },
                 ],
-                UniqueConstraints = [new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }],
-            });
+            UniqueConstraints = [new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }],
+        }) with
+        {
+            Columns = [],
+            Grants = [new GrantChange(ChangeKind.Add, "readers", TablePrivilege.Select)],
+            Indexes = [IndexDiff.Added(new TableIndex { Name = "users_name_ix", Columns = ["name"], IsUnique = true })],
+            UniqueConstraints = [UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })],
+        };
 
-        var modifiedTable = new TableDiff("app", "orders", ChangeKind.Modify, "purchases", null,
-            Columns:
-            [
-                new ColumnDiff("total", ChangeKind.Modify, new Column { Name = "total", Type = SqlType.BigInt }, null,
-                    Type: new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt),
-                    Nullability: new ValueChange<bool>(true, false), Default: null, Identity: null, Comment: null),
-                new ColumnDiff("notes", ChangeKind.Add, new Column { Name = "notes", Type = SqlType.Text, IsNullable = true }, null, null, null, null, null, null),
-                new ColumnDiff("total_label", ChangeKind.Modify, Generated: new ValueChange<SqlText>(null, "total::text")),
-                new ColumnDiff("legacy_flag", ChangeKind.Remove, new Column { Name = "legacy_flag", Type = SqlType.Boolean }, null, null, null, null, null, null),
+        var modifiedTable = TableDiff.Modified("app", "orders") with
+        {
+            RenamedFrom = "purchases",
+            Columns = [
+                ColumnDiff.Modified(new Column { Name = "total", Type = SqlType.BigInt }) with
+                {
+                    Type = new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt),
+                    Nullability = new ValueChange<bool>(true, false),
+                },
+                ColumnDiff.Added(new Column { Name = "notes", Type = SqlType.Text, IsNullable = true }),
+                ColumnDiff.Modified(new Column { Name = "total_label", Type = SqlType.Text })
+                    with { Generated = new ValueChange<SqlText>(null, "total::text") },
+                ColumnDiff.Removed(new Column { Name = "legacy_flag", Type = SqlType.Boolean }),
             ],
-            Grants: [],
-            Indexes: [new IndexDiff(ChangeKind.Add, "orders_total_ix",
-                new TableIndex { Name = "orders_total_ix", Columns = [new IndexColumn("total", Sort: IndexSort.Descending)], Method = "btree", Include = ["code"] }, null)],
-            ForeignKeys: [new ForeignKeyDiff(ChangeKind.Remove, "orders_user_fk", null)],
-            UniqueConstraints: [new UniqueConstraintDiff(ChangeKind.Add, "orders_code_uq", new UniqueConstraint { Name = "orders_code_uq", ColumnNames = ["code"] })],
-            Checks: [new CheckConstraintDiff(ChangeKind.Add, "orders_total_chk", new CheckConstraint { Name = "orders_total_chk", Expression = "total >= 0" })],
-            ExclusionConstraints: [new ExclusionConstraintDiff(ChangeKind.Add, "orders_slot_excl",
-                new ExclusionConstraint { Name = "orders_slot_excl", Elements = [new ExclusionElement("&&", "slot")], Method = "gist" })]);
+            Grants = [],
+            Indexes = [IndexDiff.Added(new TableIndex { Name = "orders_total_ix", Columns = [new IndexColumn("total", Sort: IndexSort.Descending)], Method = "btree", Include = ["code"] })],
+            ForeignKeys = [ForeignKeyDiff.Removed("orders_user_fk")],
+            UniqueConstraints = [UniqueConstraintDiff.Added(new UniqueConstraint { Name = "orders_code_uq", ColumnNames = ["code"] })],
+            Checks = [CheckConstraintDiff.Added(new CheckConstraint { Name = "orders_total_chk", Expression = "total >= 0" })],
+            ExclusionConstraints = [ExclusionConstraintDiff.Added(new ExclusionConstraint { Name = "orders_slot_excl", Elements = [new ExclusionElement("&&", "slot")], Method = "gist" })],
+        };
 
         // Listed dependent-first on purpose: the dependency sort must reorder them so user_summary (which
         // reads active_users) is created after it.
         var views = new ViewDiff[]
         {
-            new("app", "user_summary", ChangeKind.Add,
-                Definition: new View { Name = "user_summary", Body = "SELECT * FROM app.active_users", DependsOn = [new ObjectAddress("app", "active_users")] },
-                DependsOn: [new ObjectAddress("app", "active_users")]),
-            new("app", "active_users", ChangeKind.Add,
-                Definition: new View { Name = "active_users", Body = "SELECT * FROM app.users", DependsOn = [new ObjectAddress("app", "users")] },
-                DependsOn: [new ObjectAddress("app", "users")]),
-            new("app", "report", ChangeKind.Modify, RenamedFrom: "legacy_report"),
-            new("app", "stale_view", ChangeKind.Remove),
+            ViewDiff.Added("app", new View { Name = "user_summary", Body = "SELECT * FROM app.active_users", DependsOn = [new ObjectAddress("app", "active_users")] }),
+            ViewDiff.Added("app", new View { Name = "active_users", Body = "SELECT * FROM app.users", DependsOn = [new ObjectAddress("app", "users")] }),
+            ViewDiff.Modified("app", "report") with { RenamedFrom = "legacy_report" },
+            ViewDiff.Removed("app", "stale_view"),
         };
 
         // Enums and sequences: additions (created before tables), an anchored value addition, a rename,
         // an options change, and drops (after tables, before the schema drop).
         var enums = new EnumDiff[]
         {
-            new("app", "order_status", ChangeKind.Add, Definition: new EnumType { Name = "order_status", Values = ["pending", "shipped"] }),
-            new("app", "priority", ChangeKind.Modify, RenamedFrom: "importance",
-                AddedValues: [new EnumValueAddition("medium", After: "low")]),
-            new("app", "stale_enum", ChangeKind.Remove),
+            EnumDiff.Added("app", new EnumType { Name = "order_status", Values = ["pending", "shipped"] }),
+            EnumDiff.Modified("app", "priority") with
+            {
+                RenamedFrom = "importance",
+                AddedValues = [new EnumValueAddition("medium", After: "low")],
+            },
+            EnumDiff.Removed("app", "stale_enum"),
         };
         var sequences = new SequenceDiff[]
         {
-            new("app", "order_id", ChangeKind.Add, Definition: new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 100) }),
-            new("app", "ticket_id", ChangeKind.Modify,
-                Options: new ValueChange<SequenceOptions>(new SequenceOptions(StartWith: 1), new SequenceOptions(StartWith: 1000))),
-            new("app", "stale_seq", ChangeKind.Remove),
+            SequenceDiff.Added("app", new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 100) }),
+            SequenceDiff.Modified("app", "ticket_id") with
+            {
+                Options = new ValueChange<SequenceOptions>(new SequenceOptions(StartWith: 1), new SequenceOptions(StartWith: 1000)),
+            },
+            SequenceDiff.Removed("app", "stale_seq"),
         };
 
         // Routines: an add, a rename + signature change (rename then recreate), drops, and a procedure.
         var routines = new RoutineDiff[]
         {
-            new("app", "add_tax", ChangeKind.Add, RoutineKind.Function,
-                Definition: new Routine { Name = "add_tax", RoutineKind = RoutineKind.Function, Arguments = "amount numeric", Definition = "RETURNS numeric AS $$ SELECT amount $$" }),
-            new("app", "score", ChangeKind.Modify, RoutineKind.Function, RenamedFrom: "old_score",
-                Definition: new Routine { Name = "score", RoutineKind = RoutineKind.Function, Arguments = "user_id bigint, weight numeric", Definition = "RETURNS numeric AS $$ SELECT 1 $$" },
-                Arguments: new ValueChange<SqlText>("user_id bigint", "user_id bigint, weight numeric")),
-            new("app", "stale_fn", ChangeKind.Remove, RoutineKind.Function),
-            new("app", "archive", ChangeKind.Add, RoutineKind.Procedure,
-                Definition: new Routine { Name = "archive", RoutineKind = RoutineKind.Procedure, Arguments = "before date", Definition = "LANGUAGE sql AS $$ DELETE $$" }),
-            new("app", "stale_proc", ChangeKind.Remove, RoutineKind.Procedure),
+            RoutineDiff.Added("app", new Routine { Name = "add_tax", RoutineKind = RoutineKind.Function, Arguments = "amount numeric", Definition = "RETURNS numeric AS $$ SELECT amount $$" }),
+            RoutineDiff.Modified("app", "score", RoutineKind.Function) with
+            {
+                RenamedFrom = "old_score",
+                Definition = new Routine { Name = "score", RoutineKind = RoutineKind.Function, Arguments = "user_id bigint, weight numeric", Definition = "RETURNS numeric AS $$ SELECT 1 $$" },
+                Arguments = new ValueChange<SqlText>("user_id bigint", "user_id bigint, weight numeric"),
+            },
+            RoutineDiff.Removed("app", "stale_fn", RoutineKind.Function),
+            RoutineDiff.Added("app", new Routine { Name = "archive", RoutineKind = RoutineKind.Procedure, Arguments = "before date", Definition = "LANGUAGE sql AS $$ DELETE $$" }),
+            RoutineDiff.Removed("app", "stale_proc", RoutineKind.Procedure),
         };
 
         var diff = new DatabaseDiff(
             Schemas:
             [
-                new SchemaDiff("reporting", ChangeKind.Add, null, null, [], []),
-                new SchemaDiff("app", null, null, null, [], [newTable, modifiedTable], views, enums, sequences, routines),
-                new SchemaDiff("scratch", ChangeKind.Remove, null, null, [],
-                    [new TableDiff("scratch", "temp_data", ChangeKind.Remove)],
-                    [new ViewDiff("scratch", "temp_view", ChangeKind.Remove)],
-                    [new EnumDiff("scratch", "temp_status", ChangeKind.Remove)],
-                    [new SequenceDiff("scratch", "temp_seq", ChangeKind.Remove)]),
+                SchemaDiff.Added("reporting") with
+                {
+                    Grants = [],
+                    Tables = [],
+                },
+                SchemaDiff.Containing("app") with
+                {
+                    Grants = [],
+                    Tables = [newTable, modifiedTable],
+                    Views = views,
+                    Enums = enums,
+                    Sequences = sequences,
+                    Routines = routines,
+                },
+                SchemaDiff.Removed("scratch") with
+                {
+                    Grants = [],
+                    Tables = [TableDiff.Removed("scratch", "temp_data")],
+                    Views = [ViewDiff.Removed("scratch", "temp_view")],
+                    Enums = [EnumDiff.Removed("scratch", "temp_status")],
+                    Sequences = [SequenceDiff.Removed("scratch", "temp_seq")],
+                },
             ]);
 
+        // Act
         var plan = _linearizer.Linearize(diff);
 
+        // Assert
         return Verify(plan.Select(a => new { Type = a.GetType().Name, Action = a }));
     }
 }

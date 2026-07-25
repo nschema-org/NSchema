@@ -1,6 +1,6 @@
 using NSchema.Model;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Services;
 
 namespace NSchema.Operations.Workflow;
 
@@ -11,7 +11,7 @@ namespace NSchema.Operations.Workflow;
 internal interface IMigrationWorkflow
 {
     /// <summary>
-    /// Validates the desired schema against the schema policies.
+    /// Validates the project against the project policies.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     Task<Result> Validate(CancellationToken cancellationToken = default);

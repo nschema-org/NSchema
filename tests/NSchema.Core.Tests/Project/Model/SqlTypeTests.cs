@@ -36,8 +36,10 @@ public sealed class SqlTypeTests
     [Fact]
     public void Parse_OfNormalizedName_RoundTripsThroughEquality()
     {
+        // Act
         var original = SqlType.Custom("CiText");
 
+        // Assert
         SqlType.Parse(original.ToString()).ShouldBe(original);
     }
 

@@ -24,7 +24,10 @@ public sealed class NsqlParserGeneratedColumnTests
     [Fact]
     public void Parse_GeneratedNotNull_CapturesBoth()
     {
+        // Act
         var column = ParseColumn("area int NOT NULL GENERATED ALWAYS AS (w * h) STORED");
+
+        // Assert
         column.IsNullable.ShouldBeFalse();
         column.GeneratedExpression.ShouldBe("w * h");
     }

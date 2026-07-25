@@ -28,7 +28,10 @@ public sealed class NsqlParserIndexDepthTests
     [Fact]
     public void Parse_AscDescAndNulls_AreCaptured()
     {
+        // Act
         var keys = ParseIndex("CREATE INDEX t_ix ON app.t (a DESC NULLS LAST, b ASC NULLS FIRST);").Columns;
+
+        // Assert
         keys[0].Column.ShouldBe("a");
         keys[0].Sort.ShouldBe(IndexSort.Descending);
         keys[0].Nulls.ShouldBe(IndexNulls.Last);

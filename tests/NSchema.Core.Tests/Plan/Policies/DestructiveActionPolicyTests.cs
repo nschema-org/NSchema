@@ -1,26 +1,26 @@
 using Microsoft.Extensions.Options;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Constraints;
-using NSchema.Diff.Model.Enums;
-using NSchema.Diff.Model.Extensions;
-using NSchema.Diff.Model.Routines;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Sequences;
-using NSchema.Diff.Model.Tables;
-using NSchema.Diff.Model.Views;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Enums;
+using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Routines;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Sequences;
+using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Domain.Views;
 using NSchema.Model;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
 using NSchema.Model.Routines;
 using NSchema.Model.Sequences;
 using NSchema.Model.Views;
-using NSchema.Plan.Model.Constraints;
-using NSchema.Plan.Model.Enums;
-using NSchema.Plan.Model.Extensions;
-using NSchema.Plan.Model.Routines;
-using NSchema.Plan.Model.Sequences;
-using NSchema.Plan.Model.Tables;
-using NSchema.Plan.Model.Views;
+using NSchema.Plan.Domain.Constraints;
+using NSchema.Plan.Domain.Enums;
+using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Routines;
+using NSchema.Plan.Domain.Sequences;
+using NSchema.Plan.Domain.Tables;
+using NSchema.Plan.Domain.Views;
 using NSchema.Plan.Policies;
 
 namespace NSchema.Tests.Plan.Policies;
@@ -126,8 +126,13 @@ public class DestructiveActionPolicyTests
     {
         // Arrange — dropping a unique constraint removes a structural guarantee (and a possible FK target).
         _options.Value.Policy = PolicyEnforcement.Error;
-        var diff = TableChange(new TableDiff("app", "users", ChangeKind.Modify, null, null, [], [], [],
-            UniqueConstraints: [new UniqueConstraintDiff(ChangeKind.Remove, "users_email_uq", null)]));
+        var diff = TableChange(TableDiff.Modified("app", "users") with
+        {
+            Columns = [],
+            Grants = [],
+            Indexes = [],
+            UniqueConstraints = [UniqueConstraintDiff.Removed("users_email_uq")],
+        });
 
         // Act
         var errors = _sut.Validate(diff).ToList();
@@ -142,8 +147,13 @@ public class DestructiveActionPolicyTests
     {
         // Arrange — dropping an exclusion constraint removes a structural guarantee, like a unique constraint.
         _options.Value.Policy = PolicyEnforcement.Error;
-        var diff = TableChange(new TableDiff("app", "bookings", ChangeKind.Modify, null, null, [], [], [],
-            ExclusionConstraints: [new ExclusionConstraintDiff(ChangeKind.Remove, "no_overlap", null)]));
+        var diff = TableChange(TableDiff.Modified("app", "bookings") with
+        {
+            Columns = [],
+            Grants = [],
+            Indexes = [],
+            ExclusionConstraints = [ExclusionConstraintDiff.Removed("no_overlap")],
+        });
 
         // Act
         var errors = _sut.Validate(diff).ToList();
@@ -158,8 +168,13 @@ public class DestructiveActionPolicyTests
     {
         // Arrange — dropping a check only loosens validation; no data is lost, so it is not destructive.
         _options.Value.Policy = PolicyEnforcement.Error;
-        var diff = TableChange(new TableDiff("app", "users", ChangeKind.Modify, null, null, [], [], [],
-            Checks: [new CheckConstraintDiff(ChangeKind.Remove, "users_age_chk", null)]));
+        var diff = TableChange(TableDiff.Modified("app", "users") with
+        {
+            Columns = [],
+            Grants = [],
+            Indexes = [],
+            Checks = [CheckConstraintDiff.Removed("users_age_chk")],
+        });
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -171,7 +186,12 @@ public class DestructiveActionPolicyTests
         // Arrange — dropping a view is destructive (its definition is lost from managed state).
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", null, null, null, [], [], [new ViewDiff("app", "active_users", ChangeKind.Remove)]),
+            SchemaDiff.Containing("app") with
+            {
+                Grants = [],
+                Tables = [],
+                Views = [ViewDiff.Removed("app", "active_users")],
+            },
         ]);
 
         // Act
@@ -189,7 +209,12 @@ public class DestructiveActionPolicyTests
         _options.Value.Policy = PolicyEnforcement.Error;
         var view = new View { Name = "active_users", Body = "SELECT * FROM app.users" };
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", null, null, null, [], [], [new ViewDiff("app", "active_users", ChangeKind.Add, Definition: view)]),
+            SchemaDiff.Containing("app") with
+            {
+                Grants = [],
+                Tables = [],
+                Views = [ViewDiff.Added("app", view)],
+            },
         ]);
 
         // Act / Assert
@@ -202,7 +227,7 @@ public class DestructiveActionPolicyTests
         // Arrange — dropping an enum is destructive (columns using it would lose their type definition).
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", Enums: [new EnumDiff("app", "status", ChangeKind.Remove)]),
+            SchemaDiff.Containing("app") with { Enums = [EnumDiff.Removed("app", "status")] },
         ]);
 
         // Act
@@ -219,7 +244,7 @@ public class DestructiveActionPolicyTests
         // Arrange — dropping a sequence loses its current position.
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", Sequences: [new SequenceDiff("app", "order_id", ChangeKind.Remove)]),
+            SchemaDiff.Containing("app") with { Sequences = [SequenceDiff.Removed("app", "order_id")] },
         ]);
 
         // Act
@@ -236,9 +261,11 @@ public class DestructiveActionPolicyTests
         // Arrange — creating an enum or sequence loses nothing.
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff([
-            new SchemaDiff("app",
-                Enums: [new EnumDiff("app", "status", ChangeKind.Add, Definition: new EnumType { Name = "status", Values = ["a"] })],
-                Sequences: [new SequenceDiff("app", "order_id", ChangeKind.Add, Definition: new Sequence { Name = "order_id" })]),
+            SchemaDiff.Containing("app") with
+            {
+                Enums = [EnumDiff.Added("app", new EnumType { Name = "status", Values = ["a"] })],
+                Sequences = [SequenceDiff.Added("app", new Sequence { Name = "order_id" })],
+            },
         ]);
 
         // Act / Assert
@@ -251,11 +278,13 @@ public class DestructiveActionPolicyTests
         // Arrange — dropping a routine loses its definition from managed state.
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", Routines:
-            [
-                new RoutineDiff("app", "f", ChangeKind.Remove, RoutineKind.Function),
-                new RoutineDiff("app", "p", ChangeKind.Remove, RoutineKind.Procedure),
-            ]),
+            SchemaDiff.Containing("app") with
+            {
+                Routines = [
+                RoutineDiff.Removed("app", "f", RoutineKind.Function),
+                RoutineDiff.Removed("app", "p", RoutineKind.Procedure),
+            ],
+            },
         ]);
 
         // Act
@@ -274,11 +303,16 @@ public class DestructiveActionPolicyTests
         _options.Value.Policy = PolicyEnforcement.Error;
         var fn = new Routine { Name = "f", RoutineKind = RoutineKind.Function, Arguments = "a int, b text", Definition = "RETURNS int AS $$ SELECT 1 $$" };
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", Routines:
-            [
-                new RoutineDiff("app", "f", ChangeKind.Modify, RoutineKind.Function, Definition: fn,
-                    Arguments: new ValueChange<SqlText>("a int", "a int, b text")),
-            ]),
+            SchemaDiff.Containing("app") with
+            {
+                Routines = [
+                RoutineDiff.Modified("app", "f", RoutineKind.Function) with
+                {
+                    Definition = fn,
+                    Arguments = new ValueChange<SqlText>("a int", "a int, b text"),
+                },
+            ],
+            },
         ]);
 
         // Act / Assert
@@ -290,7 +324,7 @@ public class DestructiveActionPolicyTests
     {
         // Arrange — dropping a database-global extension removes shared infrastructure (and its dependents).
         _options.Value.Policy = PolicyEnforcement.Error;
-        var diff = new DatabaseDiff(Extensions: [new ExtensionDiff("citext", ChangeKind.Remove)]);
+        var diff = new DatabaseDiff(Extensions: [ExtensionDiff.Removed("citext")]);
 
         // Act
         var errors = _sut.Validate(diff).ToList();
@@ -306,12 +340,16 @@ public class DestructiveActionPolicyTests
         // Arrange — installing an extension loses nothing.
         _options.Value.Policy = PolicyEnforcement.Error;
         var diff = new DatabaseDiff(Extensions:
-            [new ExtensionDiff("citext", ChangeKind.Add, Definition: new Extension { Name = "citext" })]);
+            [ExtensionDiff.Added(new Extension { Name = "citext" })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
     }
 
     private static DatabaseDiff TableChange(TableDiff table) =>
-        new([new SchemaDiff("app", null, null, null, [], [table])]);
+        new([SchemaDiff.Containing("app") with
+        {
+            Grants = [],
+            Tables = [table],
+        }]);
 }

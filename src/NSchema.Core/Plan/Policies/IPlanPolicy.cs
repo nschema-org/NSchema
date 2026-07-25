@@ -1,4 +1,4 @@
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 
 namespace NSchema.Plan.Policies;
 

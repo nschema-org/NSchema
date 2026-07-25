@@ -2,7 +2,7 @@ using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Project.Model;
 
@@ -85,6 +85,7 @@ public sealed class DatabaseTests
     [Fact]
     public void ScopedTo_ObjectTargeted_DirectivesFollowTheContainmentRule()
     {
+        // Arrange
         // A change script rides the table it prepares; a deployment script is a schema-level facet, below
         // the schema and no object, so only a whole-schema scope carries it. Renames stay through either side.
         SqlIdentifier app = "app";
@@ -103,8 +104,10 @@ public sealed class DatabaseTests
             ],
             DeploymentScripts: [new DeploymentScript("seed", "SELECT 1;", new SchemaAddress(app), DeploymentPhase.Pre)]);
 
+        // Act
         var filtered = directives.ScopedTo(PlanningScope.To([users]));
 
+        // Assert
         filtered.ObjectRenames.ShouldHaveSingleItem().To.ShouldBe("users"); // kept through its target side
         filtered.MemberRenames.ShouldHaveSingleItem(); // its owner is the target
         filtered.ChangeScripts.ShouldHaveSingleItem().Name.ShouldBe("backfill");
@@ -114,16 +117,20 @@ public sealed class DatabaseTests
     [Fact]
     public void ScopedTo_AllScope_ReturnsEverything()
     {
+        // Act
         var schema = Sample();
 
+        // Assert
         schema.ScopedTo(PlanningScope.All).ShouldBe(schema);
     }
 
     [Fact]
     public void ScopedTo_EmptyScope_NormalizesToAll()
     {
+        // Act
         var schema = Sample();
 
+        // Assert
         schema.ScopedTo(PlanningScope.To()).ShouldBe(schema);
     }
 }

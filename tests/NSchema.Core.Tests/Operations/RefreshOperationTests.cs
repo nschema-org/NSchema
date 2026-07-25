@@ -2,7 +2,7 @@ using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Operations;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 
 namespace NSchema.Tests.Operations;
 

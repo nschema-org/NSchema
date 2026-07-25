@@ -13,10 +13,10 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 using NSchema.State;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
 
@@ -114,7 +114,7 @@ public sealed class NsqlWriterTests
         {
             Name = "orders",
             Columns = [new Column { Name = "user_id", Type = SqlType.Int }],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"], OnDelete = ReferentialAction.Cascade, OnUpdate = ReferentialAction.SetNull }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"], OnDelete = ReferentialAction.Cascade, OnUpdate = ReferentialAction.SetNull }],
         })
             .ShouldContain("CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE CASCADE ON UPDATE SET NULL");
 
@@ -124,7 +124,7 @@ public sealed class NsqlWriterTests
         {
             Name = "orders",
             Columns = [new Column { Name = "user_id", Type = SqlType.Int }],
-            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] }],
         })
             .ShouldNotContain("ON DELETE");
 
@@ -190,14 +190,17 @@ public sealed class NsqlWriterTests
     [Fact]
     public void Write_WithoutSchemaDeclarations_EmitsOnlyMemberObjects()
     {
+        // Arrange
         var schema = new Database
         {
             Schemas = [new Schema { Name = "app",
             Tables = [new Table { Name = "t", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] }],
         };
 
+        // Act
         var ddl = NsqlWriter.Write(SyntaxBuilder.Build(schema, declareSchemas: false));
 
+        // Assert
         ddl.ShouldNotContain("CREATE SCHEMA");
         ddl.ShouldStartWith("CREATE TABLE app.t");
     }

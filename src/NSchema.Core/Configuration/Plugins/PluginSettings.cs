@@ -5,34 +5,34 @@ using System.Reflection;
 namespace NSchema.Configuration.Plugins;
 
 /// <summary>
-/// The settings a plugin is handed: a block's attributes as a flat key/value map (dotted keys nest), with its label.
+/// The settings a plugin is handed: a settings statement's values as a flat key/value map (dotted keys nest), with its label.
 /// </summary>
 /// <param name="Label">The optional bare-identifier label following the keyword (e.g. <c>"postgres"</c> in <c>DATABASE postgres</c>).</param>
-/// <param name="Attributes">The block's attributes, keyed as written (case-insensitive).</param>
-public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<string, string?> Attributes)
+/// <param name="Values">The setting values, keyed as written (case-insensitive).</param>
+public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<string, string?> Values)
 {
     private const string Source = "settings";
 
     /// <summary>
-    /// The value of the named attribute as written, or <see langword="null"/> if the settings do not declare it.
+    /// The named setting as written, or <see langword="null"/> if the settings do not declare it.
     /// </summary>
-    public string? Attribute(string name) => Attributes.GetValueOrDefault(name);
+    public string? Value(string name) => Values.GetValueOrDefault(name);
 
     /// <summary>
-    /// Gets the attributes in the form of a new <typeparamref name="T"/>, validating its data annotations. snake_case keys
+    /// Gets the settings in the form of a new <typeparamref name="T"/>, validating its data annotations. snake_case keys
     /// match properties (<c>connection_string</c> → <c>ConnectionString</c>), dotted keys nest (<c>pool.max</c> →
     /// <c>Pool.Max</c>), and identifiers map to enum members. A value that does not fit and a <c>[Required]</c>/<c>[Range]</c>
-    /// failure are error diagnostics; an attribute that matches no property is too unless <paramref name="ignoreUnknown"/>.
+    /// failure are error diagnostics; a setting that matches no property is too unless <paramref name="ignoreUnknown"/>.
     /// The result still carries the best-effort instance.
     /// </summary>
-    /// <param name="ignoreUnknown">Whether to accept attributes that match no property (for forward-compatible formats), rather than reject them.</param>
+    /// <param name="ignoreUnknown">Whether to accept settings that match no property (for forward-compatible formats), rather than reject them.</param>
     public Result<T> Get<T>(bool ignoreUnknown = false) where T : notnull
     {
-        // A blank instance the attributes mutate in place, so a partial bind still reports [Required] gaps and rides the result.
+        // A blank instance the settings mutate in place, so a partial bind still reports [Required] gaps and rides the result.
         var instance = Activator.CreateInstance<T>();
         var diagnostics = new List<Diagnostic>();
 
-        foreach (var (key, value) in Attributes)
+        foreach (var (key, value) in Values)
         {
             Assign(instance, key.Split('.'), depth: 0, key, value, ignoreUnknown, diagnostics);
         }
@@ -52,7 +52,7 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
         {
             if (!ignoreUnknown)
             {
-                diagnostics.Add(Diagnostic.Error(Source, $"Unknown attribute '{key}'."));
+                diagnostics.Add(Diagnostic.Error(Source, $"Unknown setting '{key}'."));
             }
 
             return;
@@ -72,9 +72,14 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
             return;
         }
 
-        var child = property.GetValue(target) ?? Activator.CreateInstance(property.PropertyType);
+        if ((property.GetValue(target) ?? Activator.CreateInstance(property.PropertyType)) is not { } child)
+        {
+            diagnostics.Add(Diagnostic.Error(Source, $"Value '{value}' cannot be assigned to '{key}'."));
+            return;
+        }
+
         property.SetValue(target, child);
-        Assign(child!, path, depth + 1, key, value, ignoreUnknown, diagnostics);
+        Assign(child, path, depth + 1, key, value, ignoreUnknown, diagnostics);
     }
 
     // Converts a written value to the property's type: null onto anything nullable, enums by member name (case-insensitive),

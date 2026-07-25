@@ -1,4 +1,3 @@
-
 namespace NSchema.Tests.Diagnostics;
 
 public sealed class ResultTests

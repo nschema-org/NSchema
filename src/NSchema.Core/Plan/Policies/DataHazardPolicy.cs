@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Options;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Columns;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 
 namespace NSchema.Plan.Policies;
 
@@ -94,7 +94,7 @@ internal sealed class DataHazardPolicy(IOptions<DataHazardOptions> options) : IP
             .ToHashSet();
 
         // A matched migration means the user has declared how the data gets into shape (de-duplicated, backfilled) before the constraint lands, so it silences the hazard.
-        foreach (var primaryKey in table.PrimaryKey.Where(p => p is { Kind: ChangeKind.Add, MigrationScript: null }))
+        foreach (var primaryKey in table.PrimaryKeys.Where(p => p is { Kind: ChangeKind.Add, MigrationScript: null }))
         {
             var existing = ExistingColumns(primaryKey.Definition?.ColumnNames, addedColumns);
             if (existing.Count > 0)
@@ -112,10 +112,15 @@ internal sealed class DataHazardPolicy(IOptions<DataHazardOptions> options) : IP
             }
         }
 
-        foreach (var index in table.Indexes.Where(i => i is { Kind: ChangeKind.Add, Definition.IsUnique: true }))
+        foreach (var index in table.Indexes)
         {
+            if (index is not { Kind: ChangeKind.Add, Definition: { IsUnique: true } definition })
+            {
+                continue;
+            }
+
             // An expression key is opaque, so it is assumed to read pre-existing data.
-            if (index.Definition!.Columns.Any(k => k.Column is not { } column || !addedColumns.Contains(column)))
+            if (definition.Columns.Any(k => k.Column is not { } column || !addedColumns.Contains(column)))
             {
                 yield return $"Unique index '{index.Name}' on '{qualified}' is added over existing data; the migration will fail if existing rows hold duplicates.";
             }

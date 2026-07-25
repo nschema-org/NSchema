@@ -1,7 +1,7 @@
 using NSchema.Apply;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.Policies;
 using NSchema.State;
 

@@ -1,6 +1,6 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Diff;
 
@@ -13,8 +13,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_NewView_IsAddCarryingDefinition()
     {
+        // Act
         var diff = DiffViews([], [View("active", "SELECT * FROM app.users")]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Add);
         diff.Definition.ShouldNotBeNull();
         diff.DependsOn.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "users"));
@@ -23,9 +25,11 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_RemovedView_IsRemove_AndCarriesCurrentDependencies()
     {
+        // Act
         // A removed view keeps its (current) dependencies so the planner can order the drop.
         var diff = DiffViews([View("active", "SELECT * FROM app.users")], []);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
         diff.DependsOn.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "users"));
@@ -34,10 +38,14 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ViewBodyChange_IsModifyCarryingNewDefinition()
     {
+        // Arrange
         var diff = DiffViews(
             [View("active", "SELECT id FROM app.users")],
+
+            // Act
             [View("active", "SELECT id, name FROM app.users")]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Modify);
         diff.Definition!.Body.ShouldBe("SELECT id, name FROM app.users"); // replace
         diff.RenamedFrom.ShouldBeNull();
@@ -46,10 +54,14 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ViewCommentOnlyChange_IsModifyWithoutDefinition()
     {
+        // Arrange
         var diff = DiffViews(
             [View("active", "SELECT * FROM app.users", comment: "old")],
+
+            // Act
             [View("active", "SELECT * FROM app.users", comment: "new")]);
 
+        // Assert
         diff!.Kind.ShouldBe(ChangeKind.Modify);
         diff.Definition.ShouldBeNull(); // no body change -> no replace
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
@@ -100,9 +112,11 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ViewDependencies_AreDerivedFromTheBodyThroughTheComparer()
     {
+        // Act
         // The comparer surfaces every FROM/JOIN target the extractor finds.
         var diff = DiffViews([], [View("report", "SELECT * FROM app.orders o JOIN app.customers c ON o.cid = c.id")]);
 
+        // Assert
         diff!.DependsOn.Select(d => $"{d.Schema}.{d.Name}").ShouldBe(["app.orders", "app.customers"]);
     }
 }

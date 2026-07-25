@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Scripts;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Scripts;
 
 namespace NSchema.Plan.Backends;
 

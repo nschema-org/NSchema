@@ -1,5 +1,5 @@
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -90,6 +90,7 @@ public sealed class NsqlParserDirectiveTests
     [Fact]
     public void Parse_ObjectRenameInsideTemplate_BindsPerAppliedSchema()
     {
+        // Arrange
         // An unqualified object rename in a template body binds to each applied schema.
         var project = new TestNsqlParser(
             """
@@ -99,13 +100,17 @@ public sealed class NsqlParserDirectiveTests
             APPLY TEMPLATE t IN SCHEMA sales, billing;
             """).Parse();
 
+        // Act
         project.Directives.ObjectRenames.Select(r => (r.From.ToString(), r.To.Value))
+
+        // Assert
             .ShouldBe([("sales.staff", "people"), ("billing.staff", "people")]);
     }
 
     [Fact]
     public void Parse_ColumnRenameInsideTemplate_UsesTwoPartPathBoundPerSchema()
     {
+        // Arrange
         // Inside a template a column path is table.column; the schema binds to each applied schema.
         var project = new TestNsqlParser(
             """
@@ -115,7 +120,10 @@ public sealed class NsqlParserDirectiveTests
             APPLY TEMPLATE t IN SCHEMA sales, billing;
             """).Parse();
 
+        // Act
         project.Directives.MemberRenames.Select(r => (r.From.ToString(), r.To.Value))
+
+        // Assert
             .ShouldBe([("sales.orders.amount", "total"), ("billing.orders.amount", "total")]);
     }
 

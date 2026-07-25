@@ -35,6 +35,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Parse_Template_BodyStaysUnexpandedInTheTree()
     {
+        // Act
         var template = Statements(
             """
             TEMPLATE t
@@ -44,6 +45,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """).ShouldHaveSingleItem().ShouldBeOfType<SchemaTemplateStatement>();
 
+        // Assert
         template.Name.Value.ShouldBe("t");
         template.Statements.Count.ShouldBe(2);
         template.Statements[0].ShouldBeOfType<CreateTableStatement>().Name.Schema.ShouldBeNull();
@@ -52,6 +54,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_InstantiatesObjectsIntoTheTargetSchema()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -61,6 +64,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Name.ShouldBe("outbox");
         app.Sequences.ShouldHaveSingleItem().Name.ShouldBe("outbox_seq");
     }
@@ -73,6 +77,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_UnqualifiedForeignKeyBindsToTheAppliedSchema()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -85,6 +90,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.Single(t => t.Name == "child").ForeignKeys.ShouldHaveSingleItem()
             .References.Schema.ShouldBe("app");
     }
@@ -92,6 +98,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_QualifiedForeignKeyEscapes()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -103,6 +110,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().ForeignKeys.ShouldHaveSingleItem()
             .References.Schema.ShouldBe("public");
     }
@@ -110,6 +118,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_StandaloneIndexAttachesToItsTable()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -119,6 +128,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Indexes.ShouldHaveSingleItem()
             .Name.ShouldBe("ix_outbox_created_at");
     }
@@ -126,6 +136,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_TriggerAttachesToItsTable()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -135,6 +146,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Triggers.ShouldHaveSingleItem()
             .Function.ShouldBe("publish");
     }
@@ -142,6 +154,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_Template_TableGrantAttaches()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -151,12 +164,14 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Grants.ShouldHaveSingleItem().Role.ShouldBe("svc");
     }
 
     [Fact]
     public void Expand_Template_DocCommentAttachesToInnerObject()
     {
+        // Act
         var app = ExpandIntoApp(
             """
             TEMPLATE t
@@ -166,6 +181,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Comment.ShouldBe("The transactional outbox.");
     }
 
@@ -176,6 +192,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Parse_TemplateAndSchema_Coexist()
     {
+        // Act
         var statements = Statements(
             """
             CREATE SCHEMA app;
@@ -183,6 +200,7 @@ public sealed class NsqlParserTemplateTests
             APPLY TEMPLATE t IN SCHEMA app;
             """);
 
+        // Assert
         statements.Count.ShouldBe(3);
         statements[0].ShouldBeOfType<CreateSchemaStatement>().Name.Value.ShouldBe("app");
         statements[1].ShouldBeOfType<SchemaTemplateStatement>().Name.Value.ShouldBe("t");
@@ -192,7 +210,10 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Parse_ApplyTemplate_CapturesNameAndSchemaList()
     {
+        // Act
         var application = Statements("APPLY TEMPLATE outbox IN SCHEMA billing, ordering, shipping;")
+
+        // Assert
             .ShouldHaveSingleItem().ShouldBeOfType<ApplyTemplateStatement>();
 
         application.TemplateName.Value.ShouldBe("outbox");
@@ -275,6 +296,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Parse_TableTemplate_CapturesMembers()
     {
+        // Act
         var template = Statements(
             """
             TEMPLATE audit_columns FOR TABLE
@@ -286,6 +308,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """).ShouldHaveSingleItem().ShouldBeOfType<TableTemplateStatement>();
 
+        // Assert
         template.Members.Count.ShouldBe(4);
         template.Members.OfType<ColumnDefinition>().Select(c => c.Name.Value).ShouldBe(["created_at", "updated_at"]);
         template.Members.OfType<NSchema.Project.Nsql.Syntax.Constraints.CheckDefinition>().ShouldHaveSingleItem().Name.Value.ShouldBe("chk_updated");
@@ -308,6 +331,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_TableTemplate_UnqualifiedForeignKeyBindsToTheIncludingTablesSchema()
     {
+        // Arrange
         var source =
             """
             CREATE SCHEMA app;
@@ -325,7 +349,11 @@ public sealed class NsqlParserTemplateTests
         assembled.IsSuccess.ShouldBeTrue();
 
         var orders = assembled.Value.Database.Schemas.ShouldHaveSingleItem()
+
+            // Act
             .Tables.Single(t => t.Name == "orders");
+
+        // Assert
         orders.ForeignKeys.ShouldHaveSingleItem().References.Schema.ShouldBe("app");
     }
 
@@ -349,6 +377,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Parse_Include_IsAMemberAtItsWrittenPosition()
     {
+        // Act
         var table = Statements(
             """
             CREATE TABLE app.invoices (
@@ -358,6 +387,7 @@ public sealed class NsqlParserTemplateTests
             );
             """).ShouldHaveSingleItem().ShouldBeOfType<CreateTableStatement>();
 
+        // Assert
         table.Members.Count.ShouldBe(3);
         table.Members[1].ShouldBeOfType<IncludeMember>().TemplateName.Value.ShouldBe("audit_columns");
     }
@@ -384,6 +414,7 @@ public sealed class NsqlParserTemplateTests
     [Fact]
     public void Expand_IncludeInsideSchemaTemplateTable_ComposesPerInstance()
     {
+        // Act
         // Composition: a table declared by a schema template can include a table template; the include
         // re-targets to each instance at expansion.
         var app = ExpandIntoApp(
@@ -398,6 +429,7 @@ public sealed class NsqlParserTemplateTests
             END;
             """);
 
+        // Assert
         app.Tables.ShouldHaveSingleItem().Columns.Select(c => c.Name.Value).ShouldBe(["id", "created_at"]);
     }
 }

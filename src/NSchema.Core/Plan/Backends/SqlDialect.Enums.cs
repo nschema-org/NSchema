@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Enums;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Enums;
 
 namespace NSchema.Plan.Backends;
 

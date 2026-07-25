@@ -2,6 +2,7 @@ using NSchema.Deployment;
 using NSchema.Operations;
 using NSchema.Plan.PlanFile;
 using NSchema.Project;
+using NSchema.State;
 
 namespace NSchema.Tests;
 
@@ -16,8 +17,9 @@ public sealed class NSchemaApplicationTests
         app.Operations.ShouldNotBeNull();
         app.Locks.ShouldNotBeNull();
         app.Database.ShouldBeAssignableTo<IDatabaseProvider>();
-        app.ProjectDefinition.ShouldBeAssignableTo<IProjectProvider>();
+        app.Project.ShouldBeAssignableTo<IProjectProvider>();
         app.PlanFile.ShouldBeAssignableTo<IPlanFileManager>();
+        app.State.ShouldBeAssignableTo<IDatabaseStateManager>();
     }
 
 

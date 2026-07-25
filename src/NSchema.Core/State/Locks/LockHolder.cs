@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using NSchema.Model;
-using NSchema.Model.Services;
+using NSchema.Model.Serialization;
 
 namespace NSchema.State.Locks;
 
@@ -27,5 +27,5 @@ public sealed record LockHolder : ValueObject<string>
     /// Wraps a rendered holder. One-way: a holder never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator LockHolder?(string? value) => value is null ? null : new(value);
+    public static implicit operator LockHolder?(string? value) => value is null ? null : new LockHolder(value);
 }

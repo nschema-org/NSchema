@@ -70,7 +70,7 @@ public partial class NSchemaApplicationBuilder
     /// </summary>
     /// <param name="path">The absolute or relative path of the state file.</param>
     /// <returns>The application builder, for chaining.</returns>
-    public NSchemaApplicationBuilder UseFileStateStore(string path)
+    public NSchemaApplicationBuilder UseFileState(string path)
     {
         Services.Configure<FileDatabaseStateStoreOptions>(o => o.Path = path);
         Services.Replace(ServiceDescriptor.Singleton<IDatabaseStateStore, FileDatabaseStateStore>());
@@ -85,8 +85,8 @@ public partial class NSchemaApplicationBuilder
     }
 
     /// <summary>
-    /// Registers an in-memory state store that lives only as long as the application instance.
-    /// Intended for disposable databases like running tests in CI.
+    /// Registers an in-memory state store, which serves as the lock too, living only as long as the application
+    /// instance. Intended for disposable databases like running tests in CI.
     /// </summary>
     /// <returns>The application builder, for chaining.</returns>
     public NSchemaApplicationBuilder UseEphemeralState() => UseStateStore(new EphemeralStateStore());

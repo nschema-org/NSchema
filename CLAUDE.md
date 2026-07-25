@@ -27,10 +27,10 @@ dotnet build
 dotnet test
 
 # Run a single test class
-dotnet test tests/NSchema.Core.Tests --filter "FullyQualifiedName~DefaultDatabaseComparerTests"
+dotnet test tests/NSchema.Core.Tests --filter "FullyQualifiedName~DatabaseComparerTests"
 
 # Run a single test method
-dotnet test tests/NSchema.Core.Tests --filter "FullyQualifiedName~DefaultDatabaseComparerTests.Compare_AddsTable"
+dotnet test tests/NSchema.Core.Tests --filter "FullyQualifiedName~DatabaseComparerTests.Compare_AddsTable"
 ```
 
 ### Tests
@@ -39,6 +39,10 @@ This project:
 - Uses a combination of unit, integration tests, and e2e tests, as outlined by the testing pyramid.
 - We also do snapshot testing for output surfaces like the diff renderer, pplan renderer, etc. using **Verify**.
 - Tests should be arranged in an Arrange/Act/Assert structure with heading comments: (// Arrange, // Act, // Assert)
+  - Omit a heading that has no content — a test with nothing to set up starts at `// Act`.
+  - Single-expression tests need no headings; there is nothing to separate.
+  - Some older tests predate the convention. Bring a test class up to it when you touch it, rather than in bulk.
+- Architecture rules live in `tests/NSchema.Core.Tests/Architecture/` and are asserted, not just described.
 - Testing framework is **xUnit V3**.
 - Mocks use **NSubstitute**.
 - Assertions use **Shouldly**.
@@ -50,7 +54,9 @@ The project language for NSchema is SQL-flavored, so users can write familiar `C
 
 ### Configuration
 
-NSchema has a small configuration grammar for configuring plugins, the database, the state backend, and the engine using `PLUGIN`, `STATE`, `BACKEND` and `ENGINE` blocks.
+NSchema has a small configuration grammar for configuring plugins, the database, the state store, and the engine using `PLUGIN`, `DATABASE`, `STATE` and `ENGINE` statements — ordinary statements in the one grammar, not a separate file format.
+
+Any setting is overridable from the environment as `NSCHEMA_<KEYWORD>_<SETTING>` (`NSCHEMA_DATABASE_CONNECTION_STRING`), so a secret never has to be committed. Core applies this centrally; a plugin never reads the environment itself.
 
 ### Directives
 
@@ -69,20 +75,35 @@ Unlike a common application host, there is no `BackgroundService` and no host li
 - Wherever possible, follow the result pattern and return Result<T> instead of throwing exceptions.
 - Prefer value objects over raw primitives, especially when custom behavior or equality are involved.
 - Prefer behavior to live on its owning domain model rather than as helper functions or classes.
+- Diff nodes are built through factories (`TableDiff.Added(...)`, `ColumnDiff.Removed(...)`, `PrimaryKeyDiff.CommentChanged(...)`), not constructors, so a change that cannot happen cannot be expressed. Refine with `with`.
+- Prefer narrowing (`is { } value`, `[MemberNotNullWhen]`) over the null-forgiving `!`, which should not appear outside the odd BCL-annotation gap.
 
 ### Layers
 
-- The codebase is feature sliced, with each slice further sub-divided into a **domain layer**, an **application layer**.
-- Some top-level feature slices are dependent on others, for example `Plan` depends on `Diff`.
+The codebase is feature sliced. Each slice owns one pipeline stage or one piece of infrastructure, and is divided into
+a **domain layer** (`<Slice>/Domain/` — the model and the services over it) and the **application services** other
+slices call it through (directly in `<Slice>/`, e.g. `IDatabaseStateManager`, `IProjectProvider`).
 
-- **Domain layer**, one namespace per pipeline stage:
-  - `Project/` — the schema model (`Project/Domain/Models/`, rooted at `Database` holds all info about the _desired_ project state.
-  - `Diff/` — the structured diff model (`Diff/Domain/Models/`, rooted at `DatabaseDiff`. — **the complete current→desired difference**:
-  - `Plan/` — the plan model (`Plan/Domain/Models/`, rooted at `MigrationPlan`. Holds the complete diff and the SQL statements that execute it).
-  - `Sql/` — `SqlDialect` (the abstract per-action rendering base a provider subclasses — one overridable method per migration action, and `ISqlExecutor`. Core ships no dialect.
-- **Application layer:**
-  - `Operations/` — one vertical slice per operation (see below).
-  - `IMigrationWorkflow` (`Operations/Services/`) — the imperative shell operations share.
+The kernel — usable by every slice, dependent on none:
+
+- `Diagnostics/` — `Result<T>`, `Diagnostic`, `PolicyEnforcement`. A global using.
+- `Model/` — the schema model, rooted at `Database`. What every other slice describes.
+- `Extensions/` — collection helpers. A global using.
+
+The slices:
+
+- `Project/` — the declared project. `Domain/` (directives), `Nsql/` (the language: lexer, parser, syntax, writer), `Projection/` (syntax → model), `Policies/`.
+- `Diff/` — `Domain/` rooted at `DatabaseDiff`, the complete current→desired difference. `Rendering/` projects it into a `DiffDocument`.
+- `Plan/` — `Domain/` rooted at `MigrationPlan`: the diff plus the SQL that executes it. `PlanFile/` persists one; `Policies/` validates one.
+- `Apply/` — `ISqlExecutor` and the transaction mode; the only online write.
+- `State/`, `Deployment/`, `Configuration/`, `Plugins/` — recorded state, the live database, project configuration, and the plugin contract.
+- `Operations/` — the shell that drives the slices. Nothing depends on it.
+
+`<Slice>/Backends/` holds the seams a provider package implements downstream — `SqlDialect` (`Plan`), `SqlEquivalence`
+(`Diff`), `IDatabaseIntrospector` (`Deployment`), state stores and locks (`State`). Core ships no dialect.
+
+Which slice may depend on which is declared as a table in `tests/NSchema.Core.Tests/Architecture/` and enforced by
+ArchUnit — add an edge there deliberately, or the build fails. Namespaces match folders, also enforced.
 
 ### Operations
 
@@ -95,10 +116,10 @@ Built-in operations (`src/NSchema.Core/Operations/`):
 - **`RefreshOperation`** — captures the live schema to the state store without planning or applying.
 - **`ValidateOperation`** — loads the project and validates it against registered `IProjectPolicy` implementations; no planning/applying.
 - **`DriftOperation`** — reads recorded (offline) state and live (online) schema and compares (direction recorded → live, so an out-of-band add reads as `Add`).
-- **`ImportOperation`** — fetches the live schema (optionally restricted by `Scope`) and writes it under `OutputDirectory` as SQL DDL via `DdlWriter`.
+- **`ImportOperation`** — fetches the live schema (optionally restricted by `Scope`) and writes it under `OutputDirectory` as NSQL via `NsqlWriter`.
 - **`DoctorOperation`** — runs read-only health checks against the configured infrastructure and reports the outcome of each.
 
-**`IMigrationWorkflow`** (`Operations/Services/`) is the imperative shell around the pure planner shared by `Plan`, `Apply`, `Refresh`, and `Validate`: `ComputePlan(target, scope)` resolves the desired side (the project, or nothing for a teardown) and the recorded current side, then runs `IMigrationPlanner` (returning `Result<MigrationPlan>`), `Validate()` runs just the project policies, and `Refresh()` captures the live schema to the store, returning `Result<StateCapture>` (a failure when no store is configured). `Drift`, `Import`, and `Doctor` do **not** use the workflow — they talk to `IDatabaseProvider` / `IDatabaseComparer` / the importer directly. The workflow does not lock, confirm, or render.
+**`IMigrationWorkflow`** (`Operations/Workflow/`) is the imperative shell around the pure planner shared by `Plan`, `Apply`, `Refresh`, and `Validate`: `ComputePlan(target, scope)` resolves the target (the project, or nothing for a teardown) and the recorded current side, then runs `IMigrationPlanner` (returning `Result<MigrationPlan>`), `Validate()` runs just the project policies, and `Refresh()` captures the live schema to the store, returning `Result<StateCapture>` (a failure when no store is configured). `Drift`, `Import`, and `Doctor` do **not** use the workflow — they talk to `IDatabaseProvider` / `IDatabaseComparer` / the importer directly. The workflow does not lock, confirm, or render.
 
 ### Database
 
@@ -114,9 +135,9 @@ Built-in operations (`src/NSchema.Core/Operations/`):
 
 ### Planner pipeline
 
-`MigrationPlanner` (`Plan/Domain/MigrationPlanner.cs`) conducts the pipeline, producing `Result<MigrationPlan>` — the complete artifact — with any `PolicyDiagnostic`s riding on the `Result`. **A policy block is a failure that still carries the complete plan** ("may not apply", not "stopped computing"): every stage runs regardless, and error severity is what blocks application — the CLI decides how to act. **The line between the stages: Diff answers "what is different" — schema changes and the script runs they imply; Plan answers "how it executes" — order and SQL.** Stages:
+`MigrationPlanner` (`Plan/Domain/Services/MigrationPlanner.cs`) conducts the pipeline, producing `Result<MigrationPlan>` — the complete artifact — with any `PolicyDiagnostic`s riding on the `Result`. **A policy block is a failure that still carries the complete plan** ("may not apply", not "stopped computing"): every stage runs regardless, and error severity is what blocks application — the CLI decides how to act. **The line between the stages: Diff answers "what is different" — schema changes and the script runs they imply; Plan answers "how it executes" — order and SQL.** Stages:
 
-1. **Project stage** — runs every `IProjectPolicy` against the declared `ProjectDefinition` (schema plus scripts). Also exposed standalone as `IMigrationPlanner.Validate(desired)` (used by the validate operation).
+1. **Project stage** — runs every `IProjectPolicy` against the declared `ProjectDefinition` (schema plus scripts). Also exposed standalone as `IMigrationPlanner.Validate(project)` (used by the validate operation).
 2. **Diff stage** — `IProjectComparer` produces the complete `DatabaseDiff`: `IDatabaseComparer` emits the structural tree directly (no flat-action intermediate), run-once resolution drops already-executed **deployment** declarations (their skip warnings are diff-stage diagnostics; change-event scripts have no ledger and pass through, gated by the compare), and the matcher inlines each change-event script on the node it prepares while the deployment scripts ride the diff's root `DeploymentScripts` list (an unmatched change-event script is a dead-migration info).
 3. **Linearize stage** — `IPlanLinearizer` (default `PlanLinearizer`) walks the diff and emits `MigrationAction`s in a safe dependency order, weaving the diff's own scripts in as `ExecuteScript` actions: each change node's inlined `MigrationScript` splices at that change, the root's deployment scripts bookend the list (pre first, post last).
 4. **Render stage** — the planner walks the actions in order and renders each through the required `SqlDialect` (one action in, one or more statements out — decomposition, never reordering), scripts included: an `ExecuteScript` typically renders as its verbatim `Statement` (the action carries that default), but a dialect may validate or normalize the SQL. A rendering's diagnostics ride the plan result — an action the dialect doesn't support is an error that blocks application, not an exception. The artifact is the diff plus the statements; the actions themselves are discarded.

@@ -3,8 +3,7 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Project;
-using NSchema.Project.Model.Directives;
-using NSchema.Project.Model.Services;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests;
 
@@ -38,29 +37,36 @@ public sealed class AddProjectSourceTests : IDisposable
     [Fact]
     public async Task AddSqlSchemas_LoadsSingleFile()
     {
+        // Arrange
         // A wildcard-free pattern names a single file under the base directory.
         WriteSchemaFile("app.sql", "app");
 
+        // Act
         var names = await ResolveSchemaNames(b => b.AddProjectSource(_root, "app.sql"));
 
+        // Assert
         names.ShouldBe(["app"]);
     }
 
     [Fact]
     public async Task AddSqlSchemas_MatchesFilesAtEveryDepth()
     {
+        // Arrange
         WriteSchemaFile("a.sql", "a");
         WriteSchemaFile("nested/b.sql", "b");
         WriteSchemaFile("nested/deep/c.sql", "c");
 
+        // Act
         var names = await ResolveSchemaNames(b => b.AddProjectSource(_root));
 
+        // Assert
         names.ShouldBe(["a", "b", "c"], ignoreOrder: true);
     }
 
     [Fact]
     public async Task AddSqlSchemas_WithMatcher_HonoursExcludes()
     {
+        // Arrange
         // The CLI's case: include every .sql but exclude the pre/post deployment scripts.
         WriteSchemaFile("app.sql", "app");
         WriteSchemaFile("app.pre.sql", "pre");
@@ -71,26 +77,32 @@ public sealed class AddProjectSourceTests : IDisposable
         matcher.AddExclude("**/*.pre.sql");
         matcher.AddExclude("**/*.post.sql");
 
+        // Act
         var names = await ResolveSchemaNames(b => b.AddProjectSource(_root, matcher));
 
+        // Assert
         names.ShouldBe(["app"]);
     }
 
     [Fact]
     public async Task AddSqlSchemas_AggregatesMultipleCalls()
     {
+        // Arrange
         // Multiple AddSqlSchemas calls aggregate — the shape the CLI's environment overlay relies on.
         WriteSchemaFile("base.sql", "app");
         WriteSchemaFile("extra.sql", "audit");
 
+        // Act
         var names = await ResolveSchemaNames(b => b.AddProjectSource(_root, "base.sql").AddProjectSource(_root, "extra.sql"));
 
+        // Assert
         names.ShouldBe(["app", "audit"], ignoreOrder: true);
     }
 
     [Fact]
     public async Task AddSqlSchemas_MatchingNothing_FailsTheRead()
     {
+        // Arrange
         // Planning against an empty desired schema would read as "drop everything", so a pattern that
         // resolves to no files is a configuration error rather than an empty schema.
         var builder = NSchemaApplication.CreateBuilder();
@@ -98,8 +110,11 @@ public sealed class AddProjectSourceTests : IDisposable
         using var app = builder.Build();
 
         var project = await app.Services.GetRequiredService<IProjectProvider>()
+
+            // Act
             .GetProject(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         project.IsFailure.ShouldBeTrue();
         project.Errors.ShouldHaveSingleItem().ShouldBe(ProjectDiagnostics.NoFilesMatched());
     }
@@ -117,14 +132,17 @@ public sealed class AddProjectSourceTests : IDisposable
     [Fact]
     public async Task AddSqlSchemas_SurfacesInlineDeploymentScripts()
     {
+        // Arrange
         File.WriteAllText(Path.Combine(_root, "schema.sql"),
             """
             CREATE SCHEMA app;
             SCRIPT backfill RUN ON POST DEPLOYMENT AS $$ UPDATE app.t SET x = 1; $$;
             """);
 
+        // Act
         var project = await ResolveProject(b => b.AddProjectSource(_root));
 
+        // Assert
         var script = project.AllScripts().ShouldHaveSingleItem();
         script.Name.ShouldBe("backfill");
         script.ShouldBeOfType<DeploymentScript>().Phase.ShouldBe(DeploymentPhase.Post);
@@ -133,14 +151,17 @@ public sealed class AddProjectSourceTests : IDisposable
     [Fact]
     public async Task AddSqlSchemas_WithNoDeploymentBlocks_YieldsNoScripts()
     {
+        // Act
         WriteSchemaFile("app.sql", "app");
 
+        // Assert
         (await ResolveProject(b => b.AddProjectSource(_root))).AllScripts().ShouldBeEmpty();
     }
 
     [Fact]
     public async Task AddSqlSchemas_RegistersOneSource_AndMatchesAtReadTime()
     {
+        // Arrange
         // The glob is evaluated when the project is read, not at registration: one source is registered, and a file
         // written after the builder is configured is still picked up.
         var builder = NSchemaApplication.CreateBuilder();
@@ -150,7 +171,10 @@ public sealed class AddProjectSourceTests : IDisposable
         app.Services.GetServices<ProjectSource>().ShouldHaveSingleItem();
         WriteSchemaFile("late.sql", "late");
 
+        // Act
         var project = (await app.Services.GetRequiredService<IProjectProvider>().GetProject(PlanningScope.All, TestContext.Current.CancellationToken)).Value!;
+
+        // Assert
         project.Database.Schemas.Select(s => s.Name).ShouldBe(["late"]);
     }
 }

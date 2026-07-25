@@ -1,4 +1,4 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model.Columns;
 using NSchema.Model.Tables;
 

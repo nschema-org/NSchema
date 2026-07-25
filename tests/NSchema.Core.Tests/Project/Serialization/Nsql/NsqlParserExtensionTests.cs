@@ -1,5 +1,5 @@
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -41,8 +41,11 @@ public sealed class NsqlParserExtensionTests
     [Fact]
     public void Parse_CreateExtension_IsNotScopedToASchema()
     {
+        // Act
         // An extension declared alongside a schema still lands at the root, not inside the schema.
         var schema = Parse("CREATE SCHEMA app; CREATE EXTENSION citext;");
+
+        // Assert
         schema.Extensions.ShouldHaveSingleItem().Name.ShouldBe("citext");
         schema.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
     }

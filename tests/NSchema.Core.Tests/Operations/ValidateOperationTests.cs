@@ -62,6 +62,6 @@ public sealed class ValidateOperationTests
         await _sut.Execute(new ValidateArguments(), TestContext.Current.CancellationToken);
 
         // Assert
-        _progress.Received().Report(OperationProgress.Step("Validating schema. No database or state store will be contacted."));
+        _progress.Received().Report(OperationProgress.Step("Validating project. No database or state store will be contacted."));
     }
 }

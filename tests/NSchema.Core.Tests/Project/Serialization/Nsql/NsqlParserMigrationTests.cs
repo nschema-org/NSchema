@@ -15,7 +15,10 @@ public sealed class NsqlParserMigrationTests
     [Fact]
     public void Parse_AddColumnTrigger_CapturesTriggerAndPathParts()
     {
+        // Act
         var migration = ReadMigrations("SCRIPT backfill RUN ON ADD COLUMN app.users.email AS $$ UPDATE app.users SET email = ''; $$;")
+
+        // Assert
             .ShouldHaveSingleItem();
 
         migration.Target.Trigger.ShouldBe(ChangeTrigger.AddColumn);
@@ -28,7 +31,10 @@ public sealed class NsqlParserMigrationTests
     [Fact]
     public void Parse_AlterColumnTypeTrigger_CapturesTriggerAndPathParts()
     {
+        // Act
         var migration = ReadMigrations("SCRIPT retype RUN ON ALTER COLUMN TYPE app.orders.total AS $$ SELECT 1; $$;")
+
+        // Assert
             .ShouldHaveSingleItem();
 
         migration.Target.Trigger.ShouldBe(ChangeTrigger.AlterColumnType);
@@ -38,7 +44,10 @@ public sealed class NsqlParserMigrationTests
     [Fact]
     public void Parse_AddConstraintTrigger_CapturesTriggerAndPathParts()
     {
+        // Act
         var migration = ReadMigrations("SCRIPT dedupe RUN ON ADD CONSTRAINT app.orders.total_positive AS $$ DELETE FROM app.orders WHERE total <= 0; $$;")
+
+        // Assert
             .ShouldHaveSingleItem();
 
         migration.Target.Trigger.ShouldBe(ChangeTrigger.AddConstraint);
@@ -63,6 +72,7 @@ public sealed class NsqlParserMigrationTests
     [Fact]
     public void Parse_Body_PreservesInnerSemicolonsVerbatim()
     {
+        // Act
         // The dollar-quoted body is opaque: inner ';' is part of the migration, not a terminator.
         var migration = ReadMigrations(
             """
@@ -72,14 +82,18 @@ public sealed class NsqlParserMigrationTests
             $$;
             """).ShouldHaveSingleItem();
 
+        // Assert
         migration.Sql.ShouldBe("UPDATE app.users SET email = 'a;b';\n    UPDATE app.users SET email = '';");
     }
 
     [Fact]
     public void Parse_CustomDollarTag_PreservesEmbeddedDoubleDollar()
     {
+        // Act
         // A differently-tagged $$ inside the body is just content; only the opening tag closes it.
         var migration = ReadMigrations("SCRIPT x RUN ON ADD COLUMN app.t.c AS $tag$ SELECT $$nested$$; $tag$;")
+
+        // Assert
             .ShouldHaveSingleItem();
 
         migration.Sql.ShouldBe("SELECT $$nested$$;");
@@ -113,6 +127,7 @@ public sealed class NsqlParserMigrationTests
     [Fact]
     public void Parse_MigrationInsideTemplate_InstantiatesPerAppliedSchema()
     {
+        // Arrange
         var read = NsqlReader.Read(
             """
             CREATE SCHEMA app;
@@ -129,7 +144,11 @@ public sealed class NsqlParserMigrationTests
 
         var migration = assembled.Value.AllScripts().ShouldHaveSingleItem();
         migration.Name.ShouldBe("backfill");
+
+        // Act
         var change = migration.ShouldBeOfType<ChangeScript>();
+
+        // Assert
         change.ScopeSchema.ShouldBe("app");
         change.Target.Table.ShouldBe("users");
         change.Target.Member.ShouldBe("email");

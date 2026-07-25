@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 
 namespace NSchema.Configuration.Plugins;
 

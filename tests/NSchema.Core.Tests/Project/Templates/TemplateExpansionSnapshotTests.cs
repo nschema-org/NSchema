@@ -12,6 +12,7 @@ public sealed class TemplateExpansionSnapshotTests
     [Fact]
     public Task Expand_OutboxTemplate_IntoTwoSchemas()
     {
+        // Arrange
         const string source =
             """
             CREATE SCHEMA billing;
@@ -49,8 +50,11 @@ public sealed class TemplateExpansionSnapshotTests
 
         var read = NsqlReader.Read(source);
         read.IsSuccess.ShouldBeTrue();
+
+        // Act
         var expanded = NSchema.Project.ProjectAssembler.Assemble([read.Value]).Require().Database;
 
+        // Assert
         return Verify(NsqlWriter.Write(expanded));
     }
 }

@@ -1,8 +1,8 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.Policies;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Policies;
 
 namespace NSchema.Tests.Helpers;

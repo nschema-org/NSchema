@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Diff.Backends;
-using NSchema.Diff.Model.Services;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using DatabaseComparer = NSchema.Diff.Model.Services.DatabaseComparer;
+using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 
 namespace NSchema.Tests.Diff;
 
@@ -79,7 +79,7 @@ public class ChangeScriptAttachmentTests
             Users(Id, new PrimaryKey { Name = "users_pk", ColumnNames = ["id"] }),
             script);
 
-        diff.PrimaryKey.Single().MigrationScript.ShouldBe(script);
+        diff.PrimaryKeys.Single().MigrationScript.ShouldBe(script);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class ChangeScriptAttachmentTests
         Column OrgId() => new Column { Name = "org_id", Type = SqlType.Int };
         var diff = Diff(
             Users(Id, OrgId()),
-            Users(Id, OrgId(), new ForeignKey { Name = "users_org_fk", ColumnNames = ["org_id"], References = new("app", "orgs"), ReferencedColumnNames = ["id"] }),
+            Users(Id, OrgId(), new ForeignKey { Name = "users_org_fk", ColumnNames = ["org_id"], References = new ObjectAddress("app", "orgs"), ReferencedColumnNames = ["id"] }),
             script);
 
         diff.ForeignKeys.Single().MigrationScript.ShouldBe(script);
@@ -156,27 +156,33 @@ public class ChangeScriptAttachmentTests
     [Fact]
     public void UnattachedScript_ReportsADeadMigrationDiagnostic()
     {
+        // Arrange
         // Nothing in the diff matches the script, so decoration leaves it behind and says so.
         var script = Change(ChangeTrigger.AddColumn, "phone");
         var currentDb = new Database { Schemas = [new Schema { Name = "app", Tables = [Users(Id)] }] };
         var desiredDb = new Database { Schemas = [new Schema { Name = "app", Tables = [Users(Id, new Column { Name = "email", Type = SqlType.Text })] }] };
         var diff = _sut.Compare(AlignedDatabase.Unaligned(currentDb), desiredDb);
 
+        // Act
         var result = ChangeScriptDecorator.Decorate(diff, [script]);
 
+        // Assert
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(DiffDiagnostics.DeadMigration(script));
     }
 
     [Fact]
     public void AttachedScript_ReportsNoDiagnostics()
     {
+        // Arrange
         var script = Change(ChangeTrigger.AddColumn, "email");
         var currentDb = new Database { Schemas = [new Schema { Name = "app", Tables = [Users(Id)] }] };
         var desiredDb = new Database { Schemas = [new Schema { Name = "app", Tables = [Users(Id, new Column { Name = "email", Type = SqlType.Text })] }] };
         var diff = _sut.Compare(AlignedDatabase.Unaligned(currentDb), desiredDb);
 
+        // Act
         var result = ChangeScriptDecorator.Decorate(diff, [script]);
 
+        // Assert
         result.Diagnostics.ShouldBeEmpty();
     }
 

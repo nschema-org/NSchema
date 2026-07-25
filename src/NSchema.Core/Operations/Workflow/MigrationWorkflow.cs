@@ -1,13 +1,13 @@
 using NSchema.Deployment;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Operations.Progress;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Services;
 using NSchema.Project;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.State;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Operations.Workflow;
 
@@ -21,15 +21,15 @@ internal sealed class MigrationWorkflow(
 {
     public async Task<Result> Validate(CancellationToken cancellationToken = default)
     {
-        progress.Report(OperationProgress.Step("Loading desired schema..."));
+        progress.Report(OperationProgress.Step("Loading project..."));
         var diagnostics = new DiagnosticCollector();
         if (!diagnostics.TryTake(await projectProvider.GetProject(PlanningScope.All, cancellationToken), out var project))
         {
             return diagnostics.ToResult();
         }
-        ReportDesiredDetail(project);
+        ReportProjectDetail(project);
 
-        progress.Report(OperationProgress.Step("Validating schema..."));
+        progress.Report(OperationProgress.Step("Validating project..."));
 
         // The findings — including any non-error advisories and findings raised while reading the DDL — are
         // returned as data for the caller to render.
@@ -47,7 +47,7 @@ internal sealed class MigrationWorkflow(
         }
 
         var diagnostics = new DiagnosticCollector();
-        if (!diagnostics.TryTake(await ResolveDesired(target, scope, cancellationToken), out var project))
+        if (!diagnostics.TryTake(await ResolveTarget(target, scope, cancellationToken), out var project))
         {
             return diagnostics.ToResult<MigrationPlan>(null);
         }
@@ -70,7 +70,7 @@ internal sealed class MigrationWorkflow(
         // The current side is not narrowed here: scope applies to the difference, once computed. Filtering it
         // away first would hide the out-of-scope objects a scoped run may still disturb.
         // TODO: Move progress reporting down into the planner where the scoping is done?
-        progress.Report(OperationProgress.Detail($"Current schema: {StatusHelpers.Describe(state.Database.ScopedTo(scopeInEffect))}."));
+        progress.Report(OperationProgress.Detail($"Recorded state: {StatusHelpers.Describe(state.Database.ScopedTo(scopeInEffect))}."));
 
         progress.Report(OperationProgress.Step("Computing migration plan..."));
 
@@ -138,21 +138,21 @@ internal sealed class MigrationWorkflow(
     /// <summary>
     /// Resolves the state being planned towards: the declared project, or nothing for a teardown.
     /// </summary>
-    private async Task<Result<ProjectDefinition>> ResolveDesired(PlanTarget target, PlanningScope scope, CancellationToken cancellationToken)
+    private async Task<Result<ProjectDefinition>> ResolveTarget(PlanTarget target, PlanningScope scope, CancellationToken cancellationToken)
     {
         if (target == PlanTarget.Empty)
         {
             return Result.Success(new ProjectDefinition(new Database()));
         }
 
-        progress.Report(OperationProgress.Step("Loading desired schema..."));
-        var desired = await projectProvider.GetProject(scope, cancellationToken);
-        if (desired.Value is { } project)
+        progress.Report(OperationProgress.Step("Loading project..."));
+        var loaded = await projectProvider.GetProject(scope, cancellationToken);
+        if (loaded.Value is { } project)
         {
-            ReportDesiredDetail(project);
+            ReportProjectDetail(project);
         }
 
-        return desired;
+        return loaded;
     }
 
     private static string Describe(PlanningScope scope) =>
@@ -163,10 +163,10 @@ internal sealed class MigrationWorkflow(
     /// <summary>
     /// Emits the verbose census of what the loaded project declares.
     /// </summary>
-    private void ReportDesiredDetail(ProjectDefinition project)
+    private void ReportProjectDetail(ProjectDefinition project)
     {
         var scriptCount = project.Directives.DeploymentScripts.Count + project.Directives.ChangeScripts.Count;
-        progress.Report(OperationProgress.Detail($"Desired schema: {StatusHelpers.Describe(project.Database)}, " +
+        progress.Report(OperationProgress.Detail($"Declared: {StatusHelpers.Describe(project.Database)}, " +
             $"{StatusHelpers.Count(scriptCount, "script")}."));
     }
 }

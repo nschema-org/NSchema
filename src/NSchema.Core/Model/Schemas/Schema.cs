@@ -23,7 +23,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<Table> Tables
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<Table>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -32,7 +32,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<View> Views
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<View>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -41,7 +41,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<EnumType> Enums
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<EnumType>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -50,7 +50,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<Sequence> Sequences
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<Sequence>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -60,7 +60,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<Routine> Routines
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<Routine>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -69,7 +69,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<DomainType> Domains
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<DomainType>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -78,7 +78,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// </summary>
     public DatabaseObjectCollection<CompositeType> CompositeTypes
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseObjectCollection<CompositeType>(this);
         init { value.Attach(this); field = value; }
     }
 

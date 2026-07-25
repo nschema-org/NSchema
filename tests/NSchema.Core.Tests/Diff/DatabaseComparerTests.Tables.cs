@@ -1,5 +1,6 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Constraints;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Indexes;
 using NSchema.Model.Schemas;
@@ -16,11 +17,14 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_FullSchema_DropsCurrentTableNotInDesired()
     {
+        // Arrange
         var current = Db(new Schema { Name = "app", Tables = [new Table { Name = "stale", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] });
         var desired = Db(new Schema { Name = "app", Tables = [new Table { Name = "fresh", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] });
 
+        // Act
         var tables = Compare(current, desired).Schemas.Single().Tables;
 
+        // Assert
         tables.Single(t => t.Name.Value.Equals("stale")).Kind.ShouldBe(ChangeKind.Remove);
     }
 
@@ -31,11 +35,15 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_TableRename_SetsRenamedFrom()
     {
+        // Arrange
         var table = DiffTable(
             new Table { Name = "people", Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] },
+
+            // Act
             TableRename("people", "users"));
 
+        // Assert
         table.ShouldNotBeNull();
         table.Kind.ShouldBe(ChangeKind.Modify);
         table.RenamedFrom.ShouldBe("people");
@@ -72,12 +80,16 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_PlainRename_IsNotTreatedAsAmbiguous()
     {
+        // Arrange
         // A rename whose old name is gone and whose new name is free is unambiguous and must still work.
         var table = DiffTable(
             new Table { Name = "people", Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] },
+
+            // Act
             TableRename("people", "users"));
 
+        // Assert
         table.ShouldNotBeNull();
         table.Kind.ShouldBe(ChangeKind.Modify);
         table.RenamedFrom.ShouldBe("people");
@@ -100,7 +112,7 @@ public partial class DatabaseComparerTests
         {
             Name = "orders",
             Columns = [new Column { Name = "id", Type = SqlType.Int }, new Column { Name = "user_id", Type = SqlType.Int }],
-            ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"] }],
+            ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] }],
             Indexes = [new TableIndex { Name = "orders_user_ix", Columns = ["user_id"], Comment = "lookup" }],
             Grants = [new TableGrant("reader", TablePrivilege.Select)],
         };
@@ -108,8 +120,7 @@ public partial class DatabaseComparerTests
         var table = Compare(Db(new Schema { Name = "app" }),
             Db(new Schema { Name = "app", Tables = [desired] })).Schemas.Single().Tables.Single();
 
-        table.ForeignKeys.ShouldHaveSingleItem().ShouldBe(new ForeignKeyDiff(ChangeKind.Add, "orders_user_fk",
-            new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"] }));
+        table.ForeignKeys.ShouldHaveSingleItem().ShouldBe(ForeignKeyDiff.Added(new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] }));
         table.Grants.ShouldHaveSingleItem().Privileges.ShouldBe(TablePrivilege.Select);
         // A new index carries both its definition and a folded comment change.
         table.Indexes.Select(i => i.Kind).ShouldBe([ChangeKind.Add, ChangeKind.Modify]);

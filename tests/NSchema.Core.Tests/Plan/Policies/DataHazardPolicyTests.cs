@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Constraints;
-using NSchema.Diff.Model.Indexes;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Indexes;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Indexes;
@@ -30,7 +30,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — the founding case: ADD COLUMN NOT NULL without a DEFAULT fails against a populated table.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -47,7 +47,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — hazards depend on the data in the table, so the default policy warns rather than blocks.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -66,7 +66,7 @@ public class DataHazardPolicyTests
         // Arrange
         _options.Value.Policy = policy;
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -82,7 +82,7 @@ public class DataHazardPolicyTests
         // Arrange
         _options.Value.Policy = PolicyEnforcement.Ignore;
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -94,12 +94,15 @@ public class DataHazardPolicyTests
         // Arrange — an added table is empty at apply time, so nothing in it can fail on data.
         var table = new Table { Name = "users", Columns = [new Column { Name = "email", Type = SqlType.Text }] };
         var diff = new DatabaseDiff([
-            new SchemaDiff("app", Tables:
-            [
-                new TableDiff("app", "users", ChangeKind.Add,
-                    Columns: [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })],
-                    Definition: table),
-            ]),
+            SchemaDiff.Containing("app") with
+            {
+                Tables = [
+                TableDiff.Added("app", table) with
+                {
+                    Columns = [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })],
+                },
+            ],
+            },
         ]);
 
         // Act / Assert
@@ -111,7 +114,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — a default gives existing rows their value, so the add cannot fail.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, DefaultExpression = "''" })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, DefaultExpression = "''" })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -122,7 +125,7 @@ public class DataHazardPolicyTests
     {
         // Arrange
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, IsNullable = true })]);
+            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, IsNullable = true })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -133,7 +136,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — an identity column computes its own values for existing rows.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("id", ChangeKind.Add, new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true })]);
+            [ColumnDiff.Added(new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -144,7 +147,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — a generated column computes its own values for existing rows.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("total", ChangeKind.Add, new Column { Name = "total", Type = SqlType.Int, GeneratedExpression = "a + b" })]);
+            [ColumnDiff.Added(new Column { Name = "total", Type = SqlType.Int, GeneratedExpression = "a + b" })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -155,7 +158,8 @@ public class DataHazardPolicyTests
     {
         // Arrange — SET NOT NULL fails if the column holds NULLs.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Modify, Nullability: new ValueChange<bool>(true, false))]);
+            [ColumnDiff.Modified(new Column { Name = "email", Type = SqlType.Text })
+                with { Nullability = new ValueChange<bool>(true, false) }]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -171,7 +175,8 @@ public class DataHazardPolicyTests
     {
         // Arrange — dropping NOT NULL cannot fail on data.
         var diff = ModifiedTable(columns:
-            [new ColumnDiff("email", ChangeKind.Modify, Nullability: new ValueChange<bool>(false, true))]);
+            [ColumnDiff.Modified(new Column { Name = "email", Type = SqlType.Text, IsNullable = true })
+                with { Nullability = new ValueChange<bool>(false, true) }]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -214,8 +219,8 @@ public class DataHazardPolicyTests
         // Arrange
         var diff = ModifiedTable(columns:
         [
-            new ColumnDiff("value", ChangeKind.Modify,
-                Type: new ValueChange<SqlType>(SqlType.Parse(oldType), SqlType.Parse(newType))),
+            ColumnDiff.Modified(new Column { Name = "value", Type = SqlType.Parse(newType) })
+                with { Type = new ValueChange<SqlType>(SqlType.Parse(oldType), SqlType.Parse(newType)) },
         ]);
 
         // Act
@@ -230,7 +235,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — promoting existing columns to a primary key fails on duplicates or NULLs.
         var diff = ModifiedTable(primaryKey:
-            [new PrimaryKeyDiff(ChangeKind.Add, "users_pk", new PrimaryKey { Name = "users_pk", ColumnNames = ["tenant_id", "email"] })]);
+            [PrimaryKeyDiff.Added(new PrimaryKey { Name = "users_pk", ColumnNames = ["tenant_id", "email"] })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -246,7 +251,7 @@ public class DataHazardPolicyTests
     {
         // Arrange
         var diff = ModifiedTable(uniqueConstraints:
-            [new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })]);
+            [UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -262,9 +267,9 @@ public class DataHazardPolicyTests
     {
         // Arrange — a column added in the same diff starts empty, so uniqueness confined to it cannot collide.
         var diff = ModifiedTable(
-            columns: [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, IsNullable = true })],
+            columns: [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, IsNullable = true })],
             uniqueConstraints:
-                [new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })]);
+                [UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -275,7 +280,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — dropping uniqueness cannot fail on data (the destructive policy owns that concern).
         var diff = ModifiedTable(uniqueConstraints:
-            [new UniqueConstraintDiff(ChangeKind.Remove, "users_email_uq")]);
+            [UniqueConstraintDiff.Removed("users_email_uq")]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -286,7 +291,7 @@ public class DataHazardPolicyTests
     {
         // Arrange
         var diff = ModifiedTable(indexes:
-            [new IndexDiff(ChangeKind.Add, "ix_users_email", new TableIndex { Name = "ix_users_email", Columns = ["email"], IsUnique = true })]);
+            [IndexDiff.Added(new TableIndex { Name = "ix_users_email", Columns = ["email"], IsUnique = true })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -302,8 +307,7 @@ public class DataHazardPolicyTests
         // Arrange — an expression key is opaque, so it is assumed to read pre-existing data.
         var diff = ModifiedTable(indexes:
         [
-            new IndexDiff(ChangeKind.Add, "ix_users_email",
-                new TableIndex { Name = "ix_users_email", Columns = [new IndexColumn(Expression: "lower(email)")], IsUnique = true }),
+            IndexDiff.Added(new TableIndex { Name = "ix_users_email", Columns = [new IndexColumn(Expression: "lower(email)")], IsUnique = true }),
         ]);
 
         // Act
@@ -318,7 +322,7 @@ public class DataHazardPolicyTests
     {
         // Arrange — a plain index enforces nothing, so it cannot fail on data.
         var diff = ModifiedTable(indexes:
-            [new IndexDiff(ChangeKind.Add, "ix_users_email", new TableIndex { Name = "ix_users_email", Columns = ["email"] })]);
+            [IndexDiff.Added(new TableIndex { Name = "ix_users_email", Columns = ["email"] })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -329,8 +333,8 @@ public class DataHazardPolicyTests
     {
         // Arrange
         var diff = ModifiedTable(
-            columns: [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text, IsNullable = true })],
-            indexes: [new IndexDiff(ChangeKind.Add, "ix_users_email", new TableIndex { Name = "ix_users_email", Columns = ["email"], IsUnique = true })]);
+            columns: [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text, IsNullable = true })],
+            indexes: [IndexDiff.Added(new TableIndex { Name = "ix_users_email", Columns = ["email"], IsUnique = true })]);
 
         // Act / Assert
         _sut.Validate(diff).ShouldBeEmpty();
@@ -341,9 +345,9 @@ public class DataHazardPolicyTests
     {
         // Arrange
         var diff = ModifiedTable(
-            columns: [new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })],
+            columns: [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })],
             uniqueConstraints:
-                [new UniqueConstraintDiff(ChangeKind.Add, "users_name_uq", new UniqueConstraint { Name = "users_name_uq", ColumnNames = ["name"] })]);
+                [UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_name_uq", ColumnNames = ["name"] })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -359,8 +363,8 @@ public class DataHazardPolicyTests
         // around it and the hazard is handled.
         var diff = ModifiedTable(columns:
         [
-            new ColumnDiff("email", ChangeKind.Add, new Column { Name = "email", Type = SqlType.Text })
-            {
+            ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })
+            with{
                 MigrationScript = Migration(ChangeTrigger.AddColumn, "email"),
             },
         ]);
@@ -375,9 +379,9 @@ public class DataHazardPolicyTests
         // Arrange — a matched AlterColumnType migration prepares the data before the cast runs.
         var diff = ModifiedTable(columns:
         [
-            new ColumnDiff("value", ChangeKind.Modify,
-                Type: new ValueChange<SqlType>(SqlType.Text, SqlType.Int))
-            {
+            ColumnDiff.Modified(new Column { Name = "value", Type = SqlType.Int })
+                with { Type = new ValueChange<SqlType>(SqlType.Text, SqlType.Int) }
+            with {
                 MigrationScript = Migration(ChangeTrigger.AlterColumnType, "value"),
             },
         ]);
@@ -393,10 +397,10 @@ public class DataHazardPolicyTests
         // annotates type changes on modified columns, and the tighten can still fail after the migration.
         var diff = ModifiedTable(columns:
         [
-            new ColumnDiff("email", ChangeKind.Modify,
-                Type: new ValueChange<SqlType>(SqlType.Text, SqlType.Int),
-                Nullability: new ValueChange<bool>(true, false))
+            ColumnDiff.Modified(new Column { Name = "email", Type = SqlType.Int }) with
             {
+                Type = new ValueChange<SqlType>(SqlType.Text, SqlType.Int),
+                Nullability = new ValueChange<bool>(true, false),
                 MigrationScript = Migration(ChangeTrigger.AlterColumnType, "email"),
             },
         ]);
@@ -415,10 +419,8 @@ public class DataHazardPolicyTests
         // Arrange — a matched migration declares how the data is de-duplicated/backfilled before the key lands.
         var diff = ModifiedTable(primaryKey:
         [
-            new PrimaryKeyDiff(ChangeKind.Add, "users_pk", new PrimaryKey { Name = "users_pk", ColumnNames = ["tenant_id", "email"] })
-            {
-                MigrationScript = Migration(ChangeTrigger.AddConstraint, "users_pk"),
-            },
+            PrimaryKeyDiff.Added(new PrimaryKey { Name = "users_pk", ColumnNames = ["tenant_id", "email"] })
+                with { MigrationScript = Migration(ChangeTrigger.AddConstraint, "users_pk") },
         ]);
 
         // Act / Assert
@@ -431,8 +433,8 @@ public class DataHazardPolicyTests
         // Arrange
         var diff = ModifiedTable(uniqueConstraints:
         [
-            new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
-            {
+            UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
+            with{
                 MigrationScript = Migration(ChangeTrigger.AddConstraint, "users_email_uq"),
             },
         ]);
@@ -449,13 +451,13 @@ public class DataHazardPolicyTests
         var diff = ModifiedTable(
             uniqueConstraints:
             [
-                new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
-                {
+                UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] })
+                with{
                     MigrationScript = Migration(ChangeTrigger.AddConstraint, "users_email_uq"),
                 },
             ],
             indexes:
-                [new IndexDiff(ChangeKind.Add, "ix_users_name", new TableIndex { Name = "ix_users_name", Columns = ["name"], IsUnique = true })]);
+                [IndexDiff.Added(new TableIndex { Name = "ix_users_name", Columns = ["name"], IsUnique = true })]);
 
         // Act
         var results = _sut.Validate(diff).ToList();
@@ -474,10 +476,17 @@ public class DataHazardPolicyTests
         IReadOnlyList<PrimaryKeyDiff>? primaryKey = null,
         IReadOnlyList<UniqueConstraintDiff>? uniqueConstraints = null) =>
         new([
-            new SchemaDiff("app", Tables:
-            [
-                new TableDiff("app", "users", ChangeKind.Modify,
-                    Columns: columns, Indexes: indexes, PrimaryKey: primaryKey, UniqueConstraints: uniqueConstraints),
-            ]),
+            SchemaDiff.Containing("app") with
+            {
+                Tables = [
+                TableDiff.Modified("app", "users") with
+                {
+                    Columns = columns ?? [],
+                    Indexes = indexes ?? [],
+                    PrimaryKeys = primaryKey ?? [],
+                    UniqueConstraints = uniqueConstraints ?? [],
+                },
+            ],
+            },
         ]);
 }

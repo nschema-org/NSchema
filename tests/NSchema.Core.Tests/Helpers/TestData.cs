@@ -1,6 +1,6 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
@@ -15,17 +15,17 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Schemas;
-using NSchema.Plan.Model.Tables;
-using NSchema.Project.Model.Directives;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Tables;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Helpers;
 
 public static class TestData
 {
-    public static readonly MigrationAction DestructiveAction = new DropTable(new("identity", "users"));
+    public static readonly MigrationAction DestructiveAction = new DropTable(new ObjectAddress("identity", "users"));
     public static readonly MigrationAction NonDestructiveAction = new CreateSchema("identity");
 
     /// <summary>A diff dropping the <c>identity.users</c> table.</summary>
@@ -33,12 +33,25 @@ public static class TestData
 
     /// <summary>A diff that only adds a schema.</summary>
     public static readonly DatabaseDiff NonDestructiveDiff = new(
-        [new SchemaDiff("identity", ChangeKind.Add, null, null, [], [])]);
+        [SchemaDiff.Added("identity") with
+        {
+            Grants = [],
+            Tables = [],
+        }]);
 
     /// <summary>Builds a diff that drops the named tables from the <c>identity</c> schema.</summary>
     public static DatabaseDiff DiffWithDroppedTables(params string[] tableNames) => new(
-        [new SchemaDiff("identity", null, null, null, [],
-            [.. tableNames.Select(name => new TableDiff("identity", name, ChangeKind.Remove, null, null, [], [], [], []))])]);
+        [SchemaDiff.Containing("identity") with
+        {
+            Grants = [],
+            Tables = [.. tableNames.Select(name => TableDiff.Removed("identity", name) with
+            {
+                Columns = [],
+                Grants = [],
+                Indexes = [],
+                PrimaryKeys = [],
+            })],
+        }]);
 
     /// <summary>
     /// A schema exercising every domain feature (identity, facets, comments, foreign keys,
@@ -66,7 +79,7 @@ public static class TestData
                             new Column { Name = "name_upper", Type = SqlType.Text, IsNullable = true, GeneratedExpression = "upper(name)" },
                         ],
                         ForeignKeys = [
-                            new ForeignKey { Name = "users_org_fk", ColumnNames = ["org_id"], References = new("app", "orgs"), ReferencedColumnNames = ["id"],
+                            new ForeignKey { Name = "users_org_fk", ColumnNames = ["org_id"], References = new ObjectAddress("app", "orgs"), ReferencedColumnNames = ["id"],
                                 OnDelete = ReferentialAction.Cascade, OnUpdate = ReferentialAction.SetNull, Comment = "owning org" },
                         ],
                         UniqueConstraints = [

@@ -1,16 +1,16 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Schemas;
-using NSchema.Plan.Model.Scripts;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Scripts;
+using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Policies;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Policies;
 
 namespace NSchema.Tests.Plan;
@@ -42,8 +42,8 @@ public sealed class MigrationPlannerTests
     /// <summary>A difference touching two schemas, so a scope has something to narrow away.</summary>
     private static DatabaseDiff TwoSchemaDiff() => new(
     [
-        new SchemaDiff("app", ChangeKind.Remove),
-        new SchemaDiff("billing", ChangeKind.Remove),
+        SchemaDiff.Removed("app"),
+        SchemaDiff.Removed("billing"),
     ]);
 
     [Fact]

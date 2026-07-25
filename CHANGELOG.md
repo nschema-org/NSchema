@@ -13,6 +13,8 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 ### Changed
 
 - **Column alterations are unified.** Dialects now receive a single `AlterColumn` action for a column's type and nullability changes, which they can render as one or more statements.
+- **Member diffs are built by factory.** `PrimaryKeyDiff`, `ForeignKeyDiff`, `UniqueConstraintDiff`, `CheckConstraintDiff`, `ExclusionConstraintDiff`, `IndexDiff` and `TriggerDiff` expose `Added(definition)`, `Removed(name)` and `CommentChanged(name, change)` in place of a constructor.
+- **Object diffs are built by factory too.** Every schema-level diff — table, column, view, enum, domain, sequence, routine, composite type, extension and schema is constructed through `Added` / `Removed` / `Modified` and refined with `with`, replacing constructors.
 - **Better domain mode naming.** `Database` and `Schema` are now the main entry points into the domain model.
 - **The SQL dialect seam is the abstract `SqlDialect` class.** A dialect overrides one method per migration action. Standard SQL is rendered by the base through an overridable identifier-quoting kernel.
 - **Identifiers are case-sensitive.** An identifier's identity is its exact written text: `users` and `Users` are no-longer considered equivalent.
@@ -20,11 +22,13 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Parsing is lossless.** The syntax tree now preserves every character of the source, including comments, whitespace, and layout.
 - **Management directives.** The language now separates *declarations* (what the schema is) from *directives* (how the difference is managed). This includes RENAME and SCRIPT.
 - **Every namespace has moved.** Namespaces are vertically sliced of the form `NSchema.<Feature>.<Capability>`.
+- **A slice's domain layer is `Domain`, not `Model`.**
+- **The shared primitives live in `NSchema.Diagnostics`.**
 - **The schema model is `NSchema.Model` now.** It owns the top-level domain model for databases.
 - **DataMigrations are Scripts now.** This reflects the syntax changes introduce in [4.4.0] so the model becomes consistent.
 - **Templates accept object-level directives.** A `TEMPLATE` body may now contain the object-level `RENAME` directive (table, column, view, enum, domain, type, sequence, routine) alongside its declarations and scripts.
 - **Scripts split into `ChangeScript` and `DeploymentScript`.** `Script` is now an abstract base carrying the common behavior (name, SQL, scope, hash, reference, run condition);
-- **"Desired" is Project now." `IDesiredSchemaProvider` becomes `IProjectProvider` the project is the desired state by definition.
+- **"Desired" is Project now.** `IDesiredSchemaProvider` becomes `IProjectProvider` — the project is the desired state by definition, and `app.DesiredSchema` becomes `app.Project`, named for what it hands you like every surface beside it. Progress output follows: `Loading project...`, `Validating project...`, and the plan census now reads `Declared:` / `Recorded state:`.
 - **`AddDdlSchemas` is `AddProjectSource` now.** The files describe the whole project (schema, scripts, templates, config), not just schema DDL.
 - **Result<T> use consistency.** Lots of interfaces have been neatened up to return a `Result<T>` instead of throwing to allow for error/warning accumulation
 - **The diff now includes scripts.** Rather than being tacked on to the plan, scripts are now a first-class part of the diff, carried where they run rather than in a central list.
@@ -39,21 +43,27 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **`SqlDialect` replaces `ISqlGenerator`.** (registered with `UseSqlDialect<T>()`).
 - **`IStateLockManager` replaces `IStateLockCoordinator`.** Lines up with with `ISchemaStateManager`.
 - **`IPlanFileManager` replaces `IPlanFileWriter`.** It reads saved plans too, so "writer" undersold it.
+- **`UseFileState` replaces `UseFileStateStore`.** It registers the lock alongside the store, so "store" undersold it — matching `UseEphemeralState`, which does the same. `UseStateStore` and `UseStateLock` still register a single seam each.
+- **`TableDiff.PrimaryKeys` replaces `TableDiff.PrimaryKey`.** It has always been a list — replacing a key is a remove *and* an add — so the singular name misread as one change.
+- **The serialization types live in `NSchema.Model.Serialization`.** They move out of `NSchema.Model.Services`, which is for services over the model.
+- **`options.AddModelConverters()` composes the model's JSON conventions.** A consumer serializing NSchema types adds the converters to its own `JsonSerializerOptions` rather than naming them — persistence wants indented, complete output and a console stream wants terse single lines, so only the conventions are shared. The converters themselves are internal now.
 - **`IDatabaseIntrospector` replaces `ISchemaProvider`.** More honest about what it does now that the interface doesn't serve both the current and desired sides, and named for what it returns.
 - **Plugin `Configure` returns `Result`.** Configuration errors are diagnostics like everything else.
 - **Opaque SQL is `SqlText` now.** Every schema-model field carrying SQL that NSchema stores verbatim but does not interpret is typed `SqlText` instead of `string`.
 - **A qualified type's schema is a component now.** `SqlType` carries the schema of a user-defined type (e.g. `app` in `app.order_status`) as a structural `Schema` property rather than folded into its nam.
-- **`PolicyEnforcement` absorbs `DestructiveActionPolicy`.** `WithDestructiveActionPolicy` takes the shared enum, gaining `Ignore`.
+- **`PolicyEnforcement` absorbs the `DestructiveActionPolicy` enum.** The shared enum gains `Ignore`.
+- **`WithDestructiveActions` and `WithDataHazards` replace `WithDestructiveActionPolicy` and `WithDataHazardPolicy`.** They set how a built-in policy is enforced, which the old names read as registering one — `AddPlanPolicy<T>()` is what registers.
 - **The state ledger field is `scripts` now.** Pre-5.0 `executedScripts` payloads read as an empty ledger. Refresh (or untaint) existing state under the state-format compatibility policy's major-version rules.
 - **Configuration is part of the language.** `ENGINE`, `PLUGIN`, `DATABASE` and `STATE` parse as ordinary statements, in the one grammar that carries declarations and directives. Which statements a given file *should* hold is a consumer's rule, not the parser's: each subsystem picks out the statements it understands and ignores the rest.
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures rather than the role that supplies it.
-- **Plugins receive `PluginSettings`.** `Configure` takes the statement's label and attributes as a flat key/value map, translated from the parsed statement by the configuration assembly. `settings.Get<T>()` binds them onto an options type — snake_case keys match properties, dotted keys nest, identifiers map to enum members — and reports an unbindable value, an unknown attribute, and a failed `[Required]`/`[Range]` as error diagnostics, so a plugin declares its options rather than parsing them.
+- **Every setting is environment-overridable.** `NSCHEMA_<KEYWORD>_<SETTING>` overrides one setting on the matching statement — `NSCHEMA_DATABASE_CONNECTION_STRING` sets `connection_string` on `DATABASE` — replacing the written value or supplying one the statement omits, so a secret need not be committed. The keyword scopes the name because `DATABASE` and `STATE` may both take a setting of the same name.
+- **Plugins receive `PluginSettings`.** `Configure` takes the statement's label and setting values as a flat key/value map (`settings.Values`, or `settings.Value(name)` for one), translated from the parsed statement by the configuration assembly. `settings.Get<T>()` binds them onto an options type — snake_case keys match properties, dotted keys nest, identifiers map to enum members — and reports an unbindable value, an unknown setting, and a failed `[Required]`/`[Range]` as error diagnostics, so a plugin declares its options rather than parsing them.
 - **`INSchemaDatabasePlugin` and `INSchemaStatePlugin` replace `INSchemaProviderPlugin` and `INSchemaBackendPlugin`.** Each is named for the statement that configures it.
-- **Plugins are resolved by capability, not by name.** `INSchemaPlugin.Label` is gone — the statement kind selects the capability interface, and the label in configuration is the user's local name for a declared `PLUGIN`, never the plugin's own. `ScaffoldContext.Version` is gone with it: the host authors the `PLUGIN` statement (it knows the package and the resolved version), so a plugin's scaffold template contributes only its own configuration block.
+- **Plugins are resolved by capability, not by name.** `INSchemaPlugin.Label` is gone — the statement kind selects the capability interface, and the label in configuration is the user's local name for a declared `PLUGIN`, never the plugin's own. `ScaffoldContext.Version` is gone with it: the host authors the `PLUGIN` statement (it knows the package and the resolved version), so a plugin's scaffold template contributes only its own configuration statement.
 - **`NsqlReader` replaces `DdlReader` and diagnostics are structural.** `NsqlReader.Read`/`ReadFile` return `Result<NsqlDocument, NsqlDiagnostic>`, the new diagnostic-typed result, with each finding carrying its source position.
 - **`DdlReader.Read` returns `Result<DdlDocument>`.** A syntax error is an error diagnostic instead of a thrown exception, and the parser now recovers at statement boundaries.
 - **`DatabaseSchema` is pure data now.** `Filter` joined `Combine` off the model, into the projection machinery.
-- **`DiffReader` is a static class now.** The `.Default` singleton is gone; call `DiffReader.Read(diff)` directly, matching `NsqlReader` and `NsqlWriter`.
+- **`DiffDocument.From(diff)` replaces `DiffReader.Read(diff)`.** The reader type and its `.Default` singleton are both gone, and the namespace is `NSchema.Diff.Rendering`: "reader" named the wrong direction, since a `DatabaseDiff` is projected into display lines rather than parsed from anything.
 - **`SchemaScope` replaces bare schema-name arrays.** `GetProject`, `GetSchema`, and the plan/drift/import arguments take a scope record.
 - **State locks receive complete metadata.** `IStateLockManager.Acquire` takes `AcquireLockArguments` with the operation, TTL, and skip-lock; it creates the `StateLockInfo` atomically recorded by `IStateLock.Acquire`.
 - **`IPlanFileManager.Read` returns `Result<PlanFileEnvelope>`.** An unreadable or corrupt plan file is a failure carrying diagnostics.
@@ -78,7 +88,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Change-script targets are value objects.** `ChangeScript` now takes a `ChangeTarget` instead of separate trigger and path values.
 - **Atomic table-fragment merge.** `Table.TryMergeMembers` applies a complete table-member fragment or reports its conflicts.
 - **SQL type conversion risk.** `SqlType.ConversionRiskTo` assesses whether converting stored values can fail.
-- **Ephemeral state.** `UseEphemeralState()` registers an in-memory state store and matching lock, intended for disposable databases.
+- **Ephemeral state.** `UseEphemeralState()` registers an in-memory state store, which serves as the lock too, intended for disposable databases.
 - **Object-granular targeting.** `PlanningScope` covers a single list of `Address`es (`PlanningScope.To(addresses)` / `scope.Addresses`), mixing whole-schema and object-level targets.
 - **Address parsing.** `NsqlReader.ReadAddress` parses a `schema`, `schema.object`, or `schema.object.member` fragment into an `Address`, resolving quoted segments
 - **`SchemaAddress` completes the address taxonomy.** A schema has a first-class `Address` alongside `ObjectAddress` and `MemberAddress`.
@@ -86,6 +96,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Scope and identity are address-based.** `PlanningScope` is scoped when it holds any address (schema or object).
 - **`ObjectAddress` carries an optional `Kind`.** A null kind addresses every kind sharing the name (kind-free targeting); a set kind disambiguates same-named objects.
 - **`Token.QuotedIdentifier`.** Synthesizes a quoted-identifier token (decoded text, quoted-and-escaped raw), the counterpart to `Token.StringLiteral`.
+- **A plugin declares its scaffolding questions.** `INSchemaPlugin.GetScaffoldPrompts(context)` returns the `ScaffoldPrompt`s a front-end should put to the user, and the answers arrive on `ScaffoldContext.Answers` for `GetScaffoldTemplate` to build its statement from.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` separates dependency declaration from configuration.
 - **`ENGINE` asserts the engine and/or host version.** `ENGINE ( version = '…', host_version = '…' );` — `version` is checked against the engine (Core), `host_version` against the host tool.
 - **The engine handshake.** `PluginHandshake.Validate` checks a loaded plugin assembly against the hosting engine before any of its types are instantiated.
@@ -100,7 +111,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - The `DROP` statements (`DROP SCHEMA|TABLE|VIEW|ENUM|DOMAIN|TYPE|SEQUENCE|FUNCTION|PROCEDURE|ROUTINE|EXTENSION`) no longer parse. Remove the declaration instead.
 - `CREATE PARTIAL SCHEMA` no longer parses. The managed identity set covers what it was reaching for: an object the state does not record as managed is never dropped, declared or not.
 - `RENAMED FROM` clauses no longer parse. A rename is a `RENAME` directive now (see Management directives above).
-- The `NSCHEMA` configuration block no longer parses.
+- The `NSCHEMA` configuration statement no longer parses.
 - `DataMigration` has been folded into `Script` and now requires a name for so they can maintain a stable identity.
 - **Narrowed public surface.** A variety of types that should never have been exposed have been made internal.
 - `PolicyDiagnostics`, `PluginConfigureResult`, and the `DestructiveActionPolicy` enum — all made redundant by first-class severity on `Result` and the shared `PolicyEnforcement`.

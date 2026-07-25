@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileSystemGlobbing;
-using NSchema.Deployment.Backends;
 using NSchema.Project;
 
 namespace NSchema;
@@ -35,15 +33,6 @@ public partial class NSchemaApplicationBuilder
         ArgumentNullException.ThrowIfNull(matcher);
 
         Services.AddSingleton(new ProjectSource(baseDirectory, matcher));
-        return this;
-    }
-
-    /// <summary>
-    /// Registers the <see cref="IDatabaseIntrospector"/> that reads the live database schema (the online source).
-    /// </summary>
-    public NSchemaApplicationBuilder UseDatabaseIntrospector<T>() where T : class, IDatabaseIntrospector
-    {
-        Services.Replace(ServiceDescriptor.Singleton<IDatabaseIntrospector, T>());
         return this;
     }
 }

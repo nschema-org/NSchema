@@ -29,7 +29,7 @@ public sealed record ScriptHash : ValueObject<string>
     /// Wraps a rendered hash. One-way: a hash never converts silently back to a bare string.
     /// </summary>
     [return: NotNullIfNotNull(nameof(value))]
-    public static implicit operator ScriptHash?(string? value) => value is null ? null : new(value);
+    public static implicit operator ScriptHash?(string? value) => value is null ? null : new ScriptHash(value);
 
     /// <inheritdoc />
     protected override string Normalize(string value) => value.ToLowerInvariant();

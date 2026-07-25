@@ -5,9 +5,9 @@ using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.State;
 using NSchema.State.Backends;
+using NSchema.State.Domain;
 using NSchema.State.Locks;
 using NSchema.State.Locks.Backends;
-using NSchema.State.Model;
 
 namespace NSchema.Tests.Operations;
 

@@ -3,7 +3,7 @@ using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Project;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Templates;
@@ -30,6 +30,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_InstantiatesTheTemplateIntoEachTargetSchema()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -38,6 +39,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE outbox IN SCHEMA billing, ordering;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem().Name.ShouldBe("outbox");
         Schema(schema, "ordering").Tables.ShouldHaveSingleItem().Name.ShouldBe("outbox");
     }
@@ -45,6 +47,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_InstancesCoexistWithHandWrittenObjects()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -53,12 +56,14 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE outbox IN SCHEMA billing;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.Select(t => t.Name).ShouldBe(["invoices", "outbox"], ignoreOrder: true);
     }
 
     [Fact]
     public void Expand_RewritesUnqualifiedForeignKeyToTheTargetSchema()
     {
+        // Arrange
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -73,7 +78,10 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Act
         var child = Schema(schema, "billing").Tables.First(t => t.Name.Value.Equals("child"));
+
+        // Assert
         var fk = child.ForeignKeys.ShouldHaveSingleItem();
         fk.References.Schema.ShouldBe("billing");
         fk.References.Name.ShouldBe("parent");
@@ -82,6 +90,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_LeavesQualifiedForeignKeyAlone()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -95,6 +104,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem().ForeignKeys.ShouldHaveSingleItem()
             .References.Schema.ShouldBe("public");
     }
@@ -102,6 +112,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_QualifiesColumnTypesTheTemplateDeclares()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -113,6 +124,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         var columns = Schema(schema, "billing").Tables.ShouldHaveSingleItem().Columns;
         // The template-declared enum binds to the instance's schema as a component; the built-in does not.
         columns.First(c => c.Name.Value.Equals("status")).Type.ShouldBe(SqlType.Custom("billing", "outbox_status"));
@@ -122,6 +134,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_LeavesTypesTheTemplateDoesNotDeclareAlone()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -132,6 +145,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         var columns = Schema(schema, "billing").Tables.ShouldHaveSingleItem().Columns;
         // A qualified type keeps its schema as a component; an unqualified one leaves resolution to the engine.
         columns.First(c => c.Name.Value.Equals("kind")).Type.ShouldBe(SqlType.Custom("public", "kind_enum"));
@@ -141,6 +155,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_QualifiesCompositeFieldTypesTheTemplateDeclares()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -152,6 +167,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         var fields = Schema(schema, "billing").CompositeTypes.ShouldHaveSingleItem().Fields;
         fields.First(f => f.Name.Value.Equals("state")).DataType.ShouldBe(SqlType.Custom("billing", "status"));
         fields.First(f => f.Name.Value.Equals("note")).DataType.ShouldBe(SqlType.Text);
@@ -160,6 +176,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_QualifiesTriggerFunctionTheTemplateDeclares()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -172,6 +189,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem().Triggers.ShouldHaveSingleItem()
             .Function.ShouldBe("billing.publish");
     }
@@ -179,6 +197,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_LeavesTriggerFunctionTheTemplateDoesNotDeclareAlone()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -190,6 +209,7 @@ public sealed class TemplateExpanderTests
             APPLY TEMPLATE t IN SCHEMA billing;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem().Triggers.ShouldHaveSingleItem()
             .Function.ShouldBe("public.publish");
     }
@@ -197,12 +217,14 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_UnusedTemplate_IsInert()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA app;
             TEMPLATE unused BEGIN CREATE TABLE x (id int NOT NULL); END;
             """);
 
+        // Assert
         Schema(schema, "app").Tables.ShouldBeEmpty();
     }
 
@@ -270,6 +292,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_MergesIncludedMembersIntoTheTable()
     {
+        // Act
         var schema = Expand(
             $"""
             CREATE SCHEMA billing;
@@ -277,6 +300,7 @@ public sealed class TemplateExpanderTests
             {AuditColumns}
             """);
 
+        // Assert
         var table = Schema(schema, "billing").Tables.ShouldHaveSingleItem();
         table.Columns.Select(c => c.Name).ShouldBe(["id", "created_at", "updated_at"]);
         table.CheckConstraints.ShouldHaveSingleItem().Name.ShouldBe("chk_audit");
@@ -285,6 +309,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_InsertsIncludedColumnsAtTheIncludePosition()
     {
+        // Act
         var schema = Expand(
             $"""
             CREATE SCHEMA billing;
@@ -296,6 +321,7 @@ public sealed class TemplateExpanderTests
             {AuditColumns}
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem()
             .Columns.Select(c => c.Name).ShouldBe(["id", "created_at", "updated_at", "total"]);
     }
@@ -303,6 +329,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_IncludedForeignKeyBindsToTheIncludingTablesSchema()
     {
+        // Arrange
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -315,7 +342,10 @@ public sealed class TemplateExpanderTests
             END;
             """);
 
+        // Act
         var invoices = Schema(schema, "billing").Tables.First(t => t.Name.Value.Equals("invoices"));
+
+        // Assert
         var fk = invoices.ForeignKeys.ShouldHaveSingleItem();
         fk.References.Schema.ShouldBe("billing");
         fk.References.Name.ShouldBe("tenants");
@@ -324,6 +354,7 @@ public sealed class TemplateExpanderTests
     [Fact]
     public void Expand_IncludedPrimaryKey_IsSet()
     {
+        // Act
         var schema = Expand(
             """
             CREATE SCHEMA billing;
@@ -335,6 +366,7 @@ public sealed class TemplateExpanderTests
             END;
             """);
 
+        // Assert
         Schema(schema, "billing").Tables.ShouldHaveSingleItem().PrimaryKey.ShouldNotBeNull().Name.ShouldBe("pk_id");
     }
 

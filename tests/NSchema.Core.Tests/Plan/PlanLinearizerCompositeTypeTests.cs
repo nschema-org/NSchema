@@ -1,14 +1,14 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.CompositeTypes;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.CompositeTypes;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Tables;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.CompositeTypes;
-using NSchema.Plan.Model.Services;
-using NSchema.Plan.Model.Tables;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.CompositeTypes;
+using NSchema.Plan.Domain.Services;
+using NSchema.Plan.Domain.Tables;
 
 namespace NSchema.Tests.Plan;
 
@@ -21,28 +21,29 @@ public sealed class PlanLinearizerCompositeTypeTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> Linearize(CompositeTypeDiff type) =>
-        _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", CompositeTypes: [type])]));
+        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { CompositeTypes = [type] }]));
 
     [Fact]
     public void AddedCompositeType_EmitsCreateCompositeType()
-        => Linearize(new CompositeTypeDiff("app", "address", ChangeKind.Add,
-                Definition: new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] }))
+        => Linearize(CompositeTypeDiff.Added("app", new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] }))
             .ShouldHaveSingleItem().ShouldBeOfType<CreateCompositeType>().CompositeType.Name.ShouldBe("address");
 
     [Fact]
     public void RemovedCompositeType_EmitsDropCompositeType()
-        => Linearize(new CompositeTypeDiff("app", "address", ChangeKind.Remove))
+        => Linearize(CompositeTypeDiff.Removed("app", "address"))
             .ShouldHaveSingleItem().ShouldBeOfType<DropCompositeType>().Type.Name.ShouldBe("address");
 
     [Fact]
     public void FieldChanges_EmitInPlaceFieldActions()
     {
-        var plan = Linearize(new CompositeTypeDiff("app", "address", ChangeKind.Modify, Fields:
-        [
-            new CompositeFieldDiff(ChangeKind.Add, "zip", new CompositeField("zip", SqlType.Int)),
-            new CompositeFieldDiff(ChangeKind.Remove, "old"),
-            new CompositeFieldDiff(ChangeKind.Modify, "street", Type: new ValueChange<SqlType>(SqlType.Text, SqlType.VarChar(255))),
-        ]));
+        var plan = Linearize(CompositeTypeDiff.Modified("app", "address") with
+        {
+            Fields = [
+            CompositeFieldDiff.Added(new CompositeField("zip", SqlType.Int)),
+            CompositeFieldDiff.Removed("old"),
+            CompositeFieldDiff.TypeChanged("street", new ValueChange<SqlType>(SqlType.Text, SqlType.VarChar(255))),
+        ],
+        });
 
         plan.OfType<AddCompositeField>().ShouldHaveSingleItem().Field.Name.ShouldBe("zip");
         plan.OfType<DropCompositeField>().ShouldHaveSingleItem().Field.Member.ShouldBe("old");
@@ -51,25 +52,31 @@ public sealed class PlanLinearizerCompositeTypeTests
 
     [Fact]
     public void RenamedCompositeType_EmitsRenameCompositeType()
-        => Linearize(new CompositeTypeDiff("app", "address", ChangeKind.Modify, RenamedFrom: "legacy_address"))
+        => Linearize(CompositeTypeDiff.Modified("app", "address") with { RenamedFrom = "legacy_address" })
             .OfType<RenameCompositeType>().ShouldHaveSingleItem().NewName.ShouldBe("address");
 
     [Fact]
     public void CommentChange_EmitsSetCompositeTypeComment()
-        => Linearize(new CompositeTypeDiff("app", "address", ChangeKind.Modify, Comment: new ValueChange<string>("old", "new")))
+        => Linearize(CompositeTypeDiff.Modified("app", "address") with { Comment = new ValueChange<string>("old", "new") })
             .OfType<SetCompositeTypeComment>().ShouldHaveSingleItem().NewComment.ShouldBe("new");
 
     [Fact]
     public void CompositeTypeCreate_IsOrderedBeforeCreateTable()
     {
+        // Arrange
         // A column may use the composite type as its type, so the type must be created first.
-        var plan = _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add,
-            Tables: [new TableDiff("app", "t", ChangeKind.Add, Definition: new Table { Name = "t" })],
-            CompositeTypes: [new CompositeTypeDiff("app", "address", ChangeKind.Add,
-                Definition: new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] })])]));
+        var plan = _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Added("app") with
+        {
+            Tables = [TableDiff.Added("app", new Table { Name = "t" })],
+            CompositeTypes = [CompositeTypeDiff.Added("app", new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] })],
+        }]));
 
         var createType = plan.Select((a, i) => (a, i)).Single(x => x.a is CreateCompositeType).i;
+
+        // Act
         var createTable = plan.Select((a, i) => (a, i)).Single(x => x.a is CreateTable).i;
+
+        // Assert
         createType.ShouldBeLessThan(createTable);
     }
 }

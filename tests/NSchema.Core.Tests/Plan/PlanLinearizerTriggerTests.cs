@@ -1,15 +1,15 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
-using NSchema.Diff.Model.Triggers;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Domain.Triggers;
 using NSchema.Model.Columns;
 using NSchema.Model.Routines;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Services;
-using NSchema.Plan.Model.Tables;
-using NSchema.Plan.Model.Triggers;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Services;
+using NSchema.Plan.Domain.Tables;
+using NSchema.Plan.Domain.Triggers;
 
 namespace NSchema.Tests.Plan;
 
@@ -28,11 +28,12 @@ public sealed class PlanLinearizerTriggerTests
     public void CreateTrigger_IsEmittedAfterItsTableIsCreated()
     {
         var trigger = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Function = new RoutineReference("app", "log") };
-        var table = new TableDiff("app", "users", ChangeKind.Add,
-            Triggers: [new TriggerDiff(ChangeKind.Add, "audit", trigger)],
-            Definition: new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] });
+        var table = TableDiff.Added("app", new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }) with
+        {
+            Triggers = [TriggerDiff.Added(trigger)],
+        };
 
-        var actions = _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add, Tables: [table])]));
+        var actions = _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Added("app") with { Tables = [table] }]));
 
         IndexOf<CreateTrigger>(actions).ShouldBeGreaterThan(IndexOf<CreateTable>(actions));
     }
@@ -40,11 +41,10 @@ public sealed class PlanLinearizerTriggerTests
     [Fact]
     public void DropTrigger_IsEmittedBeforeTablesAreDropped()
     {
-        var modified = new TableDiff("app", "users", ChangeKind.Modify,
-            Triggers: [new TriggerDiff(ChangeKind.Remove, "audit")]);
-        var dropped = new TableDiff("app", "legacy", ChangeKind.Remove);
+        var modified = TableDiff.Modified("app", "users") with { Triggers = [TriggerDiff.Removed("audit")] };
+        var dropped = TableDiff.Removed("app", "legacy");
 
-        var actions = _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", Tables: [modified, dropped])]));
+        var actions = _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [modified, dropped] }]));
 
         IndexOf<DropTrigger>(actions).ShouldBeLessThan(IndexOf<DropTable>(actions));
     }
@@ -53,15 +53,15 @@ public sealed class PlanLinearizerTriggerTests
     public void AddedTrigger_WithComment_EmitsCreateThenSetComment()
     {
         var trigger = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Function = new RoutineReference("app", "log"), Comment = "note" };
-        var table = new TableDiff("app", "users", ChangeKind.Add,
-            Triggers:
-            [
-                new TriggerDiff(ChangeKind.Add, "audit", trigger),
-                new TriggerDiff(ChangeKind.Modify, "audit", null, new ValueChange<string>(null, "note")),
+        var table = TableDiff.Added("app", new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }) with
+        {
+            Triggers = [
+                TriggerDiff.Added(trigger),
+                TriggerDiff.CommentChanged("audit", new ValueChange<string>(null, "note")),
             ],
-            Definition: new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] });
+        };
 
-        var actions = _linearizer.Linearize(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add, Tables: [table])]));
+        var actions = _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Added("app") with { Tables = [table] }]));
 
         actions.OfType<CreateTrigger>().ShouldHaveSingleItem().Trigger.Name.ShouldBe("audit");
         actions.OfType<SetTriggerComment>().ShouldHaveSingleItem().NewComment.ShouldBe("note");

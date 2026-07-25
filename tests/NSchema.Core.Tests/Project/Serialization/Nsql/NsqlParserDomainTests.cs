@@ -1,6 +1,6 @@
 using NSchema.Model.Columns;
 using NSchema.Model.Domains;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -17,7 +17,10 @@ public sealed class NsqlParserDomainTests
     [Fact]
     public void Parse_SimpleDomain_CapturesNameAndType()
     {
+        // Act
         var domain = ParseDomain("CREATE DOMAIN app.typeid AS text;");
+
+        // Assert
         domain.Name.ShouldBe("typeid");
         domain.DataType.ShouldBe(SqlType.Text);
         domain.NotNull.ShouldBeFalse();
@@ -44,8 +47,13 @@ public sealed class NsqlParserDomainTests
     [Fact]
     public void Parse_AllClauses_CapturesEachInOrder()
     {
+        // Arrange
         var domain = ParseDomain(
+
+            // Act
             "CREATE DOMAIN app.email AS text NOT NULL CONSTRAINT email_fmt CHECK (VALUE ~ '@') DEFAULT 'x@y';");
+
+        // Assert
         domain.DataType.ShouldBe(SqlType.Text);
         domain.NotNull.ShouldBeTrue();
         domain.Checks.ShouldHaveSingleItem().Name.ShouldBe("email_fmt");

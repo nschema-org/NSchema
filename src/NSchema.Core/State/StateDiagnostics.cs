@@ -10,7 +10,7 @@ internal static class StateDiagnostics
     /// <summary>
     /// Reading or writing state without a configured store.
     /// </summary>
-    public static Diagnostic NotConfigured => Diagnostic.Error(Source, "No state store is configured; register one with UseStateStore or UseFileStateStore.");
+    public static Diagnostic NotConfigured => Diagnostic.Error(Source, "No state store is configured.");
 
     /// <summary>
     /// A stored payload that could not be deserialized.

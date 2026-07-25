@@ -1,4 +1,3 @@
-
 namespace NSchema.Project.Nsql;
 
 /// <summary>

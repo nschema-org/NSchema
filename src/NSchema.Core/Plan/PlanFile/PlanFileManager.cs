@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NSchema.Model.Services;
+using NSchema.Model.Serialization;
 
 namespace NSchema.Plan.PlanFile;
 

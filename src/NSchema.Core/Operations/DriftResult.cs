@@ -1,4 +1,4 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 
 namespace NSchema.Operations;
 

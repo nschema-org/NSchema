@@ -1,4 +1,4 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Tables;
@@ -68,33 +68,42 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_IdentityOptionsChange_IsReported_WhenBothColumnsAreIdentity()
     {
+        // Arrange
         var current = new Column { Name = "id", Type = SqlType.Int, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) };
         var desired = new Column { Name = "id", Type = SqlType.Int, IsIdentity = true, IdentityOptions = new IdentityOptions(100, 1, 1) };
 
+        // Act
         var column = DiffColumn(current, desired);
 
+        // Assert
         column!.Identity.ShouldBe(new ValueChange<IdentityOptions>(new IdentityOptions(1, 1, 1), new IdentityOptions(100, 1, 1)));
     }
 
     [Fact]
     public void Compare_IdentityEnabled_ReportsChangeFromNullToDesiredOptions()
     {
+        // Arrange
         var current = new Column { Name = "id", Type = SqlType.Int };
         var desired = new Column { Name = "id", Type = SqlType.Int, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) };
 
+        // Act
         var column = DiffColumn(current, desired);
 
+        // Assert
         column!.Identity.ShouldBe(new ValueChange<IdentityOptions>(null, new IdentityOptions(1, 1, 1)));
     }
 
     [Fact]
     public void Compare_IdentityDisabled_ReportsChangeFromCurrentOptionsToNull()
     {
+        // Arrange
         var current = new Column { Name = "id", Type = SqlType.Int, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) };
         var desired = new Column { Name = "id", Type = SqlType.Int };
 
+        // Act
         var column = DiffColumn(current, desired);
 
+        // Assert
         column!.Identity.ShouldBe(new ValueChange<IdentityOptions>(new IdentityOptions(1, 1, 1), null));
     }
 

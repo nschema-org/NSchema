@@ -13,9 +13,11 @@ public sealed class StateLockManagerTests
     [Fact]
     public async Task NoLockBackend_SucceedsWithTheNoOpHandle_AndSaysNothing()
     {
+        // Act
         // An offline run has nothing to lock — a no-op handle, no warning.
         var result = await Acquire(stateLock: null, skipLock: false);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldBe(NullStateLockHandle.Instance);
         result.Diagnostics.ShouldBeEmpty();
@@ -24,8 +26,10 @@ public sealed class StateLockManagerTests
     [Fact]
     public async Task SkipLock_SucceedsWithTheNoOpHandleAndAWarning_WithoutAcquiring()
     {
+        // Act
         var result = await Acquire(_stateLock, skipLock: true);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldBe(NullStateLockHandle.Instance);
         result.Diagnostics.ShouldHaveSingleItem().Severity.ShouldBe(DiagnosticSeverity.Warning);
@@ -37,8 +41,10 @@ public sealed class StateLockManagerTests
     [Fact]
     public async Task Acquire_SucceedsWithTheRealHandle()
     {
+        // Act
         var result = await Acquire(_stateLock, skipLock: false);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldNotBe(NullStateLockHandle.Instance);
         result.Diagnostics.ShouldBeEmpty();
@@ -48,12 +54,15 @@ public sealed class StateLockManagerTests
     [Fact]
     public async Task Contention_IsAFailureCarryingTheHolderDetails()
     {
+        // Arrange
         // The lock is already held by another operation — a recoverable, user-facing failure, not a thrown exception.
         _stateLock.OnAcquire = _ => throw new StateLockedException(
             "held", new StateLockInfo("id", "plan", "other@host", DateTimeOffset.UnixEpoch));
 
+        // Act
         var result = await Acquire(_stateLock, skipLock: false);
 
+        // Assert
         result.IsFailure.ShouldBeTrue();
         result.Errors.ShouldHaveSingleItem().Message.ShouldSatisfyAllConditions(
             m => m.ShouldContain("locked by other@host"),
@@ -63,11 +72,14 @@ public sealed class StateLockManagerTests
     [Fact]
     public async Task ReturnedHandle_ReleasesTheLock()
     {
+        // Arrange
         // Release is explicit (the handle is not disposable — a manual lock can outlive the process).
         var handle = (await Acquire(_stateLock, skipLock: false)).Value.ShouldNotBeNull();
 
+        // Act
         await handle.Release(TestContext.Current.CancellationToken);
 
+        // Assert
         _stateLock.Released.ShouldBe(1);
     }
 

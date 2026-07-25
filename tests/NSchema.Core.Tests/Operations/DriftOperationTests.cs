@@ -1,14 +1,14 @@
 using NSchema.Deployment;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.State;
 using NSchema.State.Backends;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Operations;
 
@@ -22,7 +22,7 @@ public sealed class DriftOperationTests
 
     private readonly Database _recorded = new Database { Schemas = [new Schema { Name = "app" }] };
     private readonly Database _live = new Database { Schemas = [new Schema { Name = "app" }, new Schema { Name = "audit" }] };
-    private readonly DatabaseDiff _diff = new([new SchemaDiff("audit", ChangeKind.Add)]);
+    private readonly DatabaseDiff _diff = new([SchemaDiff.Added("audit")]);
 
     private readonly DriftOperation _sut;
 

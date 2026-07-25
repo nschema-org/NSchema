@@ -7,18 +7,18 @@ using Microsoft.Extensions.Logging;
 using NSchema.Apply;
 using NSchema.Deployment;
 using NSchema.Diff.Backends;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain.Services;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain.Services;
 using NSchema.Plan.PlanFile;
 using NSchema.Plan.Policies;
 using NSchema.Project;
 using NSchema.Project.Policies;
 using NSchema.State;
 using NSchema.State.Locks;
-using DatabaseComparer = NSchema.Diff.Model.Services.DatabaseComparer;
+using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 
 namespace NSchema;
 

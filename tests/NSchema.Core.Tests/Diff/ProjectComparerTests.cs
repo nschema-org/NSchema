@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSchema.Diff.Backends;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Services;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Policies;
-using NSchema.Project.Model.Directives;
-using NSchema.State.Model;
-using DatabaseComparer = NSchema.Diff.Model.Services.DatabaseComparer;
+using NSchema.Project.Domain.Directives;
+using NSchema.State.Domain;
+using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 
 namespace NSchema.Tests.Diff;
 

@@ -21,10 +21,13 @@ public sealed class DatabaseProviderTests
     [Fact]
     public async Task GetLive_ReturnsTheLiveDatabase()
     {
+        // Arrange
         var sut = Create(online: new FakeIntrospector());
 
+        // Act
         var result = await sut.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         result.Require().ShouldBe(_liveSchema);
     }
 
@@ -42,10 +45,13 @@ public sealed class DatabaseProviderTests
     [Fact]
     public async Task GetLive_WhenNotConfigured_Fails()
     {
+        // Arrange
         var sut = Create();
 
+        // Act
         var result = await sut.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         result.IsFailure.ShouldBeTrue();
         result.Errors.ShouldHaveSingleItem().Message.ShouldContain("live database provider");
     }
@@ -55,24 +61,30 @@ public sealed class DatabaseProviderTests
     [Fact]
     public async Task UseDatabaseIntrospector_RegistersTheLiveSource()
     {
+        // Arrange
         var builder = NSchemaApplication.CreateBuilder();
         builder.UseDatabaseIntrospector<FakeIntrospector>();
         using var app = builder.Build();
         var provider = app.Services.GetRequiredService<IDatabaseProvider>();
 
+        // Act
         var live = await provider.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         live.Require().ShouldBe(_liveSchema);
     }
 
     [Fact]
     public async Task GetLive_WithoutAnIntrospector_Fails()
     {
+        // Arrange
         using var app = NSchemaApplication.CreateBuilder().Build();
         var provider = app.Services.GetRequiredService<IDatabaseProvider>();
 
+        // Act
         var live = await provider.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);
 
+        // Assert
         live.IsFailure.ShouldBeTrue();
     }
 }

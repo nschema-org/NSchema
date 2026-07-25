@@ -32,7 +32,7 @@ public sealed class View : DatabaseObject, IEquatable<View>
     /// </summary>
     public DatabaseMemberCollection<TableIndex> Indexes
     {
-        get => field ??= new(this);
+        get => field ??= new DatabaseMemberCollection<TableIndex>(this);
         init { value.Attach(this); field = value; }
     }
 

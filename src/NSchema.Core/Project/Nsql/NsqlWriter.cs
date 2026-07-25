@@ -1,8 +1,8 @@
 using System.Text;
 using NSchema.Model;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql.Syntax;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 using NSchema.Project.Nsql.Syntax.Tables;
 using NSchema.Project.Nsql.Syntax.Templates;
 using NSchema.Project.Nsql.Tokens;
@@ -165,7 +165,7 @@ public static class NsqlWriter
     private static string Body(NsqlStatement statement) => statement switch
     {
         CreateTableStatement table => Broken(Header(statement, table.OpenParenToken), RenderMembers(table.Members, table.CloseParenToken)) + NsqlSymbols.Semicolon,
-        BlockStatement block => Broken(Header(statement, block.OpenParenToken), RenderMembers(block.Attributes, block.CloseParenToken)) + NsqlSymbols.Semicolon,
+        SettingsStatement settings => Broken(Header(statement, settings.OpenParenToken), RenderMembers(settings.Settings, settings.CloseParenToken)) + NsqlSymbols.Semicolon,
         SchemaTemplateStatement template => Template(template),
         TableTemplateStatement template => Template(template),
         _ => Verbatim(statement),
@@ -311,9 +311,9 @@ public static class NsqlWriter
                         tokens.Add(token);
                     }
                 }
-                else
+                else if (child.AsNode() is { } childNode)
                 {
-                    Collect(child.AsNode()!);
+                    Collect(childNode);
                 }
             }
         }
@@ -499,7 +499,11 @@ public static class NsqlWriter
     {
         foreach (var child in node.Children)
         {
-            return child.AsToken() ?? FirstToken(child.AsNode()!);
+            if (child.AsToken() is { } token)
+            {
+                return token;
+            }
+            return child.AsNode() is { } childNode ? FirstToken(childNode) : default;
         }
         return default;
     }
@@ -512,7 +516,8 @@ public static class NsqlWriter
         Token last = default;
         foreach (var child in node.Children)
         {
-            last = child.AsToken() ?? LastToken(child.AsNode()!);
+            last = child.AsToken()
+                ?? (child.AsNode() is { } childNode ? LastToken(childNode) : default);
         }
         return last;
     }

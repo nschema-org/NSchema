@@ -1,7 +1,7 @@
 using NSchema.Configuration.Engine;
 using NSchema.Configuration.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 using NSchema.Project.Nsql.Tokens;
 
 namespace NSchema.Configuration;
@@ -17,23 +17,27 @@ internal static class ConfigurationAssembler
     /// <summary>
     /// Validates and resolves <paramref name="documents"/> into the configuration they declare.
     /// </summary>
-    /// <param name="documents">The configuration documents resolved together; only their block statements are bound.</param>
-    public static Result<ConfigurationDefinition, NsqlDiagnostic> Assemble(IReadOnlyList<NsqlDocument> documents)
+    /// <param name="documents">The configuration documents resolved together; only their settings statements are bound.</param>
+    /// <param name="environment">The environment overrides to apply; the process environment when not supplied.</param>
+    public static Result<ConfigurationDefinition, NsqlDiagnostic> Assemble(
+        IReadOnlyList<NsqlDocument> documents,
+        IReadOnlyDictionary<string, string?>? environment = null
+    )
     {
         var diagnostics = new List<NsqlDiagnostic>();
 
         // Roll the statements up by keyword, then resolve each keyword's group against its own rule. Plugins
         // resolve first so a reference declared before its PLUGIN still finds it.
         var byKeyword = documents
-            .SelectMany(document => document.Statements.OfType<BlockStatement>().Select(statement => new Located(statement, document.FilePath)))
+            .SelectMany(document => document.Statements.OfType<SettingsStatement>().Select(statement => new Located(statement, document.FilePath)))
             .ToLookup(located => located.Statement.Keyword);
 
-        var plugins = Plugins(byKeyword[BlockKeyword.Plugin], diagnostics);
+        var plugins = Plugins(byKeyword[SettingsKeyword.Plugin], diagnostics);
         var definition = new ConfigurationDefinition(
             plugins,
-            Sole(byKeyword[BlockKeyword.Engine], NsqlKeywords.Engine, diagnostics)?.Bind<EngineConfiguration>(diagnostics),
-            Reference(byKeyword[BlockKeyword.Database], NsqlKeywords.Database, plugins, diagnostics),
-            Reference(byKeyword[BlockKeyword.State], NsqlKeywords.State, plugins, diagnostics));
+            Sole(byKeyword[SettingsKeyword.Engine], NsqlKeywords.Engine, diagnostics)?.Bind<EngineConfiguration>(diagnostics),
+            Reference(byKeyword[SettingsKeyword.Database], NsqlKeywords.Database, plugins, diagnostics, environment),
+            Reference(byKeyword[SettingsKeyword.State], NsqlKeywords.State, plugins, diagnostics, environment));
 
         return Result<ConfigurationDefinition, NsqlDiagnostic>.From(definition, diagnostics);
     }
@@ -69,7 +73,13 @@ internal static class ConfigurationAssembler
     }
 
     // A provider reference (DATABASE/STATE): at most one, labelled, and resolving to a declared or built-in plugin.
-    private static PluginSettings? Reference(IEnumerable<Located> statements, string keyword, IReadOnlyList<PluginDeclaration> plugins, List<NsqlDiagnostic> diagnostics)
+    private static PluginSettings? Reference(
+        IEnumerable<Located> statements,
+        string keyword,
+        IReadOnlyList<PluginDeclaration> plugins,
+        List<NsqlDiagnostic> diagnostics,
+        IReadOnlyDictionary<string, string?>? environment
+    )
     {
         if (Sole(statements, keyword, diagnostics) is not { } located)
         {
@@ -89,7 +99,7 @@ internal static class ConfigurationAssembler
             return null;
         }
 
-        return located.Statement.ToSettings();
+        return EnvironmentSettings.Overlay(located.Statement.ToSettings(), keyword, environment);
     }
 
     // Enforces at-most-one for a keyword, returning the first and reporting each one beyond it as a duplicate.
@@ -112,7 +122,7 @@ internal static class ConfigurationAssembler
     }
 
     // A parsed statement paired with the file it came from, so the diagnostics it raises can be attributed to it.
-    private sealed record Located(BlockStatement Statement, string? File)
+    private sealed record Located(SettingsStatement Statement, string? File)
     {
         // Binds the statement's attributes to a new T, attributing any binding diagnostics; null when binding fails.
         public T? Bind<T>(List<NsqlDiagnostic> diagnostics) where T : notnull

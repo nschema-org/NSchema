@@ -1,4 +1,4 @@
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 
 namespace NSchema.Plugins;
 
@@ -11,8 +11,15 @@ namespace NSchema.Plugins;
 public interface INSchemaPlugin
 {
     /// <summary>
-    /// Builds the starter configuration block this plugin contributes when a new project is scaffolded.
+    /// The questions to put to the user before scaffolding, in the order they should be asked.
+    /// Empty (the default) scaffolds placeholders instead, which is what a non-interactive run gets.
     /// </summary>
     /// <param name="context">Describes what is being scaffolded (e.g. the target environment).</param>
-    BlockStatement GetScaffoldTemplate(ScaffoldContext context);
+    IReadOnlyList<ScaffoldPrompt> GetScaffoldPrompts(ScaffoldContext context) => [];
+
+    /// <summary>
+    /// Builds the starter configuration statement this plugin contributes when a new project is scaffolded.
+    /// </summary>
+    /// <param name="context">Describes what is being scaffolded: the target environment, and any answers given.</param>
+    SettingsStatement GetScaffoldTemplate(ScaffoldContext context);
 }

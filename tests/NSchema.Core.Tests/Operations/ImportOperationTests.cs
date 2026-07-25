@@ -97,10 +97,13 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_PassesScopeFilterToSource()
     {
+        // Arrange
         var arguments = new ImportArguments { OutputDirectory = _dir, Scope = PlanningScope.To(new SchemaAddress("app"), new SchemaAddress("audit")) };
 
+        // Act
         await Execute(arguments);
 
+        // Assert
         await _database.Received(1).GetDatabase(arguments.Scope, Arg.Any<CancellationToken>());
     }
 
@@ -157,6 +160,7 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_EachFileContainsOnlyItsObject()
     {
+        // Arrange
         Source(RichSchema());
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
@@ -166,8 +170,11 @@ public sealed class ImportOperationTests : IDisposable
         (await ReadSchema(ObjectPath("routines", "calc"))).Schemas.Single().Routines.Single().Name.ShouldBe("calc");
         (await ReadSchema(ObjectPath("routines", "sync"))).Schemas.Single().Routines.Single().Name.ShouldBe("sync");
 
+        // Act
         // An object file carries nothing but its own object.
         var users = (await ReadSchema(ObjectPath("tables", "users"))).Schemas.Single();
+
+        // Assert
         users.Views.ShouldBeEmpty();
         users.Routines.ShouldBeEmpty();
         users.Enums.ShouldBeEmpty();
@@ -177,11 +184,15 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_WritesLeftoverObjectsToPerSchemaHeaderFile()
     {
+        // Arrange
         Source(RichSchema());
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         var header = (await ReadSchema(HeaderPath)).Schemas.Single();
+
+        // Assert
         header.Enums.ShouldHaveSingleItem().Name.ShouldBe("status");
         header.Sequences.ShouldHaveSingleItem().Name.ShouldBe("order_id");
         // The major objects live in their own files, not the header.
@@ -193,13 +204,17 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_AllFilesCombineWithoutDuplicates()
     {
+        // Arrange
         // Loading every emitted file together (as desired-schema providers do) must reconstruct the
         // original schema without tripping the aggregator's duplicate detection.
         Source(RichSchema());
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         var app = (await ReadAll()).Schemas.Single();
+
+        // Assert
         app.Tables.Select(t => t.Name).ShouldBe(["users", "orders"], ignoreOrder: true);
         app.Views.ShouldHaveSingleItem().Name.ShouldBe("active");
         app.Routines.Select(r => r.Name).ShouldBe(["calc", "sync"], ignoreOrder: true);
@@ -262,6 +277,7 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_ReimportReplacesAnObjectInPlace()
     {
+        // Arrange
         Source(new Database
         {
             Schemas = [new Schema { Name = "app",
@@ -276,13 +292,17 @@ public sealed class ImportOperationTests : IDisposable
         });
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         var users = (await ReadSchema(ObjectPath("tables", "users"))).Schemas.Single().Tables.Single(t => t.Name.Value.Equals("users"));
+
+        // Assert
         users.Columns.Select(c => c.Name).ShouldBe(["new_col"]);
     }
 
     [Fact]
     public async Task Execute_ReimportReplacesHeaderObjects()
     {
+        // Arrange
         // The header file holds schema-level objects (enums, sequences, domains); a re-import must replace (not
         // duplicate) them.
         var schema = new Database
@@ -305,7 +325,10 @@ public sealed class ImportOperationTests : IDisposable
         });
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         var header = (await ReadSchema(HeaderPath)).Schemas.Single();
+
+        // Assert
         header.Enums.ShouldHaveSingleItem().Values.ShouldBe(["a", "b"]); // incoming wins
         header.Sequences.ShouldHaveSingleItem().Options.StartWith.ShouldBe(100);
         header.Domains.ShouldHaveSingleItem().DataType.ShouldBe(SqlType.VarChar(64)); // incoming wins, no duplicate
@@ -316,6 +339,7 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_WritesExtensionsToTopLevelFile()
     {
+        // Arrange
         Source(new Database
         {
             Schemas = [new Schema { Name = "app", Tables = [MakeTable("users")] }],
@@ -324,8 +348,11 @@ public sealed class ImportOperationTests : IDisposable
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         // Extensions land in a single top-level file, not under any per-schema directory.
         var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.sql"))).Extensions;
+
+        // Assert
         extensions.Select(e => e.Name).ShouldBe(["citext", "postgis"], ignoreOrder: true);
     }
 
@@ -340,6 +367,7 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_ReimportMergesExtensionsAdditively()
     {
+        // Arrange
         Source(new Database
         {
             Schemas = [new Schema { Name = "app", Tables = [MakeTable("users")] }],
@@ -354,7 +382,10 @@ public sealed class ImportOperationTests : IDisposable
         });
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
+        // Act
         var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.sql"))).Extensions;
+
+        // Assert
         extensions.Select(e => e.Name).ShouldBe(["citext", "postgis"], ignoreOrder: true);
     }
 
@@ -363,6 +394,7 @@ public sealed class ImportOperationTests : IDisposable
     [Fact]
     public async Task Execute_WritesFormatterCanonicalNsql()
     {
+        // Arrange
         // Import output must already be in the formatter's canonical layout, so running `fmt` over an
         // imported file changes nothing. This is the invariant that keeps the two DDL paths from drifting.
         Source(RichSchema());
@@ -371,7 +403,11 @@ public sealed class ImportOperationTests : IDisposable
 
         foreach (var file in Directory.EnumerateFiles(_dir, "*.sql", SearchOption.AllDirectories))
         {
+
+            // Act
             var text = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
+
+            // Assert
             NsqlWriter.Format(text).Warnings.ShouldBeEmpty($"{file} is not formatter-canonical");
         }
     }

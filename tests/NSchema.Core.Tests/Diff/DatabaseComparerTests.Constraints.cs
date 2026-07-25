@@ -1,5 +1,5 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Constraints;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Constraints;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
@@ -22,8 +22,8 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] }, Columns = [new Column { Name = "id", Type = SqlType.Int }] });
 
-        table!.PrimaryKey.ShouldHaveSingleItem().ShouldBe(
-            new PrimaryKeyDiff(ChangeKind.Add, "users_pkey", new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] }));
+        table!.PrimaryKeys.ShouldHaveSingleItem().ShouldBe(
+            PrimaryKeyDiff.Added(new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] }));
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] }, Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] });
 
-        table!.PrimaryKey.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+        table!.PrimaryKeys.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"] }, Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id", "tenant"] }, Columns = [new Column { Name = "id", Type = SqlType.Int }] });
 
-        table!.PrimaryKey.Select(c => c.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add]);
+        table!.PrimaryKeys.Select(c => c.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add]);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"], Comment = "old" }, Columns = [new Column { Name = "id", Type = SqlType.Int }] },
             new Table { Name = "users", PrimaryKey = new PrimaryKey { Name = "users_pkey", ColumnNames = ["id"], Comment = "new" }, Columns = [new Column { Name = "id", Type = SqlType.Int }] });
 
-        var pk = table!.PrimaryKey.ShouldHaveSingleItem();
+        var pk = table!.PrimaryKeys.ShouldHaveSingleItem();
         pk.Kind.ShouldBe(ChangeKind.Modify);
         pk.Comment.ShouldBe(new ValueChange<string>("old", "new"));
     }
@@ -65,7 +65,7 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ForeignKeyRemoved_EmitsRemoveConstraint()
     {
-        var fk = new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"] };
+        var fk = new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] };
         var table = DiffTable(
             new Table { Name = "orders", Columns = [new Column { Name = "user_id", Type = SqlType.Int }], ForeignKeys = [fk] },
             new Table { Name = "orders", Columns = [new Column { Name = "user_id", Type = SqlType.Int }] });
@@ -81,13 +81,13 @@ public partial class DatabaseComparerTests
             {
                 Name = "orders",
                 Columns = [new Column { Name = "user_id", Type = SqlType.Int }],
-                ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"] }],
+                ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] }],
             },
             new Table
             {
                 Name = "orders",
                 Columns = [new Column { Name = "user_id", Type = SqlType.Int }],
-                ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new("app", "users"), ReferencedColumnNames = ["id"], OnDelete = ReferentialAction.Cascade }],
+                ForeignKeys = [new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"], OnDelete = ReferentialAction.Cascade }],
             });
 
         table!.ForeignKeys.Select(c => c.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add]);
@@ -110,7 +110,7 @@ public partial class DatabaseComparerTests
             });
 
         table!.UniqueConstraints.ShouldHaveSingleItem().ShouldBe(
-            new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }));
+            UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }));
     }
 
     [Fact]
@@ -176,6 +176,7 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_NewUniqueConstraintWithComment_FoldsCommentAsModify()
     {
+        // Arrange
         var table = DiffTable(
             new Table { Name = "users", Columns = [new Column { Name = "email", Type = SqlType.Text }] },
             new Table
@@ -185,7 +186,10 @@ public partial class DatabaseComparerTests
                 UniqueConstraints = [new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"], Comment = "lookup" }],
             });
 
+        // Act
         table!.UniqueConstraints.Select(c => (c.Kind, c.Comment?.New))
+
+        // Assert
             .ShouldBe([(ChangeKind.Add, null), (ChangeKind.Modify, "lookup")]);
     }
 
@@ -226,7 +230,7 @@ public partial class DatabaseComparerTests
             });
 
         table!.Checks.ShouldHaveSingleItem().ShouldBe(
-            new CheckConstraintDiff(ChangeKind.Add, "users_age_chk", new CheckConstraint { Name = "users_age_chk", Expression = "age >= 0" }));
+            CheckConstraintDiff.Added(new CheckConstraint { Name = "users_age_chk", Expression = "age >= 0" }));
     }
 
     [Fact]
@@ -326,9 +330,9 @@ public partial class DatabaseComparerTests
 
         table.Kind.ShouldBe(ChangeKind.Add);
         table.UniqueConstraints.ShouldHaveSingleItem().ShouldBe(
-            new UniqueConstraintDiff(ChangeKind.Add, "users_email_uq", new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }));
+            UniqueConstraintDiff.Added(new UniqueConstraint { Name = "users_email_uq", ColumnNames = ["email"] }));
         table.Checks.ShouldHaveSingleItem().ShouldBe(
-            new CheckConstraintDiff(ChangeKind.Add, "users_age_chk", new CheckConstraint { Name = "users_age_chk", Expression = "age >= 0" }));
+            CheckConstraintDiff.Added(new CheckConstraint { Name = "users_age_chk", Expression = "age >= 0" }));
     }
 
     // -------------------------------------------------------------------------
@@ -410,8 +414,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ExclusionAdded_EmitsAdd()
     {
+        // Act
         var table = DiffTable(Bookings(), Bookings(NoOverlap()));
 
+        // Assert
         var exclusion = table!.ExclusionConstraints.ShouldHaveSingleItem();
         exclusion.Kind.ShouldBe(ChangeKind.Add);
         exclusion.Definition!.Method.ShouldBe("gist");
@@ -434,7 +440,10 @@ public partial class DatabaseComparerTests
     [Fact]
     public void Compare_ExclusionCommentOnlyChange_EmitsModify()
     {
+        // Act
         var exclusion = DiffTable(Bookings(NoOverlap(comment: "old")), Bookings(NoOverlap(comment: "new")))!
+
+        // Assert
             .ExclusionConstraints.ShouldHaveSingleItem();
         exclusion.Kind.ShouldBe(ChangeKind.Modify);
         exclusion.Comment.ShouldBe(new ValueChange<string>("old", "new"));

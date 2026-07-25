@@ -1,6 +1,6 @@
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 
 namespace NSchema.Configuration.Plugins;
 
@@ -34,7 +34,7 @@ public static class LockFileManager
 
         if (document.Value is { } value)
         {
-            foreach (var statement in value.Statements.OfType<BlockStatement>())
+            foreach (var statement in value.Statements.OfType<SettingsStatement>())
             {
                 var result = statement.ToSettings().Get<LockedPlugin>(ignoreUnknown: true);
                 diagnostics.AddRange(result.Diagnostics);
@@ -58,14 +58,14 @@ public static class LockFileManager
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     public static async Task<Result> Write(string path, LockFile lockFile, CancellationToken cancellationToken = default)
     {
-        // Build a LOCK block per pin and let the writer render them, so the lockfile takes the same one path to
+        // Build a LOCK statement per pin and let the writer render them, so the lockfile takes the same one path to
         // canonical source as everything else.
         var document = new NsqlDocument(lockFile.Plugins
-            .Select(NsqlStatement (plugin) => new BlockStatement(BlockKeyword.Lock, Label: null,
-                new SeparatedSyntaxList<BlockAttribute>(
+            .Select(NsqlStatement (plugin) => new SettingsStatement(SettingsKeyword.Lock, Label: null,
+                new SeparatedSyntaxList<Setting>(
                 [
-                    new BlockAttribute("source", plugin.Source.ToString()),
-                    new BlockAttribute("version", plugin.Version.ToString()),
+                    new Setting("source", plugin.Source.ToString()),
+                    new Setting("version", plugin.Version.ToString()),
                 ])))
             .ToList());
         var text = Header + "\n" + NsqlWriter.Write(document);

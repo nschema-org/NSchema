@@ -16,7 +16,10 @@ public sealed class NsqlParserExclusionConstraintTests
     [Fact]
     public void Parse_SimpleExclusion_CapturesElementsAndMethod()
     {
+        // Act
         var exclusion = ParseExclusion("CONSTRAINT no_overlap EXCLUDE USING gist (room WITH =, during WITH &&)");
+
+        // Assert
         exclusion.Name.ShouldBe("no_overlap");
         exclusion.Method.ShouldBe("gist");
         exclusion.Elements.Count.ShouldBe(2);
@@ -38,7 +41,10 @@ public sealed class NsqlParserExclusionConstraintTests
     [Fact]
     public void Parse_ExpressionElement_IsCaptured()
     {
+        // Act
         var element = ParseExclusion("CONSTRAINT x EXCLUDE USING gist ((int4range(room, during)) WITH &&)")
+
+        // Assert
             .Elements.ShouldHaveSingleItem();
         element.Column.ShouldBeNull();
         element.Expression.ShouldBe("int4range(room, during)");

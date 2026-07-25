@@ -1,10 +1,10 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Extensions;
-using NSchema.Diff.Model.Schemas;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Schemas;
 using NSchema.Model.Extensions;
-using NSchema.Plan.Model.Extensions;
-using NSchema.Plan.Model.Schemas;
-using NSchema.Plan.Model.Services;
+using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Services;
 
 namespace NSchema.Tests.Plan;
 
@@ -22,24 +22,34 @@ public sealed class PlanLinearizerExtensionTests
     [Fact]
     public void CreateExtension_IsEmittedBeforeSchemaCreation()
     {
+        // Arrange
         var actions = _linearizer.Linearize(Diff(
-            [new ExtensionDiff("citext", ChangeKind.Add, Definition: new Extension { Name = "citext" })],
-            new SchemaDiff("app", ChangeKind.Add)));
+            [ExtensionDiff.Added(new Extension { Name = "citext" })],
+            SchemaDiff.Added("app")));
 
         var createExtension = actions.Select((a, i) => (a, i)).Single(x => x.a is CreateExtension).i;
+
+        // Act
         var createSchema = actions.Select((a, i) => (a, i)).Single(x => x.a is CreateSchema).i;
+
+        // Assert
         createExtension.ShouldBeLessThan(createSchema);
     }
 
     [Fact]
     public void DropExtension_IsEmittedAfterSchemaDrop()
     {
+        // Arrange
         var actions = _linearizer.Linearize(Diff(
-            [new ExtensionDiff("citext", ChangeKind.Remove)],
-            new SchemaDiff("app", ChangeKind.Remove)));
+            [ExtensionDiff.Removed("citext")],
+            SchemaDiff.Removed("app")));
 
         var dropExtension = actions.Select((a, i) => (a, i)).Single(x => x.a is DropExtension).i;
+
+        // Act
         var dropSchema = actions.Select((a, i) => (a, i)).Single(x => x.a is DropSchema).i;
+
+        // Assert
         dropExtension.ShouldBeGreaterThan(dropSchema);
     }
 
@@ -47,8 +57,7 @@ public sealed class PlanLinearizerExtensionTests
     public void AddedExtension_WithComment_EmitsCreateThenSetComment()
     {
         var actions = _linearizer.Linearize(Diff(
-            [new ExtensionDiff("postgis", ChangeKind.Add, Definition: new Extension { Name = "postgis", Comment = "gis" },
-                Comment: new ValueChange<string>(null, "gis"))]));
+            [ExtensionDiff.Added(new Extension { Name = "postgis", Comment = "gis" }) with { Comment = new ValueChange<string>(null, "gis") }]));
 
         actions.OfType<CreateExtension>().ShouldHaveSingleItem().Extension.Name.ShouldBe("postgis");
         actions.OfType<SetExtensionComment>().ShouldHaveSingleItem().NewComment.ShouldBe("gis");
@@ -58,7 +67,7 @@ public sealed class PlanLinearizerExtensionTests
     public void ModifiedExtension_VersionChange_EmitsAlterExtension()
     {
         var actions = _linearizer.Linearize(Diff(
-            [new ExtensionDiff("postgis", ChangeKind.Modify, Version: new ValueChange<string>("3.3", "3.4"))]));
+            [ExtensionDiff.Modified("postgis") with { Version = new ValueChange<string>("3.3", "3.4") }]));
 
         var alter = actions.OfType<AlterExtension>().ShouldHaveSingleItem();
         alter.OldVersion.ShouldBe("3.3");

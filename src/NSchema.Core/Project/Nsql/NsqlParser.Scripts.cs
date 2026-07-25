@@ -187,7 +187,7 @@ internal sealed partial class NsqlParser
                 var key = ExpectIdentifierNode($"a {what} option name").Value;
                 Expect(TokenKind.Equals, "'=' after an option name");
                 var valuePosition = _current.Position;
-                var value = ParseBlockValue();
+                var value = ParseSettingValue();
                 switch (key.ToLowerInvariant())
                 {
                     case "run_outside_transaction":

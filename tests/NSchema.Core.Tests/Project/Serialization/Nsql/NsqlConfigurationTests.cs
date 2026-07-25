@@ -1,25 +1,26 @@
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
 
 /// <summary>
-/// Reading a configuration file: it parses to blocks carrying their labels and attributes, and the
+/// Reading a configuration file: it parses to blocks carrying their labels and settings, and the
 /// configuration and project grammars never mix in one file. Binding into the configuration domain is the
 /// assembler's job, covered by its own tests.
 /// </summary>
 public sealed class NsqlConfigurationTests
 {
-    private static IReadOnlyList<BlockStatement> Read(string source)
+    private static IReadOnlyList<SettingsStatement> Read(string source)
     {
         var result = NsqlReader.Read(source);
         result.IsSuccess.ShouldBeTrue();
-        return [.. result.Value.Statements.OfType<BlockStatement>()];
+        return [.. result.Value.Statements.OfType<SettingsStatement>()];
     }
 
     [Fact]
     public void ReadConfiguration_UnlabelledStatement_ParsesTypeAndAttributes()
     {
+        // Act
         var statement = Read(
             """
             STATE (
@@ -28,10 +29,11 @@ public sealed class NsqlConfigurationTests
             );
             """).ShouldHaveSingleItem();
 
-        statement.Keyword.ShouldBe(BlockKeyword.State);
+        // Assert
+        statement.Keyword.ShouldBe(SettingsKeyword.State);
         statement.Label.ShouldBeNull();
-        statement.Attributes.Select(a => a.Key).ShouldBe(["dialect", "transaction_mode"]);
-        statement.Attributes[0].Value.ShouldBe("postgres");
+        statement.Settings.Select(a => a.Key).ShouldBe(["dialect", "transaction_mode"]);
+        statement.Settings[0].Value.ShouldBe("postgres");
     }
 
     [Fact]
@@ -39,18 +41,19 @@ public sealed class NsqlConfigurationTests
     {
         var statement = Read("STATE file ( path = 'state/app.nsstate' );").ShouldHaveSingleItem();
 
-        statement.Keyword.ShouldBe(BlockKeyword.State);
+        statement.Keyword.ShouldBe(SettingsKeyword.State);
         statement.Label!.Value.ShouldBe("file");
     }
 
     [Fact]
     public void ReadConfiguration_KeywordIsCaseInsensitive()
-        => Read("Database postgres ( x = 1 );").ShouldHaveSingleItem().Keyword.ShouldBe(BlockKeyword.Database);
+        => Read("Database postgres ( x = 1 );").ShouldHaveSingleItem().Keyword.ShouldBe(SettingsKeyword.Database);
 
     [Fact]
     public void ReadConfiguration_ParsesAllValueKinds()
     {
-        var attributes = Read(
+        // Act
+        var settings = Read(
             """
             DATABASE postgres (
               schema_search_path = 'app',
@@ -60,27 +63,29 @@ public sealed class NsqlConfigurationTests
               ssl = false,
               transaction_mode = single
             );
-            """).Single().Attributes;
+            """).Single().Settings;
 
-        attributes.Single(a => a.Key == "schema_search_path").Value.ShouldBe("app");
-        attributes.Single(a => a.Key == "connection_timeout").Value.ShouldBe("1000");
-        attributes.Single(a => a.Key == "statement_cache").Value.ShouldBe("-1");
-        attributes.Single(a => a.Key == "prefer_simple").Value.ShouldBe("true");
-        attributes.Single(a => a.Key == "ssl").Value.ShouldBe("false");
-        attributes.Single(a => a.Key == "transaction_mode").Value.ShouldBe("single");
+        // Assert
+        settings.Single(a => a.Key == "schema_search_path").Value.ShouldBe("app");
+        settings.Single(a => a.Key == "connection_timeout").Value.ShouldBe("1000");
+        settings.Single(a => a.Key == "statement_cache").Value.ShouldBe("-1");
+        settings.Single(a => a.Key == "prefer_simple").Value.ShouldBe("true");
+        settings.Single(a => a.Key == "ssl").Value.ShouldBe("false");
+        settings.Single(a => a.Key == "transaction_mode").Value.ShouldBe("single");
     }
 
     [Fact]
     public void ReadConfiguration_DottedKey_IsPreservedVerbatim()
-        => Read("DATABASE postgres ( pool.max = 10 );").Single().Attributes.ShouldHaveSingleItem().Key.ShouldBe("pool.max");
+        => Read("DATABASE postgres ( pool.max = 10 );").Single().Settings.ShouldHaveSingleItem().Key.ShouldBe("pool.max");
 
     [Fact]
     public void ReadConfiguration_EmptyAttributeList_IsAllowed()
-        => Read("STATE ();").ShouldHaveSingleItem().Attributes.ShouldBeEmpty();
+        => Read("STATE ();").ShouldHaveSingleItem().Settings.ShouldBeEmpty();
 
     [Fact]
     public void ReadConfiguration_MultipleStatements_KeepDeclarationOrder()
     {
+        // Act
         var statements = Read(
             """
             STATE file ( path = 'state/app.nsstate' );
@@ -88,7 +93,8 @@ public sealed class NsqlConfigurationTests
             STATE s3 ( bucket = 'state' );
             """);
 
-        statements.Select(s => s.Keyword).ShouldBe([BlockKeyword.State, BlockKeyword.Database, BlockKeyword.State]);
+        // Assert
+        statements.Select(s => s.Keyword).ShouldBe([SettingsKeyword.State, SettingsKeyword.Database, SettingsKeyword.State]);
     }
 
     [Fact]
@@ -108,12 +114,15 @@ public sealed class NsqlConfigurationTests
     [Fact]
     public void ReadConfiguration_PluginStatement_Parses()
     {
+        // Act
         var statement = Read("PLUGIN pg ( source = 'NSchema.Postgres', version = '5.0.1' );")
+
+        // Assert
             .ShouldHaveSingleItem();
 
-        statement.Keyword.ShouldBe(BlockKeyword.Plugin);
+        statement.Keyword.ShouldBe(SettingsKeyword.Plugin);
         statement.Label!.Value.ShouldBe("pg");
-        statement.Attributes.Select(a => a.Key).ShouldBe(["source", "version"]);
+        statement.Settings.Select(a => a.Key).ShouldBe(["source", "version"]);
     }
 
     [Fact]
@@ -130,9 +139,9 @@ public sealed class NsqlConfigurationTests
     {
         var statement = Read("ENGINE ( version = '[5.0,6.0)' );").ShouldHaveSingleItem();
 
-        statement.Keyword.ShouldBe(BlockKeyword.Engine);
+        statement.Keyword.ShouldBe(SettingsKeyword.Engine);
         statement.Label.ShouldBeNull();
-        statement.Attributes.ShouldHaveSingleItem().Key.ShouldBe("version");
+        statement.Settings.ShouldHaveSingleItem().Key.ShouldBe("version");
     }
 
     [Fact]

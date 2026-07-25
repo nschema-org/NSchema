@@ -70,7 +70,7 @@ public sealed record IdentitySet(
     /// <summary>
     /// The subset of identities the scope covers.
     /// </summary>
-    public IdentitySet CoveredBy(PlanningScope scope) => scope.IsUnscoped ? this : new(
+    public IdentitySet CoveredBy(PlanningScope scope) => scope.IsUnscoped ? this : new IdentitySet(
         [.. Schemas.Where(scope.Contains)],
         [.. Objects.Where(scope.Contains)],
         Extensions

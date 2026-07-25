@@ -49,14 +49,14 @@ public sealed class NSchemaApplication : IDisposable
     public IStateLockManager Locks => _locks.Value;
 
     /// <summary>
-    /// Reads the current schema, the recorded (offline) state or the live (online) database.
+    /// Reads the live database.
     /// </summary>
     public IDatabaseProvider Database => _database.Value;
 
     /// <summary>
-    /// Reads the desired project declared by the DDL.
+    /// Reads the project declared by the DDL.
     /// </summary>
-    public IProjectProvider ProjectDefinition => _project.Value;
+    public IProjectProvider Project => _project.Value;
 
     /// <summary>
     /// Reads and writes saved plan files.

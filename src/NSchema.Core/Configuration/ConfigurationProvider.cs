@@ -1,8 +1,9 @@
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Engine;
-using NSchema.Configuration.Model;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
+
 namespace NSchema.Configuration;
 
 /// <summary>
@@ -82,9 +83,9 @@ public static class ConfigurationProvider
     // store cleanly); every other statement from both layers carries through.
     private static List<NsqlDocument> Merge(IReadOnlyList<NsqlDocument> lower, IReadOnlyList<NsqlDocument> higher)
     {
-        var replaceDatabase = higher.Any(d => d.Statements.OfType<BlockStatement>().Any(s => s.Keyword == BlockKeyword.Database));
-        var replaceState = higher.Any(d => d.Statements.OfType<BlockStatement>().Any(s => s.Keyword == BlockKeyword.State));
-        var replaceEngine = higher.Any(d => d.Statements.OfType<BlockStatement>().Any(s => s.Keyword == BlockKeyword.Engine));
+        var replaceDatabase = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.Database));
+        var replaceState = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.State));
+        var replaceEngine = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.Engine));
 
         var kept = lower
             .Select(document => document with { Statements = [.. document.Statements.Where(Keep)] })
@@ -92,11 +93,11 @@ public static class ConfigurationProvider
 
         return [.. kept, .. higher];
 
-        bool Keep(NsqlStatement statement) => statement is not BlockStatement block || block.Keyword switch
+        bool Keep(NsqlStatement statement) => statement is not SettingsStatement settings || settings.Keyword switch
         {
-            BlockKeyword.Database => !replaceDatabase,
-            BlockKeyword.State => !replaceState,
-            BlockKeyword.Engine => !replaceEngine,
+            SettingsKeyword.Database => !replaceDatabase,
+            SettingsKeyword.State => !replaceState,
+            SettingsKeyword.Engine => !replaceEngine,
             _ => true,
         };
     }

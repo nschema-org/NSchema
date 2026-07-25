@@ -21,7 +21,7 @@ public interface INSchemaOperations
     Task<Result<RefreshResult>> Refresh(RefreshArguments args, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Loads the desired schema and validates it against the configured schema policies.
+    /// Loads the project and validates it against the configured project policies.
     /// </summary>
     Task<Result<ValidateResult>> Validate(ValidateArguments args, CancellationToken cancellationToken = default);
 
@@ -31,7 +31,7 @@ public interface INSchemaOperations
     Task<Result<DriftResult>> Drift(DriftArguments args, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads the live database schema and writes it as desired-schema source files.
+    /// Reads the live database schema and writes it as project source files.
     /// </summary>
     Task<Result<ImportResult>> Import(ImportArguments args, CancellationToken cancellationToken = default);
 

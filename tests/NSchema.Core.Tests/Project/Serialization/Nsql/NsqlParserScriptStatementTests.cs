@@ -1,5 +1,5 @@
 using NSchema.Model.Scripts;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -23,7 +23,10 @@ public sealed class NsqlParserScriptStatementTests
     [Fact]
     public void Parse_PreDeploymentEvent_ProducesAScript()
     {
+        // Act
         var script = Read("SCRIPT enable_citext RUN ON PRE DEPLOYMENT AS $$ CREATE EXTENSION IF NOT EXISTS citext; $$;")
+
+        // Assert
             .Directives.DeploymentScripts.ShouldHaveSingleItem();
 
         script.Name.ShouldBe("enable_citext");
@@ -59,7 +62,10 @@ public sealed class NsqlParserScriptStatementTests
     [Fact]
     public void Parse_AddColumnEvent_ProducesADataMigration()
     {
+        // Act
         var migration = Migrations(Read("SCRIPT backfill_emails RUN ON ADD COLUMN app.users.email AS $$ UPDATE app.users SET email = ''; $$;"))
+
+        // Assert
             .ShouldHaveSingleItem();
 
         migration.Name.ShouldBe("backfill_emails");
@@ -131,6 +137,7 @@ public sealed class NsqlParserScriptStatementTests
     [Fact]
     public void Parse_ChangeEventScriptInTemplate_BindsTheSchemaPerApplication()
     {
+        // Arrange
         var read = NsqlReader.Read(
             """
             CREATE SCHEMA billing;
@@ -146,7 +153,10 @@ public sealed class NsqlParserScriptStatementTests
         var assembled = NSchema.Project.ProjectAssembler.Assemble([read.Value]);
         assembled.IsSuccess.ShouldBeTrue();
 
+        // Act
         var changes = assembled.Value.AllScripts().OfType<ChangeScript>().ToList();
+
+        // Assert
         changes.Select(c => c.ScopeSchema!.Value).ShouldBe(["billing", "ordering"]);
         changes.ShouldAllBe(c => c.Target.Table == "outbox_events");
         changes.ShouldAllBe(c => c.Target.Member == "trace_id");
@@ -155,6 +165,7 @@ public sealed class NsqlParserScriptStatementTests
     [Fact]
     public void Parse_DeploymentScriptInTemplate_InstantiatesPerAppliedSchema()
     {
+        // Arrange
         var read = NsqlReader.Read(
             """
             CREATE SCHEMA app;
@@ -172,7 +183,11 @@ public sealed class NsqlParserScriptStatementTests
         var script = assembled.Value.AllScripts().ShouldHaveSingleItem();
         script.Name.ShouldBe("seed");
         script.Sql.Value.ShouldContain("INSERT INTO app.outbox_events");
+
+        // Act
         var deployment = script.ShouldBeOfType<DeploymentScript>();
+
+        // Assert
         deployment.Phase.ShouldBe(DeploymentPhase.Post);
         deployment.ScopeSchema.ShouldBe("app");
         deployment.RunCondition.ShouldBe(RunCondition.Once);

@@ -7,7 +7,7 @@ using NSchema.Project.Nsql;
 namespace NSchema.Operations;
 
 /// <summary>
-/// Reads the live schema and writes it out as desired-schema DDL source files, merging additively into any files that
+/// Reads the live schema and writes it out as project DDL source files, merging additively into any files that
 /// already exist.
 /// </summary>
 internal sealed class ImportOperation(IDatabaseProvider database, IProgress<OperationProgress> progress)

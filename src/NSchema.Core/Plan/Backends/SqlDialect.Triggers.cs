@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Triggers;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Triggers;
 
 namespace NSchema.Plan.Backends;
 

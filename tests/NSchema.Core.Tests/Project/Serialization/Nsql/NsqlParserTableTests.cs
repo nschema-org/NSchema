@@ -21,7 +21,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Column_NotNull_IsNotNullable()
     {
+        // Act
         var column = Column("id int NOT NULL");
+
+        // Assert
         column.Name.ShouldBe("id");
         column.Type.ShouldBe(SqlType.Int);
         column.IsNullable.ShouldBeFalse();
@@ -40,7 +43,10 @@ public sealed class NsqlParserTableTests
     [InlineData("code char(8)", "char", 8)]
     public void Column_ParameterisedType_CapturesLength(string body, string name, int length)
     {
+        // Act
         var type = Column(body).Type;
+
+        // Assert
         type.Name.ShouldBe(name);
         type.Length.ShouldBe(length);
     }
@@ -64,7 +70,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Column_SchemaQualifiedType_WithConstraint_Parses()
     {
+        // Act
         var column = Column("state app.status NOT NULL");
+
+        // Assert
         column.Type.ShouldBe(SqlType.Custom("app", "status"));
         column.IsNullable.ShouldBeFalse();
     }
@@ -85,7 +94,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Column_BareIdentity_SetsIdentityWithoutOptions()
     {
+        // Act
         var column = Column("id bigint IDENTITY");
+
+        // Assert
         column.IsIdentity.ShouldBeTrue();
         column.IdentityOptions.ShouldBeNull();
     }
@@ -93,7 +105,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Column_IdentityWithOptions_CapturesThem()
     {
+        // Act
         var column = Column("id bigint IDENTITY (START 1, INCREMENT 2, MINVALUE 0)");
+
+        // Assert
         column.IsIdentity.ShouldBeTrue();
         column.IdentityOptions.ShouldBe(new IdentityOptions(StartWith: 1, MinValue: 0, IncrementBy: 2));
     }
@@ -109,7 +124,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Constraint_PrimaryKey_IsCaptured()
     {
+        // Act
         var pk = ParseTable("id int NOT NULL, CONSTRAINT users_pkey PRIMARY KEY (id)").PrimaryKey;
+
+        // Assert
         pk.ShouldNotBeNull();
         pk!.Name.ShouldBe("users_pkey");
         pk.ColumnNames.ShouldBe(["id"]);
@@ -127,9 +145,14 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Constraint_ForeignKey_CapturesReferenceAndActions()
     {
+        // Arrange
         var fk = ParseTable(
             "user_id int, CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES app.users (id) ON DELETE CASCADE ON UPDATE SET NULL")
+
+            // Act
             .ForeignKeys.Single();
+
+        // Assert
         fk.Name.ShouldBe("fk_user");
         fk.ColumnNames.ShouldBe(["user_id"]);
         fk.References.Schema.ShouldBe("app");
@@ -142,7 +165,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Constraint_ForeignKeyWithoutActions_DefaultsToNoAction()
     {
+        // Act
         var fk = ParseTable("user_id int, CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES app.users (id)").ForeignKeys.Single();
+
+        // Assert
         fk.OnDelete.ShouldBe(ReferentialAction.NoAction);
         fk.OnUpdate.ShouldBe(ReferentialAction.NoAction);
     }
@@ -155,7 +181,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Constraint_Unique_IsCaptured()
     {
+        // Act
         var unique = ParseTable("email text, CONSTRAINT users_email_uq UNIQUE (email)").UniqueConstraints.Single();
+
+        // Assert
         unique.Name.ShouldBe("users_email_uq");
         unique.ColumnNames.ShouldBe(["email"]);
     }
@@ -163,7 +192,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Constraint_Check_CapturesOpaqueExpression()
     {
+        // Act
         var check = ParseTable("age int, CONSTRAINT users_age_chk CHECK (age >= 0 AND age < 150)").CheckConstraints.Single();
+
+        // Assert
         check.Name.ShouldBe("users_age_chk");
         check.Expression.ShouldBe("age >= 0 AND age < 150");
     }
@@ -180,7 +212,10 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Index_Plain_IsCaptured()
     {
+        // Act
         var index = ParseTable("email text, INDEX ix_email (email)").Indexes.Single();
+
+        // Assert
         index.Name.ShouldBe("ix_email");
         index.Columns.Select(c => c.Column?.Value).ShouldBe(["email"]);
         index.IsUnique.ShouldBeFalse();
@@ -202,12 +237,17 @@ public sealed class NsqlParserTableTests
     [Fact]
     public void Grant_TablePrivileges_AttachToTable()
     {
+        // Arrange
         var schema = new TestNsqlParser(
             """
             CREATE TABLE app.users (id int);
             GRANT SELECT, INSERT ON app.users TO readers;
             """).Parse().Database.Schemas.Single();
+
+        // Act
         var grant = schema.Tables.Single().Grants.Single();
+
+        // Assert
         grant.Role.ShouldBe("readers");
         grant.Privileges.ShouldBe(TablePrivilege.Select | TablePrivilege.Insert);
     }

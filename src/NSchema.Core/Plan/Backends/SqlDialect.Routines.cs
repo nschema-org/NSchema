@@ -1,5 +1,5 @@
-using NSchema.Plan.Model;
-using NSchema.Plan.Model.Routines;
+using NSchema.Plan.Domain;
+using NSchema.Plan.Domain.Routines;
 
 namespace NSchema.Plan.Backends;
 

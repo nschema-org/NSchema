@@ -20,10 +20,14 @@ public sealed class NsqlParserTriggerTests
     [Fact]
     public void Parse_FullTrigger_CapturesEveryClause()
     {
+        // Arrange
         var trigger = ParseTrigger(
             "CREATE TRIGGER audit AFTER INSERT OR UPDATE OF (email) ON app.users " +
+
+            // Act
             "FOR EACH ROW WHEN (new.email IS NOT NULL) EXECUTE FUNCTION app.log_change();");
 
+        // Assert
         trigger.Name.ShouldBe("audit");
         trigger.Timing.ShouldBe(TriggerTiming.After);
         trigger.Events.ShouldBe(TriggerEvent.Insert | TriggerEvent.Update);
@@ -67,10 +71,14 @@ public sealed class NsqlParserTriggerTests
     [Fact]
     public void Parse_InlineBody_CapturesBodyVerbatim()
     {
+        // Arrange
         // The SQL Server form: an inline dollar-quoted body (which may contain its own ';') instead of EXECUTE FUNCTION.
         var trigger = ParseTrigger(
+
+            // Act
             "CREATE TRIGGER audit AFTER INSERT OR DELETE ON app.users AS $$\nBEGIN\n  INSERT INTO app.log VALUES (1);\nEND\n$$;");
 
+        // Assert
         trigger.Name.ShouldBe("audit");
         trigger.Timing.ShouldBe(TriggerTiming.After);
         trigger.Events.ShouldBe(TriggerEvent.Insert | TriggerEvent.Delete);

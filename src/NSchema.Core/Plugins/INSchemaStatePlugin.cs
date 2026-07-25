@@ -11,6 +11,6 @@ public interface INSchemaStatePlugin : INSchemaPlugin
     /// Registers this backend onto the application being built.
     /// </summary>
     /// <param name="builder">The application builder to register the backend's services on.</param>
-    /// <param name="settings">The block's bound settings.</param>
+    /// <param name="settings">The statement's bound settings.</param>
     Result Configure(NSchemaApplicationBuilder builder, PluginSettings settings);
 }

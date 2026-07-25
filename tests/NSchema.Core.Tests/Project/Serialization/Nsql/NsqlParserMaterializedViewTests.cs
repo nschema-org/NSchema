@@ -1,5 +1,5 @@
 using NSchema.Model.Views;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
 
@@ -16,7 +16,10 @@ public sealed class NsqlParserMaterializedViewTests
     [Fact]
     public void Parse_MaterializedView_SetsFlag()
     {
+        // Act
         var view = ParseView("CREATE MATERIALIZED VIEW app.daily AS SELECT 1;");
+
+        // Assert
         view.Name.ShouldBe("daily");
         view.IsMaterialized.ShouldBeTrue();
         view.Body.ShouldBe("SELECT 1");
@@ -29,8 +32,13 @@ public sealed class NsqlParserMaterializedViewTests
     [Fact]
     public void Parse_StandaloneIndexOnMaterializedView_Attaches()
     {
+        // Arrange
         var view = ParseView(
+
+            // Act
             "CREATE MATERIALIZED VIEW app.daily AS SELECT date FROM app.t; CREATE INDEX daily_ix ON app.daily (date);");
+
+        // Assert
         var index = view.Indexes.ShouldHaveSingleItem();
         index.Name.ShouldBe("daily_ix");
         index.Columns.Select(c => c.Column?.Value).ShouldBe(["date"]);

@@ -38,16 +38,24 @@ public sealed class ViewDependencyExtractorTests
     [Fact]
     public void Extract_Cte_ExcludesCteNameButKeepsRealSource()
     {
+        // Act
         // active reads app.users; the outer query reads the CTE (local) and app.orders (real).
         var deps = Extract("WITH active AS (SELECT id FROM app.users) SELECT * FROM active JOIN app.orders o ON o.uid = active.id");
+
+        // Assert
         deps.ShouldBe([("app", "users"), ("app", "orders")]);
     }
 
     [Fact]
     public void Extract_NestedCtes_ExcludesAllCteNames()
     {
+        // Arrange
         var deps = Extract(
+
+            // Act
             "WITH a AS (SELECT 1 FROM app.t1), b AS (SELECT 1 FROM a JOIN app.t2 x ON true) SELECT * FROM b");
+
+        // Assert
         deps.ShouldBe([("app", "t1"), ("app", "t2")]);
     }
 

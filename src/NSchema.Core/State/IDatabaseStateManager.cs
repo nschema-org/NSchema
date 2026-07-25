@@ -1,4 +1,3 @@
-
 namespace NSchema.State;
 
 /// <summary>

@@ -27,10 +27,13 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
     [Fact]
     public async Task Read_MissingFile_ReturnsNull()
     {
+        // Arrange
         var sut = new FileDatabaseStateStore(_options);
 
+        // Act
         var result = await sut.Read(TestContext.Current.CancellationToken);
 
+        // Assert
         result.ShouldBeNull();
     }
 
@@ -47,12 +50,16 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
     [Fact]
     public async Task Write_ThenRead_RoundTripsThePayload()
     {
+        // Arrange
         var sut = new FileDatabaseStateStore(_options);
         var payload = Encoding.UTF8.GetBytes("""{"version":1,"schema":"state"}""");
 
         await sut.Write(payload, TestContext.Current.CancellationToken);
+
+        // Act
         var result = await sut.Read(TestContext.Current.CancellationToken);
 
+        // Assert
         result.ShouldNotBeNull();
         result.Value.ToArray().ShouldBe(payload);
     }
@@ -60,25 +67,33 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
     [Fact]
     public async Task Write_Overwrites_AnExistingFile()
     {
+        // Arrange
         var sut = new FileDatabaseStateStore(_options);
 
         await sut.Write(Encoding.UTF8.GetBytes("old"), TestContext.Current.CancellationToken);
         await sut.Write(Encoding.UTF8.GetBytes("new"), TestContext.Current.CancellationToken);
 
+        // Act
         var result = await sut.Read(TestContext.Current.CancellationToken);
+
+        // Assert
         result!.Value.ToArray().ShouldBe(Encoding.UTF8.GetBytes("new"));
     }
 
     [Fact]
     public async Task Write_LeavesNoTempFilesBehind()
     {
+        // Arrange
         var sut = new FileDatabaseStateStore(_options);
 
         await sut.Write(Encoding.UTF8.GetBytes("a"), TestContext.Current.CancellationToken);
         await sut.Write(Encoding.UTF8.GetBytes("b"), TestContext.Current.CancellationToken);
 
+        // Act
         // The atomic write renames a temp file into place; nothing temporary should survive a successful write.
         var directory = Path.GetDirectoryName(_path)!;
+
+        // Assert
         Directory.EnumerateFiles(directory, "*.tmp").ShouldBeEmpty();
         Directory.EnumerateFiles(directory).ShouldHaveSingleItem().ShouldBe(_path);
     }

@@ -10,7 +10,10 @@ public sealed class NsqlParserScriptTests
     [Fact]
     public void Parse_PreDeployment_CapturesNameBodyAndType()
     {
+        // Act
         var script = ReadScripts("SCRIPT enable_citext RUN ON PRE DEPLOYMENT AS $$ CREATE EXTENSION IF NOT EXISTS citext; $$;")
+
+        // Assert
             .ShouldHaveSingleItem();
 
         script.Name.ShouldBe("enable_citext");
@@ -27,6 +30,7 @@ public sealed class NsqlParserScriptTests
     [Fact]
     public void Parse_Body_PreservesInnerSemicolonsAndQuotes()
     {
+        // Act
         // The dollar-quoted body is opaque: inner ';' and single quotes are part of the script, not terminators.
         var script = ReadScripts(
             """
@@ -36,6 +40,7 @@ public sealed class NsqlParserScriptTests
             $$;
             """).ShouldHaveSingleItem();
 
+        // Assert
         script.Sql.ShouldBe("INSERT INTO app.t (name) VALUES ('a;b');\n    UPDATE app.t SET name = '';");
     }
 
@@ -50,8 +55,13 @@ public sealed class NsqlParserScriptTests
     [Fact]
     public void Parse_RunOutsideTransactionOption_IsCaptured()
     {
+        // Arrange
         var script = ReadScripts(
+
+            // Act
             "SCRIPT concurrent_index RUN ON POST DEPLOYMENT (run_outside_transaction = true) AS $$ CREATE INDEX CONCURRENTLY i ON app.t (c); $$;")
+
+            // Assert
             .ShouldHaveSingleItem();
 
         script.RunOutsideTransaction.ShouldBeTrue();

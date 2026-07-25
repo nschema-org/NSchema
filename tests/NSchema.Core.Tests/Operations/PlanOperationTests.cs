@@ -1,9 +1,9 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
 using NSchema.Model;
 using NSchema.Operations;
 using NSchema.Operations.Workflow;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 
 namespace NSchema.Tests.Operations;
@@ -14,7 +14,7 @@ public sealed class PlanOperationTests
     private readonly IPlanFileManager _planFile = Substitute.For<IPlanFileManager>();
 
     private readonly MigrationPlan _plan = new(
-        new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]),
+        new DatabaseDiff([SchemaDiff.Added("app")]),
         [new SqlStatement("CREATE SCHEMA app")]);
 
     private readonly PlanOperation _sut;
