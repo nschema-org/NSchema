@@ -1,5 +1,5 @@
 using System.CommandLine;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Services.Reporting;
 

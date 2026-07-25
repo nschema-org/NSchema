@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>5.0.0-alpha.7</Version>
+    <Version>5.0.0-alpha.8</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -57,6 +57,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="NSchema.Diagnostics" />
     <Using Include="NSchema.Extensions" />
   </ItemGroup>
 

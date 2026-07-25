@@ -1,4 +1,4 @@
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;

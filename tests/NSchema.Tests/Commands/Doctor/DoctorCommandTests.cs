@@ -1,6 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Commands.Doctor;

@@ -1,7 +1,7 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Reader;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Rendering;
 using NSchema.Model;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 using Spectre.Console;
 
@@ -53,7 +53,7 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
             return new Markup("No changes detected.");
         }
 
-        var document = DiffReader.Read(diff);
+        var document = DiffDocument.From(diff);
         var lines = new List<string>();
 
         foreach (var line in document.Lines)

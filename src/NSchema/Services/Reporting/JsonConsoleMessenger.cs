@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using NSchema.Configuration.Plugins;
 using NSchema.State.Locks;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 

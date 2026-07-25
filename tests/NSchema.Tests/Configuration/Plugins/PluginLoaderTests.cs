@@ -1,4 +1,4 @@
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plan.Backends;
 using NSchema.Plugins;

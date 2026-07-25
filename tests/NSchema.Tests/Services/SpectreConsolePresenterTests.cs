@@ -1,13 +1,13 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
 using Spectre.Console.Testing;
@@ -28,20 +28,27 @@ public sealed class SpectreConsolePresenterTests
     // A diff renaming nothing but adding one schema with a table whose column changes type to an array — the `[]`
     // exercises the presenter's markup escaping, and the added schema/table gives the framing tests real content.
     private static DatabaseDiff DiffWithArrayColumn() => new([
-        new SchemaDiff("app", ChangeKind.Add, Tables:
-        [
-            new TableDiff("app", "widgets", ChangeKind.Modify, Columns:
+        SchemaDiff.Added("app") with
+        {
+            Tables =
             [
-                new ColumnDiff("tags", ChangeKind.Modify, Type: new ValueChange<SqlType>(new SqlType("text"), new SqlType("text[]"))),
-            ]),
-        ]),
+                TableDiff.Modified("app", "widgets") with
+                {
+                    Columns =
+                    [
+                        ColumnDiff.Modified(new Column { Name = "tags", Type = new SqlType("text[]") })
+                            with { Type = new ValueChange<SqlType>(new SqlType("text"), new SqlType("text[]")) },
+                    ],
+                },
+            ],
+        },
     ]);
 
     [Fact]
     public void ReportDiff_FramesTheRenderedDiffInAPanel()
     {
         // Arrange
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]);
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")]);
 
         // Act
         _sut.ReportDiff(diff);
@@ -68,7 +75,7 @@ public sealed class SpectreConsolePresenterTests
     public void ReportDiff_ListsTheDiffsDeploymentScripts()
     {
         // Arrange — the scripts ride the diff now, so the plan section carries them.
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts =
             [
@@ -182,7 +189,7 @@ public sealed class SpectreConsolePresenterTests
     public void ReportSavedPlan_RendersDiffAndSqlSections()
     {
         // Arrange — the scripts ride the plan's diff; only --json collapses to a single object.
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
         };

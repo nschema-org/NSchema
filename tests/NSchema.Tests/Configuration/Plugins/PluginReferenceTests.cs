@@ -1,4 +1,4 @@
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
@@ -23,7 +23,7 @@ public sealed class PluginReferenceTests
         reference.PackageId.ShouldBe("NSchema.Postgres");
         reference.Version.ToString().ShouldBe("5.0.0");
         reference.Label.ShouldBe("postgres");
-        reference.Settings.Attribute("connection_string")!.ShouldBe("Host=localhost");
+        reference.Settings.Value("connection_string")!.ShouldBe("Host=localhost");
     }
 
     [Fact]

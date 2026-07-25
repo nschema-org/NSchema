@@ -1,11 +1,11 @@
 using System.Text.Json;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Services.Reporting;
 using NSchema.State.Locks;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Services;
 

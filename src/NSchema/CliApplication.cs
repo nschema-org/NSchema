@@ -30,8 +30,8 @@ internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger m
     /// <inheritdoc cref="NSchemaApplication.Database"/>
     public IDatabaseProvider Database => app.Database;
 
-    /// <inheritdoc cref="NSchemaApplication.ProjectDefinition"/>
-    public IProjectProvider ProjectDefinition => app.ProjectDefinition;
+    /// <inheritdoc cref="NSchemaApplication.Project"/>
+    public IProjectProvider Project => app.Project;
 
     /// <inheritdoc cref="NSchemaApplication.PlanFile"/>
     public IPlanFileManager PlanFile => app.PlanFile;

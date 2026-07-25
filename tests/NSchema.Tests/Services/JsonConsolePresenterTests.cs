@@ -1,9 +1,9 @@
 using System.Text.Json;
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Schemas;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Schemas;
 using NSchema.Model;
 using NSchema.Model.Scripts;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
 
@@ -34,7 +34,7 @@ public sealed class JsonConsolePresenterTests
     [Fact]
     public void ReportDiff_NonEmptyDiff_EmitsDiffEvent()
     {
-        _sut.ReportDiff(new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)]));
+        _sut.ReportDiff(new DatabaseDiff([SchemaDiff.Added("app")]));
 
         StdoutEvents().ShouldHaveSingleItem().GetProperty("diff").GetProperty("isEmpty").GetBoolean().ShouldBeFalse();
     }
@@ -43,7 +43,7 @@ public sealed class JsonConsolePresenterTests
     public void ReportDiff_CarriesTheDeploymentScriptsOnTheDiff()
     {
         // The scripts are first-class on the diff now, so the diff event carries them — no separate scripts event.
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts =
             [
@@ -88,7 +88,7 @@ public sealed class JsonConsolePresenterTests
     [Fact]
     public void ReportSavedPlan_EmitsBareCompositeObject_WithDiffAndSql()
     {
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
         };

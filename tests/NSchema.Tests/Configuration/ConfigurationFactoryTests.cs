@@ -1,6 +1,6 @@
 using NSchema.Commands.Plan;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using RootCommand = NSchema.Commands.RootCommand;
 
@@ -47,6 +47,6 @@ public sealed class ConfigurationFactoryTests : IDisposable
         var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
 
         config.State!.File.ShouldBeNull();
-        config.State.Plugin!.Settings.Attribute("bucket")!.ShouldBe("prod-bucket");
+        config.State.Plugin!.Settings.Value("bucket")!.ShouldBe("prod-bucket");
     }
 }

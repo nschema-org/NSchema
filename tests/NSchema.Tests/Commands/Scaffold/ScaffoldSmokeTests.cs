@@ -1,6 +1,6 @@
 using NSchema.Commands.Scaffold;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;

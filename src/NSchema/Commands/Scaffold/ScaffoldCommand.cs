@@ -1,11 +1,11 @@
 using System.CommandLine;
 using NSchema.Commands.Init;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
 using Spectre.Console;
 
 namespace NSchema.Commands.Scaffold;
@@ -104,7 +104,7 @@ internal static class ScaffoldCommand
 
     // A plugin returns its statement rather than text now; a hand-built tree carries no trivia, so the writer
     // is what synthesizes the separators between its tokens.
-    internal static string Render(BlockStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
+    internal static string Render(SettingsStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
 
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)

@@ -1,8 +1,8 @@
 using System.Text;
-using NSchema.Diff.Model;
-using NSchema.Diff.Reader;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Rendering;
 using NSchema.Model;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 
 namespace NSchema.Services.Reporting;
@@ -40,7 +40,7 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
             return "No changes detected.";
         }
 
-        var document = DiffReader.Read(diff);
+        var document = DiffDocument.From(diff);
         var body = new StringBuilder();
 
         foreach (var line in document.Lines)

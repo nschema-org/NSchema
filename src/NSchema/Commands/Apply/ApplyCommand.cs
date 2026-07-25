@@ -1,7 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Services;
 using NSchema.Services.Confirmation;
 using NSchema.State.Locks;
