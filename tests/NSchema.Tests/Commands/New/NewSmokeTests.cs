@@ -19,7 +19,7 @@ namespace NSchema.Tests.Commands.New;
 /// </summary>
 public sealed class NewSmokeTests : IDisposable
 {
-    private const string PostgresVersion = "5.0.0-alpha.9";
+    private const string PostgresVersion = "5.0.0-beta.3";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-new-smoke-").FullName;
 
@@ -28,17 +28,29 @@ public sealed class NewSmokeTests : IDisposable
     [Fact]
     public async Task Scaffold_WithRealPostgresPlugin_ProducesAValidFormattedProject()
     {
-        // Arrange — load the real plugin and render exactly what `new` would.
+        // Arrange — load the real plugin and take exactly what `new` would.
         var plugin = new PluginLoader().Load(new PackageId("NSchema.Postgres"), SemanticVersion.Parse(PostgresVersion))
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
-        var providerBlock = NewCommand.Render(plugin.GetScaffoldTemplate(new ScaffoldContext()));
+        var databaseStatement = plugin.GetScaffoldTemplate(new ScaffoldContext());
         var sampleSchema = plugin.GetSampleSchema();
 
         // Act — compose the project (file state store, like the default `nschema new`).
-        await ProjectScaffolder.Scaffold(_directory, force: false, "[5.0,6.0)", [("postgres", "NSchema.Postgres", PostgresVersion)],
-            providerBlock, sampleSchema, statePlugin: null, TestContext.Current.CancellationToken);
+        await ProjectScaffolder.Scaffold(
+            _directory,
+            force: false,
+            new ProjectTemplate
+            {
+                EngineRequirement = "[5.0,6.0)",
+                Plugins = [new ResolvedPlugin(new PluginLabel("postgres"), new PackageId("NSchema.Postgres"), SemanticVersion.Parse(PostgresVersion))],
+                Database = databaseStatement,
+                DatabaseOverlay = plugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" }),
+                State = ProjectScaffolder.FileState,
+                StateOverlay = ProjectScaffolder.FileStateOverlay,
+                Schema = sampleSchema,
+            },
+            TestContext.Current.CancellationToken);
         await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_directory),
             new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse(PostgresVersion) }]), TestContext.Current.CancellationToken);
 
@@ -56,7 +68,7 @@ public sealed class NewSmokeTests : IDisposable
         document.Require().Statements.OfType<CreateTableStatement>().ShouldHaveSingleItem().Name.Name.Value.ShouldBe("widgets");
 
         // Assert — every generated file is already formatter-canonical (new → format --check is a no-op).
-        foreach (var file in new[] { "config.env.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql") })
+        foreach (var file in new[] { "config.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql") })
         {
             var content = await File.ReadAllTextAsync(Path.Combine(_directory, file), TestContext.Current.CancellationToken);
             NsqlWriter.Format(content).Require().ShouldBe(content, $"{file} should be formatter-canonical");

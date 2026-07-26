@@ -28,8 +28,8 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 
 ### Changed
 
-- **The `.env.<name>.` marker makes a file environment-specific.** A `<any>.env.<name>.sql` file is read only when that environment is selected, and never contributes schema; every other `.sql` file is the base. Configuration and schema share one grammar, so a configuration statement is read wherever you write it — `new` puts them in `config.env.sql` by convention.
-- **Environments select configuration, not schema.** `--environment` layers the environment's files over the base configuration; schema files are no longer overlaid per environment. An overlay replaces the `DATABASE`, `STATE`, or `ENGINE` statement it restates rather than merging into it, so an attribute the overlay omits falls back to the default, not to the base statement's value.
+- **The `.env.<name>.` marker makes a file environment-specific.** A `<any>.env.<name>.sql` file is read only when that environment is selected, and never contributes schema; every other `.sql` file is the base. Configuration and schema share one grammar, so a configuration statement is read wherever you write it — `new` puts them in `config.sql` by convention.
+- **Environments select configuration, not schema.** `--environment` layers the environment's files over the base configuration; schema files are no longer overlaid per environment. An overlay merges the `DATABASE`, `STATE`, or `ENGINE` statement attributes.
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures. The built-in local-file store is `STATE file ( path = '…' );`.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` names the package and pins its version; `DATABASE`/`STATE` reference the label. The built-in label-to-package map is gone — every plugin is declared explicitly, and `version`/`source` no longer ride the configuring statement. A `version` may be an exact pin or a NuGet-style range (`[5.0,6.0)`).
 - **`ENGINE ( version = '…' );` asserts the engine version.** A project can require an engine version range; a mismatch fails with a pointer to `dotnet tool update`.
@@ -48,6 +48,7 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 ### Fixed
 
 - Plugin loading now resolves a plugin's native libraries (e.g. SQLite's `e_sqlite3`) from its restored dependency closure.
+- **`new` names the right environment variable.** It pointed at a per-provider variable (`NSCHEMA_POSTGRES_CONNECTION_STRING`) that no longer has any effect; it now names `NSCHEMA_DATABASE_CONNECTION_STRING`.
 
 ## [4.5.1] - 2026-07-10
 

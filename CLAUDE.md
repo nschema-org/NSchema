@@ -85,10 +85,7 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 
 ## Configuration resolution (the heart of the CLI)
 
-Project configuration lives in the project's **configuration files** — those whose name carries the `.env.` marker
-(`*.env.sql` loads for every environment, `*.env.<name>.sql` overlays only that one) — as **`DATABASE` / `STATE`
-statements** (config-in-SQL — there is no `nschema.json` and no `--config`). A configuration file holds only
-configuration statements (`DATABASE`, `STATE`, `PLUGIN`, `ENGINE`); every other `.sql` file is schema DDL.
+Project configuration lives in the project files — as **`DATABASE` / `STATE` statements**.
 `ConfigurationFactory.Load<T>(ParseResult)` drives resolution. It first honors **`--directory`** (the recursive root
 option; it `SetCurrentDirectory`s so the project's `.sql` files and the relative paths in them resolve against the
 project dir, Terraform-`-chdir`-style — the one chokepoint every command funnels through, so it holds whether the CLI

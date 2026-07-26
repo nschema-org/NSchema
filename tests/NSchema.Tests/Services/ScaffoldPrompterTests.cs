@@ -1,6 +1,5 @@
 using NSchema.Plugins;
 using NSchema.Services.Prompting;
-using Spectre.Console;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;

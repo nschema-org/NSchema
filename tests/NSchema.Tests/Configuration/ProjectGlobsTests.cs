@@ -46,7 +46,7 @@ public sealed class ProjectGlobsTests : IDisposable
     [Fact]
     public void EnvironmentConfiguration_SelectsOnlyTheNamedEnvironmentsFiles()
     {
-        Write("config.env.sql");
+        Write("config.sql");
         Write("config.env.prod.sql");
         Write("secrets.env.prod.sql");
         Write("config.env.dev.sql");

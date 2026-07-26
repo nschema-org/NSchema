@@ -6,7 +6,7 @@ using NSchema.Project.Nsql;
 namespace NSchema.Configuration;
 
 /// <summary>
-/// Reads project configuration from the <c>*.env.sql</c> (and selected <c>*.env.&lt;env&gt;.sql</c>) files under a directory.
+/// Reads project configuration files under a directory.
 /// </summary>
 internal static class ProjectConfigurationReader
 {

@@ -12,7 +12,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
     private async Task<ProjectConfiguration> Read(string sql)
     {
-        await File.WriteAllTextAsync(Path.Combine(_directory, "config.env.sql"), sql, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), sql, TestContext.Current.CancellationToken);
         return await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
     }
 
@@ -24,7 +24,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
     private async Task<ProjectConfiguration> ReadEnvironment(string baseSql, string environment, string overlaySql)
     {
-        await File.WriteAllTextAsync(Path.Combine(_directory, "config.env.sql"), baseSql, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), baseSql, TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(_directory, $"config.env.{environment}.sql"), overlaySql, TestContext.Current.CancellationToken);
         return await ProjectConfigurationReader.Read(_directory, environment, TestContext.Current.CancellationToken);
     }
@@ -160,21 +160,6 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task MultipleBaseConfigurationFiles_AllLoad()
-    {
-        await WriteLock(Locked("NSchema.Postgres", "5.0.0"));
-        // The .env. marker is a pattern, not a fixed name: every *.env.sql file contributes to the base layer.
-        await File.WriteAllTextAsync(Path.Combine(_directory, "plugins.env.sql"),
-            "PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0' );", TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(_directory, "database.env.sql"),
-            "DATABASE postgres ( connection_string = 'host=db' );", TestContext.Current.CancellationToken);
-
-        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
-
-        config.Database!.PackageId.ShouldBe("NSchema.Postgres");
-    }
-
-    [Fact]
     public async Task SchemaStatementBesideConfiguration_IsRead()
     {
         // One grammar: declarations and configuration blocks may sit side by side, and the configuration
@@ -241,7 +226,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     [Fact]
     public async Task Environment_NotFound_Throws()
     {
-        await File.WriteAllTextAsync(Path.Combine(_directory, "config.env.sql"), "STATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), "STATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
 
         (await Should.ThrowAsync<InvalidOperationException>(
                 () => ProjectConfigurationReader.Read(_directory, "prod", TestContext.Current.CancellationToken).AsTask()))
