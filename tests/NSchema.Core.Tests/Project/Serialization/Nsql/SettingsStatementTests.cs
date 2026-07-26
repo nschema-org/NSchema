@@ -74,53 +74,6 @@ public sealed class SettingsStatementTests
     }
 
     [Fact]
-    public void WithLeadingComment_SitsAboveTheStatement_SeparatedByABlankLine()
-    {
-        // Act
-        var statement = SettingsStatement.Engine()
-            .WithSetting("version", "[5.0,6.0)")
-            .WithLeadingComment("-- Project configuration.");
-
-        // Assert — an ordinary '--' comment introducing what follows, not a doc-comment attached to it.
-        Write(statement).ShouldStartWith("-- Project configuration.\n\nENGINE (");
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void LeadingCommentAndDocComment_ComposeInEitherOrder(bool documentFirst)
-    {
-        // Arrange
-        var basis = SettingsStatement.State("s3").WithSetting("bucket", "state");
-
-        // Act — the chaining order must not decide which comment ends up on top.
-        var statement = documentFirst
-            ? basis.WithDocComment("Credentials come from the AWS chain.").WithLeadingComment("-- Overlay for prod.")
-            : basis.WithLeadingComment("-- Overlay for prod.").WithDocComment("Credentials come from the AWS chain.");
-
-        // Assert
-        Write(statement).ShouldStartWith(
-            """
-            -- Overlay for prod.
-
-            --- Credentials come from the AWS chain.
-            STATE s3 (
-            """);
-    }
-
-    [Fact]
-    public void AMultiLineComment_KeepsItsLines()
-    {
-        // Act
-        var statement = SettingsStatement.Engine()
-            .WithSetting("version", "[5.0,6.0)")
-            .WithLeadingComment("-- First line.\n-- Second line.");
-
-        // Assert
-        Write(statement).ShouldStartWith("-- First line.\n-- Second line.\n\nENGINE (");
-    }
-
-    [Fact]
     public void AStatementItBuilds_RoundTripsThroughTheReader()
     {
         // Arrange

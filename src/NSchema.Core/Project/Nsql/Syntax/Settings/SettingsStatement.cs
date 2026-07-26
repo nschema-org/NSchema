@@ -97,40 +97,8 @@ public sealed record SettingsStatement : NsqlStatement
     /// catalog comment for what follows.
     /// </summary>
     /// <param name="comment">The comment body, without the <c>---</c> markers. May span lines.</param>
-    public SettingsStatement WithDocComment(string comment)
-    {
-        // A doc-comment leads the statement, so it takes over any leading comment already attached to the keyword —
-        // otherwise that comment would print underneath it, and the order the caller chained in would matter.
-        var leading = KeywordToken.Leading;
-        return this with
-        {
-            DocComment = new Token(TokenKind.DocComment, comment, SourcePosition.None) { Leading = leading },
-            KeywordToken = KeywordToken with { Leading = [] },
-        };
-    }
-
-    /// <summary>
-    /// This statement with <paramref name="comment"/> as an ordinary comment above it, separated by a blank line —
-    /// for a remark that introduces what follows rather than documenting the object, which a doc-comment would.
-    /// </summary>
-    /// <param name="comment">The comment text, <c>--</c> markers included. May span lines.</param>
-    public SettingsStatement WithLeadingComment(string comment)
-    {
-        List<Trivia> leading =
-        [
-            .. comment.Split('\n').SelectMany(line => new[]
-            {
-                new Trivia(TriviaKind.LineComment, line.TrimEnd(), SourcePosition.None),
-                LineBreak,
-            }),
-            // The blank line: the writer keeps one fewer than the line breaks it finds.
-            LineBreak,
-        ];
-
-        return DocComment is { } doc
-            ? this with { DocComment = doc with { Leading = leading } }
-            : this with { KeywordToken = KeywordToken with { Leading = leading } };
-    }
+    public SettingsStatement WithDocComment(string comment) =>
+        this with { DocComment = new Token(TokenKind.DocComment, comment, SourcePosition.None) };
 
     internal override IEnumerable<NsqlChild> Children
     {
@@ -156,8 +124,6 @@ public sealed record SettingsStatement : NsqlStatement
     }
 
     private static SeparatedSyntaxList<Setting> Empty => new([]);
-
-    private static Trivia LineBreak => new(TriviaKind.EndOfLine, "\n", SourcePosition.None);
 
     private static SettingsStatement Labelled(SettingsKeyword keyword, string label) =>
         new(keyword, Identifier.Synthetic(label), Empty);

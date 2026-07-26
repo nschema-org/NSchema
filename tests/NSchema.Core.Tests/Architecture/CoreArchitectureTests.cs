@@ -1,5 +1,4 @@
 using ArchUnitNET.Domain;
-using ArchUnitNET.Fluent;
 
 namespace NSchema.Tests.Architecture;
 

@@ -1,4 +1,4 @@
-using NSchema.Project.Nsql.Syntax.Settings;
+using NSchema.Project.Nsql;
 
 namespace NSchema.Plugins;
 
@@ -18,8 +18,8 @@ public interface INSchemaPlugin
     IReadOnlyList<ScaffoldPrompt> GetScaffoldPrompts(ScaffoldContext context) => [];
 
     /// <summary>
-    /// Builds the starter configuration statement this plugin contributes when a new project is scaffolded.
+    /// Builds the starter configuration this plugin contributes when a new project is scaffolded.
     /// </summary>
     /// <param name="context">Describes what is being scaffolded: the target environment, and any answers given.</param>
-    SettingsStatement GetScaffoldTemplate(ScaffoldContext context);
+    NsqlDocument GetScaffoldTemplate(ScaffoldContext context);
 }

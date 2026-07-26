@@ -1,4 +1,5 @@
 using NSchema.Configuration.Plugins;
+using NSchema.Project.Nsql;
 
 namespace NSchema.Plugins;
 
@@ -15,7 +16,11 @@ public interface INSchemaDatabasePlugin : INSchemaPlugin
     Result Configure(NSchemaApplicationBuilder builder, PluginSettings settings);
 
     /// <summary>
-    /// Builds the starter project DDL this provider contributes when a new project is scaffolded.
+    /// Builds the starter schema this provider contributes when a new project is scaffolded, in its own dialect.
     /// </summary>
-    string GetSampleSchema();
+    /// <remarks>
+    /// A document rather than text: the sample cannot then be malformed, and the writer renders it canonically, so a
+    /// scaffolded project needs no reformatting.
+    /// </remarks>
+    NsqlDocument GetSampleSchema();
 }

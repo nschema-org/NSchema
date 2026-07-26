@@ -1,8 +1,6 @@
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax;
 using NSchema.Project.Nsql.Syntax.Settings;
-using NSchema.Project.Nsql.Tokens;
 
 namespace NSchema.Tests.Plugins;
 
@@ -25,12 +23,12 @@ public sealed class ScaffoldPromptTests
             new() { Key = "password", Label = "Password", IsSecret = true },
         ];
 
-        public SettingsStatement GetScaffoldTemplate(ScaffoldContext context) =>
-            new(SettingsKeyword.Database, Identifier.Synthetic("demo"), new SeparatedSyntaxList<Setting>(
-            [
-                new Setting("connection_string",
+        public NsqlDocument GetScaffoldTemplate(ScaffoldContext context) =>
+            new([
+                SettingsStatement.Database("demo").WithSetting(
+                    "connection_string",
                     $"Host={context.Answer("host", "localhost")};Database={context.Answer("database", "app")}"),
-            ]));
+            ]);
     }
 
     [Fact]
@@ -56,7 +54,7 @@ public sealed class ScaffoldPromptTests
         };
 
         // Act
-        var statement = new ComposingPlugin().GetScaffoldTemplate(context);
+        var statement = Configured(new ComposingPlugin().GetScaffoldTemplate(context));
 
         // Assert — three questions became one setting; that composition is the plugin's alone.
         statement.Settings.ShouldHaveSingleItem().Value.ShouldBe("Host=db.internal;Database=orders");
@@ -69,7 +67,7 @@ public sealed class ScaffoldPromptTests
         var context = new ScaffoldContext();
 
         // Act
-        var statement = new ComposingPlugin().GetScaffoldTemplate(context);
+        var statement = Configured(new ComposingPlugin().GetScaffoldTemplate(context));
 
         // Assert
         statement.Settings.ShouldHaveSingleItem().Value.ShouldBe("Host=localhost;Database=app");
@@ -96,7 +94,7 @@ public sealed class ScaffoldPromptTests
         {
             Answers = new Dictionary<string, string?> { ["host"] = "db.internal", ["database"] = "orders" },
         };
-        var statement = new ComposingPlugin().GetScaffoldTemplate(context);
+        var statement = Configured(new ComposingPlugin().GetScaffoldTemplate(context));
 
         // Act — what the front-end will write out, read straight back.
         var rendered = NsqlWriter.Write(new NsqlDocument([statement]));
@@ -108,10 +106,12 @@ public sealed class ScaffoldPromptTests
             .Settings.ShouldHaveSingleItem().Value.ShouldBe("Host=db.internal;Database=orders");
     }
 
+    private static SettingsStatement Configured(NsqlDocument document) =>
+        document.Statements.OfType<SettingsStatement>().ShouldHaveSingleItem();
+
     private sealed class SilentPlugin : INSchemaPlugin
     {
-        public SettingsStatement GetScaffoldTemplate(ScaffoldContext context) =>
-            new(SettingsKeyword.State, Identifier.Synthetic("file"), new SeparatedSyntaxList<Setting>(
-                [new Setting("path", "./nschema.state.json")]));
+        public NsqlDocument GetScaffoldTemplate(ScaffoldContext context) =>
+            new([SettingsStatement.State("file").WithSetting("path", "./nschema.state.json")]);
     }
 }
