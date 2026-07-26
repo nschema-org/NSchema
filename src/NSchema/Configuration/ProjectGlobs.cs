@@ -4,9 +4,7 @@ using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 namespace NSchema.Configuration;
 
 /// <summary>
-/// The glob patterns that classify a project's <c>.sql</c> files by role. The <c>.env.</c> marker in a file name
-/// makes it configuration: <c>&lt;any&gt;.env.sql</c> loads for every environment, <c>&lt;any&gt;.env.&lt;env&gt;.sql</c>
-/// only when that environment is selected. Every other <c>.sql</c> file is schema.
+/// The glob patterns that classify a project's <c>.sql</c> files by role.
 /// </summary>
 internal static class ProjectGlobs
 {

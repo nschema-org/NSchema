@@ -3,6 +3,7 @@ using NSchema.Configuration;
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
+using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Commands;
 
@@ -15,7 +16,7 @@ namespace NSchema.Tests.Commands;
 /// </summary>
 public sealed class EphemeralEndToEndTests : IDisposable
 {
-    private const string SqliteVersion = "5.0.0-alpha.8";
+    private const string SqliteVersion = "5.0.0-beta.4";
 
     private readonly string _projectDirectory = Directory.CreateTempSubdirectory("nschema-ephemeral-").FullName;
     private readonly string _originalDirectory = Directory.GetCurrentDirectory();
@@ -36,7 +37,7 @@ public sealed class EphemeralEndToEndTests : IDisposable
             .Single();
 
         var databasePath = Path.Combine(_projectDirectory, "app.db");
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), $"""
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), $"""
             PLUGIN sqlite (
               source  = 'NSchema.Sqlite',
               version = '{SqliteVersion}'
@@ -48,7 +49,7 @@ public sealed class EphemeralEndToEndTests : IDisposable
             new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Sqlite"), Version = SemanticVersion.Parse(SqliteVersion) }]), TestContext.Current.CancellationToken);
         Directory.CreateDirectory(Path.Combine(_projectDirectory, "schemas"));
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "schemas", "example.sql"),
-            plugin.GetSampleSchema(), TestContext.Current.CancellationToken);
+            NsqlWriter.Write(plugin.GetSampleSchema()), TestContext.Current.CancellationToken);
 
         // Act — mirror Program.cs (default exception handler off): plan, then apply, each standing the
         // ephemeral store in for a state backend.

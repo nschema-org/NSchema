@@ -109,29 +109,18 @@ public sealed class CliApplicationBuilderTests
     [Fact]
     public void TryConfigureDatabaseProvider_WithAMisconfiguredProvider_CapturesADiagnosticInsteadOfThrowing()
     {
-        // doctor's path: a misconfigured plugin must be captured, not thrown, so every problem can be reported. Loads
-        // the real NSchema.Postgres plugin (SDK + network/cache). The connection-string env var is cleared so the
-        // ambient environment can't satisfy the block under test.
-        var savedConnectionString = Environment.GetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING");
-        Environment.SetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING", null);
-        try
-        {
-            // Arrange — a postgres DATABASE statement missing the required connection_string.
-            var reference = new PluginReference(new PackageId("NSchema.Postgres"), SemanticVersion.Parse("5.0.0-alpha.9"), new PluginLabel("postgres"),
-                new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>()));
+        // Arrange — a postgres DATABASE statement missing the required connection_string. Loads the real
+        // NSchema.Postgres plugin (SDK + network/cache).
+        var reference = new PluginReference(new PackageId("NSchema.Postgres"), SemanticVersion.Parse("5.0.0-beta.4"), new PluginLabel("postgres"),
+            new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>()));
 
-            // Act
-            var result = _sut.TryConfigureDatabase(reference);
+        // Act
+        var result = _sut.TryConfigureDatabase(reference);
 
-            // Assert — captured (not thrown) as a failed Result, its errors labelled with the plugin block.
-            result.IsFailure.ShouldBeTrue();
-            result.Errors.ShouldAllBe(error => error.Source == "postgres");
-            result.Errors.ShouldContain(error => error.Message.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("NSCHEMA_POSTGRES_CONNECTION_STRING", savedConnectionString);
-        }
+        // Assert — captured (not thrown) as a failed Result, its errors labelled with the plugin block.
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldAllBe(error => error.Source == "postgres");
+        result.Errors.ShouldContain(error => error.Message.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
     }
 
     // ConfigureDesiredSchema is a thin delegation to the core's AddProjectSource (which the core tests cover end to

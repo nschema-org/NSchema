@@ -17,7 +17,7 @@ internal sealed class ApplyConfigurationValidator : AbstractValidator<ApplyConfi
         RuleFor(x => x.State)
             .NotNull()
             .When(x => !x.Ephemeral)
-            .WithMessage("A state store is required for apply: the applied schema and script ledger are recorded there. Declare a STATE statement in a configuration (*.env.sql) file, or pass --ephemeral.");
+            .WithMessage("A state store is required for apply: the applied schema and script ledger are recorded there. Declare a STATE statement, or pass --ephemeral.");
         RuleFor(x => x.State!).SetValidator(new StateConfigurationValidator());
     }
 }

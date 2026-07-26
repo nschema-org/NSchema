@@ -4,8 +4,6 @@ using NSchema.Configuration;
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
-using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Settings;
 using NSchema.Services.Prompting;
 using Spectre.Console;
 
@@ -33,43 +31,52 @@ internal static class NewCommand
         // The database plugin renders its own DATABASE statement and supplies a dialect-specific sample schema; the
         // CLI authors the PLUGIN declaration, since it resolved the package and version. Resolve the latest version
         // compatible with this CLI and pin it.
-        var plugins = new List<(string Label, string PackageId, string Version)>();
+        var plugins = new List<ResolvedPlugin>();
         var (providerPackageName, providerLabel) = DatabasePackage(configuration.Database);
         var providerPackage = new PackageId(providerPackageName);
         app.Messenger.Announce($"Resolving {providerPackage}...");
         var providerVersion = loader.ResolveLatestVersion(providerPackage);
-        plugins.Add((providerLabel, providerPackage.Value, providerVersion.ToString()));
+        plugins.Add(new ResolvedPlugin(new PluginLabel(providerLabel), providerPackage, providerVersion));
         var providerPlugin = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
         var providerContext = Configure(console, providerPlugin, new ScaffoldContext(), configuration.Answers);
-        var providerBlock = Render(providerPlugin.GetScaffoldTemplate(providerContext));
+        var databaseConfiguration = providerPlugin.GetScaffoldTemplate(providerContext);
+
+        // Every plugin is asked for the environment overlay as well as the base, reusing the same answers; one with
+        // nothing that differs per environment says so by contributing no statements.
+        var databaseOverlay = providerPlugin.GetScaffoldTemplate(providerContext with { EnvironmentName = "prod" });
         var sampleSchema = providerPlugin.GetSampleSchema();
 
         // The local-file state store is built in; any other backend is a plugin that renders its own statements
         // (base + overlay).
-        (string Base, string Overlay)? pluginBackend = null;
+        var state = ProjectScaffolder.FileState;
+        var stateOverlay = ProjectScaffolder.FileStateOverlay;
         if (StatePackage(configuration.State) is { } backend)
         {
             var backendPackage = new PackageId(backend.Package);
             app.Messenger.Announce($"Resolving {backendPackage}...");
             var backendVersion = loader.ResolveLatestVersion(backendPackage);
-            plugins.Add((backend.Label, backendPackage.Value, backendVersion.ToString()));
+            plugins.Add(new ResolvedPlugin(new PluginLabel(backend.Label), backendPackage, backendVersion));
             var backendPlugin = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
             var backendContext = Configure(console, backendPlugin, new ScaffoldContext(), configuration.Answers);
 
             // The questions are put once; the overlay reuses those answers, varying only by environment.
-            pluginBackend = (
-                Render(backendPlugin.GetScaffoldTemplate(backendContext)),
-                Render(backendPlugin.GetScaffoldTemplate(backendContext with { EnvironmentName = "prod" })));
+            state = backendPlugin.GetScaffoldTemplate(backendContext);
+            stateOverlay = backendPlugin.GetScaffoldTemplate(backendContext with { EnvironmentName = "prod" });
         }
 
         var created = await ProjectScaffolder.Scaffold(
             Directory.GetCurrentDirectory(),
             configuration.Force,
-            EngineRequirement(),
-            plugins,
-            providerBlock,
-            sampleSchema,
-            pluginBackend,
+            new ProjectTemplate
+            {
+                EngineRequirement = EngineRequirement(),
+                Plugins = plugins,
+                Database = databaseConfiguration,
+                DatabaseOverlay = databaseOverlay,
+                State = state,
+                StateOverlay = stateOverlay,
+                Schema = sampleSchema,
+            },
             cancellationToken);
 
         var tree = new Tree("[bold]Created[/]");
@@ -92,11 +99,11 @@ internal static class NewCommand
         // band, so point the user at the right environment variable.
         if (configuration.Database == DatabaseKind.Sqlite)
         {
-            app.Messenger.Announce($"Edit {"connection_string"} in {"config.env.sql"}, then run {"nschema plan"}.");
+            app.Messenger.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
         }
         else
         {
-            app.Messenger.Announce($"Set {ConnectionStringEnvVar(configuration.Database)}, then run {"nschema plan"}.");
+            app.Messenger.Announce($"Set {EnvironmentVariables.DatabaseConnectionString}, then run {"nschema plan"}.");
         }
     }
 
@@ -127,10 +134,6 @@ internal static class NewCommand
         return $"[{major}.0,{major + 1}.0)";
     }
 
-    // A plugin returns its statement rather than text now; a hand-built tree carries no trivia, so the writer
-    // is what synthesizes the separators between its tokens.
-    internal static string Render(SettingsStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
-
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)
         where TPlugin : class, INSchemaPlugin =>
@@ -151,13 +154,5 @@ internal static class NewCommand
         StateKind.File => null,
         StateKind.S3 => ("NSchema.Aws", "s3"),
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown backend."),
-    };
-
-    private static string ConnectionStringEnvVar(DatabaseKind database) => database switch
-    {
-        DatabaseKind.Postgres => EnvironmentVariables.PostgresConnectionString,
-        DatabaseKind.SqlServer => EnvironmentVariables.SqlServerConnectionString,
-        DatabaseKind.Sqlite => EnvironmentVariables.SqliteConnectionString,
-        _ => throw new ArgumentOutOfRangeException(nameof(database), database, "Unknown provider."),
     };
 }

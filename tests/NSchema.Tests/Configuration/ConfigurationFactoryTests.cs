@@ -22,7 +22,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
     public async Task Load_HonorsDirectory_ForConfigurationDiscovery()
     {
         // Arrange — a project whose config blocks live in its own directory, not the shell's.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"), "STATE file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), "STATE file ( path = './custom.state.json' );", TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
@@ -36,7 +36,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
     public async Task Load_Environment_LayersOverlayOverBase()
     {
         // Base config picks the file store; the prod overlay (selected via --environment) replaces it with S3.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.sql"),
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"),
             "PLUGIN s3 ( source = 'NSchema.Aws', version = '5.0.0' );\nSTATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.env.prod.sql"),
             "STATE s3 ( bucket = 'prod-bucket', key = 'state.json' );", TestContext.Current.CancellationToken);

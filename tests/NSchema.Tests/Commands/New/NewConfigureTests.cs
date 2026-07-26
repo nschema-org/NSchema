@@ -1,8 +1,10 @@
 using NSchema.Commands.New;
 using NSchema.Configuration.Plugins;
+using NSchema.Model.Columns;
+using NSchema.Model.Schemas;
+using NSchema.Model.Tables;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax;
 using NSchema.Project.Nsql.Syntax.Settings;
 using Spectre.Console.Testing;
 
@@ -23,13 +25,14 @@ public sealed class NewConfigureTests
             new() { Key = "database", Label = "Database", Default = "postgres" },
         ];
 
-        public SettingsStatement GetScaffoldTemplate(ScaffoldContext context) =>
-            new(SettingsKeyword.Database, Identifier.Synthetic("stub"), new SeparatedSyntaxList<Setting>(
-            [
-                new Setting("connection_string", $"Host={context.Answer("host", "?")};Database={context.Answer("database", "?")}"),
-            ]));
+        public NsqlDocument GetScaffoldTemplate(ScaffoldContext context) =>
+            new([
+                SettingsStatement.Database("stub").WithSetting(
+                    "connection_string",
+                    $"Host={context.Answer("host", "?")};Database={context.Answer("database", "?")}"),
+            ]);
 
-        public string GetSampleSchema() => "CREATE TABLE main.t (id bigint NOT NULL);";
+        public NsqlDocument GetSampleSchema() => Sample;
 
         public Result Configure(NSchemaApplicationBuilder builder, PluginSettings settings) => Result.Success();
     }
@@ -37,13 +40,24 @@ public sealed class NewConfigureTests
     /// <summary>A plugin that scaffolds fixed placeholders, as the ones written before prompts existed do.</summary>
     private sealed class SilentPlugin : INSchemaDatabasePlugin
     {
-        public SettingsStatement GetScaffoldTemplate(ScaffoldContext context) =>
-            new(SettingsKeyword.Database, Identifier.Synthetic("silent"), new SeparatedSyntaxList<Setting>([]));
+        public NsqlDocument GetScaffoldTemplate(ScaffoldContext context) =>
+            new([SettingsStatement.Database("silent")]);
 
-        public string GetSampleSchema() => string.Empty;
+        public NsqlDocument GetSampleSchema() => Sample;
 
         public Result Configure(NSchemaApplicationBuilder builder, PluginSettings settings) => Result.Success();
     }
+
+    private static readonly NsqlDocument Sample = NsqlDocument.From(new Model.Database
+    {
+        Schemas = [new Schema { Name = "main", Tables = { new Table { Name = "t", Columns = { new Column { Name = "id", Type = SqlType.BigInt } } } } }],
+    });
+
+    private static SettingsStatement Configured(NsqlDocument document) =>
+        document.Statements.OfType<SettingsStatement>().ShouldHaveSingleItem();
+
+    private static string ConnectionString(SettingsStatement statement) =>
+        statement.Settings.Single(setting => setting.Key == "connection_string").Value;
 
     private static Dictionary<string, string?> Supplied(params (string Key, string Value)[] pairs) =>
         pairs.ToDictionary(pair => pair.Key, pair => (string?)pair.Value, StringComparer.OrdinalIgnoreCase);
@@ -60,8 +74,7 @@ public sealed class NewConfigureTests
             console, plugin, new ScaffoldContext(), Supplied(("host", "db.internal"), ("database", "orders")));
 
         // Assert
-        NewCommand.Render(plugin.GetScaffoldTemplate(context))
-            .ShouldContain("Host=db.internal;Database=orders");
+        ConnectionString(Configured(plugin.GetScaffoldTemplate(context))).ShouldBe("Host=db.internal;Database=orders");
     }
 
     [Fact]
@@ -75,8 +88,7 @@ public sealed class NewConfigureTests
         var context = NewCommand.Configure(console, plugin, new ScaffoldContext(), Supplied());
 
         // Assert
-        NewCommand.Render(plugin.GetScaffoldTemplate(context))
-            .ShouldContain("Host=localhost;Database=postgres");
+        ConnectionString(Configured(plugin.GetScaffoldTemplate(context))).ShouldBe("Host=localhost;Database=postgres");
     }
 
     [Fact]
@@ -106,6 +118,6 @@ public sealed class NewConfigureTests
         var overlay = context with { EnvironmentName = "prod" };
 
         // Assert
-        NewCommand.Render(plugin.GetScaffoldTemplate(overlay)).ShouldContain("Host=db.internal");
+        ConnectionString(Configured(plugin.GetScaffoldTemplate(overlay))).ShouldContain("Host=db.internal");
     }
 }

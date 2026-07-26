@@ -6,20 +6,9 @@ namespace NSchema.Configuration;
 internal static class EnvironmentVariables
 {
     /// <summary>
-    /// The connection string for the PostgreSQL provider — the variable <c>init</c> points the user at. The plugin
-    /// (not the CLI) reads it at runtime.
+    /// The connection string for the configured database — the variable <c>new</c> points the user at.
     /// </summary>
-    public const string PostgresConnectionString = "NSCHEMA_POSTGRES_CONNECTION_STRING";
-
-    /// <summary>
-    /// The connection string for the SQLite provider, e.g. <c>Data Source=app.db</c>.
-    /// </summary>
-    public const string SqliteConnectionString = "NSCHEMA_SQLITE_CONNECTION_STRING";
-
-    /// <summary>
-    /// The connection string for the SQL Server provider.
-    /// </summary>
-    public const string SqlServerConnectionString = "NSCHEMA_SQLSERVER_CONNECTION_STRING";
+    public const string DatabaseConnectionString = "NSCHEMA_DATABASE_CONNECTION_STRING";
 
     /// <summary>
     /// The policy applied when the plan contains destructive actions.
