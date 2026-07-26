@@ -96,6 +96,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Scope and identity are address-based.** `PlanningScope` is scoped when it holds any address (schema or object).
 - **`ObjectAddress` carries an optional `Kind`.** A null kind addresses every kind sharing the name (kind-free targeting); a set kind disambiguates same-named objects.
 - **`Token.QuotedIdentifier`.** Synthesizes a quoted-identifier token (decoded text, quoted-and-escaped raw), the counterpart to `Token.StringLiteral`.
+- **Configuration statements are built by factory.** `SettingsStatement.Database(label)` / `.State(label)` / `.Plugin(label)` / `.Engine()` / `.Lock()` replace the constructor, refined with `WithSetting(key, value)`, `WithDocComment(text)` and `WithLeadingComment(text)`.
 - **A plugin declares its scaffolding questions.** `INSchemaPlugin.GetScaffoldPrompts(context)` returns the `ScaffoldPrompt`s a front-end should put to the user, and the answers arrive on `ScaffoldContext.Answers` for `GetScaffoldTemplate` to build its statement from.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` separates dependency declaration from configuration.
 - **`ENGINE` asserts the engine and/or host version.** `ENGINE ( version = '…', host_version = '…' );` — `version` is checked against the engine (Core), `host_version` against the host tool.

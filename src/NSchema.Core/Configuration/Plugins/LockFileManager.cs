@@ -59,15 +59,14 @@ public static class LockFileManager
     public static async Task<Result> Write(string path, LockFile lockFile, CancellationToken cancellationToken = default)
     {
         // Build a LOCK statement per pin and let the writer render them, so the lockfile takes the same one path to
-        // canonical source as everything else.
-        var document = new NsqlDocument(lockFile.Plugins
-            .Select(NsqlStatement (plugin) => new SettingsStatement(SettingsKeyword.Lock, Label: null,
-                new SeparatedSyntaxList<Setting>(
-                [
-                    new Setting("source", plugin.Source.ToString()),
-                    new Setting("version", plugin.Version.ToString()),
-                ])))
-            .ToList());
+        // canonical source as everything else. The header stays outside the document because a lockfile with nothing
+        // pinned still carries it, and there would be no statement to hang it on.
+        var statements = lockFile.Plugins
+            .Select(plugin => SettingsStatement.Lock()
+                .WithSetting("source", plugin.Source.ToString())
+                .WithSetting("version", plugin.Version.ToString())
+            ).ToList();
+        var document = new NsqlDocument(statements);
         var text = Header + "\n" + NsqlWriter.Write(document);
 
         try
