@@ -1,7 +1,7 @@
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.State.Locks;
 using NSchema.State.Domain;
+using NSchema.State.Locks;
 using Spectre.Console;
 
 namespace NSchema.Services.Reporting;

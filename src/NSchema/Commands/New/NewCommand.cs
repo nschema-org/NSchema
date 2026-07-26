@@ -5,8 +5,8 @@ using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Services.Prompting;
 using NSchema.Project.Nsql.Syntax.Settings;
+using NSchema.Services.Prompting;
 using Spectre.Console;
 
 namespace NSchema.Commands.New;

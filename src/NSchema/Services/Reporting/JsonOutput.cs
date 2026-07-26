@@ -19,8 +19,8 @@ internal static class JsonOutput
         // CLI output, not HTML, so the extra-cautious default encoder isn't needed.
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    // Value objects render as their bare value, addresses structurally; Core owns those conventions, this owns
-    // the NDJSON shape (single line, terse) that persistence would not want.
+        // Value objects render as their bare value, addresses structurally; Core owns those conventions, this owns
+        // the NDJSON shape (single line, terse) that persistence would not want.
     }.AddModelConverters();
 
     public static void Write(TextWriter writer, object @event) => writer.WriteLine(JsonSerializer.Serialize(@event, Options));

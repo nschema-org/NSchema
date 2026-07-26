@@ -4,8 +4,8 @@ using NSchema.Configuration.Plugins;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Services.Reporting;
-using NSchema.State.Locks;
 using NSchema.State.Domain;
+using NSchema.State.Locks;
 
 namespace NSchema.Tests.Services;
 
