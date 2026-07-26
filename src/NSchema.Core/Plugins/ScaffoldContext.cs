@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace NSchema.Plugins;
 
 /// <summary>
@@ -20,6 +22,7 @@ public sealed record ScaffoldContext
     /// <summary>
     /// The answer to <paramref name="key"/>, or <paramref name="fallback"/> when it went unanswered.
     /// </summary>
+    [return: NotNullIfNotNull(nameof(fallback))]
     public string? Answer(string key, string? fallback = null) =>
         Answers.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value) ? value : fallback;
 }
