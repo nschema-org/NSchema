@@ -1,17 +1,17 @@
 using NSchema.Commands.Apply;
 using NSchema.Commands.Completion;
-using NSchema.Commands.Db;
+using NSchema.Commands.Database;
 using NSchema.Commands.Destroy;
 using NSchema.Commands.Doctor;
 using NSchema.Commands.Drift;
-using NSchema.Commands.Fmt;
+using NSchema.Commands.Format;
 using NSchema.Commands.Import;
 using NSchema.Commands.Init;
 using NSchema.Commands.Lock;
 using NSchema.Commands.Plan;
 using NSchema.Commands.Plugin;
 using NSchema.Commands.Refresh;
-using NSchema.Commands.Scaffold;
+using NSchema.Commands.New;
 using NSchema.Commands.Script;
 using NSchema.Commands.State;
 using NSchema.Commands.Validate;
@@ -35,9 +35,9 @@ internal static class RootCommand
         root.Options.Add(CommonOptions.Quiet.Option);
 
         root.Subcommands.Add(InitCommand.Create());
-        root.Subcommands.Add(ScaffoldCommand.Create());
+        root.Subcommands.Add(NewCommand.Create());
         root.Subcommands.Add(ValidateCommand.Create());
-        root.Subcommands.Add(FmtCommand.Create());
+        root.Subcommands.Add(FormatCommand.Create());
         root.Subcommands.Add(PlanCommand.Create());
         root.Subcommands.Add(ApplyCommand.Create());
         root.Subcommands.Add(RefreshCommand.Create());
@@ -45,7 +45,7 @@ internal static class RootCommand
         root.Subcommands.Add(DestroyCommand.Create());
         root.Subcommands.Add(StateCommand.Create());
         root.Subcommands.Add(ScriptCommand.Create());
-        root.Subcommands.Add(DbCommand.Create());
+        root.Subcommands.Add(DatabaseCommand.Create());
         root.Subcommands.Add(DriftCommand.Create());
         root.Subcommands.Add(DoctorCommand.Create());
         root.Subcommands.Add(LockCommand.Create());

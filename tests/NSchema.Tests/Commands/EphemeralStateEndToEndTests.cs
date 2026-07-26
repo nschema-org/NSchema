@@ -15,7 +15,7 @@ namespace NSchema.Tests.Commands;
 /// </summary>
 public sealed class EphemeralEndToEndTests : IDisposable
 {
-    private const string SqliteVersion = "5.0.0-alpha.7";
+    private const string SqliteVersion = "5.0.0-alpha.8";
 
     private readonly string _projectDirectory = Directory.CreateTempSubdirectory("nschema-ephemeral-").FullName;
     private readonly string _originalDirectory = Directory.GetCurrentDirectory();

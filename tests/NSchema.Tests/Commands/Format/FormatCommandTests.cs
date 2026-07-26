@@ -1,12 +1,12 @@
-using NSchema.Commands.Fmt;
+using NSchema.Commands.Format;
 
-namespace NSchema.Tests.Commands.Fmt;
+namespace NSchema.Tests.Commands.Format;
 
-public sealed class FmtCommandTests : IDisposable
+public sealed class FormatCommandTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "nschema-fmt-" + Guid.NewGuid().ToString("N"));
 
-    public FmtCommandTests() => Directory.CreateDirectory(_directory);
+    public FormatCommandTests() => Directory.CreateDirectory(_directory);
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
@@ -26,7 +26,7 @@ public sealed class FmtCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        var changed = FmtCommand.FormatPath(_directory, check: false);
+        var changed = FormatCommand.FormatPath(_directory, check: false);
 
         changed.ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Formatted);
@@ -37,7 +37,7 @@ public sealed class FmtCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        var changed = FmtCommand.FormatPath(_directory, check: true);
+        var changed = FormatCommand.FormatPath(_directory, check: true);
 
         changed.ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Unformatted); // unchanged on disk
@@ -48,7 +48,7 @@ public sealed class FmtCommandTests : IDisposable
     {
         Write("schema.sql", Formatted);
 
-        FmtCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public sealed class FmtCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        FmtCommand.FormatPath(_directory, check: false);
-        FmtCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false);
+        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
         File.ReadAllText(file).ShouldBe(Formatted);
     }
 
@@ -66,7 +66,7 @@ public sealed class FmtCommandTests : IDisposable
     {
         var nested = Write(Path.Combine("app", "tables", "users.sql"), Unformatted);
 
-        FmtCommand.FormatPath(_directory, check: false).ShouldHaveSingleItem().ShouldBe(nested);
+        FormatCommand.FormatPath(_directory, check: false).ShouldHaveSingleItem().ShouldBe(nested);
         File.ReadAllText(nested).ShouldBe(Formatted);
     }
 
@@ -75,7 +75,7 @@ public sealed class FmtCommandTests : IDisposable
     {
         var ignored = Write("notes.txt", Unformatted);
 
-        FmtCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
         File.ReadAllText(ignored).ShouldBe(Unformatted);
     }
 
@@ -84,11 +84,11 @@ public sealed class FmtCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        FmtCommand.FormatPath(file, check: false).ShouldHaveSingleItem().ShouldBe(file);
+        FormatCommand.FormatPath(file, check: false).ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Formatted);
     }
 
     [Fact]
     public void FormatPath_MissingPath_Throws()
-        => Should.Throw<FileNotFoundException>(() => FmtCommand.FormatPath(Path.Combine(_directory, "nope"), check: false));
+        => Should.Throw<FileNotFoundException>(() => FormatCommand.FormatPath(Path.Combine(_directory, "nope"), check: false));
 }

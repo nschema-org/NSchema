@@ -1,6 +1,8 @@
 using System.Text;
+using NSchema.Project.Nsql.Syntax;
+using NSchema.Project.Nsql.Syntax.Settings;
 
-namespace NSchema.Commands.Scaffold;
+namespace NSchema.Commands.New;
 
 /// <summary>
 /// Composes a starter NSchema project from caller-supplied config statements and a sample schema, writing the files
@@ -95,12 +97,21 @@ internal static class ProjectScaffolder
     // The host authors the ENGINE assertion: the engine is compiled into the CLI, so it knows the version range a
     // project scaffolded now requires.
     private static string EngineDeclaration(string engineRequirement) =>
-        $"ENGINE (\n  version = '{engineRequirement}'\n);";
+        NewCommand.Render(new SettingsStatement(
+            SettingsKeyword.Engine,
+            Label: null,
+            new SeparatedSyntaxList<Setting>([new Setting("version", engineRequirement)])));
 
     // The host authors the PLUGIN statements: it resolved the packages, so it knows the pins.
     private static string PluginDeclarations(IReadOnlyList<(string Label, string PackageId, string Version)> plugins) =>
-        string.Join("\n\n", plugins.Select(p =>
-            $"PLUGIN {p.Label} (\n  source  = '{p.PackageId}',\n  version = '{p.Version}'\n);"));
+        string.Join("\n\n", plugins.Select(plugin => NewCommand.Render(new SettingsStatement(
+            SettingsKeyword.Plugin,
+            Identifier.Synthetic(plugin.Label),
+            new SeparatedSyntaxList<Setting>(
+            [
+                new Setting("source", plugin.PackageId),
+                new Setting("version", plugin.Version),
+            ])))));
 
     // Joins a header and one or more config statements into a file body: blank-line separated, single trailing newline.
     private static string Compose(string header, IReadOnlyList<string> blocks)

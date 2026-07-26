@@ -1,11 +1,11 @@
-using NSchema.Commands.Db.Show;
+using NSchema.Commands.Database.Show;
 using NSchema.Configuration.Plugins;
 
-namespace NSchema.Tests.Commands.Db.Show;
+namespace NSchema.Tests.Commands.Database.Show;
 
-public sealed class DbShowConfigurationValidatorTests
+public sealed class DatabaseShowConfigurationValidatorTests
 {
-    private readonly DbShowConfigurationValidator _sut = new();
+    private readonly DatabaseShowConfigurationValidator _sut = new();
 
     private static PluginReference Postgres() => TestConfigurations.Provider();
 
@@ -13,7 +13,7 @@ public sealed class DbShowConfigurationValidatorTests
     public void Valid_WithProvider()
     {
         // Arrange — db show reads the live schema, so a provider is all it needs.
-        var config = new DbShowConfiguration { Provider = Postgres() };
+        var config = new DatabaseShowConfiguration { Provider = Postgres() };
 
         // Act
         var result = _sut.Validate(config);
@@ -26,7 +26,7 @@ public sealed class DbShowConfigurationValidatorTests
     public void Invalid_WhenProviderMissing()
     {
         // Arrange — without a provider there is no live database to read.
-        var config = new DbShowConfiguration { Provider = null };
+        var config = new DatabaseShowConfiguration { Provider = null };
 
         // Act
         var result = _sut.Validate(config);

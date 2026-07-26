@@ -1,10 +1,10 @@
 using FluentValidation;
 
-namespace NSchema.Commands.Db.Show;
+namespace NSchema.Commands.Database.Show;
 
-internal sealed class DbShowConfigurationValidator : AbstractValidator<DbShowConfiguration>
+internal sealed class DatabaseShowConfigurationValidator : AbstractValidator<DatabaseShowConfiguration>
 {
-    public DbShowConfigurationValidator()
+    public DatabaseShowConfigurationValidator()
     {
         // db show reads the live schema directly from the database, so a provider is mandatory.
         RuleFor(x => x.Provider)

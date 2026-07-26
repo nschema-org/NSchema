@@ -16,7 +16,7 @@ public enum MessageKind
     Announcement,
 
     /// <summary>
-    /// A transient progress step ("Loading desired schema...", "Generating SQL...").
+    /// A transient progress step ("Loading project...", "Generating SQL...").
     /// </summary>
     Progress,
 

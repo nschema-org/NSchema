@@ -1,24 +1,24 @@
 using System.CommandLine;
 using NSchema.Configuration;
 
-namespace NSchema.Commands.Db.Show;
+namespace NSchema.Commands.Database.Show;
 
-internal static class DbShowCommand
+internal static class DatabaseShowCommand
 {
     public static Command Create()
     {
         var command = new Command("show", "Show the live database schema, read directly from the database via the provider.");
 
-        command.Options.AddRange(DbShowOptions.All);
+        command.Options.AddRange(DatabaseShowOptions.All);
 
         command.SetAction(Run);
         return command;
     }
 
-    private static async ValueTask<DbShowConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
+    private static async ValueTask<DatabaseShowConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<DbShowConfiguration>(result, environment, cancellationToken);
-        new DbShowConfigurationValidator().ValidateOrThrow(config);
+        var config = await ConfigurationFactory.Load<DatabaseShowConfiguration>(result, environment, cancellationToken);
+        new DatabaseShowConfigurationValidator().ValidateOrThrow(config);
         return config;
     }
 

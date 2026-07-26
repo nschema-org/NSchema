@@ -21,7 +21,7 @@ This installs the `nschema` command.
 ## Quickstart
 
 ```sh
-nschema scaffold  # scaffold a project (config + sample schema)
+nschema new       # scaffold a project (config + sample schema)
 nschema init      # restore the pinned database/state plugins
 nschema plan      # preview the migration
 nschema apply     # apply it

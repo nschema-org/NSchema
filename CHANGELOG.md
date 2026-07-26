@@ -23,21 +23,24 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 - **A lockfile (`nschema.lock`) pins declared plugin versions to concrete versions.** `init` resolves each `PLUGIN` — a range to the highest available version, an exact pin to itself — and records it; later commands read the pin, so a plugin without a lockfile entry is an error that points to `init`.
 - **`plugin update [<label>]`** re-resolves ranges to their highest available version and rewrites the lockfile — every plugin, or a single one by label.
 - **`plugin outdated`** shows each plugin's pinned version against the newest its range allows (what `update` would install) and the newest available for this engine.
+- **`new` asks the plugins what it needs to know.** A database or state plugin can declare the questions its configuration needs, composing the answers into the statement it writes.
+- **`--set <key>=<value>`** on `new` answers a question up front, so a scripted run never blocks. Repeatable.
 
 ### Changed
 
-- **The `.env.<name>.` marker makes a file environment-specific.** A `<any>.env.<name>.sql` file is read only when that environment is selected, and never contributes schema; every other `.sql` file is the base. Configuration and schema share one grammar, so a configuration statement is read wherever you write it — `scaffold` puts them in `config.env.sql` by convention.
+- **The `.env.<name>.` marker makes a file environment-specific.** A `<any>.env.<name>.sql` file is read only when that environment is selected, and never contributes schema; every other `.sql` file is the base. Configuration and schema share one grammar, so a configuration statement is read wherever you write it — `new` puts them in `config.env.sql` by convention.
 - **Environments select configuration, not schema.** `--environment` layers the environment's files over the base configuration; schema files are no longer overlaid per environment. An overlay replaces the `DATABASE`, `STATE`, or `ENGINE` statement it restates rather than merging into it, so an attribute the overlay omits falls back to the default, not to the base statement's value.
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures. The built-in local-file store is `STATE file ( path = '…' );`.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` names the package and pins its version; `DATABASE`/`STATE` reference the label. The built-in label-to-package map is gone — every plugin is declared explicitly, and `version`/`source` no longer ride the configuring statement. A `version` may be an exact pin or a NuGet-style range (`[5.0,6.0)`).
 - **`ENGINE ( version = '…' );` asserts the engine version.** A project can require an engine version range; a mismatch fails with a pointer to `dotnet tool update`.
-- **`scaffold` authors the `ENGINE` assertion.** A scaffolded project pins the engine to the CLI's current major (e.g. `ENGINE ( version = '[5.0,6.0)' );`), so it fails fast on an incompatible tool.
-- **`scaffold` runs `init` afterwards**, resolving and locking the plugins it declared so the project is ready to `plan` immediately. Pass `--no-init` to skip it for an offline or edit-first workflow.
+- **`new` authors the `ENGINE` assertion.** A scaffolded project pins the engine to the CLI's current major (e.g. `ENGINE ( version = '[5.0,6.0)' );`), so it fails fast on an incompatible tool.
+- **`new` runs `init` afterwards**, resolving and locking the plugins it declared so the project is ready to `plan` immediately. Pass `--no-init` to skip it for an offline or edit-first workflow.
 - **Planning always diffs recorded state against the project**, so `plan` (and a fresh `apply`) now require both a database and a state store. Planning against the live database is no longer available; use `refresh` to capture the live schema first.
 - **`destroy` reads the managed schema from the recorded state.** The fallback to the working-directory schema when no store was configured is gone, and a state store is now required.
 - **Plan output folds scripts into the diff.** Deployment and change-event scripts are first-class parts of the diff, shown in the plan tree (and carried on the `diff` object in `--json`); the separate pre/post-deployment and data-migration sections are gone.
 - **Policy-blocked plans still render.** A plan blocked by policy shows the complete diff and SQL alongside the blocking diagnostics; error severity is what stops an apply.
 - **`--destructive-actions` accepts `Ignore`** alongside `Error`, `Warn`, and `Allow`.
+- **Abbreviated commands are spelled out.** `fmt` is `format`, `db` is `database`, and `scaffold` is `new`. The old names are gone rather than aliased, so a script still using one fails loudly instead of drifting.
 - **`apply` re-runs policies.** The policy flags now apply to `apply --plan-file` too, re-checking the saved plan before executing it.
 - **`script hash`, `script taint`, and `script untaint` operate on deployment scripts.** A template-scoped script is addressed as `schema.name`, as `script hash` lists it.
 - **`state show` reports an error when no state has been recorded yet** instead of failing on a missing source.
