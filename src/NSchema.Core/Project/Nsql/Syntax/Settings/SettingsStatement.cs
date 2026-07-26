@@ -85,12 +85,29 @@ public sealed record SettingsStatement : NsqlStatement
     public static SettingsStatement Lock() => new(SettingsKeyword.Lock, label: null, Empty);
 
     /// <summary>
-    /// This statement with <paramref name="key"/> = <paramref name="value"/> appended.
+    /// This statement with <paramref name="key"/> set to <paramref name="value"/>.
     /// </summary>
     /// <param name="key">The setting key, which may be dotted (<c>pool.max</c>).</param>
     /// <param name="value">The setting value, as it should be written.</param>
-    public SettingsStatement WithSetting(string key, string value) =>
-        this with { Settings = new SeparatedSyntaxList<Setting>([.. Settings, new Setting(key, value)]) };
+    public SettingsStatement WithSetting(string key, string value)
+    {
+        var setting = new Setting(key, value);
+        var index = IndexOf(key);
+
+        var newSettings = new SeparatedSyntaxList<Setting>(index < 0
+            ? [.. Settings, setting]
+            : [.. Settings.Select((existing, i) => i == index ? setting : existing)]);
+
+        return this with { Settings = newSettings };
+    }
+
+    /// <summary>
+    /// This statement with every setting of <paramref name="overlay"/> applied over its own — how an environment
+    /// overlay refines the statement it restates.
+    /// </summary>
+    /// <param name="overlay">The statement whose settings take precedence.</param>
+    public SettingsStatement WithSettingsFrom(SettingsStatement overlay) =>
+        overlay.Settings.Aggregate(this, (merged, setting) => merged.WithSetting(setting.Key, setting.Value));
 
     /// <summary>
     /// This statement carrying <paramref name="comment"/> as its doc-comment, which the language reads as the
@@ -121,6 +138,20 @@ public sealed record SettingsStatement : NsqlStatement
             yield return CloseParenToken;
             yield return SemicolonToken;
         }
+    }
+
+    // Keys bind case-insensitively, so they collide case-insensitively too.
+    private int IndexOf(string key)
+    {
+        for (var i = 0; i < Settings.Count; i++)
+        {
+            if (string.Equals(Settings[i].Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private static SeparatedSyntaxList<Setting> Empty => new([]);

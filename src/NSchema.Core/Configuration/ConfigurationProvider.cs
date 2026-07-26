@@ -79,27 +79,50 @@ public static class ConfigurationProvider
         }
     }
 
-    // A higher layer replaces a lower layer's DATABASE/STATE/ENGINE wholesale (so an overlay can swap the state
-    // store cleanly); every other statement from both layers carries through.
+    // The configuring statements: one of each, and the only ones a layer can override.
+    private static readonly SettingsKeyword[] _configuring =
+        [SettingsKeyword.Database, SettingsKeyword.State, SettingsKeyword.Engine];
+
+    /// <summary>
+    /// Layers <paramref name="higher"/> over <paramref name="lower"/>: a configuring statement that restates one
+    /// from below under the same label refines it setting by setting, so an overlay carries only what differs. A
+    /// different label is a different plugin, so it replaces outright — there is nothing meaningful to merge.
+    /// Every other statement from both layers carries through.
+    /// </summary>
     private static List<NsqlDocument> Merge(IReadOnlyList<NsqlDocument> lower, IReadOnlyList<NsqlDocument> higher)
     {
-        var replaceDatabase = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.Database));
-        var replaceState = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.State));
-        var replaceEngine = higher.Any(d => d.Statements.OfType<SettingsStatement>().Any(s => s.Keyword == SettingsKeyword.Engine));
+        var baseline = lower
+            .SelectMany(document => document.Statements.OfType<SettingsStatement>())
+            .Where(statement => _configuring.Contains(statement.Keyword))
+            .ToLookup(statement => statement.Keyword);
 
+        var overridden = higher
+            .SelectMany(document => document.Statements.OfType<SettingsStatement>())
+            .Select(statement => statement.Keyword)
+            .ToHashSet();
+
+        // The lower layer keeps everything the higher one does not restate; what it does restate is folded into the
+        // higher statement, so the assembler still sees exactly one of each.
         var kept = lower
             .Select(document => document with { Statements = [.. document.Statements.Where(Keep)] })
             .Where(document => document.Statements.Count > 0);
 
-        return [.. kept, .. higher];
+        var refined = higher.Select(document => document with { Statements = [.. document.Statements.Select(Refine)] });
 
-        bool Keep(NsqlStatement statement) => statement is not SettingsStatement settings || settings.Keyword switch
-        {
-            SettingsKeyword.Database => !replaceDatabase,
-            SettingsKeyword.State => !replaceState,
-            SettingsKeyword.Engine => !replaceEngine,
-            _ => true,
-        };
+        return [.. kept, .. refined];
+
+        bool Keep(NsqlStatement statement) =>
+            statement is not SettingsStatement settings
+            || !_configuring.Contains(settings.Keyword)
+            || !overridden.Contains(settings.Keyword);
+
+        NsqlStatement Refine(NsqlStatement statement) =>
+            statement is SettingsStatement settings
+            && _configuring.Contains(settings.Keyword)
+            && baseline[settings.Keyword].FirstOrDefault() is { } original
+            && original.Label?.Value == settings.Label?.Value
+                ? original.WithSettingsFrom(settings)
+                : statement;
     }
 
     private static SemanticVersion ReadEngineVersion()

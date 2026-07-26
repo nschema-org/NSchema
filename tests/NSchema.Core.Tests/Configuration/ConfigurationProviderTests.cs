@@ -131,9 +131,10 @@ public sealed class ConfigurationProviderTests : IDisposable
     // ── Layering ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Load_HigherLayer_ReplacesTheStateSlice()
+    public async Task Load_HigherLayer_UnderADifferentLabel_ReplacesTheStateSlice()
     {
-        // Arrange — the base declares a file store; the overlay swaps it for a plugin-backed store, wholesale.
+        // Arrange — the base declares a file store; the overlay swaps it for a plugin-backed store. A different label
+        // is a different plugin, so there is nothing to merge and the base statement goes entirely.
         var baseLayer = Write("base.sql",
             """
             PLUGIN s3 ( source = 'NSchema.Aws', version = '5.0.1' );
@@ -150,5 +151,66 @@ public sealed class ConfigurationProviderTests : IDisposable
         result.IsSuccess.ShouldBeTrue();
         result.Value.State!.Label.ShouldBe("s3");
         result.Value.State!.Value("bucket").ShouldBe("prod");
+    }
+
+    [Fact]
+    public async Task Load_HigherLayer_UnderTheSameLabel_MergesSettingBySetting()
+    {
+        // Arrange — the overlay restates the same store to move the key, so it carries only that.
+        var baseLayer = Write("base.sql",
+            """
+            PLUGIN s3 ( source = 'NSchema.Aws', version = '5.0.1' );
+            STATE s3 ( bucket = 'shared', key = 'nschema.state.json' );
+            """);
+        var overlay = Write("overlay.sql", "STATE s3 ( key = 'prod/nschema.state.json' );");
+
+        // Act
+        var result = await ConfigurationProvider.Load(
+            [new ConfigurationLayer([baseLayer]), new ConfigurationLayer([overlay])],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert — the overlaid key wins and the bucket it did not restate survives.
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.State!.Value("key").ShouldBe("prod/nschema.state.json");
+        result.Value.State!.Value("bucket").ShouldBe("shared");
+    }
+
+    [Fact]
+    public async Task Load_HigherLayer_MaySupplyASettingTheBaseOmits()
+    {
+        // Arrange
+        var baseLayer = Write("base.sql",
+            """
+            PLUGIN pg ( source = 'NSchema.Postgres', version = '5.0.1' );
+            DATABASE pg ( connection_string = 'Host=localhost' );
+            """);
+        var overlay = Write("overlay.sql", "DATABASE pg ( command_timeout = '120' );");
+
+        // Act
+        var result = await ConfigurationProvider.Load(
+            [new ConfigurationLayer([baseLayer]), new ConfigurationLayer([overlay])],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Database!.Value("command_timeout").ShouldBe("120");
+        result.Value.Database!.Value("connection_string").ShouldBe("Host=localhost");
+    }
+
+    [Fact]
+    public async Task Load_HigherLayer_MergesTheEngineAssertion_WhichHasNoLabel()
+    {
+        // Arrange
+        var baseLayer = Write("base.sql", "ENGINE ( version = '[5.0,6.0)' );");
+        var overlay = Write("overlay.sql", "ENGINE ( version = '[5.0,7.0)' );");
+
+        // Act
+        var result = await ConfigurationProvider.Load(
+            [new ConfigurationLayer([baseLayer]), new ConfigurationLayer([overlay])],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Engine!.Version!.ToString().ShouldBe("[5.0.0,7.0.0)");
     }
 }

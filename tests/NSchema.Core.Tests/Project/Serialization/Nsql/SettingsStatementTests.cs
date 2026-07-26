@@ -88,4 +88,45 @@ public sealed class SettingsStatementTests
         read.Label!.Value.ShouldBe("postgres");
         read.Settings.ShouldHaveSingleItem().Value.ShouldBe("Host=localhost");
     }
+
+    [Fact]
+    public void WithSetting_Twice_ReplacesInPlace()
+    {
+        // Act — a key may only appear once; binding would throw on a repeat.
+        var statement = SettingsStatement.Database("postgres")
+            .WithSetting("connection_string", "Host=localhost")
+            .WithSetting("command_timeout", "30")
+            .WithSetting("connection_string", "Host=db.internal");
+
+        // Assert — replaced where it was, not appended.
+        statement.Settings.Select(setting => setting.Key).ShouldBe(["connection_string", "command_timeout"]);
+        statement.Settings[0].Value.ShouldBe("Host=db.internal");
+    }
+
+    [Fact]
+    public void WithSetting_MatchesTheKeyCaseInsensitively()
+    {
+        // Act — keys bind case-insensitively, so they collide case-insensitively.
+        var statement = SettingsStatement.Database("postgres")
+            .WithSetting("connection_string", "Host=localhost")
+            .WithSetting("CONNECTION_STRING", "Host=db.internal");
+
+        // Assert
+        statement.Settings.ShouldHaveSingleItem().Value.ShouldBe("Host=db.internal");
+    }
+
+    [Fact]
+    public void WithSettingsFrom_AppliesTheOverlayOverItsOwn()
+    {
+        // Arrange
+        var basis = SettingsStatement.State("s3").WithSetting("bucket", "shared").WithSetting("key", "state.json");
+        var overlay = SettingsStatement.State("s3").WithSetting("key", "prod/state.json");
+
+        // Act
+        var merged = basis.WithSettingsFrom(overlay);
+
+        // Assert — what the overlay restates wins; what it omits survives.
+        merged.Settings.Single(setting => setting.Key == "key").Value.ShouldBe("prod/state.json");
+        merged.Settings.Single(setting => setting.Key == "bucket").Value.ShouldBe("shared");
+    }
 }
