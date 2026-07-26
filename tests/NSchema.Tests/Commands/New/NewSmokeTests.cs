@@ -19,7 +19,7 @@ namespace NSchema.Tests.Commands.New;
 /// </summary>
 public sealed class NewSmokeTests : IDisposable
 {
-    private const string PostgresVersion = "5.0.0-beta.4";
+    private const string PostgresVersion = "5.0.0-beta.3";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-new-smoke-").FullName;
 
