@@ -6,7 +6,7 @@ namespace NSchema.Commands.Init;
 
 /// <summary>
 /// Resolves declared plugin versions, writes the lockfile, and restores the resolved plugins into the cache — the
-/// shared body of <c>nschema init</c> and the init step <c>scaffold</c> runs.
+/// shared body of <c>nschema init</c> and the init step <c>new</c> runs.
 /// </summary>
 internal static class ProjectInitializer
 {

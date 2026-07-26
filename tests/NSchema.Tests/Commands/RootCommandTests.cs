@@ -13,7 +13,7 @@ public sealed class RootCommandTests
         var names = _sut.Subcommands.Select(command => command.Name);
 
         // Assert
-        names.ShouldBe(["init", "scaffold", "validate", "fmt", "plan", "apply", "refresh", "import", "destroy", "state", "script", "db", "drift", "doctor", "lock", "plugin", "completion"], ignoreOrder: true);
+        names.ShouldBe(["init", "new", "validate", "format", "plan", "apply", "refresh", "import", "destroy", "state", "script", "database", "drift", "doctor", "lock", "plugin", "completion"], ignoreOrder: true);
     }
 
     [Fact]
@@ -113,14 +113,27 @@ public sealed class RootCommandTests
     }
 
     [Fact]
-    public void DbGroup_RegistersShow()
+    public void DatabaseGroup_RegistersShow()
     {
-        // Act — the db noun groups live-database inspection (the online counterpart to `state show`).
-        var dbCommand = _sut.Subcommands.Single(command => command.Name == "db");
-        var names = dbCommand.Subcommands.Select(command => command.Name);
+        // Act — the database noun groups live-database inspection (the online counterpart to `state show`).
+        var databaseCommand = _sut.Subcommands.Single(command => command.Name == "database");
+        var names = databaseCommand.Subcommands.Select(command => command.Name);
 
         // Assert
         names.ShouldBe(["show"], ignoreOrder: true);
+    }
+
+    [Theory]
+    [InlineData("fmt")]
+    [InlineData("db")]
+    [InlineData("scaffold")]
+    public void AbbreviatedName_IsNotRegistered(string abbreviation)
+    {
+        // Act
+        var names = _sut.Subcommands.SelectMany(subcommand => subcommand.Aliases.Append(subcommand.Name));
+
+        // Assert — the abbreviations are gone, not aliased, so a script using one fails loudly.
+        names.ShouldNotContain(abbreviation);
     }
 
     [Fact]
@@ -135,13 +148,13 @@ public sealed class RootCommandTests
     [InlineData("refresh")]
     [InlineData("destroy")]
     [InlineData("state show")]
-    [InlineData("db show")]
+    [InlineData("database show")]
     [InlineData("drift")]
     public void DatabaseAndStateOptions_AreNotCliFlags(string command)
     {
-        // The live database (PROVIDER block) and state store (BACKEND block) are defined in the project's .sql config
-        // blocks — with the connection string overridable via NSCHEMA_POSTGRES_CONNECTION_STRING — so these are
-        // rejected as unknown flags.
+        // The live database (DATABASE statement) and state store (STATE statement) are declared in the project's
+        // configuration — with the connection string overridable via NSCHEMA_DATABASE_CONNECTION_STRING — so these
+        // are rejected as unknown flags.
         var result = _sut.Parse([.. command.Split(' '), "--database", "postgres", "--connection-string", "x", "--state-file", "s"]);
 
         // Assert
@@ -295,7 +308,7 @@ public sealed class RootCommandTests
 
     [Theory]
     [InlineData("init")]
-    [InlineData("scaffold")]
+    [InlineData("new")]
     [InlineData("validate")]
     [InlineData("plan")]
     [InlineData("apply")]
@@ -458,12 +471,12 @@ public sealed class RootCommandTests
         => _sut.Parse([command, "--no-lock"]).Errors.ShouldNotBeEmpty();
 
     [Fact]
-    public void Fmt_AcceptsAPositionalPathAndCheck()
-        // fmt <path> --check formats (or checks) the .sql files under a file/dir (Terraform's fmt -check).
-        => _sut.Parse(["fmt", "schema.sql", "--check"]).Errors.ShouldBeEmpty();
+    public void Format_AcceptsAPositionalPathAndCheck()
+        // format <path> --check formats (or checks) the .sql files under a file/dir (Terraform's fmt -check).
+        => _sut.Parse(["format", "schema.sql", "--check"]).Errors.ShouldBeEmpty();
 
     [Fact]
-    public void Fmt_PathArgumentIsOptional()
-        // Bare `fmt` formats the current directory, so the positional must be optional.
-        => _sut.Parse(["fmt"]).Errors.ShouldBeEmpty();
+    public void Format_PathArgumentIsOptional()
+        // Bare `format` formats the current directory, so the positional must be optional.
+        => _sut.Parse(["format"]).Errors.ShouldBeEmpty();
 }

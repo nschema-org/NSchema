@@ -1,17 +1,17 @@
-using NSchema.Commands.Scaffold;
+using NSchema.Commands.New;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Tables;
 
-namespace NSchema.Tests.Commands.Scaffold;
+namespace NSchema.Tests.Commands.New;
 
 /// <summary>
 /// <see cref="ProjectScaffolder"/> is pure composition: given plugin-rendered config statements and a sample schema
 /// it lays out the project files (authoring the <c>PLUGIN</c> declarations and supplying the built-in file state
 /// store). These tests pin that composition without loading real plugins — the live plugin resolution lives in
-/// <c>ScaffoldCommand</c> and is exercised end-to-end by the plugin-loader/smoke tests.
+/// <c>NewCommand</c> and is exercised end-to-end by the plugin-loader/smoke tests.
 /// </summary>
 public sealed class ProjectScaffolderTests : IDisposable
 {
@@ -95,7 +95,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         config.ShouldContain("ENGINE (");
         config.ShouldContain("version = '[5.0,6.0)'");
         config.ShouldContain("PLUGIN postgres");
-        config.ShouldContain("source  = 'NSchema.Postgres'");
+        config.ShouldContain("source = 'NSchema.Postgres'");
         config.ShouldContain("version = '5.0.0-test'");
         config.ShouldContain("DATABASE postgres");
         config.ShouldContain("STATE file"); // the built-in default state store, owned by the CLI

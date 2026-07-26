@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSchema.Commands;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Plan.Policies;
@@ -117,7 +117,7 @@ public sealed class CliApplicationBuilderTests
         try
         {
             // Arrange — a postgres DATABASE statement missing the required connection_string.
-            var reference = new PluginReference(new PackageId("NSchema.Postgres"), SemanticVersion.Parse("5.0.0-alpha.6"), new PluginLabel("postgres"),
+            var reference = new PluginReference(new PackageId("NSchema.Postgres"), SemanticVersion.Parse("5.0.0-alpha.9"), new PluginLabel("postgres"),
                 new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>()));
 
             // Act

@@ -1,7 +1,7 @@
 using NSchema.Model.Scripts;
-using NSchema.Project.Model.Directives;
+using NSchema.Project.Domain.Directives;
 using NSchema.Services.Reporting;
-using NSchema.State.Model;
+using NSchema.State.Domain;
 
 namespace NSchema.Extensions;
 

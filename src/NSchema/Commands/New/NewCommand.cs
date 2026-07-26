@@ -1,28 +1,29 @@
 using System.CommandLine;
 using NSchema.Commands.Init;
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Plugins;
 using NSchema.Project.Nsql;
-using NSchema.Project.Nsql.Syntax.Blocks;
+using NSchema.Project.Nsql.Syntax.Settings;
+using NSchema.Services.Prompting;
 using Spectre.Console;
 
-namespace NSchema.Commands.Scaffold;
+namespace NSchema.Commands.New;
 
-internal static class ScaffoldCommand
+internal static class NewCommand
 {
     public static Command Create()
     {
-        var command = new Command("scaffold", "Scaffold a simple project in the current directory.");
-        command.Options.AddRange(ScaffoldOptions.All);
+        var command = new Command("new", "Create a new project in the current directory.");
+        command.Options.AddRange(NewOptions.All);
         command.SetAction(Run);
         return command;
     }
 
     private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await ConfigurationFactory.Load<ScaffoldConfiguration>(parseResult, environment: null, cancellationToken);
+        var configuration = await ConfigurationFactory.Load<NewConfiguration>(parseResult, environment: null, cancellationToken);
 
         using var app = CliApplicationBuilder.Create(parseResult).Build();
         var console = AnsiConsole.Console;
@@ -39,7 +40,8 @@ internal static class ScaffoldCommand
         var providerVersion = loader.ResolveLatestVersion(providerPackage);
         plugins.Add((providerLabel, providerPackage.Value, providerVersion.ToString()));
         var providerPlugin = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
-        var providerBlock = Render(providerPlugin.GetScaffoldTemplate(new ScaffoldContext()));
+        var providerContext = Configure(console, providerPlugin, new ScaffoldContext(), configuration.Answers);
+        var providerBlock = Render(providerPlugin.GetScaffoldTemplate(providerContext));
         var sampleSchema = providerPlugin.GetSampleSchema();
 
         // The local-file state store is built in; any other backend is a plugin that renders its own statements
@@ -52,9 +54,12 @@ internal static class ScaffoldCommand
             var backendVersion = loader.ResolveLatestVersion(backendPackage);
             plugins.Add((backend.Label, backendPackage.Value, backendVersion.ToString()));
             var backendPlugin = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
+            var backendContext = Configure(console, backendPlugin, new ScaffoldContext(), configuration.Answers);
+
+            // The questions are put once; the overlay reuses those answers, varying only by environment.
             pluginBackend = (
-                Render(backendPlugin.GetScaffoldTemplate(new ScaffoldContext())),
-                Render(backendPlugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" })));
+                Render(backendPlugin.GetScaffoldTemplate(backendContext)),
+                Render(backendPlugin.GetScaffoldTemplate(backendContext with { EnvironmentName = "prod" })));
         }
 
         var created = await ProjectScaffolder.Scaffold(
@@ -95,6 +100,26 @@ internal static class ScaffoldCommand
         }
     }
 
+    /// <summary>
+    /// Puts the plugin's questions and returns the context carrying the answers. A plugin that declares none is
+    /// unaffected, so this is silent for anything that scaffolds fixed placeholders.
+    /// </summary>
+    internal static ScaffoldContext Configure(
+        IAnsiConsole console,
+        INSchemaPlugin plugin,
+        ScaffoldContext context,
+        IReadOnlyDictionary<string, string?> supplied
+    )
+    {
+        var prompts = plugin.GetScaffoldPrompts(context);
+        if (prompts.Count == 0)
+        {
+            return context;
+        }
+
+        return context with { Answers = ScaffoldPrompter.Answer(console, prompts, supplied) };
+    }
+
     // The engine is compiled into the CLI, so a project scaffolded now requires this CLI's engine major: [X.0, X+1.0).
     private static string EngineRequirement()
     {
@@ -104,7 +129,7 @@ internal static class ScaffoldCommand
 
     // A plugin returns its statement rather than text now; a hand-built tree carries no trivia, so the writer
     // is what synthesizes the separators between its tokens.
-    internal static string Render(BlockStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
+    internal static string Render(SettingsStatement block) => NsqlWriter.Write(new NsqlDocument([block])).TrimEnd();
 
     // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
     private static TPlugin Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)

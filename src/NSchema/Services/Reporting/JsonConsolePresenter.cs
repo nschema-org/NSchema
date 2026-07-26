@@ -1,6 +1,6 @@
-using NSchema.Diff.Model;
+using NSchema.Diff.Domain;
 using NSchema.Model;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 
 namespace NSchema.Services.Reporting;

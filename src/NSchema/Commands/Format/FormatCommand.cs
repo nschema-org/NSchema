@@ -1,9 +1,9 @@
 using System.CommandLine;
 using NSchema.Project.Nsql;
 
-namespace NSchema.Commands.Fmt;
+namespace NSchema.Commands.Format;
 
-internal static class FmtCommand
+internal static class FormatCommand
 {
     private static readonly Argument<string> PathArgument = new("path")
     {
@@ -20,7 +20,7 @@ internal static class FmtCommand
 
     public static Command Create()
     {
-        var command = new Command("fmt", "Reformat .sql DDL files to a canonical layout (in place, or check with --check).");
+        var command = new Command("format", "Reformat .sql DDL files to a canonical layout (in place, or check with --check).");
         command.Arguments.Add(PathArgument);
         command.Options.Add(CheckOption);
         command.SetAction(Run);

@@ -1,9 +1,9 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 
-namespace NSchema.Commands.Scaffold;
+namespace NSchema.Commands.New;
 
-internal static class ScaffoldOptions
+internal static class NewOptions
 {
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force", "-f")
@@ -17,9 +17,14 @@ internal static class ScaffoldOptions
         .FromOption("--state")
         .WithDescription("State backend to scaffold configuration for: file (default) or s3.");
 
+    public static readonly OptionBinding<string[]> Set = OptionBinding.Create<string[]>()
+        .FromOption("--set")
+        .AllowMultipleArguments()
+        .WithDescription("Answer a plugin's scaffolding question up front, as key=value. Repeatable; skips the prompt.");
+
     public static readonly OptionBinding<bool> NoInit = OptionBinding.Create<bool>()
         .FromOption("--no-init")
         .WithDescription("Skip resolving and locking the scaffolded plugins; run 'nschema init' yourself later.");
 
-    public static IEnumerable<Option> All => [Force.Option, Database.Option, State.Option, NoInit.Option];
+    public static IEnumerable<Option> All => [Force.Option, Database.Option, State.Option, Set.Option, NoInit.Option];
 }

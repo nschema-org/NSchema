@@ -3,12 +3,12 @@ using NSchema.Configuration;
 using NSchema.Configuration.Binding;
 using NSchema.Configuration.Plugins;
 
-namespace NSchema.Commands.Db.Show;
+namespace NSchema.Commands.Database.Show;
 
 /// <summary>
 /// Configuration for <c>db show</c>: reads the live schema directly from the database via the provider.
 /// </summary>
-internal sealed class DbShowConfiguration : IBindable
+internal sealed class DatabaseShowConfiguration : IBindable
 {
     /// <summary>
     /// The database provider supplying the live schema.
@@ -23,6 +23,6 @@ internal sealed class DbShowConfiguration : IBindable
     public void Bind(ProjectConfiguration project, ParseResult cli)
     {
         Provider = project.Database;
-        DbShowOptions.Scope.Bind(cli, s => Scope = s);
+        DatabaseShowOptions.Scope.Bind(cli, s => Scope = s);
     }
 }

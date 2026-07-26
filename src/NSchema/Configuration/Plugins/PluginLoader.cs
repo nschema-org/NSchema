@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text.Json;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Plugins;
 using NSchema.Services.Reporting;
 

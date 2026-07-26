@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="NSchema.Diagnostics" />
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
     <Using Include="NSubstitute" />

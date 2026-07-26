@@ -1,6 +1,6 @@
 using NSchema.Configuration.Plugins;
+using NSchema.State.Domain;
 using NSchema.State.Locks;
-using NSchema.State.Model;
 
 namespace NSchema.Services.Reporting;
 

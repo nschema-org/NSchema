@@ -1,5 +1,5 @@
-using NSchema.Diff.Model;
-using NSchema.Plan.Model;
+using NSchema.Diff.Domain;
+using NSchema.Plan.Domain;
 
 namespace NSchema.Services;
 

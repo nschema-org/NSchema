@@ -1,13 +1,13 @@
-using NSchema.Diff.Model;
-using NSchema.Diff.Model.Columns;
-using NSchema.Diff.Model.Schemas;
-using NSchema.Diff.Model.Tables;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
-using NSchema.Plan.Model;
+using NSchema.Plan.Domain;
 using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
 
@@ -27,20 +27,27 @@ public sealed class MarkdownConsolePresenterTests
     // dropped column (-), and a removed schema (-).
     private static DatabaseDiff RichDiff() => new(
     [
-        new SchemaDiff("reporting", ChangeKind.Add),
-        new SchemaDiff("app", Tables:
-        [
-            new TableDiff("app", "users", ChangeKind.Add, Columns:
+        SchemaDiff.Added("reporting"),
+        SchemaDiff.Containing("app") with
+        {
+            Tables =
             [
-                new ColumnDiff("id", ChangeKind.Add, Definition: new Column { Name = "id", Type = SqlType.BigInt }),
-            ]),
-            new TableDiff("app", "orders", ChangeKind.Modify, Columns:
-            [
-                new ColumnDiff("total", ChangeKind.Modify, Type: new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt)),
-                new ColumnDiff("legacy", ChangeKind.Remove, Definition: new Column { Name = "legacy", Type = SqlType.Boolean }),
-            ]),
-        ]),
-        new SchemaDiff("scratch", ChangeKind.Remove),
+                TableDiff.Added("app", new Table { Name = "users" }) with
+                {
+                    Columns = [ColumnDiff.Added(new Column { Name = "id", Type = SqlType.BigInt })],
+                },
+                TableDiff.Modified("app", "orders") with
+                {
+                    Columns =
+                    [
+                        ColumnDiff.Modified(new Column { Name = "total", Type = SqlType.BigInt })
+                            with { Type = new ValueChange<SqlType>(SqlType.Int, SqlType.BigInt) },
+                        ColumnDiff.Removed(new Column { Name = "legacy", Type = SqlType.Boolean }),
+                    ],
+                },
+            ],
+        },
+        SchemaDiff.Removed("scratch"),
     ]);
 
     [Fact]
@@ -63,7 +70,7 @@ public sealed class MarkdownConsolePresenterTests
     public Task ReportDiff_WithDeploymentScripts()
     {
         // The scripts ride the diff, annotated with their deployment event; a run-once script reads the same way.
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts =
             [
@@ -118,7 +125,7 @@ public sealed class MarkdownConsolePresenterTests
     [Fact]
     public Task ReportSavedPlan()
     {
-        var diff = new DatabaseDiff([new SchemaDiff("app", ChangeKind.Add)])
+        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
         };

@@ -1,9 +1,9 @@
 using System.CommandLine;
 using NSchema.Configuration.Binding;
 
-namespace NSchema.Commands.Db.Show;
+namespace NSchema.Commands.Database.Show;
 
-internal static class DbShowOptions
+internal static class DatabaseShowOptions
 {
     public static readonly OptionBinding<string[]> Scope = OptionBinding.Create<string[]>()
         .FromOption("--scope", "-s")

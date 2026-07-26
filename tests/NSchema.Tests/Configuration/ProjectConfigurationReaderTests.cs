@@ -1,5 +1,5 @@
 using NSchema.Configuration;
-using NSchema.Configuration.Model;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Configuration;
@@ -44,7 +44,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
         plugin.Label.ShouldBe("postgres");
         plugin.Version.ToString().ShouldBe("5.0.0");
         // The plugin's own attributes ride the statement's config for the plugin to interpret.
-        plugin.Settings.Attribute("connection_string")!.ShouldBe("host=db");
+        plugin.Settings.Value("connection_string")!.ShouldBe("host=db");
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
         plugin.PackageId.ShouldBe("NSchema.Aws");
         plugin.Label.ShouldBe("s3");
-        plugin.Settings.Attribute("bucket")!.ShouldBe("my-bucket");
+        plugin.Settings.Value("bucket")!.ShouldBe("my-bucket");
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
             "STATE s3 ( bucket = 'prod-bucket', key = 'state.json' );");
 
         config.State!.File.ShouldBeNull();
-        config.State.Plugin!.Settings.Attribute("bucket")!.ShouldBe("prod-bucket");
+        config.State.Plugin!.Settings.Value("bucket")!.ShouldBe("prod-bucket");
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
             "prod",
             "STATE file ( path = './prod.state.json' );");
 
-        config.Database!.Settings.Attribute("connection_string")!.ShouldBe("host=base");
+        config.Database!.Settings.Value("connection_string")!.ShouldBe("host=base");
         config.State!.File!.Path.ShouldBe("./prod.state.json");
     }
 

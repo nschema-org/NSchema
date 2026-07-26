@@ -32,12 +32,12 @@ internal sealed class CliApplicationBuilder
     {
         if (destructiveActions is { } destructive)
         {
-            _builder.WithDestructiveActionPolicy(destructive);
+            _builder.WithDestructiveActions(destructive);
         }
 
         if (dataHazards is { } hazards)
         {
-            _builder.WithDataHazardPolicy(hazards);
+            _builder.WithDataHazards(hazards);
         }
 
         return this;
@@ -99,7 +99,7 @@ internal sealed class CliApplicationBuilder
         // The local-file store is built into the core and always available; every other backend is a plugin.
         if (state?.File is { } file)
         {
-            _builder.UseFileStateStore(file.Path);
+            _builder.UseFileState(file.Path);
             return Result.Success();
         }
 
