@@ -55,7 +55,7 @@ public sealed class NewSmokeTests : IDisposable
             new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse(PostgresVersion) }]), TestContext.Current.CancellationToken);
 
         // Assert — the generated config round-trips, pinning the resolved version.
-        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken)).Require();
         config.Database.ShouldNotBeNull();
         config.Database!.Label.ShouldBe("postgres");
         config.Database.Version.ToString().ShouldBe(PostgresVersion);

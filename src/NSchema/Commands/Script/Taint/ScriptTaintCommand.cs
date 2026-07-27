@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.State;
 using NSchema.State.Locks;
 
@@ -23,23 +22,20 @@ internal static class ScriptTaintCommand
         return command;
     }
 
-    private static async ValueTask<ScriptTaintConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<ScriptTaintConfiguration>(result, environment, cancellationToken);
-        new ScriptTaintConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new ScriptTaintConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<ScriptTaintConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
+        var (app, configuration, parseResult, _) = context;
+
         var name = parseResult.GetValue(NameArgument)!;
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
 
         var locked = await app.Locks.Acquire(new AcquireLockArguments("script taint") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)

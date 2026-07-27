@@ -21,7 +21,7 @@ internal static class PluginUpdateCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         ConfigurationFactory.ApplyWorkingDirectory(parseResult);
@@ -33,28 +33,40 @@ internal static class PluginUpdateCommand
 
         // A named plugin resolves to the one package that label declares; only that package is re-resolved, so the
         // other pins stay exactly as the lockfile records them.
-        var target = await ResolveTarget(root, environment, label, cancellationToken);
+        var resolvedTarget = await ResolveTarget(root, environment, label, cancellationToken);
+        if (resolvedTarget.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var target = resolvedTarget.Value;
         if (label is not null && target is null)
         {
             messenger.Announce($"'{label}' is pinned to an exact version; there is no range to update.");
-            return;
+            return ExitCodes.NoChanges;
         }
 
         var existing = (await LockFileManager.Read(ProjectConfigurationReader.LockFilePath(root), cancellationToken)).Require();
-        var configuration = await ProjectConfigurationReader.Refresh(root, environment, existing, loader, source => target is null || source == target, cancellationToken);
+        var resolved = await ProjectConfigurationReader.Refresh(root, environment, existing, loader, source => target is null || source == target, cancellationToken);
+        if (resolved.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var configuration = resolved.Require();
 
         var pins = configuration.ResolvedPlugins();
         var changed = target is null ? pins : pins.Where(pin => pin.Source == target).ToList();
         if (changed.Count == 0)
         {
             messenger.Announce($"Nothing to update: no plugins are declared.");
-            return;
+            return ExitCodes.NoChanges;
         }
 
         var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), new LockFile(pins), cancellationToken);
-        if (written.IsFailure)
+        if (written.ReportFailure(messenger))
         {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, written.Errors.Select(error => error.Message)));
+            return ExitCodes.Error;
         }
 
         foreach (var pin in changed)
@@ -86,21 +98,30 @@ internal static class PluginUpdateCommand
         }
 
         loader.Restore(references, messenger);
+        return ExitCodes.NoChanges;
     }
 
     // Returns the package to update (null when every range is updated), or null when a named label is an exact pin —
     // distinguished by the caller through <paramref name="label"/>.
-    private static async Task<PackageId?> ResolveTarget(string root, string? environment, string? label, CancellationToken cancellationToken)
+    private static async Task<Result<PackageId?>> ResolveTarget(string root, string? environment, string? label, CancellationToken cancellationToken)
     {
         if (label is null)
         {
-            return null;
+            return Result.Success<PackageId?>(null);
         }
 
         var declarations = await ProjectConfigurationReader.ReadDeclarations(root, environment, cancellationToken);
-        var declaration = declarations.FirstOrDefault(declaration => declaration.Label == new PluginLabel(label))
-            ?? throw new InvalidOperationException($"No plugin labelled '{label}' is declared.");
+        if (declarations.IsFailure)
+        {
+            return Result.Failure<PackageId?>(declarations.Diagnostics);
+        }
 
-        return declaration.Package.Version.IsExact ? null : declaration.Package.Source;
+        var declaration = declarations.Require().FirstOrDefault(declaration => declaration.Label == new PluginLabel(label));
+        if (declaration is null)
+        {
+            return Result.Failure<PackageId?>(Diagnostic.Error(label, $"No plugin labelled '{label}' is declared."));
+        }
+
+        return Result.Success<PackageId?>(declaration.Package.Version.IsExact ? null : declaration.Package.Source);
     }
 }

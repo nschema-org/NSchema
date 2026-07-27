@@ -17,7 +17,7 @@ internal static class CompletionInstallCommand
 
     private static async Task Run(ParseResult parseResult, string shell, CancellationToken cancellationToken)
     {
-        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
 
         var outcome = await CompletionInstaller.Install(shell, cancellationToken);
         if (outcome.Changed)

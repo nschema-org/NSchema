@@ -106,17 +106,19 @@ internal sealed class PluginLoader(string? cacheRoot = null)
     /// The newest version of <paramref name="packageId"/> the configured feeds offer that this host can load (its
     /// NSchema.Core major), prereleases included. Used when scaffolding, where no version is pinned yet.
     /// </summary>
-    public SemanticVersion ResolveLatestVersion(PackageId packageId) =>
+    public Result<SemanticVersion> ResolveLatestVersion(PackageId packageId) =>
         AvailableVersions(packageId.Value).Max()
-        ?? throw new InvalidOperationException($"No version of '{packageId}' is available for NSchema {HostMajor}.x.");
+        ?? Result.Failure<SemanticVersion>(Diagnostic.Error(packageId.Value,
+            $"No version of '{packageId}' is available for NSchema {HostMajor}.x."));
 
     /// <summary>
     /// The highest available version of <paramref name="package"/> that <paramref name="range"/> admits, within this
     /// host's NSchema.Core major. Resolution is ours: the feed enumerates the candidates, the range makes the pick.
     /// </summary>
-    public SemanticVersion ResolveHighest(PackageId package, VersionRange range) =>
+    public Result<SemanticVersion> ResolveHighest(PackageId package, VersionRange range) =>
         range.Highest(AvailableVersions(package.Value))
-        ?? throw new InvalidOperationException($"No version of '{package}' satisfying '{range}' is available for NSchema {HostMajor}.x.");
+        ?? Result.Failure<SemanticVersion>(Diagnostic.Error(package.Value,
+            $"No version of '{package}' satisfying '{range}' is available for NSchema {HostMajor}.x."));
 
     // Every version of the package the configured feeds offer, within this host's Core major — the candidate set our
     // own resolution picks from. 'dotnet package search' honours the user's NuGet sources; prereleases are enumerated

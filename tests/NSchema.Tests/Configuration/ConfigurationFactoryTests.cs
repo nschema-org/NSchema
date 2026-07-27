@@ -26,7 +26,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory]);
 
         // Act
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
+        var config = (await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken)).Require();
 
         // Assert — the config was discovered under --directory (an empty config would have left state unset).
         config.State!.File!.Path.ShouldBe("./custom.state.json");
@@ -44,7 +44,7 @@ public sealed class ConfigurationFactoryTests : IDisposable
             new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Aws"), Version = SemanticVersion.Parse("5.0.0") }]), TestContext.Current.CancellationToken);
         var parseResult = RootCommand.Create().Parse(["plan", "--directory", _projectDirectory, "--environment", "prod"]);
 
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken);
+        var config = (await ConfigurationFactory.Load<PlanConfiguration>(parseResult, ConfigurationFactory.ResolveEnvironment(parseResult), TestContext.Current.CancellationToken)).Require();
 
         config.State!.File.ShouldBeNull();
         config.State.Plugin!.Settings.Value("bucket")!.ShouldBe("prod-bucket");

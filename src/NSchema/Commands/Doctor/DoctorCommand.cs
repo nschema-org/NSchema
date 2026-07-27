@@ -1,6 +1,7 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Doctor;
 
@@ -14,28 +15,34 @@ internal static class DoctorCommand
         return command;
     }
 
-    private static async ValueTask<DoctorConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
-    {
-        var config = await ConfigurationFactory.Load<DoctorConfiguration>(result, environment, cancellationToken);
-        new DoctorConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
+        var messenger = ReporterFactory.CreateMessenger(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
 
-        // Configure the plugins without throwing, so a misconfigured one becomes a reportable diagnostic — doctor's
-        // whole job — rather than aborting the health check on the first failure.
+        var resolved = await ConfigurationFactory.Load(parseResult, environment, new DoctorConfigurationValidator(), cancellationToken);
+        if (resolved.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var configuration = resolved.Require();
+
+        // Configure the plugins.
         var builder = CliApplicationBuilder.Create(parseResult);
         var results = new[]
         {
             builder.TryConfigureDatabase(configuration.Database),
             builder.TryConfigureState(configuration.State),
         };
-        using var app = builder.Build();
 
+        var built = builder.Build();
+        if (built.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        using var app = built.Require();
         app.Messenger.ReportEnvironment(environment);
 
         var failures = results.SelectMany(result => result.Errors).ToList();

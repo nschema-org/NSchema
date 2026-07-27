@@ -253,8 +253,14 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         return unit == 0 ? $"{bytes} {units[unit]}" : $"{size:0.0} {units[unit]}";
     }
 
-    public void ReportException(Exception exception) =>
-        _error.MarkupLineInterpolated($"[red]Error:[/] {exception.Message}");
+    public void ReportException(Exception exception)
+    {
+        _error.MarkupLineInterpolated($"[red]Internal error ({ExceptionReport.TypeName(exception)}):[/] {ExceptionReport.Describe(exception)}");
+        _error.WriteLine();
+        _error.MarkupLineInterpolated($"[grey]This is a bug in NSchema. Please report it at {ExceptionReport.IssuesUrl}, including the detail below.[/]");
+        _error.WriteLine();
+        _error.WriteLine(ExceptionReport.Stack(exception));
+    }
 
     public void ReportDiagnostics(IReadOnlyList<Diagnostic> diagnostics)
     {
@@ -275,21 +281,21 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         _out.WriteLine();
     }
 
-    // Renders a policy-diagnostic table.
+    // Renders the diagnostics table.
     private static void RenderDiagnostics(IAnsiConsole console, IReadOnlyList<Diagnostic> diagnostics)
     {
         if (diagnostics.Count == 0)
         {
-            console.MarkupLine("[grey]No policy diagnostics.[/]");
+            console.MarkupLine("[grey]No diagnostics.[/]");
             console.WriteLine();
             return;
         }
 
         var table = new Table()
             .RoundedBorder()
-            .Title("Policy diagnostics")
+            .Title("Diagnostics")
             .AddColumn("Severity")
-            .AddColumn("Policy")
+            .AddColumn("Source")
             .AddColumn("Message");
 
         foreach (var diagnostic in diagnostics)

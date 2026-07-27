@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 using NSchema.State.Locks;
 
@@ -17,22 +16,18 @@ internal static class RefreshCommand
         return command;
     }
 
-    private static async ValueTask<RefreshConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<RefreshConfiguration>(result, environment, cancellationToken);
-        new RefreshConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State).ConfigureDatabase(configuration.Database),
+        command: Execute,
+        validator: new RefreshConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<RefreshConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .ConfigureDatabase(configuration.Database)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+        var (app, configuration, _, _) = context;
 
         // Refresh writes the live schema into the store, so it takes the lock too.
         var locked = await app.Locks.Acquire(new AcquireLockArguments("refresh") { SkipLock = configuration.NoLock }, cancellationToken);

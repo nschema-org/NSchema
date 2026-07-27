@@ -10,7 +10,9 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private async Task<ProjectConfiguration> Read(string sql)
+    private async Task<ProjectConfiguration> Read(string sql) => (await ReadResult(sql)).Require();
+
+    private async Task<Result<ProjectConfiguration>> ReadResult(string sql)
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), sql, TestContext.Current.CancellationToken);
         return await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
@@ -26,7 +28,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), baseSql, TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(_directory, $"config.env.{environment}.sql"), overlaySql, TestContext.Current.CancellationToken);
-        return await ProjectConfigurationReader.Read(_directory, environment, TestContext.Current.CancellationToken);
+        return (await ProjectConfigurationReader.Read(_directory, environment, TestContext.Current.CancellationToken)).Require();
     }
 
     [Fact]
@@ -62,14 +64,14 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task Database_UndeclaredLabel_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("DATABASE postgres ( connection_string = 'x' );")))
-            .Message.ShouldContain("no PLUGIN statement declares it");
+    public async Task Database_UndeclaredLabel_Fails()
+        => (await ReadResult("DATABASE postgres ( connection_string = 'x' );"))
+            .ShouldFailContaining("no PLUGIN statement declares it");
 
     [Fact]
-    public async Task Plugin_MissingVersion_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("PLUGIN postgres ( source = 'NSchema.Postgres' );")))
-            .Message.ShouldContain("version");
+    public async Task Plugin_MissingVersion_Fails()
+        => (await ReadResult("PLUGIN postgres ( source = 'NSchema.Postgres' );"))
+            .ShouldFailContaining("version");
 
     [Fact]
     public async Task Plugin_ExactPin_ResolvesLockedVersion()
@@ -85,14 +87,14 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task Plugin_WithoutLock_ThrowsAndSuggestsInit()
+    public async Task Plugin_WithoutLock_FailsAndSuggestsInit()
         // Every plugin resolves from the lockfile — an exact pin needs a lock entry just like a range.
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read(
+        => (await ReadResult(
                 """
                 PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0' );
                 DATABASE postgres ( connection_string = 'x' );
-                """)))
-            .Message.ShouldContain("nschema init");
+                """))
+            .ShouldFailContaining("nschema init");
 
     [Fact]
     public async Task Plugin_Range_ResolvesLockedVersion()
@@ -129,10 +131,10 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task State_File_UnknownAttribute_Throws()
+    public async Task State_File_UnknownAttribute_Fails()
         // The built-in file store binds its own attributes, rejecting any it doesn't recognise; other backends defer to the plugin.
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("STATE file ( badly = 'x' );")))
-            .Message.ShouldContain("badly", Case.Insensitive);
+        => (await ReadResult("STATE file ( badly = 'x' );"))
+            .ShouldFailContaining("badly", Case.Insensitive);
 
     [Fact]
     public async Task Engine_SatisfiedAssertion_Passes()
@@ -144,16 +146,16 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task Engine_UnsatisfiedAssertion_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() => Read("ENGINE ( version = '[4.0,5.0)' );")))
-            .Message.ShouldContain("requires an engine version");
+    public async Task Engine_UnsatisfiedAssertion_Fails()
+        => (await ReadResult("ENGINE ( version = '[4.0,5.0)' );"))
+            .ShouldFailContaining("requires an engine version");
 
     [Fact]
     public async Task NoConfigurationFile_ReturnsEmpty()
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "schema.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
 
-        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken)).Require();
 
         config.Database.ShouldBeNull();
         config.State.ShouldBeNull();
@@ -176,15 +178,14 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
-    public async Task DuplicateDatabase_Throws()
-        => (await Should.ThrowAsync<InvalidOperationException>(() =>
-                Read(
-                    """
-                    PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0' );
-                    DATABASE postgres ( a = 'x' );
-                    DATABASE postgres ( a = 'y' );
-                    """)))
-            .Message.ShouldContain("at most one DATABASE");
+    public async Task DuplicateDatabase_Fails()
+        => (await ReadResult(
+                """
+                PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0' );
+                DATABASE postgres ( a = 'x' );
+                DATABASE postgres ( a = 'y' );
+                """))
+            .ShouldFailContaining("at most one DATABASE");
 
     // ── Environment overlays ──────────────────────────────────────────────────
 
@@ -228,9 +229,8 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     {
         await File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), "STATE file ( path = './state.json' );", TestContext.Current.CancellationToken);
 
-        (await Should.ThrowAsync<InvalidOperationException>(
-                () => ProjectConfigurationReader.Read(_directory, "prod", TestContext.Current.CancellationToken).AsTask()))
-            .Message.ShouldContain("environment 'prod'");
+        (await ProjectConfigurationReader.Read(_directory, "prod", TestContext.Current.CancellationToken))
+            .ShouldFailContaining("environment 'prod'");
     }
 
     [Fact]

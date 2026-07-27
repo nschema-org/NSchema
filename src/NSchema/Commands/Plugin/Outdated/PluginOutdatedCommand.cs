@@ -14,48 +14,83 @@ internal static class PluginOutdatedCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
+        var messenger = ReporterFactory.CreateMessenger(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         ConfigurationFactory.ApplyWorkingDirectory(parseResult);
         var root = Directory.GetCurrentDirectory();
 
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
-
         var configuration = await ProjectConfigurationReader.Read(root, environment, cancellationToken);
+        if (configuration.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
 
-        var outdated = Inspect(configuration, new PluginLoader());
-        messenger.ReportOutdatedPlugins(outdated);
+        var outdated = Inspect(configuration.Require(), new PluginLoader());
+        if (outdated.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        messenger.ReportOutdatedPlugins(outdated.Require());
+        return ExitCodes.NoChanges;
     }
 
-    private static List<OutdatedPlugin> Inspect(ProjectConfiguration config, PluginLoader loader)
+    private static Result<List<OutdatedPlugin>> Inspect(ProjectConfiguration config, PluginLoader loader)
     {
         var plugins = new List<OutdatedPlugin>();
 
         if (config.Database is { } provider)
         {
-            plugins.Add(Describe(PluginInventory.DatabaseRole, provider, config.Plugins, loader));
+            var described = Describe(PluginInventory.DatabaseRole, provider, config.Plugins, loader);
+            if (described.IsFailure)
+            {
+                return Result.Failure<List<OutdatedPlugin>>(described.Diagnostics);
+            }
+
+            plugins.Add(described.Require());
         }
+
         if (config.State?.Plugin is { } backend)
         {
-            plugins.Add(Describe(PluginInventory.StateRole, backend, config.Plugins, loader));
+            var described = Describe(PluginInventory.StateRole, backend, config.Plugins, loader);
+            if (described.IsFailure)
+            {
+                return Result.Failure<List<OutdatedPlugin>>(described.Diagnostics);
+            }
+
+            plugins.Add(described.Require());
         }
 
         return plugins;
     }
 
-    private static OutdatedPlugin Describe(string role, PluginReference reference, IReadOnlyList<PluginDeclaration> declarations, PluginLoader loader)
+    private static Result<OutdatedPlugin> Describe(string role, PluginReference reference, IReadOnlyList<PluginDeclaration> declarations, PluginLoader loader)
     {
         var declaration = declarations.First(declaration => declaration.Label == reference.Label);
 
         // 'Wanted' is what 'plugin update' would install: the highest the range admits (an exact pin admits only itself).
         var wanted = declaration.Package.Version.IsExact
             ? reference.Version
-            : loader.ResolveHighest(declaration.Package.Source, declaration.Package.Version);
+            : loader.ResolveHighest(declaration.Package.Source, declaration.Package.Version) is { IsSuccess: true } highest
+                ? highest.Require()
+                : null;
+
+        if (wanted is null)
+        {
+            return Diagnostic.Error(declaration.Package.Source.Value,
+                $"No version of '{declaration.Package.Source}' satisfying '{declaration.Package.Version}' is available.");
+        }
 
         var latest = loader.ResolveLatestVersion(reference.PackageId);
-        var outdated = reference.Version.CompareTo(latest) < 0;
+        if (latest.IsFailure)
+        {
+            return Result.Failure<OutdatedPlugin>(latest.Diagnostics);
+        }
 
-        return new OutdatedPlugin(role, reference.Label, reference.PackageId, reference.Version, wanted, latest, outdated);
+        var outdated = reference.Version.CompareTo(latest.Require()) < 0;
+
+        return new OutdatedPlugin(role, reference.Label, reference.PackageId, reference.Version, wanted, latest.Require(), outdated);
     }
 }

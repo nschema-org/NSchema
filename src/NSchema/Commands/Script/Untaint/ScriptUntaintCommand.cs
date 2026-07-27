@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.State;
@@ -25,25 +24,21 @@ internal static class ScriptUntaintCommand
         return command;
     }
 
-    private static async ValueTask<ScriptUntaintConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<ScriptUntaintConfiguration>(result, environment, cancellationToken);
-        new ScriptUntaintConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    // The desired schema is configured because the hash to record comes from the script's declaration.
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureDesiredSchema().ConfigureState(configuration.State),
+        command: Execute,
+        validator: new ScriptUntaintConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<ScriptUntaintConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
+        var (app, configuration, parseResult, _) = context;
+
         var name = parseResult.GetValue(NameArgument)!;
-
-        // The desired schema is configured because the hash to record comes from the script's declaration.
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema()
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
 
         var locked = await app.Locks.Acquire(new AcquireLockArguments("script untaint") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)

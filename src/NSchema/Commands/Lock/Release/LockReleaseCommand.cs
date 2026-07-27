@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Services.Confirmation;
 using Spectre.Console;
 
@@ -26,28 +25,25 @@ internal static class LockReleaseCommand
         return command;
     }
 
-    private static async ValueTask<LockReleaseConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<LockReleaseConfiguration>(result, environment, cancellationToken);
-        new LockReleaseConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new LockReleaseConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<LockReleaseConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
+        var (app, configuration, _, _) = context;
         var console = AnsiConsole.Console;
-        app.Messenger.ReportEnvironment(environment);
 
         var current = await app.Locks.Peek(cancellationToken);
         if (current is null)
         {
             app.Messenger.Announce($"No state lock is held.");
-            return;
+            return ExitCodes.NoChanges;
         }
 
         // Safe by default: when a lock id is named, it must still match the held one, so we never release a *different*
@@ -55,8 +51,11 @@ internal static class LockReleaseCommand
         // when no id is given does --force take over and release whatever is held (the validator requires one or the other).
         if (configuration.LockId is { } lockId && current.Id.Value != lockId)
         {
-            throw new InvalidOperationException(
-                $"The lock id '{lockId}' does not match the held lock '{current.Id.Value}' (held by {current.Who}, operation '{current.Operation}'). Check the current lock with 'nschema lock status'.");
+            app.Messenger.ReportDiagnostics([
+                Diagnostic.Error(lockId,
+                    $"The lock id '{lockId}' does not match the held lock '{current.Id.Value}' (held by {current.Who}, operation '{current.Operation}'). Check the current lock with 'nschema lock status'.")
+            ]);
+            return ExitCodes.Error;
         }
 
         ConsoleConfirmationPrompt.Require(console, configuration.AutoApprove,
@@ -68,9 +67,10 @@ internal static class LockReleaseCommand
         if (released is null)
         {
             app.Messenger.Announce($"No state lock is held.");
-            return;
+            return ExitCodes.NoChanges;
         }
 
         app.Messenger.Success($"Released the state lock held by {released.Who} (operation '{released.Operation}', since {released.CreatedUtc:u}).");
+        return ExitCodes.NoChanges;
     }
 }

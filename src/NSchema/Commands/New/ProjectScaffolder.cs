@@ -47,8 +47,8 @@ internal static class ProjectScaffolder
     /// <param name="force">Force the scaffolding even if the directory is not empty.</param>
     /// <param name="template">What to scaffold: the declared plugins and the documents they contribute.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="InvalidOperationException">The directory is not empty, and <paramref name="force"/> is false.</exception>
-    public static async Task<IReadOnlyList<string>> Scaffold(
+    /// <returns>The created paths, or a failure when the directory is not empty and <paramref name="force"/> is false.</returns>
+    public static async Task<Result<IReadOnlyList<string>>> Scaffold(
         string directory,
         bool force,
         ProjectTemplate template,
@@ -56,7 +56,7 @@ internal static class ProjectScaffolder
     {
         if (Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories).Length != 0 && !force)
         {
-            throw new InvalidOperationException($"{directory} is not empty. Use --force to override.");
+            return Diagnostic.Error(directory, $"{directory} is not empty. Use --force to override.");
         }
 
         // Each contributor hands over a document; they are merged and written once, so nothing here builds NSQL. The
@@ -78,7 +78,7 @@ internal static class ProjectScaffolder
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
         await File.WriteAllTextAsync(samplePath, NsqlWriter.Write(template.Schema), cancellationToken);
 
-        return [ConfigurationFileName, EnvironmentOverlayFileName, sampleRelativePath];
+        return Result.Success<IReadOnlyList<string>>([ConfigurationFileName, EnvironmentOverlayFileName, sampleRelativePath]);
     }
 
     // The host authors the ENGINE assertion: the engine is compiled into the CLI, so it knows the version range a

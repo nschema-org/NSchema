@@ -30,19 +30,19 @@ public sealed class CliApplicationBuilderTests
         ResolvedVerbosity("plan", "--quiet").ShouldBe(Verbosity.Quiet);
 
     [Fact]
-    public void Create_QuietAndVerboseTogether_Throws()
+    public void Parse_QuietAndVerboseTogether_IsAUsageError()
     {
+        // Contradictory harness flags are rejected while parsing, before any action runs — see RootCommand.
         var parseResult = RootCommand.Create().Parse(["plan", "--quiet", "--verbose"]);
 
-        var ex = Should.Throw<InvalidOperationException>(() => CliApplicationBuilder.Create(parseResult));
-        ex.Message.ShouldContain("--quiet and --verbose cannot be used together");
+        parseResult.Errors.ShouldContain(error => error.Message.Contains("--quiet and --verbose cannot be used together"));
     }
 
     [Fact]
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(PolicyEnforcement.Warn, null).Build();
+        using var app = _sut.ConfigurePolicies(PolicyEnforcement.Warn, null).Build().Require();
 
         // Assert
         var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
@@ -53,7 +53,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigurePolicies_AppliesDataHazardPolicy()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(null, PolicyEnforcement.Error).Build();
+        using var app = _sut.ConfigurePolicies(null, PolicyEnforcement.Error).Build().Require();
 
         // Assert
         var options = app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value;
@@ -64,7 +64,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigurePolicies_LeavesDefaults_WhenPoliciesNull()
     {
         // Act
-        using var app = _sut.ConfigurePolicies(null, null).Build();
+        using var app = _sut.ConfigurePolicies(null, null).Build().Require();
 
         // Assert
         app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value
@@ -80,7 +80,7 @@ public sealed class CliApplicationBuilderTests
         var state = new StateConfiguration { File = new FileStateConfiguration { Path = "./state.json" } };
 
         // Act
-        using var app = _sut.ConfigureState(state).Build();
+        using var app = _sut.ConfigureState(state).Build().Require();
 
         // Assert
         app.Services.GetService<IDatabaseStateStore>().ShouldNotBeNull();
@@ -90,7 +90,7 @@ public sealed class CliApplicationBuilderTests
     public void ConfigureBackendState_RegistersNoStateStore_WhenNoStoreConfigured()
     {
         // Act
-        using var app = _sut.ConfigureState(new StateConfiguration()).Build();
+        using var app = _sut.ConfigureState(new StateConfiguration()).Build().Require();
 
         // Assert
         app.Services.GetService<IDatabaseStateStore>().ShouldBeNull();
@@ -100,7 +100,7 @@ public sealed class CliApplicationBuilderTests
     public void Build_UsesTheSpectreConsolePresenter()
     {
         // Act
-        using var app = _sut.Build();
+        using var app = _sut.Build().Require();
 
         // Assert — the formatted (non-JSON) builder wires up the Spectre presenter as the CLI's presentation surface.
         app.Presenter.ShouldBeOfType<SpectreConsolePresenter>();

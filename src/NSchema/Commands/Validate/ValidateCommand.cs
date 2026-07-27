@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 
 namespace NSchema.Commands.Validate;
@@ -14,17 +13,18 @@ internal static class ValidateCommand
         return command;
     }
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run<ValidateConfiguration>(
+        parseResult,
+        configure: (b, _) => b.ConfigureDesiredSchema(),
+        command: Execute,
+        validator: null,
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
+
+    private static async Task<int> Execute(CommandContext<ValidateConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        // Loading resolves --directory (chdir) and verifies the environment exists; validate has no config of its own.
-        await ConfigurationFactory.Load<ValidateConfiguration>(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema()
-            .Build();
-
-        app.Messenger.ReportEnvironment(environment);
+        var app = context.App;
 
         var result = await app.Operations.Validate(new ValidateArguments(), cancellationToken);
 

@@ -49,7 +49,16 @@ public sealed class ProjectScaffolderTests : IDisposable
     // A range covering the running engine major, so the generated config round-trips through the reader's validation.
     private const string EngineRequirement = "[5.0,6.0)";
 
-    private Task<IReadOnlyList<string>> Scaffold(
+    private async Task<IReadOnlyList<string>> Scaffold(
+        bool force = false,
+        NsqlDocument? databaseOverlay = null,
+        NsqlDocument? state = null,
+        NsqlDocument? stateOverlay = null,
+        IReadOnlyList<ResolvedPlugin>? plugins = null,
+        NsqlDocument? sampleSchema = null) =>
+        (await ScaffoldResult(force, databaseOverlay, state, stateOverlay, plugins, sampleSchema)).Require();
+
+    private Task<Result<IReadOnlyList<string>>> ScaffoldResult(
         bool force = false,
         NsqlDocument? databaseOverlay = null,
         NsqlDocument? state = null,
@@ -146,7 +155,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await WriteLock(("NSchema.Postgres", "5.0.0-test"));
 
         // Act
-        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken)).Require();
 
         // Assert
         config.Database.ShouldNotBeNull();
@@ -167,7 +176,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await WriteLock(("NSchema.Postgres", "5.0.0-test"), ("NSchema.Aws", "5.0.0-test"));
 
         // Act
-        var config = await ProjectConfigurationReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken);
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: "prod", TestContext.Current.CancellationToken)).Require();
 
         // Assert
         config.State!.Plugin.ShouldNotBeNull();
@@ -260,16 +269,17 @@ public sealed class ProjectScaffolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Scaffold_Throws_WhenDirectoryNotEmpty_AndNotForced()
+    public async Task Scaffold_Fails_WhenDirectoryNotEmpty_AndNotForced()
     {
         // Arrange
         await File.WriteAllTextAsync(Path.Combine(_directory, "existing.sql"), "CREATE SCHEMA app;", TestContext.Current.CancellationToken);
 
         // Act
-        var act = () => Scaffold(force: false);
+        var result = await ScaffoldResult(force: false);
 
         // Assert
-        (await Should.ThrowAsync<InvalidOperationException>(act)).Message.ShouldContain("--force");
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("--force");
     }
 
     [Fact]

@@ -71,7 +71,7 @@ public sealed class NewConfigureTests
 
         // Act
         var context = NewCommand.Configure(
-            console, plugin, new ScaffoldContext(), Supplied(("host", "db.internal"), ("database", "orders")));
+            console, plugin, new ScaffoldContext(), Supplied(("host", "db.internal"), ("database", "orders"))).Require();
 
         // Assert
         ConnectionString(Configured(plugin.GetScaffoldTemplate(context))).ShouldBe("Host=db.internal;Database=orders");
@@ -85,7 +85,7 @@ public sealed class NewConfigureTests
         var plugin = new StubPlugin();
 
         // Act
-        var context = NewCommand.Configure(console, plugin, new ScaffoldContext(), Supplied());
+        var context = NewCommand.Configure(console, plugin, new ScaffoldContext(), Supplied()).Require();
 
         // Assert
         ConnectionString(Configured(plugin.GetScaffoldTemplate(context))).ShouldBe("Host=localhost;Database=postgres");
@@ -99,7 +99,7 @@ public sealed class NewConfigureTests
         var context = new ScaffoldContext { EnvironmentName = "prod" };
 
         // Act
-        var configured = NewCommand.Configure(console, new SilentPlugin(), context, Supplied(("host", "ignored")));
+        var configured = NewCommand.Configure(console, new SilentPlugin(), context, Supplied(("host", "ignored"))).Require();
 
         // Assert
         configured.ShouldBeSameAs(context);
@@ -114,7 +114,7 @@ public sealed class NewConfigureTests
         var plugin = new StubPlugin();
 
         // Act
-        var context = NewCommand.Configure(console, plugin, new ScaffoldContext(), Supplied(("host", "db.internal")));
+        var context = NewCommand.Configure(console, plugin, new ScaffoldContext(), Supplied(("host", "db.internal"))).Require();
         var overlay = context with { EnvironmentName = "prod" };
 
         // Assert

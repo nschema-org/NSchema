@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.State.Locks;
 
 namespace NSchema.Commands.Lock.Acquire;
@@ -16,22 +15,18 @@ internal static class LockAcquireCommand
         return command;
     }
 
-    private static async ValueTask<LockAcquireConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<LockAcquireConfiguration>(result, environment, cancellationToken);
-        new LockAcquireConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new LockAcquireConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<LockAcquireConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+        var (app, configuration, parseResult, environment) = context;
 
         // Deliberately do NOT release the lock:
         // the handle outlives this process, so the lock is held until `nschema lock release`.

@@ -43,7 +43,10 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
 
     public void Detail(ConsoleMessage message) => Report(MessageKind.Announcement, message.Plain);
 
-    public void ReportException(Exception exception) => JsonOutput.Write(_error, new ErrorEvent(exception.Message));
+    public void ReportException(Exception exception) => JsonOutput.Write(_error, new ErrorEvent(
+        ExceptionReport.Describe(exception),
+        ExceptionReport.TypeName(exception),
+        ExceptionReport.Stack(exception)));
 
     // The environment banner is human-facing narration; JSON output omits it so the stream stays purely results + logs.
     public void ReportEnvironment(string? environment) { }
@@ -84,7 +87,7 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
     private sealed record LockReport(bool Locked, string? LockId, string? Operation, string? Who, DateTimeOffset? Since, DateTimeOffset? Expires);
 
     // The {"type":"error","message":…} event emitted when an operation fails.
-    private sealed record ErrorEvent(string Message)
+    private sealed record ErrorEvent(string Message, string Exception, string Stack)
     {
         [JsonPropertyOrder(-1)]
         public string Type => "error";

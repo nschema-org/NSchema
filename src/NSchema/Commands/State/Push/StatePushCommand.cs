@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.State;
 using NSchema.State.Locks;
 
@@ -23,25 +22,22 @@ internal static class StatePushCommand
         return command;
     }
 
-    private static async ValueTask<StatePushConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<StatePushConfiguration>(result, environment, cancellationToken);
-        new StatePushConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new StatePushConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<StatePushConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
+        var (app, configuration, parseResult, _) = context;
         var file = parseResult.GetValue(FileArgument)!;
 
         var payload = await File.ReadAllBytesAsync(file, cancellationToken);
 
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Pushing state from {file}. The recorded state will be replaced.");
 
         var locked = await app.Locks.Acquire(new AcquireLockArguments("state push") { SkipLock = configuration.NoLock }, cancellationToken);

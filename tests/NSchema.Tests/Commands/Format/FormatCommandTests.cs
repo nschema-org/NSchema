@@ -26,7 +26,7 @@ public sealed class FormatCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        var changed = FormatCommand.FormatPath(_directory, check: false);
+        var changed = FormatCommand.FormatPath(_directory, check: false).Require();
 
         changed.ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Formatted);
@@ -37,7 +37,7 @@ public sealed class FormatCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        var changed = FormatCommand.FormatPath(_directory, check: true);
+        var changed = FormatCommand.FormatPath(_directory, check: true).Require();
 
         changed.ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Unformatted); // unchanged on disk
@@ -48,7 +48,7 @@ public sealed class FormatCommandTests : IDisposable
     {
         Write("schema.sql", Formatted);
 
-        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false).Require().ShouldBeEmpty();
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class FormatCommandTests : IDisposable
         var file = Write("schema.sql", Unformatted);
 
         FormatCommand.FormatPath(_directory, check: false);
-        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false).Require().ShouldBeEmpty();
         File.ReadAllText(file).ShouldBe(Formatted);
     }
 
@@ -66,7 +66,7 @@ public sealed class FormatCommandTests : IDisposable
     {
         var nested = Write(Path.Combine("app", "tables", "users.sql"), Unformatted);
 
-        FormatCommand.FormatPath(_directory, check: false).ShouldHaveSingleItem().ShouldBe(nested);
+        FormatCommand.FormatPath(_directory, check: false).Require().ShouldHaveSingleItem().ShouldBe(nested);
         File.ReadAllText(nested).ShouldBe(Formatted);
     }
 
@@ -75,7 +75,7 @@ public sealed class FormatCommandTests : IDisposable
     {
         var ignored = Write("notes.txt", Unformatted);
 
-        FormatCommand.FormatPath(_directory, check: false).ShouldBeEmpty();
+        FormatCommand.FormatPath(_directory, check: false).Require().ShouldBeEmpty();
         File.ReadAllText(ignored).ShouldBe(Unformatted);
     }
 
@@ -84,11 +84,12 @@ public sealed class FormatCommandTests : IDisposable
     {
         var file = Write("schema.sql", Unformatted);
 
-        FormatCommand.FormatPath(file, check: false).ShouldHaveSingleItem().ShouldBe(file);
+        FormatCommand.FormatPath(file, check: false).Require().ShouldHaveSingleItem().ShouldBe(file);
         File.ReadAllText(file).ShouldBe(Formatted);
     }
 
     [Fact]
-    public void FormatPath_MissingPath_Throws()
-        => Should.Throw<FileNotFoundException>(() => FormatCommand.FormatPath(Path.Combine(_directory, "nope"), check: false));
+    public void FormatPath_MissingPath_Fails()
+        => FormatCommand.FormatPath(Path.Combine(_directory, "nope"), check: false)
+            .ShouldFailContaining("No such file or directory");
 }

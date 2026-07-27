@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.State;
 
 namespace NSchema.Commands.State.Pull;
@@ -22,29 +21,21 @@ internal static class StatePullCommand
         return command;
     }
 
-    private static async ValueTask<StatePullConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<StatePullConfiguration>(result, environment, cancellationToken);
-        new StatePullConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
-    {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-        var file = parseResult.GetValue(FileArgument);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new StatePullConfigurationValidator(),
         // Without a file the payload itself is the output, so narration is suppressed to keep
         // `state pull > backup.json` byte-clean.
-        if (file is not null)
-        {
-            app.Messenger.ReportEnvironment(environment);
-        }
+        announceEnvironment: parseResult.GetValue(FileArgument) is not null,
+        cancellationToken: cancellationToken
+    );
+
+    private static async Task<int> Execute(CommandContext<StatePullConfiguration> context, CancellationToken cancellationToken)
+    {
+        var (app, _, parseResult, _) = context;
+        var file = parseResult.GetValue(FileArgument);
 
         var result = await app.State.ReadRaw(new StateRawReadArguments(), cancellationToken);
         if (result.IsFailure)

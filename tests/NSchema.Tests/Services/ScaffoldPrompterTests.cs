@@ -1,5 +1,6 @@
 using NSchema.Plugins;
 using NSchema.Services.Prompting;
+using Spectre.Console;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
@@ -25,7 +26,7 @@ public sealed class ScaffoldPrompterTests
         var console = Interactive();
 
         // Act
-        var answers = ScaffoldPrompter.Answer(console, [Host], Supplied(("host", "db.internal")));
+        var answers = Answered(console, [Host], Supplied(("host", "db.internal")));
 
         // Assert
         answers["host"].ShouldBe("db.internal");
@@ -39,7 +40,7 @@ public sealed class ScaffoldPrompterTests
         var console = new TestConsole();
 
         // Act
-        var answers = ScaffoldPrompter.Answer(console, [Host], Supplied());
+        var answers = Answered(console, [Host], Supplied());
 
         // Assert
         answers["host"].ShouldBe("localhost");
@@ -52,12 +53,11 @@ public sealed class ScaffoldPrompterTests
         var console = new TestConsole();
 
         // Act
-        var act = () => ScaffoldPrompter.Answer(console, [Host, Database], Supplied());
+        var result = ScaffoldPrompter.Answer(console, [Host, Database], Supplied());
 
         // Assert
-        var error = act.ShouldThrow<ScaffoldAnswerRequiredException>();
-        error.Message.ShouldContain("database");
-        error.Message.ShouldContain("--set");
+        result.ShouldFailContaining("database");
+        result.ShouldFailContaining("--set");
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class ScaffoldPrompterTests
         var console = new TestConsole();
 
         // Act
-        var answers = ScaffoldPrompter.Answer(console, [Host, Database], Supplied(("database", "orders")));
+        var answers = Answered(console, [Host, Database], Supplied(("database", "orders")));
 
         // Assert — the optional one still falls back, the required one is answered.
         answers["host"].ShouldBe("localhost");
@@ -82,7 +82,7 @@ public sealed class ScaffoldPrompterTests
         var connection = "Host=db.internal;Port=5432;Database=app";
 
         // Act
-        var answers = ScaffoldPrompter.Answer(
+        var answers = Answered(
             console,
             [new ScaffoldPrompt { Key = "connection_string", Label = "Connection string" }],
             Supplied(("connection_string", connection)));
@@ -99,10 +99,17 @@ public sealed class ScaffoldPrompterTests
         console.Input.PushTextWithEnter("orders");
 
         // Act
-        var answers = ScaffoldPrompter.Answer(console, [Database], Supplied());
+        var answers = Answered(console, [Database], Supplied());
 
         // Assert
         answers["database"].ShouldBe("orders");
         console.Output.ShouldContain("Database");
     }
+
+    // Every other case answers successfully; the failure case asserts on the diagnostics directly.
+    private static IReadOnlyDictionary<string, string?> Answered(
+        IAnsiConsole console,
+        IReadOnlyList<ScaffoldPrompt> prompts,
+        IReadOnlyDictionary<string, string?> supplied) =>
+        ScaffoldPrompter.Answer(console, prompts, supplied).Require();
 }

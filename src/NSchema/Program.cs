@@ -13,22 +13,24 @@ var configuration = new System.CommandLine.InvocationConfiguration { EnableDefau
 var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
 
+var messenger = ReporterFactory.CreateMessenger(parseResult);
+
 try
 {
     return await parseResult.InvokeAsync(configuration);
 }
 catch (OperationCanceledException)
 {
-    ReporterFactory.CreateMessenger(parseResult).Report(MessageKind.Warning, "Operation cancelled.");
+    messenger.Report(MessageKind.Warning, "Operation cancelled.");
     return ExitCodes.OperationCanceled;
 }
 catch (ConfirmationDeclinedException ex)
 {
-    ReporterFactory.CreateMessenger(parseResult).Report(MessageKind.Warning, ex.Message);
+    messenger.Report(MessageKind.Warning, ex.Message);
     return ExitCodes.Error;
 }
 catch (Exception ex)
 {
-    ReporterFactory.CreateMessenger(parseResult).ReportException(ex);
+    messenger.ReportException(ex);
     return ExitCodes.Error;
 }

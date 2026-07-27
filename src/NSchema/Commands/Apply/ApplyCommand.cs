@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 using NSchema.Plan.Domain;
 using NSchema.Services;
@@ -21,33 +20,28 @@ internal static class ApplyCommand
         return command;
     }
 
-    private static async ValueTask<ApplyConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
-    {
-        var config = await ConfigurationFactory.Load<ApplyConfiguration>(result, environment, cancellationToken);
-        new ApplyConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: Configure,
+        command: Execute,
+        validator: new ApplyConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static CliApplicationBuilder Configure(CliApplicationBuilder builder, ApplyConfiguration configuration)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        // Apply re-runs the policies against whichever plan it executes, so the policy flags are configured for a
-        // saved plan too. Replaying a saved plan runs exactly the SQL captured at plan time, so the desired schema
-        // is not consulted again — the *.sql files needn't even be present. A fresh apply computes the plan now.
-        var builder = CliApplicationBuilder.Create(parseResult)
+        builder
             .ConfigureDatabase(configuration.Database)
             .ConfigureState(configuration.State, configuration.Ephemeral)
             .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy);
+        return configuration.PlanFile is null ? builder.ConfigureDesiredSchema() : builder;
+    }
 
-        if (configuration.PlanFile is null)
-        {
-            builder.ConfigureDesiredSchema();
-        }
+    private static async Task<int> Execute(CommandContext<ApplyConfiguration> context, CancellationToken cancellationToken)
+    {
+        var (app, configuration, _, _) = context;
 
-        using var app = builder.Build();
-        app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Applying schema migration. Changes will be applied to the database.");
 
         // Hold the state lock across the whole apply: the plan is computed and executed under the same lock.

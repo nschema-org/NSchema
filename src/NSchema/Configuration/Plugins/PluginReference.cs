@@ -18,17 +18,23 @@ internal sealed record PluginReference(PackageId PackageId, SemanticVersion Vers
     /// <param name="config">The statement's translated settings, carrying the label.</param>
     /// <param name="plugins">The project's <c>PLUGIN</c> declarations.</param>
     /// <param name="resolve">Resolves a declared version (exact or range) to the concrete version to use.</param>
-    public static PluginReference Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, SemanticVersion> resolve)
+    /// <returns>The resolved reference, or a failure when the label names no declared plugin or the version will not resolve.</returns>
+    public static Result<PluginReference> Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve)
     {
         // The config assembly already rejects an unlabelled or unknown reference; the built-in 'file' label is
         // handled by StateConfiguration before this is reached.
         var label = config.Label!;
-        var declaration = plugins.FirstOrDefault(p => p.Label == label)
-            ?? throw new InvalidOperationException(
+        var declaration = plugins.FirstOrDefault(p => p.Label == label);
+        if (declaration is null)
+        {
+            return Diagnostic.Error(label.Value,
                 $"'{label}' does not reference a declared plugin. Add: PLUGIN {label} ( source = '...', version = '...' );");
+        }
 
         var version = resolve(declaration.Package.Source, declaration.Package.Version);
 
-        return new PluginReference(declaration.Package.Source, version, label, config);
+        return version.IsFailure
+            ? Result.Failure<PluginReference>(version.Diagnostics)
+            : new PluginReference(declaration.Package.Source, version.Require(), label, config);
     }
 }

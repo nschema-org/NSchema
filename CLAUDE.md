@@ -120,9 +120,18 @@ Env parsing is automatic (enums case-insensitively, strings by identity; pass a 
 There is **no single superset config type**. Each command owns its own `*Configuration` model (`Commands/<Name>/`)
 implementing `IBindable` (`void Bind(ProjectConfig, ParseResult)`) and composing only what it needs. A command's
 `Bind` assigns the project slices directly and binds its **own** leaf flags through its command-local `*Options`
-(`Provider = project.Provider; State = project.State; ApplyOptions.Scope.Bind(cli, s => Scope = s);`). The handler's
-`Resolve` calls `ConfigurationFactory.Load<TConfiguration>`, runs the FluentValidation `*ConfigurationValidator` via
-`ValidateOrThrow`, and hands the validated model to `CliApplicationBuilder`.
+(`Provider = project.Provider; State = project.State; ApplyOptions.Scope.Bind(cli, s => Scope = s);`).
+
+**`Commands/CommandRunner`** owns the preamble every configured command shares, so a command supplies only what varies:
+its configuration type, its FluentValidation `*ConfigurationValidator` (optional — `validate`/`script hash` have
+nothing to check), a `configure` lambda applying the resolved config to the `CliApplicationBuilder`, and the body. The
+runner resolves the environment, calls `ConfigurationFactory.Load`, applies `configure`, calls `Build()`, and stops at
+whichever step first fails — reporting its diagnostics and returning `ExitCodes.Error`. The body is handed a
+`CommandContext<TConfiguration>` (the built `CliApplication`, the validated config, the `ParseResult`, the
+environment). It also prints the environment banner, which `state pull` and `script hash` opt out of
+(`announceEnvironment: false`) when stdout is a payload rather than a report. Commands that configure nothing
+(`plan show`, `completion`, `init`, `new`) or that need the builder itself in the body (`doctor`, which reports plugin
+failures via `TryConfigureDatabase`/`TryConfigureState` rather than stopping on them) deliberately bypass it.
 
 The provider/backend slices are now **plain data**, not `IBindable`:
 

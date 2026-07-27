@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 
 namespace NSchema.Commands.Lock.Status;
 
@@ -15,25 +14,20 @@ internal static class LockStatusCommand
         return command;
     }
 
-    private static async ValueTask<LockStatusConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<LockStatusConfiguration>(result, environment, cancellationToken);
-        new LockStatusConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new LockStatusConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<LockStatusConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
+        var (app, configuration, parseResult, environment) = context;
 
         var info = await app.Locks.Peek(cancellationToken);
-
-        app.Messenger.ReportEnvironment(environment);
 
         if (info is null)
         {

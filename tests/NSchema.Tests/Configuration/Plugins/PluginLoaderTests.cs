@@ -63,7 +63,7 @@ public sealed class PluginLoaderTests : IDisposable
         var version = loader.ResolveLatestVersion(Package);
 
         // Assert — a concrete 5.x version is pinned (the exact build floats as new ones publish).
-        version.ToString().ShouldStartWith("5.");
+        version.Require().ToString().ShouldStartWith("5.");
     }
 
     [Fact]

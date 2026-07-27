@@ -39,12 +39,22 @@ public sealed class ReporterFactoryTests
     public void ResolveFormat_JsonWithAgreeingFormat_IsJson() => ResolveFormat("plan", "--json", "--format", "json").ShouldBe(OutputFormat.Json);
 
     [Fact]
-    public void ResolveFormat_JsonWithConflictingFormat_Throws()
+    public void Parse_JsonWithConflictingFormat_IsAUsageError()
     {
+        // The conflict is caught while parsing (RootCommand's validator), which is what keeps ResolveFormat total.
         var parseResult = RootCommand.Create().Parse(["plan", "--json", "--format", "markdown"]);
 
-        var ex = Should.Throw<InvalidOperationException>(() => ReporterFactory.ResolveFormat(parseResult));
-        ex.Message.ShouldContain("--json cannot be combined with --format");
+        parseResult.Errors.ShouldContain(error => error.Message.Contains("--json cannot be combined with --format"));
+    }
+
+    [Fact]
+    public void Parse_JsonWithMatchingFormat_IsAccepted()
+    {
+        // --json is shorthand for --format json, so agreeing is not a conflict.
+        var parseResult = RootCommand.Create().Parse(["plan", "--json", "--format", "json"]);
+
+        parseResult.Errors.ShouldBeEmpty();
+        ReporterFactory.ResolveFormat(parseResult).ShouldBe(OutputFormat.Json);
     }
 
     [Fact]
@@ -72,11 +82,10 @@ public sealed class ReporterFactoryTests
         ReporterFactory.ResolveVerbosity(RootCommand.Create().Parse(["plan", "--quiet"])).ShouldBe(Verbosity.Quiet);
 
     [Fact]
-    public void ResolveVerbosity_QuietAndVerboseTogether_Throws()
+    public void Parse_QuietAndVerboseTogether_IsAUsageError()
     {
         var parseResult = RootCommand.Create().Parse(["plan", "--quiet", "--verbose"]);
 
-        var ex = Should.Throw<InvalidOperationException>(() => ReporterFactory.ResolveVerbosity(parseResult));
-        ex.Message.ShouldContain("--quiet and --verbose cannot be used together");
+        parseResult.Errors.ShouldContain(error => error.Message.Contains("--quiet and --verbose cannot be used together"));
     }
 }
