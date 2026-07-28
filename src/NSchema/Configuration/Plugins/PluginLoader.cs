@@ -68,6 +68,14 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
             return Result.Success<IReadOnlyList<INSchemaPlugin>>(plugins);
         }
+        catch (Exception ex) when (ex is TypeLoadException or MissingMemberException)
+        {
+            // A missing type or member across the plugin boundary means the package was built against a different NSchema.Core.
+            return Diagnostic.Error(packageId.Value,
+                $"The plugin '{packageId}' {version} was built for a different version of NSchema and cannot be loaded. "
+                + $"Update it with 'nschema plugin update', or set a compatible version in its PLUGIN statement. "
+                + $"({ex.Message:text})");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Diagnostic.Error(packageId.Value, $"The plugin '{packageId}' {version} could not be loaded: {ex.Message}");
@@ -77,7 +85,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
     /// <summary>
     /// Restores each reference into the cache, narrating whether it was freshly fetched or already present.
     /// </summary>
-    public void Restore(IEnumerable<PluginReference> references, IConsoleMessenger messenger)
+    /// <returns>Success, or the first reference's failure — an unloadable plugin is the operator's to fix.</returns>
+    public Result Restore(IEnumerable<PluginReference> references, IConsoleMessenger messenger)
     {
         foreach (var reference in references)
         {
@@ -89,7 +98,11 @@ internal sealed class PluginLoader(string? cacheRoot = null)
                 messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
             }
 
-            Load(reference.PackageId, reference.Version).Require();
+            var loaded = Load(reference.PackageId, reference.Version);
+            if (loaded.IsFailure)
+            {
+                return Result.From(loaded.Diagnostics);
+            }
 
             if (alreadyInstalled)
             {
@@ -100,6 +113,8 @@ internal sealed class PluginLoader(string? cacheRoot = null)
                 messenger.Success($"{reference.PackageId} {reference.Version} (installed)");
             }
         }
+
+        return Result.Success();
     }
 
     /// <summary>

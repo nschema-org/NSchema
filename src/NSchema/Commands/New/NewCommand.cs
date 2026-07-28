@@ -201,9 +201,13 @@ internal static class NewCommand
             return Result.Failure<TPlugin>(loaded.Diagnostics);
         }
 
-        return loaded.Require().OfType<TPlugin>().FirstOrDefault() is { } plugin
-            ? plugin
-            : Diagnostic.Error(packageId.Value, $"The package '{packageId}' does not provide the expected plugin capability.");
+        var plugin = loaded.Require().OfType<TPlugin>().FirstOrDefault();
+        if (plugin is not null)
+        {
+            return plugin;
+        }
+
+        return Diagnostic.Error(packageId.Value, $"The package '{packageId}' does not provide the expected plugin capability.");
     }
 
     private static (string Package, string Label) DatabasePackage(DatabaseKind database) => database switch
