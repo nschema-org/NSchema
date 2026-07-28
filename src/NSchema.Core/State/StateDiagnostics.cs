@@ -13,6 +13,12 @@ internal static class StateDiagnostics
     public static Diagnostic NotConfigured => Diagnostic.Error(Source, "No state store is configured.");
 
     /// <summary>
+    /// A store the backend could not read or write — typically unreachable.
+    /// </summary>
+    public static Diagnostic Unreachable(Exception exception) =>
+        Diagnostic.Error(Source, $"Could not reach the state store: {ExceptionMessage.Describe(exception):text}");
+
+    /// <summary>
     /// A stored payload that could not be deserialized.
     /// </summary>
     public static Diagnostic UnreadablePayload(Exception exception) =>

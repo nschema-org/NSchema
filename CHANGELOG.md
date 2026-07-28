@@ -30,7 +30,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Scripts split into `ChangeScript` and `DeploymentScript`.** `Script` is now an abstract base carrying the common behavior (name, SQL, scope, hash, reference, run condition);
 - **"Desired" is Project now.** `IDesiredSchemaProvider` becomes `IProjectProvider` — the project is the desired state by definition, and `app.DesiredSchema` becomes `app.Project`, named for what it hands you like every surface beside it. Progress output follows: `Loading project...`, `Validating project...`, and the plan census now reads `Declared:` / `Recorded state:`.
 - **`AddDdlSchemas` is `AddProjectSource` now.** The files describe the whole project (schema, scripts, templates, config), not just schema DDL.
-- **Result<T> use consistency.** Lots of interfaces have been neatened up to return a `Result<T>` instead of throwing to allow for error/warning accumulation
+- **Result<T> use consistency.** Lots of interfaces have been neatened up to return a `Result<T>` instead of throwing to allow for error/warning accumulation.
 - **The diff now includes scripts.** Rather than being tacked on to the plan, scripts are now a first-class part of the diff, carried where they run rather than in a central list.
 - **Cohesive plan artifact.** There's now a single `MigrationPlan` model that represents the plan in its entirety rather than being spread across `SqlPlan`, `PlannedMigration`, etc.
 - **Providers are required.** Providers are now required for planning, because the SQL is built into the plan model.
@@ -66,7 +66,6 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **`DiffDocument.From(diff)` replaces `DiffReader.Read(diff)`.** The reader type and its `.Default` singleton are both gone, and the namespace is `NSchema.Diff.Rendering`: "reader" named the wrong direction, since a `DatabaseDiff` is projected into display lines rather than parsed from anything.
 - **`SchemaScope` replaces bare schema-name arrays.** `GetProject`, `GetSchema`, and the plan/drift/import arguments take a scope record.
 - **State locks receive complete metadata.** `IStateLockManager.Acquire` takes `AcquireLockArguments` with the operation, TTL, and skip-lock; it creates the `StateLockInfo` atomically recorded by `IStateLock.Acquire`.
-- **`IPlanFileManager.Read` returns `Result<PlanFileEnvelope>`.** An unreadable or corrupt plan file is a failure carrying diagnostics.
 - **Project reads report every broken file at once.** An unreadable or unparseable file (and no-files-matched) is an error diagnostic on the project.
 - **Index keys and exclusion elements are column-or-expression now.** `IndexColumn` and `ExclusionElement` carry mutually exclusive `Column` (an identifier) and `Expression` (verbatim SQL) properties.
 - **References are value objects now.** `Trigger.Function` carries a `RoutineReference` (optionally schema-qualified; unqualified resolves via the engine's search path)

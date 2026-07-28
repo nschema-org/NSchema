@@ -71,7 +71,8 @@ internal sealed class ApplyOperation(
                 // Swallow this so we don't mask the original error.
             }
 
-            throw;
+            // A migration the database refused is an expected outcome the caller renders, not a defect in the engine.
+            return Result.Failure<ApplyResult>(findings.Append(ApplyDiagnostics.ExecutionFailed(ex)));
         }
 
         // Recording after execution must not refuse an unreadable payload — the SQL has already run, so the

@@ -1,6 +1,6 @@
 using System.Text;
 using Microsoft.Extensions.Options;
-using NSchema.State.Backends;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.State;
 
@@ -34,7 +34,7 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
         var result = await sut.Read(TestContext.Current.CancellationToken);
 
         // Assert
-        result.ShouldBeNull();
+        result.Require().Payload.ShouldBeNull();
     }
 
     [Fact]
@@ -60,8 +60,8 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
         var result = await sut.Read(TestContext.Current.CancellationToken);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Value.ToArray().ShouldBe(payload);
+        result.Require().Payload.ShouldNotBeNull();
+        result.Require().Payload!.Value.ToArray().ShouldBe(payload);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class FileDatabaseStateStoreTests : IDisposable
         var result = await sut.Read(TestContext.Current.CancellationToken);
 
         // Assert
-        result!.Value.ToArray().ShouldBe(Encoding.UTF8.GetBytes("new"));
+        result.Require().Payload!.Value.ToArray().ShouldBe(Encoding.UTF8.GetBytes("new"));
     }
 
     [Fact]

@@ -99,7 +99,7 @@ The slices:
 - `State/`, `Deployment/`, `Configuration/`, `Plugins/` — recorded state, the live database, project configuration, and the plugin contract.
 - `Operations/` — the shell that drives the slices. Nothing depends on it.
 
-`<Slice>/Backends/` holds the seams a provider package implements downstream — `SqlDialect` (`Plan`), `SqlEquivalence`
+`<Slice>/Plugins/` holds the seams a provider package implements downstream — `SqlDialect` (`Plan`), `SqlEquivalence`
 (`Diff`), `IDatabaseIntrospector` (`Deployment`), state stores and locks (`State`). Core ships no dialect.
 
 Which slice may depend on which is declared as a table in `tests/NSchema.Core.Tests/Architecture/` and enforced by

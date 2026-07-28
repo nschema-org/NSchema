@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using NSchema.Diff.Backends;
 using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Plugins;
 using NSchema.Project.Nsql;
 using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 

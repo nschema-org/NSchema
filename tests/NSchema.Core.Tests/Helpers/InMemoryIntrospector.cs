@@ -1,4 +1,4 @@
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 
 namespace NSchema.Tests.Helpers;
@@ -8,6 +8,6 @@ namespace NSchema.Tests.Helpers;
 /// </summary>
 internal sealed class InMemoryIntrospector(Database schema) : IDatabaseIntrospector
 {
-    public ValueTask<Database> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default)
-        => ValueTask.FromResult(schema.ScopedTo(scope));
+    public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(Result.Success(schema.ScopedTo(scope)));
 }

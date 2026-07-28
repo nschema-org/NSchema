@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using NSchema.Diff.Backends;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
+using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;

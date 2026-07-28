@@ -1,4 +1,3 @@
-using NSchema.Plan.Backends;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Columns;
 using NSchema.Plan.Domain.CompositeTypes;
@@ -14,6 +13,7 @@ using NSchema.Plan.Domain.Sequences;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Triggers;
 using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Plugins;
 
 namespace NSchema.Tests.Helpers;
 

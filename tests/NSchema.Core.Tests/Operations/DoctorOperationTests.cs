@@ -1,13 +1,13 @@
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.State;
-using NSchema.State.Backends;
 using NSchema.State.Domain;
 using NSchema.State.Locks;
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.Operations;
 
@@ -195,20 +195,20 @@ public sealed class DoctorOperationTests
 
     private sealed class ThrowingIntrospector(Exception exception) : IDatabaseIntrospector
     {
-        public ValueTask<Database> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
+        public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
             throw exception;
     }
 
     private sealed class ThrowingStateStore(Exception exception) : IDatabaseStateStore
     {
-        public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) => throw exception;
-        public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => throw exception;
+        public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) => throw exception;
+        public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => throw exception;
     }
 
     private sealed class ContentStateStore(byte[] content) : IDatabaseStateStore
     {
-        public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) =>
-            Task.FromResult<ReadOnlyMemory<byte>?>(content);
-        public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success(new StoreReadResult(content)));
+        public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.FromResult(Result.Success());
     }
 }

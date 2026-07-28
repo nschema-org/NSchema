@@ -24,4 +24,10 @@ internal static class ApplyDiagnostics
     /// </summary>
     public static Diagnostic MissingExecutor => Diagnostic.Error(Source,
         "Applying a plan requires a database provider to execute SQL, but none is registered.");
+
+    /// <summary>
+    /// A migration that failed partway through execution; the database may be partially migrated.
+    /// </summary>
+    public static Diagnostic ExecutionFailed(Exception exception) => Diagnostic.Error(Source,
+        $"The migration failed and may have been applied only in part: {ExceptionMessage.Describe(exception):text}");
 }

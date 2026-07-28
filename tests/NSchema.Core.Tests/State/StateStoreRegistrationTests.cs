@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.State.Backends;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.State;
 
@@ -7,11 +7,11 @@ public sealed class StateStoreRegistrationTests
 {
     private sealed class FakeStateStore : IDatabaseStateStore
     {
-        public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) =>
-            Task.FromResult<ReadOnlyMemory<byte>?>(null);
+        public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success(new StoreReadResult(null)));
 
-        public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success());
     }
 
     private static IDatabaseStateStore? ResolveStore(Action<NSchemaApplicationBuilder> configure)

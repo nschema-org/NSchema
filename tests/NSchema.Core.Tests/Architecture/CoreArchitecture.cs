@@ -63,8 +63,12 @@ public static class CoreArchitecture
     /// <summary>
     /// The seams a provider package implements downstream — dialects, introspectors, state stores.
     /// </summary>
+    /// <remarks>
+    /// <c>NSchema.Configuration.Plugins</c> is excluded: it configures which plugins a project declares, rather than
+    /// being something a plugin implements.
+    /// </remarks>
     public static readonly IObjectProvider<IType> ProviderSeams =
-        Types().That().ResideInNamespaceMatching(@"^NSchema\.\w+(\.\w+)*\.Backends($|\.)").As("the provider seams");
+        Types().That().ResideInNamespaceMatching(@"^NSchema\.(?!Configuration\.)\w+(\.\w+)*\.Plugins($|\.)").As("the provider seams");
 
     /// <summary>
     /// The violations of <paramref name="rule"/>, empty when it holds.

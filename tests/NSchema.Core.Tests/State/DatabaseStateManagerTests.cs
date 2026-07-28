@@ -1,7 +1,8 @@
 using NSchema.Model;
 using NSchema.State;
-using NSchema.State.Backends;
 using NSchema.State.Domain;
+using NSchema.State.Plugins;
+using NSubstitute.ExceptionExtensions;
 
 namespace NSchema.Tests.State;
 
@@ -15,13 +16,18 @@ public sealed class DatabaseStateManagerTests
 
     public DatabaseStateManagerTests()
     {
+        // A substituted store returns null for Result-typed members (Result has an internal constructor, so
+        // NSubstitute cannot auto-create one), so give it a success default each test can override.
+        _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        _store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+
         _sut = new DatabaseStateManager(_serializer, _store);
     }
 
     private static DatabaseStateManager Unconfigured() => new(new DatabaseStateSerializer());
 
     private void StoreHolds(ReadOnlyMemory<byte>? payload) =>
-        _store.Read(Arg.Any<CancellationToken>()).Returns(payload);
+        _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(payload)));
 
     [Fact]
     public void IsConfigured_ReflectsWhetherAStoreIsRegistered()
@@ -187,5 +193,71 @@ public sealed class DatabaseStateManagerTests
 
         // Assert
         result.IsFailure.ShouldBeTrue();
+    }
+
+    // --- An unreachable store ---
+    //
+    // The store reports what it anticipates as a failure; the manager propagates it rather than swallowing it or
+    // turning a read into an empty state.
+
+    private void StoreIsUnreachable()
+    {
+        var unreachable = Diagnostic.Error("state", "Could not reach the state store: Connection refused");
+        _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Failure<StoreReadResult>(unreachable));
+        _store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.From(unreachable));
+    }
+
+    [Fact]
+    public async Task Read_WhenTheStoreIsUnreachable_IsAFailure()
+    {
+        // Arrange
+        StoreIsUnreachable();
+
+        // Act
+        var result = await _sut.Read(new StateReadArguments(), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task ReadRaw_WhenTheStoreIsUnreachable_IsAFailure()
+    {
+        // Arrange
+        StoreIsUnreachable();
+
+        // Act
+        var result = await _sut.ReadRaw(new StateRawReadArguments(), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task Write_WhenTheStoreIsUnreachable_IsAFailure()
+    {
+        // Arrange
+        StoreIsUnreachable();
+
+        // Act
+        var result = await _sut.Write(new StateWriteArguments(new DatabaseState(new Database(), [])), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task Read_WhenTheStoreThrows_PropagatesAsADefect()
+    {
+        // Arrange — the contract is to report what you anticipate; a store that throws instead is broken, and the
+        // engine surfaces that as a defect rather than dressing it up as an environmental failure.
+        _store.Read(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
+
+        // Act / Assert
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => _sut.Read(new StateReadArguments(), TestContext.Current.CancellationToken));
     }
 }

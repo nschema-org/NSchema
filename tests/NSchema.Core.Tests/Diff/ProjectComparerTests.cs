@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NSchema.Diff.Backends;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;

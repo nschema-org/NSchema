@@ -102,20 +102,25 @@ public sealed class ApplyOperationTests
         var plan = _plan with { Diff = new DatabaseDiff([]) { DeploymentScripts = [new DeploymentScript("seed", "SELECT 1", null, DeploymentPhase.Post)] } };
 
         // Act
-        await Should.ThrowAsync<InvalidOperationException>(() => _sut.Execute(Args(plan), TestContext.Current.CancellationToken));
+        var result = await _sut.Execute(Args(plan), TestContext.Current.CancellationToken);
 
         // Assert
+        result.IsFailure.ShouldBeTrue();
         await _workflow.Received(1).Refresh((MigrationPlan?)null, Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Execute_WhenExecutionFails_StillRefreshesAndRethrows()
+    public async Task Execute_WhenExecutionFails_StillRefreshesAndFails()
     {
+        // Arrange
         _executor.Execute(Arg.Any<IReadOnlyList<SqlStatement>>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
 
-        // Execution may fail partway (e.g. an un-transacted plan), so we still capture state, but the failure propagates.
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => _sut.Execute(Args(_plan), TestContext.Current.CancellationToken));
-        ex.Message.ShouldBe("boom");
+        // Act — execution may fail partway (e.g. an un-transacted plan), so state is still captured.
+        var result = await _sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
+
+        // Assert — a database that refused the migration is an expected outcome, reported rather than thrown.
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldContain(d => d.Message.Contains("boom"));
         await _workflow.Received(1).Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -154,9 +159,11 @@ public sealed class ApplyOperationTests
         _executor.Execute(Arg.Any<IReadOnlyList<SqlStatement>>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("migration failed"));
         _workflow.Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("state store unreachable"));
 
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => _sut.Execute(Args(_plan), TestContext.Current.CancellationToken));
+        var result = await _sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
 
-        ex.Message.ShouldBe("migration failed");
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldContain(d => d.Message.Contains("migration failed"));
+        result.Errors.ShouldNotContain(d => d.Message.Contains("state store unreachable"));
         await _workflow.Received(1).Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 

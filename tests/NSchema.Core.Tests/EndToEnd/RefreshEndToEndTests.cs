@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
@@ -46,6 +46,34 @@ public sealed class RefreshEndToEndTests : IDisposable
         await app.Operations.Refresh(new RefreshArguments(), TestContext.Current.CancellationToken);
 
         store.Written.ShouldNotBeNull().Database.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
+    }
+
+    [Fact]
+    public async Task Refresh_WhenTheDatabaseIsUnreachable_FailsWithADiagnostic()
+    {
+        // Arrange — the reported bug: an unreachable database used to escape refresh as a bare exception, leaving the
+        // operator with a message and no indication of what to do about it. The provider reports it instead, carrying
+        // the inner cause the way a real one does.
+        var unreachable = Diagnostic.Error("postgres",
+            "Could not read the live database: Failed to connect to 127.0.0.1:5432 -> Connection refused");
+        using var app = NSchemaApplication.CreateBuilder()
+            .UseStateStore(new RecordingStateStore())
+            .Tap(b => b.Services.AddSingleton<IDatabaseIntrospector>(new FailingIntrospector(unreachable)))
+            .UseSqlDialect<StubSqlDialect>().Build();
+
+        // Act
+        var result = await app.Operations.Refresh(new RefreshArguments(), TestContext.Current.CancellationToken);
+
+        // Assert — a reportable failure carrying both levels of the cause, not a thrown exception.
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldContain(d => d.Message.Contains("Failed to connect to 127.0.0.1:5432"));
+        result.Errors.ShouldContain(d => d.Message.Contains("Connection refused"));
+    }
+
+    private sealed class FailingIntrospector(Diagnostic diagnostic) : IDatabaseIntrospector
+    {
+        public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(Result.Failure<Database>(diagnostic));
     }
 
     [Fact]

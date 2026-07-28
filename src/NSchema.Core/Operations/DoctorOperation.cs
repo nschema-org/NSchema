@@ -1,9 +1,9 @@
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 using NSchema.Operations.Progress;
 using NSchema.State;
-using NSchema.State.Backends;
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
+using NSchema.State.Plugins;
 
 namespace NSchema.Operations;
 
@@ -48,15 +48,21 @@ internal sealed class DoctorOperation(
         }
 
         progress.Report(OperationProgress.Step("Checking database connectivity..."));
+
         try
         {
             // A full introspection is the honest end-to-end probe: it exercises the same path plan/apply rely on.
             var schema = await online.GetDatabase(PlanningScope.All, cancellationToken);
-            return Diagnostic.Info(source, $"Database: connected ({StatusHelpers.Count(schema.Schemas.Count, "schema")} visible).");
+            if (schema.IsFailure)
+            {
+                return Diagnostic.Error(source, $"Database: unreachable — {Describe(schema):text}");
+            }
+
+            return Diagnostic.Info(source, $"Database: connected ({StatusHelpers.Count(schema.Require().Schemas.Count, "schema")} visible).");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"Database: unreachable — {ex.Message:text}");
+            return Diagnostic.Error(source, $"Database: unreachable — {ExceptionMessage.Describe(ex):text}");
         }
     }
 
@@ -72,11 +78,17 @@ internal sealed class DoctorOperation(
         ReadOnlyMemory<byte>? snapshot;
         try
         {
-            snapshot = await store.Read(cancellationToken);
+            var read = await store.Read(cancellationToken);
+            if (read.IsFailure)
+            {
+                return Diagnostic.Error(source, $"State store: unreachable — {Describe(read):text}");
+            }
+
+            snapshot = read.Require().Payload;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"State store: unreachable — {ex.Message:text}");
+            return Diagnostic.Error(source, $"State store: unreachable — {ExceptionMessage.Describe(ex):text}");
         }
 
         // A missing or empty payload is a bootstrap store — reachable, with nothing recorded yet — not a corruption.
@@ -104,8 +116,13 @@ internal sealed class DoctorOperation(
         progress.Report(OperationProgress.Step("Checking state lock..."));
         try
         {
-            var info = await @lock.Peek(cancellationToken);
-            return info is null
+            var peeked = await @lock.Peek(cancellationToken);
+            if (peeked.IsFailure)
+            {
+                return Diagnostic.Error(source, $"State lock: could not be checked — {Describe(peeked):text}");
+            }
+
+            return peeked.Require().Held is not { } info
                 ? Diagnostic.Info(source, "State lock: free.")
                 // A held lock is a state, not a misconfiguration — it may be a legitimately-running operation — so
                 // report it for visibility (warning) without counting it as a failure.
@@ -113,7 +130,10 @@ internal sealed class DoctorOperation(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"State lock: could not be checked — {ex.Message:text}");
+            return Diagnostic.Error(source, $"State lock: could not be checked — {ExceptionMessage.Describe(ex):text}");
         }
     }
+
+    // Folds a backend's reported errors into one line for the check's summary.
+    private static string Describe(Result result) => string.Join("; ", result.Errors.Select(error => error.Message));
 }

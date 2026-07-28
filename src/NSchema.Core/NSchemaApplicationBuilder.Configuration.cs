@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSchema.Apply;
-using NSchema.Deployment.Backends;
-using NSchema.Diff.Backends;
+using NSchema.Deployment.Plugins;
+using NSchema.Diff.Plugins;
 using NSchema.Operations.Progress;
-using NSchema.Plan.Backends;
+using NSchema.Plan.Plugins;
 using NSchema.Plan.Policies;
 
 namespace NSchema;

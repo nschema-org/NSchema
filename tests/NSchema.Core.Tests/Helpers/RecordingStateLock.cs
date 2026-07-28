@@ -1,5 +1,5 @@
 using NSchema.State.Locks;
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
 
 namespace NSchema.Tests.Helpers;
 
@@ -18,37 +18,54 @@ internal sealed class RecordingStateLock : IStateLock
     /// <summary>The value returned from <see cref="Peek"/> (defaults to nothing held).</summary>
     public StateLockInfo? PeekResult { get; set; }
 
-    public Task<StateLockInfo?> Peek(CancellationToken cancellationToken = default)
+    /// <summary>Overrides <see cref="Peek"/>, so a test can vary what is held.</summary>
+    public Func<StateLockInfo?>? OnPeek { get; set; }
+
+    /// <summary>When set, <see cref="Peek"/> reports this failure instead of returning a lock.</summary>
+    public Diagnostic? PeekFailure { get; set; }
+
+    /// <summary>When set, <see cref="Acquire"/> reports this failure instead of taking the lock.</summary>
+    public Diagnostic? AcquireFailure { get; set; }
+
+    public Task<Result<LockPeekResult>> Peek(CancellationToken cancellationToken = default)
     {
         Peeks++;
-        return Task.FromResult(PeekResult);
+
+        return Task.FromResult(PeekFailure is { } failure
+            ? Result.Failure<LockPeekResult>(failure)
+            : Result.Success(new LockPeekResult(OnPeek is null ? PeekResult : OnPeek())));
     }
 
-    public async Task<IStateLockHandle> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default)
+    public async Task<Result<IStateLockHandle>> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default)
     {
         if (OnAcquire is not null)
         {
             await OnAcquire(lockInfo);
         }
 
+        if (AcquireFailure is { } failure)
+        {
+            return Result.Failure<IStateLockHandle>(failure);
+        }
+
         Acquisitions.Add(lockInfo);
-        return new Handle(this, lockInfo);
+        return Result.Success<IStateLockHandle>(new Handle(this, lockInfo));
     }
 
-    public ValueTask Release(CancellationToken cancellationToken = default)
+    public ValueTask<Result> Release(CancellationToken cancellationToken = default)
     {
         ForceReleases++;
-        return ValueTask.CompletedTask;
+        return ValueTask.FromResult(Result.Success());
     }
 
     private sealed class Handle(RecordingStateLock owner, StateLockInfo info) : IStateLockHandle
     {
         public StateLockInfo Info => info;
 
-        public ValueTask Release(CancellationToken cancellationToken = default)
+        public ValueTask<Result> Release(CancellationToken cancellationToken = default)
         {
             owner.Released++;
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(Result.Success());
         }
     }
 }

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using NSchema.Diff.Backends;
 using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Project.Nsql;

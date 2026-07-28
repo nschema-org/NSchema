@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSchema.Deployment;
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 
@@ -14,8 +14,8 @@ public sealed class DatabaseProviderTests
 
     private sealed class FakeIntrospector : IDatabaseIntrospector
     {
-        public ValueTask<Database> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(_liveSchema);
+        public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(Result.Success(_liveSchema));
     }
 
     [Fact]
@@ -40,6 +40,45 @@ public sealed class DatabaseProviderTests
         var result = await sut.GetDatabase(PlanningScope.To(new SchemaAddress("other")), TestContext.Current.CancellationToken);
 
         result.Require().Schemas.ShouldBeEmpty();
+    }
+
+    private sealed class ThrowingIntrospector(Exception exception) : IDatabaseIntrospector
+    {
+        public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
+            throw exception;
+    }
+
+    private sealed class FailingIntrospector(Diagnostic diagnostic) : IDatabaseIntrospector
+    {
+        public ValueTask<Result<Database>> GetDatabase(PlanningScope scope, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(Result.Failure<Database>(diagnostic));
+    }
+
+    [Fact]
+    public async Task GetLive_WhenTheIntrospectorReportsAFailure_ItPropagates()
+    {
+        // Arrange — an unreachable database is what the introspector is expected to report, not throw.
+        var sut = Create(online: new FailingIntrospector(
+            Diagnostic.Error("postgres", "Could not read the live database: Failed to connect to 127.0.0.1:5432")));
+
+        // Act
+        var result = await sut.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Failed to connect to 127.0.0.1:5432");
+    }
+
+    [Fact]
+    public async Task GetLive_WhenTheIntrospectorThrows_PropagatesAsADefect()
+    {
+        // Arrange — an introspector that throws instead of reporting is broken; the engine surfaces that as a defect
+        // rather than dressing it up as an environmental failure.
+        var sut = Create(online: new ThrowingIntrospector(new InvalidOperationException("boom")));
+
+        // Act / Assert
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => sut.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken));
     }
 
     [Fact]

@@ -43,7 +43,7 @@ public sealed class NamespaceLayoutTests
 
     private static string? DeclaredNamespace(string file) => File.ReadLines(file)
         .FirstOrDefault(line => line.StartsWith("namespace ", StringComparison.Ordinal))
-        ?["namespace ".Length..].TrimEnd(';', ' ');
+        ?["namespace ".Length..]?.TrimEnd(';', ' ');
 
     /// <summary>The engine's source directory, located from this file rather than the test binary's location.</summary>
     private static string SourceRoot([CallerFilePath] string thisFile = "")

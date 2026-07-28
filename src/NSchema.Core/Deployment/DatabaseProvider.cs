@@ -1,4 +1,4 @@
-using NSchema.Deployment.Backends;
+using NSchema.Deployment.Plugins;
 using NSchema.Model;
 
 namespace NSchema.Deployment;
@@ -17,9 +17,14 @@ internal sealed class DatabaseProvider(IDatabaseIntrospector? online = null) : I
             return Result.Failure<Database>(DeploymentDiagnostics.NoOnlineSource);
         }
 
+        var live = await online.GetDatabase(scope, cancellationToken);
+        if (live.IsFailure)
+        {
+            return live;
+        }
+
         // The introspector's scope is an optimization hint that may over-return, so the scope is
         // re-applied here — scoping semantics live in one place, whatever the provider did.
-        var live = await online.GetDatabase(scope, cancellationToken);
-        return live.ScopedTo(scope);
+        return Result.From(live.Require().ScopedTo(scope), live.Diagnostics);
     }
 }

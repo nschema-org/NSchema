@@ -7,8 +7,8 @@ using NSchema.Model.Schemas;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.State;
-using NSchema.State.Backends;
 using NSchema.State.Domain;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.Operations;
 
@@ -29,7 +29,7 @@ public sealed class DriftOperationTests
     public DriftOperationTests()
     {
         // Recorded state comes from the store; live comes from the provider.
-        _store.Read(Arg.Any<CancellationToken>()).Returns(_serializer.Serialize(new DatabaseState(_recorded)));
+        _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(_serializer.Serialize(new DatabaseState(_recorded)))));
         _provider.GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(_live));
         _comparer.Compare(Arg.Any<AlignedDatabase>(), Arg.Any<Database>()).Returns(_diff);
@@ -67,7 +67,7 @@ public sealed class DriftOperationTests
     {
         // Arrange — recorded state holds an out-of-scope schema; the scoped read must drop it before diffing.
         _store.Read(Arg.Any<CancellationToken>())
-            .Returns(_serializer.Serialize(new DatabaseState(new Database { Schemas = [new Schema { Name = "app" }, new Schema { Name = "other" }] })));
+            .Returns(Result.Success(new StoreReadResult(_serializer.Serialize(new DatabaseState(new Database { Schemas = [new Schema { Name = "app" }, new Schema { Name = "other" }] })))));
 
         // Act
         await _sut.Execute(Args(PlanningScope.To(new SchemaAddress("app"))), TestContext.Current.CancellationToken);
@@ -81,7 +81,7 @@ public sealed class DriftOperationTests
     public async Task Execute_NoRecordedState_DiffsAgainstAnEmptyDatabase()
     {
         // Arrange — before anything is recorded, drift measures the whole live database as new.
-        _store.Read(Arg.Any<CancellationToken>()).Returns((ReadOnlyMemory<byte>?)null);
+        _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
 
         // Act
         await _sut.Execute(Args(), TestContext.Current.CancellationToken);

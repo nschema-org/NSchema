@@ -1,6 +1,6 @@
 using NSchema.State;
-using NSchema.State.Backends;
 using NSchema.State.Domain;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.Helpers;
 
@@ -16,12 +16,13 @@ internal sealed class RecordingStateStore : IDatabaseStateStore
 
     // The explicit nullable default matters: a bare `null` here would convert through byte[] to an
     // empty (non-null) ReadOnlyMemory, which reads as a corrupt zero-byte payload rather than "no state".
-    public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) =>
-        Task.FromResult(Written is null ? default(ReadOnlyMemory<byte>?) : _serializer.Serialize(Written));
+    public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) =>
+        Task.FromResult(Result.Success(new StoreReadResult(
+            Written is null ? default(ReadOnlyMemory<byte>?) : _serializer.Serialize(Written))));
 
-    public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default)
+    public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default)
     {
         Written = _serializer.Deserialize(state);
-        return Task.CompletedTask;
+        return Task.FromResult(Result.Success());
     }
 }

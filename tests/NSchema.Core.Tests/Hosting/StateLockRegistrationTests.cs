@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NSchema.State.Backends;
 using NSchema.State.Locks;
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.Hosting;
 
@@ -96,22 +96,22 @@ public sealed class StateLockRegistrationTests
 
     private sealed class StoreOnly : IDatabaseStateStore
     {
-        public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) => Task.FromResult<ReadOnlyMemory<byte>?>(null);
-        public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) => Task.FromResult(Result.Success(new StoreReadResult(null)));
+        public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.FromResult(Result.Success());
     }
 
     private sealed class LockingStore : IDatabaseStateStore, IStateLock
     {
-        public Task<ReadOnlyMemory<byte>?> Read(CancellationToken cancellationToken = default) => Task.FromResult<ReadOnlyMemory<byte>?>(null);
-        public Task Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IStateLockHandle> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public ValueTask Release(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public Task<Result<StoreReadResult>> Read(CancellationToken cancellationToken = default) => Task.FromResult(Result.Success(new StoreReadResult(null)));
+        public Task<Result> Write(ReadOnlyMemory<byte> state, CancellationToken cancellationToken = default) => Task.FromResult(Result.Success());
+        public Task<Result<IStateLockHandle>> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public ValueTask<Result> Release(CancellationToken cancellationToken = default) => ValueTask.FromResult(Result.Success());
     }
 
     // Implements IStateLock without Peek, exercising the default implementation.
     private sealed class CustomLock : IStateLock
     {
-        public Task<IStateLockHandle> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public ValueTask Release(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public Task<Result<IStateLockHandle>> Acquire(StateLockInfo lockInfo, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public ValueTask<Result> Release(CancellationToken cancellationToken = default) => ValueTask.FromResult(Result.Success());
     }
 }

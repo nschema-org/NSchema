@@ -1,4 +1,4 @@
-using NSchema.State.Backends;
+using NSchema.State.Plugins;
 
 namespace NSchema.State;
 
@@ -17,15 +17,20 @@ internal sealed class DatabaseStateManager(IDatabaseStateSerializer serializer, 
             return NotConfigured<StateReadResult>();
         }
 
-        var snapshot = await store.Read(cancellationToken);
-        if (snapshot is null)
+        var read = await store.Read(cancellationToken);
+        if (read.IsFailure)
+        {
+            return Result.Failure<StateReadResult>(read.Diagnostics);
+        }
+
+        if (read.Require().Payload is not { } snapshot)
         {
             return new StateReadResult(null);
         }
 
         try
         {
-            return new StateReadResult(serializer.Deserialize(snapshot.Value));
+            return new StateReadResult(serializer.Deserialize(snapshot));
         }
         catch (Exception ex) when (ex is StateDeserializationException or NotSupportedException)
         {
@@ -41,8 +46,11 @@ internal sealed class DatabaseStateManager(IDatabaseStateSerializer serializer, 
         }
 
         var payload = serializer.Serialize(arguments.State);
-        await store.Write(payload, cancellationToken);
-        return new StateWriteResult(payload.Length);
+        var written = await store.Write(payload, cancellationToken);
+
+        return written.IsFailure
+            ? Result.Failure<StateWriteResult>(written.Diagnostics)
+            : new StateWriteResult(payload.Length);
     }
 
     public async Task<Result<StateRawReadResult>> ReadRaw(StateRawReadArguments arguments, CancellationToken cancellationToken = default)
@@ -52,7 +60,11 @@ internal sealed class DatabaseStateManager(IDatabaseStateSerializer serializer, 
             return NotConfigured<StateRawReadResult>();
         }
 
-        return new StateRawReadResult(await store.Read(cancellationToken));
+        var read = await store.Read(cancellationToken);
+
+        return read.IsFailure
+            ? Result.Failure<StateRawReadResult>(read.Diagnostics)
+            : new StateRawReadResult(read.Require().Payload);
     }
 
     public async Task<Result<StateRawWriteResult>> WriteRaw(StateRawWriteArguments arguments, CancellationToken cancellationToken = default)
@@ -71,8 +83,11 @@ internal sealed class DatabaseStateManager(IDatabaseStateSerializer serializer, 
             return Result.Failure<StateRawWriteResult>(StateDiagnostics.InvalidRawPayload(ex));
         }
 
-        await store.Write(arguments.Payload, cancellationToken);
-        return new StateRawWriteResult(arguments.Payload.Length);
+        var written = await store.Write(arguments.Payload, cancellationToken);
+
+        return written.IsFailure
+            ? Result.Failure<StateRawWriteResult>(written.Diagnostics)
+            : new StateRawWriteResult(arguments.Payload.Length);
     }
 
     private static Result<T> NotConfigured<T>() => Result.Failure<T>(StateDiagnostics.NotConfigured);

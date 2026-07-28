@@ -1,7 +1,7 @@
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Services;
 using NSchema.Model;
-using NSchema.Plan.Backends;
+using NSchema.Plan.Plugins;
 using NSchema.Plan.Policies;
 using NSchema.Project.Domain.Directives;
 using NSchema.Project.Policies;

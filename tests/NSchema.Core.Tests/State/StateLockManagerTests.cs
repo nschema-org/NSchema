@@ -1,5 +1,5 @@
 using NSchema.State.Locks;
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
 
 namespace NSchema.Tests.State;
 
@@ -70,6 +70,31 @@ public sealed class StateLockManagerTests
     }
 
     [Fact]
+    public async Task Acquire_WhenTheBackendReportsAFailure_ItPropagates()
+    {
+        // Arrange — a lock backend that cannot be reached is the same kind of outcome as contention: the lock was not
+        // taken, which is the caller's business rather than a defect in the engine.
+        _stateLock.AcquireFailure = Diagnostic.Error("lock", "Could not take the state lock: Connection refused");
+
+        // Act
+        var result = await Acquire(_stateLock, skipLock: false);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task Cancellation_PropagatesRatherThanBecomingADiagnostic()
+    {
+        // Arrange
+        _stateLock.OnAcquire = _ => throw new OperationCanceledException();
+
+        // Act / Assert
+        await Should.ThrowAsync<OperationCanceledException>(() => Acquire(_stateLock, skipLock: false));
+    }
+
+    [Fact]
     public async Task ReturnedHandle_ReleasesTheLock()
     {
         // Arrange
@@ -87,9 +112,9 @@ public sealed class StateLockManagerTests
     public async Task Peek_NoLockBackend_ReturnsNull()
     {
         // Nothing to peek when the state is unlockable — reads the same as free.
-        var info = await new StateLockManager(stateLock: null).Peek(TestContext.Current.CancellationToken);
+        var result = await new StateLockManager(stateLock: null).Peek(TestContext.Current.CancellationToken);
 
-        info.ShouldBeNull();
+        result.Require().Held.ShouldBeNull();
     }
 
     [Fact]
@@ -97,9 +122,9 @@ public sealed class StateLockManagerTests
     {
         _stateLock.PeekResult = new StateLockInfo("id", "apply", "tom@dev", DateTimeOffset.UnixEpoch);
 
-        var info = await new StateLockManager(_stateLock).Peek(TestContext.Current.CancellationToken);
+        var result = await new StateLockManager(_stateLock).Peek(TestContext.Current.CancellationToken);
 
-        info.ShouldNotBeNull().Who.ShouldBe("tom@dev");
+        result.Require().Held.ShouldNotBeNull().Who.ShouldBe("tom@dev");
         _stateLock.Peeks.ShouldBe(1);
         _stateLock.Acquisitions.ShouldBeEmpty();
     }
@@ -126,7 +151,7 @@ public sealed class StateLockManagerTests
     {
         var released = await new StateLockManager(stateLock: null).Release(TestContext.Current.CancellationToken);
 
-        released.ShouldBeNull();
+        released.Require().Released.ShouldBeNull();
     }
 
     [Fact]
@@ -136,7 +161,7 @@ public sealed class StateLockManagerTests
 
         var released = await new StateLockManager(_stateLock).Release(TestContext.Current.CancellationToken);
 
-        released.ShouldNotBeNull().Who.ShouldBe("tom@dev");
+        released.Require().Released.ShouldNotBeNull().Who.ShouldBe("tom@dev");
         _stateLock.ForceReleases.ShouldBe(1);
     }
 
@@ -146,7 +171,60 @@ public sealed class StateLockManagerTests
         // Nothing is held (the default PeekResult is null), so there is nothing to remove.
         var released = await new StateLockManager(_stateLock).Release(TestContext.Current.CancellationToken);
 
-        released.ShouldBeNull();
+        released.Require().Released.ShouldBeNull();
         _stateLock.ForceReleases.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Peek_WhenTheBackendReportsAFailure_ItPropagates()
+    {
+        // Arrange
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+
+        // Act
+        var result = await new StateLockManager(_stateLock).Peek(TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task Release_WhenTheBackendReportsAFailure_ItPropagates()
+    {
+        // Arrange
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+
+        // Act
+        var result = await new StateLockManager(_stateLock).Release(TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("Connection refused");
+    }
+
+    [Fact]
+    public async Task SkipLock_WhenTheBackendCannotBePeeked_StillRunsUnlocked()
+    {
+        // Arrange — the peek only decorates the warning; --no-lock has already said to proceed regardless.
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+
+        // Act
+        var result = await Acquire(_stateLock, skipLock: true);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Diagnostics.ShouldHaveSingleItem().Severity.ShouldBe(DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public async Task Acquire_WhenTheBackendThrows_PropagatesAsADefect()
+    {
+        // Arrange — a lock that throws instead of reporting is broken, and surfaces as a defect rather than being
+        // dressed up as an environmental failure.
+        _stateLock.OnAcquire = _ => throw new InvalidOperationException("boom");
+
+        // Act / Assert
+        await Should.ThrowAsync<InvalidOperationException>(() => Acquire(_stateLock, skipLock: false));
     }
 }

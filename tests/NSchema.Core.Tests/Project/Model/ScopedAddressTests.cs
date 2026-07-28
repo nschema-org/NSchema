@@ -1,6 +1,6 @@
 using NSchema.Model;
 
-namespace NSchema.Tests.Project.Model.Scripts;
+namespace NSchema.Tests.Project.Model;
 
 /// <summary>
 /// The script-address contract: the container is genuinely optional (null = global), with component-wise

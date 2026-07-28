@@ -13,6 +13,12 @@ internal static class LockDiagnostics
         : Diagnostic.Warning(operation, $"Running without the state lock; the state is currently locked by {held.Who} (operation '{held.Operation}', since {held.CreatedUtc:u}) — proceeding anyway.");
 
     /// <summary>
+    /// The lock backend could not be reached to take the lock.
+    /// </summary>
+    public static Diagnostic Unreachable(string operation, Exception exception) =>
+        Diagnostic.Error(operation, $"Could not take the state lock: {ExceptionMessage.Describe(exception):text}");
+
+    /// <summary>
     /// The state lock is already held; carries the holder's details when readable.
     /// </summary>
     public static Diagnostic StateLocked(string operation, StateLockedException exception) => exception.ExistingLock is { } held

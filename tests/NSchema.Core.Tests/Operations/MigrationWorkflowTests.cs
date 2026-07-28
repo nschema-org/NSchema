@@ -13,8 +13,8 @@ using NSchema.Plan.Domain.Services;
 using NSchema.Project;
 using NSchema.Project.Domain.Directives;
 using NSchema.State;
-using NSchema.State.Backends;
 using NSchema.State.Domain;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests.Operations;
 
@@ -73,7 +73,9 @@ public sealed class MigrationWorkflowTests
     private MigrationWorkflow SutWithRecordedState(DatabaseState recorded)
     {
         var store = Substitute.For<IDatabaseStateStore>();
-        store.Read(Arg.Any<CancellationToken>()).Returns(_stateSerializer.Serialize(recorded));
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(recorded))));
         return BuildSut(store);
     }
 
@@ -348,8 +350,10 @@ public sealed class MigrationWorkflowTests
     private MigrationWorkflow SutWithState(ProjectDefinition project, params ScriptExecution[] executions)
     {
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         store.Read(Arg.Any<CancellationToken>())
-            .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, executions)));
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, executions)))));
         _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(project));
         return BuildSut(store);
@@ -378,7 +382,9 @@ public sealed class MigrationWorkflowTests
         // Arrange — an unreadable ledger must fail the plan rather than read as empty: an empty ledger
         // would re-plan every recorded run-once script.
         var store = Substitute.For<IDatabaseStateStore>();
-        store.Read(Arg.Any<CancellationToken>()).Returns((ReadOnlyMemory<byte>?)"not a state payload"u8.ToArray());
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult("not a state payload"u8.ToArray())));
         var sut = BuildSut(store);
 
         // Act
@@ -411,6 +417,8 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -429,6 +437,8 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange — an apply establishes exactly the management the plan computed, empty plans included.
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -448,8 +458,10 @@ public sealed class MigrationWorkflowTests
         // Arrange — a plain refresh observes; it neither adopts nor abandons anything.
         var managed = new IdentitySet(Schemas: [new SchemaAddress("app")]);
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         store.Read(Arg.Any<CancellationToken>())
-            .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }) with { Managed = managed }));
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }) with { Managed = managed }))));
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -467,8 +479,10 @@ public sealed class MigrationWorkflowTests
         // Arrange — the ledger is the one part of state a capture cannot rebuild, so it must carry over.
         var existing = new ScriptExecution(new ScopedAddress(null, "api-login"), "hash", DateTimeOffset.UnixEpoch);
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         store.Read(Arg.Any<CancellationToken>())
-            .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, [existing])));
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, [existing])))));
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -486,8 +500,10 @@ public sealed class MigrationWorkflowTests
         // Arrange
         var existing = new ScriptExecution(new ScopedAddress(null, "seed"), "old-hash", DateTimeOffset.UnixEpoch);
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         store.Read(Arg.Any<CancellationToken>())
-            .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, [existing])));
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] }, [existing])))));
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -504,7 +520,9 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange — replacing an unreadable payload resets the run-once ledger, so it must be asked for.
         var store = Substitute.For<IDatabaseStateStore>();
-        store.Read(Arg.Any<CancellationToken>()).Returns((ReadOnlyMemory<byte>?)new byte[] { 0x7b });
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(new byte[] { 0x7b })));
         var sut = BuildSut(store);
 
         // Act
@@ -522,7 +540,9 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange — a forced refresh is the recovery path for corrupt state.
         var store = Substitute.For<IDatabaseStateStore>();
-        store.Read(Arg.Any<CancellationToken>()).Returns((ReadOnlyMemory<byte>?)new byte[] { 0x7b });
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(new byte[] { 0x7b })));
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
@@ -544,8 +564,10 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         store.Read(Arg.Any<CancellationToken>())
-            .Returns(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] })));
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(new DatabaseState(new Database { Schemas = [] })))));
         var sut = BuildSut(store);
 
         // Act
@@ -697,6 +719,8 @@ public sealed class MigrationWorkflowTests
         // Arrange
         var schema = new Database { Schemas = [new Schema { Name = "app" }] };
         var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
+        store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
         _liveDatabase
             .GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
             .Returns(schema);

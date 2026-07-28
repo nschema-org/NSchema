@@ -1,4 +1,4 @@
-using NSchema.State.Locks.Backends;
+using NSchema.State.Locks.Plugins;
 
 namespace NSchema.State.Locks;
 
@@ -11,8 +11,16 @@ namespace NSchema.State.Locks;
 /// </remarks>
 internal sealed class StateLockManager(IStateLock? stateLock = null) : IStateLockManager
 {
-    public async Task<StateLockInfo?> Peek(CancellationToken cancellationToken = default) =>
-        stateLock is null ? null : await stateLock.Peek(cancellationToken);
+    public async Task<Result<LockPeekResult>> Peek(CancellationToken cancellationToken = default)
+    {
+        if (stateLock is null)
+        {
+            return new LockPeekResult(null);
+        }
+
+        // The backend reports an unreachable lock as a failure; anything it throws is a defect and propagates.
+        return await stateLock.Peek(cancellationToken);
+    }
 
     public async Task<Result<IStateLockHandle>> Acquire(AcquireLockArguments arguments, CancellationToken cancellationToken = default)
     {
@@ -25,7 +33,9 @@ internal sealed class StateLockManager(IStateLock? stateLock = null) : IStateLoc
         if (arguments.SkipLock)
         {
             // Peek so the warning is honest: name the lock we are running past rather than ignoring it silently.
-            var held = await stateLock.Peek(cancellationToken);
+            var peeked = await stateLock.Peek(cancellationToken);
+            var held = peeked.Value?.Held;
+
             return Result.From<IStateLockHandle>(NullStateLockHandle.Instance, [LockDiagnostics.RunningUnlocked(arguments.Operation, held)]);
         }
 
@@ -38,32 +48,41 @@ internal sealed class StateLockManager(IStateLock? stateLock = null) : IStateLoc
                 Who: LockHolder.Current(),
                 CreatedUtc: createdUtc,
                 ExpiresUtc: arguments.TimeToLive is { } ttl ? createdUtc + ttl : null);
-            return Result.Success<IStateLockHandle>(await stateLock.Acquire(lockInfo, cancellationToken));
+            return await stateLock.Acquire(lockInfo, cancellationToken);
         }
         catch (StateLockedException ex)
         {
-            // Contention is a recoverable, user-facing outcome, not a bug — surface it as a failure the caller renders.
+            // Contention keeps a typed signal because it carries the holder's details; the engine owns the wording,
+            // including the --no-lock hint, so no backend has to re-author it.
             return Result.Failure<IStateLockHandle>(LockDiagnostics.StateLocked(arguments.Operation, ex));
         }
     }
 
-    public async Task<StateLockInfo?> Release(CancellationToken cancellationToken = default)
+    public async Task<Result<LockReleaseResult>> Release(CancellationToken cancellationToken = default)
     {
         // Nothing to release when the state is unlockable.
         if (stateLock is null)
         {
-            return null;
+            return new LockReleaseResult(null);
         }
 
-        // Capture what is held so the caller can report it, then force-release. A null peek means the state was already
-        // free — there is nothing to remove.
-        var held = await stateLock.Peek(cancellationToken);
-        if (held is null)
+        // Capture what is held so the caller can report it, then force-release. A null peek means the state was
+        // already free — there is nothing to remove.
+        var peeked = await stateLock.Peek(cancellationToken);
+        if (peeked.IsFailure)
         {
-            return null;
+            return Result.Failure<LockReleaseResult>(peeked.Diagnostics);
         }
 
-        await stateLock.Release(cancellationToken);
-        return held;
+        if (peeked.Require().Held is not { } held)
+        {
+            return new LockReleaseResult(null);
+        }
+
+        var released = await stateLock.Release(cancellationToken);
+
+        return released.IsFailure
+            ? Result.Failure<LockReleaseResult>(released.Diagnostics)
+            : new LockReleaseResult(held);
     }
 }

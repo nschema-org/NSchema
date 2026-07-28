@@ -14,5 +14,6 @@ public interface IStateLockHandle
     /// Releases the held lock. Idempotent: releasing more than once is a no-op.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    ValueTask Release(CancellationToken cancellationToken = default);
+    /// <returns>Success, or a failure describing why the lock could not be released.</returns>
+    ValueTask<Result> Release(CancellationToken cancellationToken = default);
 }

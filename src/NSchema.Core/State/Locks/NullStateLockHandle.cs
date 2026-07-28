@@ -19,5 +19,5 @@ internal sealed class NullStateLockHandle : IStateLockHandle
     /// </summary>
     public StateLockInfo Info => throw new NotSupportedException("No lock is held; this handle represents an unlocked run.");
 
-    public ValueTask Release(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+    public ValueTask<Result> Release(CancellationToken cancellationToken = default) => ValueTask.FromResult(Result.Success());
 }
