@@ -52,7 +52,6 @@ internal static class ProjectInitializer
             }
         }
 
-        loader.Restore(references, messenger);
-        return Result.Success();
+        return loader.Restore(references, messenger);
     }
 }

@@ -47,6 +47,9 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 
 ### Fixed
 
+- **Editing a `PLUGIN` version now works correctly.** `init` preferred the lockfile's pin unconditionally, so changing a declared version and re-running `init` silently kept restoring the old one.
+- **An incompatible plugin doesn't crash the CLI.** This CLI will now give a proper explanation of the problem instead.
+- **`plugin update` exits non-zero when a restore fails**, rather than reporting the problem and returning `0`.
 - Plugin loading now resolves a plugin's native libraries (e.g. SQLite's `e_sqlite3`) from its restored dependency closure.
 - **`new` names the right environment variable.** It pointed at a per-provider variable (`NSCHEMA_POSTGRES_CONNECTION_STRING`) that no longer has any effect; it now names `NSCHEMA_DATABASE_CONNECTION_STRING`.
 - **Contradictory flags fail fast.** `--quiet` with `--verbose`, or `--json` with a non-json `--format`, are now rejected while parsing.

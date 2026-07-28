@@ -58,10 +58,15 @@ internal static class ProjectConfigurationReader
 
         return Assemble(definition.Require(), (source, range) =>
         {
+            // Editing a PLUGIN version should outrank a stale pin.
             var reuse = refresh is null || !refresh(source);
+            if (reuse && existing.Find(source)?.Version is { } locked && range.Satisfies(locked))
+            {
+                return locked;
+            }
+
             // An exact pin is its own resolution; only a range reaches the feed.
-            var pinned = (reuse ? existing.Find(source)?.Version : null) ?? range.ExactVersion;
-            return pinned is not null ? pinned : loader.ResolveHighest(source, range);
+            return range.ExactVersion ?? loader.ResolveHighest(source, range);
         });
     }
 

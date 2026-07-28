@@ -97,8 +97,9 @@ internal static class PluginUpdateCommand
             references.Add(backend);
         }
 
-        loader.Restore(references, messenger);
-        return ExitCodes.NoChanges;
+        return loader.Restore(references, messenger).ReportFailure(messenger)
+            ? ExitCodes.Error
+            : ExitCodes.NoChanges;
     }
 
     // Returns the package to update (null when every range is updated), or null when a named label is an exact pin —

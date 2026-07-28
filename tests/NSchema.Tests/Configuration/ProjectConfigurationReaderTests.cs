@@ -244,4 +244,53 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
         config.State.ShouldBeNull();
     }
+
+    // ── Refresh (init / plugin update) ────────────────────────────────────────
+    //
+    // Neither case below reaches the feed: a satisfied lock short-circuits, and an exact pin is its own resolution.
+
+    private Task WriteConfiguration(string sql) =>
+        File.WriteAllTextAsync(Path.Combine(_directory, "config.sql"), sql, TestContext.Current.CancellationToken);
+
+    private async Task<ProjectConfiguration> Refresh(LockFile existing) =>
+        (await ProjectConfigurationReader.Refresh(
+            _directory, environment: null, existing, new PluginLoader(), refresh: null,
+            TestContext.Current.CancellationToken)).Require();
+
+    [Fact]
+    public async Task Refresh_KeepsTheLockedVersion_WhenItStillSatisfiesTheDeclaration()
+    {
+        // Arrange
+        await WriteConfiguration(
+            """
+            PLUGIN postgres ( source = 'NSchema.Postgres', version = '[5.0,6.0)' );
+            DATABASE postgres ( connection_string = 'x' );
+            """);
+        var existing = new LockFile([Locked("NSchema.Postgres", "5.3.1")]);
+
+        // Act
+        var config = await Refresh(existing);
+
+        // Assert — the point of a lockfile: a range resolves to the recorded pin rather than drifting upward.
+        config.Database!.Version.ToString().ShouldBe("5.3.1");
+    }
+
+    [Fact]
+    public async Task Refresh_ReResolves_WhenTheLockNoLongerSatisfiesTheDeclaration()
+    {
+        // Arrange — the declaration has been edited to a version the lock does not satisfy.
+        await WriteConfiguration(
+            """
+            PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0-beta.4' );
+            DATABASE postgres ( connection_string = 'x' );
+            """);
+        var existing = new LockFile([Locked("NSchema.Postgres", "5.0.0-beta.3")]);
+
+        // Act
+        var config = await Refresh(existing);
+
+        // Assert — a lock records how a declaration resolved, so editing the declaration outranks it. Keeping the
+        // stale pin would make the edit silently do nothing and go on restoring a version nothing asks for.
+        config.Database!.Version.ToString().ShouldBe("5.0.0-beta.4");
+    }
 }
