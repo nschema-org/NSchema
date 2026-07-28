@@ -39,8 +39,13 @@ internal static class LockReleaseCommand
         var (app, configuration, _, _) = context;
         var console = AnsiConsole.Console;
 
-        var current = await app.Locks.Peek(cancellationToken);
-        if (current is null)
+        var peeked = await app.Locks.Peek(cancellationToken);
+        if (peeked.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        if (peeked.Require().Held is not { } current)
         {
             app.Messenger.Announce($"No state lock is held.");
             return ExitCodes.NoChanges;
@@ -63,8 +68,13 @@ internal static class LockReleaseCommand
             "Do you want to release the lock? Only [green]yes[/] will be accepted:",
             "--auto-approve");
 
-        var released = await app.Locks.Release(cancellationToken);
-        if (released is null)
+        var result = await app.Locks.Release(cancellationToken);
+        if (result.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        if (result.Require().Released is not { } released)
         {
             app.Messenger.Announce($"No state lock is held.");
             return ExitCodes.NoChanges;

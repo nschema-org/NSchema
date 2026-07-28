@@ -6,7 +6,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Plan.Policies;
 using NSchema.Services.Reporting;
-using NSchema.State.Backends;
+using NSchema.State.Plugins;
 
 namespace NSchema.Tests;
 

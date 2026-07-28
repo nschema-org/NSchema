@@ -27,7 +27,13 @@ internal static class LockStatusCommand
     {
         var (app, configuration, parseResult, environment) = context;
 
-        var info = await app.Locks.Peek(cancellationToken);
+        var peeked = await app.Locks.Peek(cancellationToken);
+        if (peeked.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var info = peeked.Require().Held;
 
         if (info is null)
         {

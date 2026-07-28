@@ -1,6 +1,6 @@
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
-using NSchema.Plan.Backends;
+using NSchema.Plan.Plugins;
 using NSchema.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
