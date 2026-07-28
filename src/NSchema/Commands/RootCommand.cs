@@ -1,3 +1,5 @@
+using System.CommandLine;
+using System.CommandLine.Parsing;
 using NSchema.Commands.Apply;
 using NSchema.Commands.Completion;
 using NSchema.Commands.Database;
@@ -17,8 +19,6 @@ using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
 using NSchema.Services.Reporting;
-using System.CommandLine;
-using System.CommandLine.Parsing;
 
 namespace NSchema.Commands;
 
