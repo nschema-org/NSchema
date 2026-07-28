@@ -19,13 +19,18 @@ internal static class NewCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var configuration = await ConfigurationFactory.Load<NewConfiguration>(parseResult, environment: null, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
         var console = AnsiConsole.Console;
 
+        var resolved = await ConfigurationFactory.Load<NewConfiguration>(parseResult, environment: null, cancellationToken);
+        if (resolved.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var configuration = resolved.Require();
         var loader = new PluginLoader();
 
         // The database plugin renders its own DATABASE statement and supplies a dialect-specific sample schema; the
@@ -35,10 +40,29 @@ internal static class NewCommand
         var (providerPackageName, providerLabel) = DatabasePackage(configuration.Database);
         var providerPackage = new PackageId(providerPackageName);
         app.Messenger.Announce($"Resolving {providerPackage}...");
-        var providerVersion = loader.ResolveLatestVersion(providerPackage);
+
+        var providerResolution = loader.ResolveLatestVersion(providerPackage);
+        if (providerResolution.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var providerVersion = providerResolution.Require();
         plugins.Add(new ResolvedPlugin(new PluginLabel(providerLabel), providerPackage, providerVersion));
-        var providerPlugin = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
-        var providerContext = Configure(console, providerPlugin, new ScaffoldContext(), configuration.Answers);
+        var resolvedProvider = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
+        if (resolvedProvider.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var providerPlugin = resolvedProvider.Require();
+        var configured = Configure(console, providerPlugin, new ScaffoldContext(), configuration.Answers);
+        if (configured.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var providerContext = configured.Require();
         var databaseConfiguration = providerPlugin.GetScaffoldTemplate(providerContext);
 
         // Every plugin is asked for the environment overlay as well as the base, reusing the same answers; one with
@@ -54,17 +78,36 @@ internal static class NewCommand
         {
             var backendPackage = new PackageId(backend.Package);
             app.Messenger.Announce($"Resolving {backendPackage}...");
-            var backendVersion = loader.ResolveLatestVersion(backendPackage);
+
+            var backendResolution = loader.ResolveLatestVersion(backendPackage);
+            if (backendResolution.ReportFailure(app.Messenger))
+            {
+                return ExitCodes.Error;
+            }
+
+            var backendVersion = backendResolution.Require();
             plugins.Add(new ResolvedPlugin(new PluginLabel(backend.Label), backendPackage, backendVersion));
-            var backendPlugin = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
-            var backendContext = Configure(console, backendPlugin, new ScaffoldContext(), configuration.Answers);
+            var resolvedBackend = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
+            if (resolvedBackend.ReportFailure(app.Messenger))
+            {
+                return ExitCodes.Error;
+            }
+
+            var backendPlugin = resolvedBackend.Require();
+            var backendConfigured = Configure(console, backendPlugin, new ScaffoldContext(), configuration.Answers);
+            if (backendConfigured.ReportFailure(app.Messenger))
+            {
+                return ExitCodes.Error;
+            }
+
+            var backendContext = backendConfigured.Require();
 
             // The questions are put once; the overlay reuses those answers, varying only by environment.
             state = backendPlugin.GetScaffoldTemplate(backendContext);
             stateOverlay = backendPlugin.GetScaffoldTemplate(backendContext with { EnvironmentName = "prod" });
         }
 
-        var created = await ProjectScaffolder.Scaffold(
+        var scaffolded = await ProjectScaffolder.Scaffold(
             Directory.GetCurrentDirectory(),
             configuration.Force,
             new ProjectTemplate
@@ -79,8 +122,13 @@ internal static class NewCommand
             },
             cancellationToken);
 
+        if (scaffolded.ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
+
         var tree = new Tree("[bold]Created[/]");
-        foreach (var file in created)
+        foreach (var file in scaffolded.Require())
         {
             tree.AddNode(Markup.FromInterpolated($"[green]✓[/] {file}"));
         }
@@ -92,7 +140,11 @@ internal static class NewCommand
         // '--no-init' opts out for an offline or edit-first workflow.
         if (!configuration.NoInit)
         {
-            await ProjectInitializer.Initialize(Directory.GetCurrentDirectory(), environment: null, loader, app.Messenger, cancellationToken);
+            var initialized = await ProjectInitializer.Initialize(Directory.GetCurrentDirectory(), environment: null, loader, app.Messenger, cancellationToken);
+            if (initialized.ReportFailure(app.Messenger))
+            {
+                return ExitCodes.Error;
+            }
         }
 
         // SQLite's connection string (a local file path) is already filled in; the others need a secret supplied out of
@@ -105,13 +157,15 @@ internal static class NewCommand
         {
             app.Messenger.Announce($"Set {EnvironmentVariables.DatabaseConnectionString}, then run {"nschema plan"}.");
         }
+
+        return ExitCodes.NoChanges;
     }
 
     /// <summary>
     /// Puts the plugin's questions and returns the context carrying the answers. A plugin that declares none is
     /// unaffected, so this is silent for anything that scaffolds fixed placeholders.
     /// </summary>
-    internal static ScaffoldContext Configure(
+    internal static Result<ScaffoldContext> Configure(
         IAnsiConsole console,
         INSchemaPlugin plugin,
         ScaffoldContext context,
@@ -124,7 +178,8 @@ internal static class NewCommand
             return context;
         }
 
-        return context with { Answers = ScaffoldPrompter.Answer(console, prompts, supplied) };
+        return ScaffoldPrompter.Answer(console, prompts, supplied)
+            .Map(answers => context with { Answers = answers });
     }
 
     // The engine is compiled into the CLI, so a project scaffolded now requires this CLI's engine major: [X.0, X+1.0).
@@ -134,11 +189,22 @@ internal static class NewCommand
         return $"[{major}.0,{major + 1}.0)";
     }
 
-    // A plugin is resolved by capability: the package supplies at most one plugin per capability interface.
-    private static TPlugin Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)
-        where TPlugin : class, INSchemaPlugin =>
-        loader.Load(packageId, version).Require().OfType<TPlugin>().FirstOrDefault()
-        ?? throw new InvalidOperationException($"The package '{packageId}' does not provide the expected plugin capability.");
+    // A plugin is resolved by capability: the package supplies at most one plugin per capability interface. A package
+    // that supplies neither is a configuration problem, not a bug — CliApplicationBuilder reports the same condition
+    // as a diagnostic, so this matches.
+    private static Result<TPlugin> Resolve<TPlugin>(PluginLoader loader, PackageId packageId, SemanticVersion version)
+        where TPlugin : class, INSchemaPlugin
+    {
+        var loaded = loader.Load(packageId, version);
+        if (loaded.IsFailure)
+        {
+            return Result.Failure<TPlugin>(loaded.Diagnostics);
+        }
+
+        return loaded.Require().OfType<TPlugin>().FirstOrDefault() is { } plugin
+            ? plugin
+            : Diagnostic.Error(packageId.Value, $"The package '{packageId}' does not provide the expected plugin capability.");
+    }
 
     private static (string Package, string Label) DatabasePackage(DatabaseKind database) => database switch
     {

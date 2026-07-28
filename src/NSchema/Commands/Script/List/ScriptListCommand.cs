@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.State;
 
 namespace NSchema.Commands.Script.List;
@@ -14,22 +13,18 @@ internal static class ScriptListCommand
         return command;
     }
 
-    private static async ValueTask<ScriptListConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<ScriptListConfiguration>(result, environment, cancellationToken);
-        new ScriptListConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+        command: Execute,
+        validator: new ScriptListConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<ScriptListConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+        var (app, _, _, _) = context;
 
         var result = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (result.IsFailure)

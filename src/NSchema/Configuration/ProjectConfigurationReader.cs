@@ -21,15 +21,20 @@ internal static class ProjectConfigurationReader
     /// <param name="root">The project directory.</param>
     /// <param name="environment">The target environment, or <see langword="null"/> for the base configuration only.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    public static async ValueTask<ProjectConfiguration> Read(string root, string? environment, CancellationToken cancellationToken = default)
+    public static async ValueTask<Result<ProjectConfiguration>> Read(string root, string? environment, CancellationToken cancellationToken = default)
     {
         var definition = await ReadDefinition(root, environment, cancellationToken);
+        if (definition.IsFailure)
+        {
+            return Result.Failure<ProjectConfiguration>(definition.Diagnostics);
+        }
+
         var lockFile = (await LockFileManager.Read(LockFilePath(root), cancellationToken)).Require();
 
-        return Assemble(definition, (source, range) =>
+        return Assemble(definition.Require(), (source, range) =>
             lockFile.Find(source)?.Version
-            ?? throw new InvalidOperationException(
-                $"Plugin '{source}' is declared as '{range}' but is not locked. Run 'nschema init' to resolve and lock it."));
+            ?? Result.Failure<SemanticVersion>(Diagnostic.Error(source.Value,
+                $"Plugin '{source}' is declared as '{range}' but is not locked. Run 'nschema init' to resolve and lock it.")));
     }
 
     /// <summary>
@@ -43,36 +48,55 @@ internal static class ProjectConfigurationReader
     /// <param name="loader">Resolves a range to its highest available version.</param>
     /// <param name="refresh">Selects which packages to re-resolve; <see langword="null"/> keeps every existing pin.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    internal static async ValueTask<ProjectConfiguration> Refresh(string root, string? environment, LockFile existing, PluginLoader loader, Func<PackageId, bool>? refresh, CancellationToken cancellationToken = default)
+    internal static async ValueTask<Result<ProjectConfiguration>> Refresh(string root, string? environment, LockFile existing, PluginLoader loader, Func<PackageId, bool>? refresh, CancellationToken cancellationToken = default)
     {
         var definition = await ReadDefinition(root, environment, cancellationToken);
+        if (definition.IsFailure)
+        {
+            return Result.Failure<ProjectConfiguration>(definition.Diagnostics);
+        }
 
-        return Assemble(definition, (source, range) =>
+        return Assemble(definition.Require(), (source, range) =>
         {
             var reuse = refresh is null || !refresh(source);
             // An exact pin is its own resolution; only a range reaches the feed.
-            return (reuse ? existing.Find(source)?.Version : null) ?? range.ExactVersion ?? loader.ResolveHighest(source, range);
+            var pinned = (reuse ? existing.Find(source)?.Version : null) ?? range.ExactVersion;
+            return pinned is not null ? pinned : loader.ResolveHighest(source, range);
         });
     }
 
-    private static ProjectConfiguration Assemble(ConfigurationDefinition definition, Func<PackageId, VersionRange, SemanticVersion> resolve) =>
-        new()
-        {
-            Plugins = definition.Plugins,
-            Database = definition.Database is { } database ? PluginReference.Resolve(database, definition.Plugins, resolve) : null,
-            State = definition.State is { } state ? StateConfiguration.Resolve(state, definition.Plugins, resolve) : null,
-        };
+    // Each slice resolves independently so a project with two broken statements reports both, rather than only
+    // whichever one happened to be assembled first.
+    private static Result<ProjectConfiguration> Assemble(ConfigurationDefinition definition, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve)
+    {
+        var database = definition.Database is { } db ? PluginReference.Resolve(db, definition.Plugins, resolve) : null;
+        var state = definition.State is { } st ? StateConfiguration.Resolve(st, definition.Plugins, resolve) : null;
+
+        var diagnostics = Enumerable.Empty<Diagnostic>()
+            .Concat(database?.Diagnostics ?? Enumerable.Empty<Diagnostic>())
+            .Concat(state?.Diagnostics ?? Enumerable.Empty<Diagnostic>())
+            .ToList();
+
+        return Result.From(
+            new ProjectConfiguration
+            {
+                Plugins = definition.Plugins,
+                Database = database?.Value,
+                State = state?.Value,
+            },
+            diagnostics);
+    }
 
     /// <summary>
     /// Reads the project's <c>PLUGIN</c> declarations, without resolving ranges — used to map a plugin label to its
     /// package before resolution.
     /// </summary>
-    internal static async ValueTask<IReadOnlyList<PluginDeclaration>> ReadDeclarations(string root, string? environment, CancellationToken cancellationToken = default) =>
-        (await ReadDefinition(root, environment, cancellationToken)).Plugins;
+    internal static async ValueTask<Result<IReadOnlyList<PluginDeclaration>>> ReadDeclarations(string root, string? environment, CancellationToken cancellationToken = default) =>
+        (await ReadDefinition(root, environment, cancellationToken)).Map(definition => definition.Plugins);
 
     // Core owns reading, layering, assembly, and ENGINE enforcement; the CLI resolves the files each layer covers
     // (it owns globbing) and supplies its own version so an ENGINE host_version assertion is checked against the tool.
-    private static async ValueTask<ConfigurationDefinition> ReadDefinition(string root, string? environment, CancellationToken cancellationToken)
+    private static async ValueTask<Result<ConfigurationDefinition>> ReadDefinition(string root, string? environment, CancellationToken cancellationToken)
     {
         var layers = new List<ConfigurationLayer>
         {
@@ -84,30 +108,23 @@ internal static class ProjectConfigurationReader
             var overlayFiles = ProjectGlobs.Match(root, ProjectGlobs.EnvironmentConfiguration(environment));
             if (overlayFiles.Count == 0)
             {
-                throw new InvalidOperationException($"No configuration files found for environment '{environment}'.");
+                return Diagnostic.Error(environment, $"No configuration files found for environment '{environment}'.");
             }
 
             layers.Add(new ConfigurationLayer(overlayFiles));
         }
 
         var loaded = await ConfigurationProvider.Load(layers, HostVersion.Current, cancellationToken);
-        ThrowOnErrors(loaded.Diagnostics);
-        return loaded.Require();
+
+        // The parser's findings carry a file and position of their own; fold them into plain diagnostics sourced by
+        // file, so each one keeps pointing at the line the reader has to go and edit.
+        return Result.From(loaded.Value, loaded.Diagnostics.Select(Describe));
     }
 
-    // The CLI is the single presenter of errors, and a broken configuration is fail-fast: join every error into
-    // one thrown message, each finding naming its file and position.
-    private static void ThrowOnErrors(IEnumerable<NsqlDiagnostic> diagnostics)
-    {
-        var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(Describe).ToList();
-        if (errors.Count > 0)
-        {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
-        }
-    }
-
-    private static string Describe(NsqlDiagnostic diagnostic) =>
+    private static Diagnostic Describe(NsqlDiagnostic diagnostic) => new(
         diagnostic.File is { } file && diagnostic.Position != SourcePosition.None
-            ? $"{diagnostic.Message} ({file}:{diagnostic.Position.Line})"
-            : diagnostic.Message;
+            ? $"{Path.GetFileName(file)}:{diagnostic.Position.Line}"
+            : diagnostic.File is { } named ? Path.GetFileName(named) : "configuration",
+        diagnostic.Text,
+        diagnostic.Severity);
 }

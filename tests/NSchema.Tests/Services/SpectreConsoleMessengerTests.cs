@@ -282,13 +282,45 @@ public sealed class SpectreConsoleMessengerTests
     }
 
     [Fact]
+    public void ReportException_NamesTheTypeAndAsksForABugReport()
+    {
+        // Arrange
+        // A NullReferenceException's message locates nothing on its own, which is the whole reason the unexpected
+        // path prints the type, the report link, and the stack rather than the message alone.
+        var ex = Caught(() => _ = ((string)null!).Length);
+
+        // Act
+        _sut.ReportException(ex);
+
+        // Assert
+        _error.Output.ShouldContain("Internal error");
+        _error.Output.ShouldContain(nameof(NullReferenceException));
+        _error.Output.ShouldContain(ExceptionReport.IssuesUrl);
+        _error.Output.ShouldContain(nameof(ReportException_NamesTheTypeAndAsksForABugReport));
+    }
+
+    // Throwing for real gives the exception a populated stack; `new NullReferenceException()` would have none.
+    private static Exception Caught(Action act)
+    {
+        try
+        {
+            act();
+            throw new InvalidOperationException("Expected the action to throw.");
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    [Fact]
     public void ReportDiagnostics_WritesPlaceholder_WhenEmpty()
     {
         // Act
         _sut.ReportDiagnostics([]);
 
         // Assert
-        _out.Output.ShouldContain("No policy diagnostics.");
+        _out.Output.ShouldContain("No diagnostics.");
     }
 
     [Fact]

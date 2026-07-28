@@ -1,6 +1,6 @@
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
-using NSchema.Plan.Backends;
+using NSchema.Plan.Plugins;
 using NSchema.Plugins;
 
 namespace NSchema.Tests.Configuration.Plugins;
@@ -14,7 +14,7 @@ namespace NSchema.Tests.Configuration.Plugins;
 public sealed class PluginLoaderTests : IDisposable
 {
     private static readonly PackageId Package = new("NSchema.Postgres");
-    private static readonly SemanticVersion Version = SemanticVersion.Parse("5.0.0-beta.3");
+    private static SemanticVersion Version => PublishedPlugins.Postgres;
 
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
 
@@ -63,7 +63,7 @@ public sealed class PluginLoaderTests : IDisposable
         var version = loader.ResolveLatestVersion(Package);
 
         // Assert — a concrete 5.x version is pinned (the exact build floats as new ones publish).
-        version.ToString().ShouldStartWith("5.");
+        version.Require().ToString().ShouldStartWith("5.");
     }
 
     [Fact]

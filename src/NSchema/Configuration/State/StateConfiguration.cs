@@ -26,8 +26,9 @@ internal sealed class StateConfiguration
     /// <param name="config">The statement's translated settings.</param>
     /// <param name="plugins">The project's <c>PLUGIN</c> declarations.</param>
     /// <param name="resolve">Resolves a declared range to a concrete version.</param>
-    public static StateConfiguration Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, SemanticVersion> resolve) =>
+    /// <returns>The resolved store, or a failure carrying the reason the statement could not be mapped.</returns>
+    public static Result<StateConfiguration> Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve) =>
         config.Label == _fileLabel
-            ? new StateConfiguration { File = FileStateConfiguration.FromSettings(config) }
-            : new StateConfiguration { Plugin = PluginReference.Resolve(config, plugins, resolve) };
+            ? FileStateConfiguration.FromSettings(config).Map(file => new StateConfiguration { File = file })
+            : PluginReference.Resolve(config, plugins, resolve).Map(plugin => new StateConfiguration { Plugin = plugin });
 }

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 
 namespace NSchema.Commands.Database.Show;
 
@@ -15,22 +14,18 @@ internal static class DatabaseShowCommand
         return command;
     }
 
-    private static async ValueTask<DatabaseShowConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
-    {
-        var config = await ConfigurationFactory.Load<DatabaseShowConfiguration>(result, environment, cancellationToken);
-        new DatabaseShowConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureDatabase(configuration.Provider),
+        command: Execute,
+        validator: new DatabaseShowConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<DatabaseShowConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabase(configuration.Provider)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+        var (app, configuration, _, _) = context;
 
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)

@@ -38,11 +38,23 @@ internal static class FormatCommand
         }
 
         var changed = FormatPath(path, check);
-        foreach (var file in changed)
+        if (changed.IsFailure)
+        {
+            // Reported like the syntax errors above rather than through the messenger: format is a source-text tool,
+            // and its whole output surface is compiler-style lines on stdout/stderr.
+            foreach (var error in changed.Errors)
+            {
+                Console.Error.WriteLine(error.Message);
+            }
+
+            return ExitCodes.Error;
+        }
+
+        foreach (var file in changed.Require())
         {
             Console.Out.WriteLine(file);
         }
-        return check && changed.Count > 0 ? ExitCodes.HasChanges : ExitCodes.NoChanges;
+        return check && changed.Require().Count > 0 ? ExitCodes.HasChanges : ExitCodes.NoChanges;
     }
 
     private static int FormatStdin(bool check)
@@ -82,10 +94,17 @@ internal static class FormatCommand
     /// Formats every <c>.sql</c> file under <paramref name="path"/> (a single file or a directory tree). Returns the
     /// files whose content changed; when <paramref name="check"/> is <see langword="false"/> those files are rewritten.
     /// </summary>
-    internal static IReadOnlyList<string> FormatPath(string path, bool check)
+    /// <returns>The changed files, or a failure when <paramref name="path"/> names nothing.</returns>
+    internal static Result<IReadOnlyList<string>> FormatPath(string path, bool check)
     {
+        var files = ResolveFiles(path);
+        if (files.IsFailure)
+        {
+            return Result.Failure<IReadOnlyList<string>>(files.Diagnostics);
+        }
+
         var changed = new List<string>();
-        foreach (var file in ResolveFiles(path))
+        foreach (var file in files.Require())
         {
             var original = File.ReadAllText(file);
             if (Format(original, file) is not { } formatted || formatted == original)
@@ -99,19 +118,22 @@ internal static class FormatCommand
                 File.WriteAllText(file, formatted);
             }
         }
-        return changed;
+        return Result.Success<IReadOnlyList<string>>(changed);
     }
 
-    private static IEnumerable<string> ResolveFiles(string path)
+    private static Result<IReadOnlyList<string>> ResolveFiles(string path)
     {
         if (File.Exists(path))
         {
-            return [path];
+            return Result.Success<IReadOnlyList<string>>([path]);
         }
+
         if (Directory.Exists(path))
         {
-            return Directory.EnumerateFiles(path, "*.sql", SearchOption.AllDirectories).OrderBy(file => file, StringComparer.Ordinal);
+            return Result.Success<IReadOnlyList<string>>(
+                [.. Directory.EnumerateFiles(path, "*.sql", SearchOption.AllDirectories).OrderBy(file => file, StringComparer.Ordinal)]);
         }
-        throw new FileNotFoundException($"No such file or directory: '{path}'.");
+
+        return Result.Failure<IReadOnlyList<string>>(Diagnostic.Error(path, $"No such file or directory: '{path}'."));
     }
 }

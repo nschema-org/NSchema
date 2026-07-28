@@ -1,3 +1,5 @@
+using System.CommandLine;
+using System.CommandLine.Parsing;
 using NSchema.Commands.Apply;
 using NSchema.Commands.Completion;
 using NSchema.Commands.Database;
@@ -16,6 +18,7 @@ using NSchema.Commands.Script;
 using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
+using NSchema.Services.Reporting;
 
 namespace NSchema.Commands;
 
@@ -56,6 +59,38 @@ internal static class RootCommand
         // candidates for the current word. The `completion <shell>` command emits those scripts.
         root.Add(new System.CommandLine.Completions.SuggestDirective());
 
+        AddConflictingFlagValidators(root);
+
         return root;
     }
+
+    // A contradictory pair of harness flags is a usage error, not a run that failed, so it is caught while parsing:
+    // System.CommandLine reports it before any action runs. Detecting it later is not an option — these flags choose
+    // the reporter, so there would be no agreed reporter left to report the conflict through.
+    private static void AddConflictingFlagValidators(Command command)
+    {
+        command.Validators.Add(result =>
+        {
+            if (Specified(result, CommonOptions.Quiet.Option) && Specified(result, CommonOptions.Verbose.Option))
+            {
+                result.AddError("--quiet and --verbose cannot be used together.");
+            }
+
+            // --json is shorthand for --format json, so the two only conflict when they disagree.
+            if (Specified(result, CommonOptions.Json.Option)
+                && Specified(result, CommonOptions.Format.Option)
+                && result.GetValue(CommonOptions.Format.Option) != OutputFormat.Json)
+            {
+                result.AddError("--json cannot be combined with --format; pass --format json instead.");
+            }
+        });
+
+        foreach (var subcommand in command.Subcommands)
+        {
+            AddConflictingFlagValidators(subcommand);
+        }
+    }
+
+    // An option the user actually wrote, as opposed to one filled in from its default.
+    private static bool Specified(CommandResult result, Option option) => result.GetResult(option) is { Implicit: false };
 }

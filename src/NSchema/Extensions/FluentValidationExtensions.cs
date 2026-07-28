@@ -11,15 +11,16 @@ internal static class FluentValidationExtensions
     extension<T>(IValidator<T> validator)
     {
         /// <summary>
-        /// Validates <paramref name="instance"/> and, on failure, throws a single exception whose message joins every validation error.
+        /// Validates <paramref name="instance"/>.
         /// </summary>
-        public void ValidateOrThrow(T instance)
+        public Result<T> Check(T instance)
         {
             var result = validator.Validate(instance);
-            if (!result.IsValid)
-            {
-                throw new ValidationException(result.Errors);
-            }
+
+            return result.IsValid
+                ? instance
+                : Result.Failure<T>(result.Errors.Select(error =>
+                    Diagnostic.Error(error.PropertyName, error.ErrorMessage)));
         }
     }
 

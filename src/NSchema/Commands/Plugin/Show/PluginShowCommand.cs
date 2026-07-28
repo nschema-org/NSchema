@@ -20,20 +20,31 @@ internal static class PluginShowCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
+        var messenger = ReporterFactory.CreateMessenger(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await ConfigurationFactory.Load<PluginShowConfiguration>(parseResult, environment, cancellationToken);
 
+        var resolved = await ConfigurationFactory.Load<PluginShowConfiguration>(parseResult, environment, cancellationToken);
+        if (resolved.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var configuration = resolved.Require();
         var plugins = PluginInventory.ForProject(configuration.Database, configuration.State, new PluginCache());
         var match = plugins.FirstOrDefault(p => p.Label == configuration.Label);
         if (match is null)
         {
             var configured = plugins.Count == 0 ? "none are configured" : string.Join(", ", plugins.Select(p => p.Label));
-            throw new InvalidOperationException(
-                $"No plugin labelled '{configuration.Label}' is configured for this project (configured: {configured}).");
+            messenger.ReportDiagnostics([
+                Diagnostic.Error(configuration.Label ?? "plugin",
+                    $"No plugin labelled '{configuration.Label}' is configured for this project (configured: {configured}).")
+            ]);
+            return ExitCodes.Error;
         }
 
-        ReporterFactory.CreateMessenger(parseResult).ReportPluginDetail(match);
+        messenger.ReportPluginDetail(match);
+        return ExitCodes.NoChanges;
     }
 }

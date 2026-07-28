@@ -17,7 +17,7 @@ public sealed class PluginReferenceTests
         var config = Settings("postgres", ("connection_string", "Host=localhost"));
 
         // Act
-        var reference = PluginReference.Resolve(config, plugins, Resolver(new SemanticVersion(5, 0, 0, 0, null)));
+        var reference = Resolved(config, plugins, Resolver(new SemanticVersion(5, 0, 0, 0, null)));
 
         // Assert
         reference.PackageId.ShouldBe("NSchema.Postgres");
@@ -34,7 +34,7 @@ public sealed class PluginReferenceTests
         var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "5.0.0") };
 
         // Act
-        var reference = PluginReference.Resolve(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 0, 1, 0, null)));
+        var reference = Resolved(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 0, 1, 0, null)));
 
         // Assert
         reference.Version.ToString().ShouldBe("5.0.1");
@@ -48,7 +48,7 @@ public sealed class PluginReferenceTests
         var plugins = new[] { Declaration("postgres", "NSchema.Postgres", "[5.0,6.0)") };
 
         // Act
-        var reference = PluginReference.Resolve(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 3, 1, 0, null)));
+        var reference = Resolved(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 3, 1, 0, null)));
 
         // Assert
         reference.Version.ToString().ShouldBe("5.3.1");
@@ -61,19 +61,26 @@ public sealed class PluginReferenceTests
         var plugins = new[] { Declaration("Postgres", "NSchema.Postgres", "5.0.0") };
 
         // Act
-        var reference = PluginReference.Resolve(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 0, 0, 0, null)));
+        var reference = Resolved(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 0, 0, 0, null)));
 
         // Assert
         reference.PackageId.ShouldBe("NSchema.Postgres");
     }
 
     [Fact]
-    public void Resolve_UndeclaredLabel_ThrowsAndSuggestsPluginStatement()
+    public void Resolve_UndeclaredLabel_FailsAndSuggestsPluginStatement()
     {
-        // Act / Assert
-        Should.Throw<InvalidOperationException>(() => PluginReference.Resolve(Settings("oracle"), [], Resolver()))
-            .Message.ShouldContain("PLUGIN oracle");
+        // Act
+        var result = PluginReference.Resolve(Settings("oracle"), [], Resolver());
+
+        // Assert
+        result.IsFailure.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("PLUGIN oracle");
     }
+
+    // Every case here resolves successfully; the failure case asserts on the diagnostics directly.
+    private static PluginReference Resolved(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve) =>
+        PluginReference.Resolve(config, plugins, resolve).Require();
 
     private static PluginDeclaration Declaration(string label, string packageId, string version) =>
         new(new PluginLabel(label), new PackageReference { Source = new PackageId(packageId), Version = VersionRange.Parse(version) });
@@ -83,6 +90,8 @@ public sealed class PluginReferenceTests
 
     // Stands in for the lockfile: every plugin (exact or range) resolves through it, so a test supplies the version
     // the plugin is locked to.
-    private static Func<PackageId, VersionRange, SemanticVersion> Resolver(SemanticVersion? resolved = null) =>
-        (source, range) => resolved ?? throw new InvalidOperationException($"'{source}' is not locked.");
+    private static Func<PackageId, VersionRange, Result<SemanticVersion>> Resolver(SemanticVersion? resolved = null) =>
+        (source, range) => resolved is not null
+            ? resolved
+            : Result.Failure<SemanticVersion>(Diagnostic.Error(source.Value, $"'{source}' is not locked."));
 }

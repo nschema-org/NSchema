@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 
 namespace NSchema.Commands.Import;
@@ -16,20 +15,24 @@ internal static class ImportCommand
         return command;
     }
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureDatabase(configuration.Database),
+        command: Execute,
+        validator: new ImportConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
+
+    private static async Task<int> Execute(CommandContext<ImportConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await ConfigurationFactory.Load<ImportConfiguration>(parseResult, environment, cancellationToken);
-        new ImportConfigurationValidator().ValidateOrThrow(configuration);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabase(configuration.Database)
-            .Build();
-
-        app.Messenger.ReportEnvironment(environment);
+        var (app, configuration, _, _) = context;
 
         var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
-        GuardAgainstOverwrite(outputDirectory, configuration.Force);
+        if (CheckForOverwrite(outputDirectory, configuration.Force).ReportFailure(app.Messenger))
+        {
+            return ExitCodes.Error;
+        }
 
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)
@@ -57,16 +60,16 @@ internal static class ImportCommand
         return ExitCodes.NoChanges;
     }
 
-    private static void GuardAgainstOverwrite(string outputDirectory, bool force)
+    private static Result CheckForOverwrite(string outputDirectory, bool force)
     {
         if (force || !Directory.Exists(outputDirectory))
         {
-            return;
+            return Result.Success();
         }
 
-        if (Directory.EnumerateFiles(outputDirectory, "*.sql", SearchOption.AllDirectories).Any())
-        {
-            throw new InvalidOperationException($"{outputDirectory} already contains .sql files that import would overwrite. Re-run with --force to overwrite.");
-        }
+        return Directory.EnumerateFiles(outputDirectory, "*.sql", SearchOption.AllDirectories).Any()
+            ? Result.From(Diagnostic.Error(outputDirectory,
+                $"{outputDirectory} already contains .sql files that import would overwrite. Re-run with --force to overwrite."))
+            : Result.Success();
     }
 }

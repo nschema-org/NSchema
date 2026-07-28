@@ -1,6 +1,6 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Configuration.State;
+using NSchema.Services.Reporting;
 using NSchema.State;
 
 namespace NSchema.Commands.State.Show;
@@ -25,30 +25,29 @@ internal static class StateShowCommand
         return command;
     }
 
-    private static async ValueTask<StateShowConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<StateShowConfiguration>(result, environment, cancellationToken);
-        new StateShowConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
-
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
-    {
+        // A state file given directly is self-contained, needing no project configuration, so it bypasses the preamble.
         if (parseResult.GetValue(FileArgument) is { } file)
         {
-            return await ShowStateFile(parseResult, file, cancellationToken);
+            return ShowStateFile(parseResult, file, cancellationToken);
         }
+        return CommandRunner.Run(
+            parseResult,
+            configure: (builder, configuration) => builder.ConfigureState(configuration.State),
+            command: Execute,
+            validator: new StateShowConfigurationValidator(),
+            announceEnvironment: true,
+            cancellationToken: cancellationToken
+        );
+    }
 
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+    private static Task<int> Execute(CommandContext<StateShowConfiguration> context, CancellationToken cancellationToken)
+    {
+        var (app, configuration, _, _) = context;
 
         app.Messenger.Announce($"Showing recorded state. The live database will not be contacted.");
-        return await ShowRecordedState(app, configuration.Scope, cancellationToken);
+        return ShowRecordedState(app, configuration.Scope, cancellationToken);
     }
 
     private static async Task<int> ShowStateFile(ParseResult parseResult, string file, CancellationToken cancellationToken)
@@ -56,10 +55,16 @@ internal static class StateShowCommand
         // A state file is self-contained: point a file-backed store at it and read offline — no project config needed.
         StateShowOptions.Scope.TryGetValue(parseResult, out var scope);
 
-        using var app = CliApplicationBuilder.Create(parseResult)
+        var built = CliApplicationBuilder.Create(parseResult)
             .ConfigureState(new StateConfiguration { File = new FileStateConfiguration { Path = file } })
             .Build();
 
+        if (built.ReportFailure(ReporterFactory.CreateMessenger(parseResult)))
+        {
+            return ExitCodes.Error;
+        }
+
+        using var app = built.Require();
         app.Messenger.Announce($"Showing state file {file}.");
         return await ShowRecordedState(app, scope, cancellationToken);
     }

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 using NSchema.Services.Reporting;
 
@@ -18,64 +17,64 @@ internal static class PlanCommand
         return command;
     }
 
-    private static async ValueTask<PlanConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: Configure,
+        command: Execute,
+        validator: new PlanConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
+
+    private static CliApplicationBuilder Configure(CliApplicationBuilder builder, PlanConfiguration configuration)
     {
-        var config = await ConfigurationFactory.Load<PlanConfiguration>(result, environment, cancellationToken);
-        new PlanConfigurationValidator().ValidateOrThrow(config);
-        return config;
+        // --destroy previews a teardown: fully destructive by design, so its destructive-action policy is Allow —
+        // the guard is destroy's own confirmation prompt, not the policy. It plans against the recorded state, so
+        // the desired schema is not read at all.
+        return configuration.Destroy
+            ? builder
+                .ConfigurePolicies(PolicyEnforcement.Allow, configuration.DataHazardPolicy)
+                .ConfigureDatabase(configuration.Database)
+                .ConfigureState(configuration.State, configuration.Ephemeral)
+            : builder
+                .ConfigureDesiredSchema()
+                .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
+                .ConfigureDatabase(configuration.Database)
+                .ConfigureState(configuration.State, configuration.Ephemeral);
     }
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Execute(CommandContext<PlanConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
+        var (app, configuration, _, _) = context;
 
+        var scope = configuration.Scope.ToPlanningScope();
+        if (scope.IsFailure)
+        {
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            return ExitCodes.Error;
+        }
+
+        // The two previews are the same run against different targets: the project's desired schema, or nothing at all.
         if (configuration.Destroy)
         {
-            return await RunDestroy(parseResult, configuration, environment, cancellationToken);
+            app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
         }
-
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema()
-            .ConfigurePolicies(configuration.DestructiveActionPolicy, configuration.DataHazardPolicy)
-            .ConfigureDatabase(configuration.Database)
-            .ConfigureState(configuration.State, configuration.Ephemeral)
-            .Build();
-
-        app.Messenger.ReportEnvironment(environment);
-        var scope = configuration.Scope.ToPlanningScope();
-        if (scope.IsFailure)
+        else
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
-            return ExitCodes.Error;
+            app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
         }
 
-        app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { Scope = scope.Require(), OutFile = configuration.OutFile }, cancellationToken);
-        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Plan saved to", configuration.DetailedExitCode);
-    }
+        var result = await app.Operations.Plan(
+            new PlanArguments
+            {
+                Scope = scope.Require(),
+                OutFile = configuration.OutFile,
+                Target = configuration.Destroy ? PlanTarget.Empty : PlanTarget.Project,
+            },
+            cancellationToken);
 
-    private static async Task<int> RunDestroy(ParseResult parseResult, PlanConfiguration configuration, string? environment, CancellationToken cancellationToken)
-    {
-        // A teardown is fully destructive by design, so the destructive-action policy is set to Allow — the
-        // teardown's guard is destroy's confirmation prompt, not the policy.
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigurePolicies(PolicyEnforcement.Allow, configuration.DataHazardPolicy)
-            .ConfigureDatabase(configuration.Database)
-            .ConfigureState(configuration.State, configuration.Ephemeral)
-            .Build();
-
-        app.Messenger.ReportEnvironment(environment);
-        var scope = configuration.Scope.ToPlanningScope();
-        if (scope.IsFailure)
-        {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
-            return ExitCodes.Error;
-        }
-
-        app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
-        var result = await app.Operations.Plan(new PlanArguments { Scope = scope.Require(), OutFile = configuration.OutFile, Target = PlanTarget.Empty }, cancellationToken);
-        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile, "Planned destroy saved to", configuration.DetailedExitCode);
+        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile,
+            configuration.Destroy ? "Planned destroy saved to" : "Plan saved to", configuration.DetailedExitCode);
     }
 
     // The operation returns its outcome (the plan and its diagnostics); the CLI renders them and maps the result

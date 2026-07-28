@@ -13,14 +13,15 @@ internal static class InitCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         ConfigurationFactory.ApplyWorkingDirectory(parseResult);
         var root = Directory.GetCurrentDirectory();
 
-        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
 
-        await ProjectInitializer.Initialize(root, environment, new PluginLoader(), app.Messenger, cancellationToken);
+        var initialized = await ProjectInitializer.Initialize(root, environment, new PluginLoader(), app.Messenger, cancellationToken);
+        return initialized.ReportFailure(app.Messenger) ? ExitCodes.Error : ExitCodes.NoChanges;
     }
 }

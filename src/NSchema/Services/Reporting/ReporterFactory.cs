@@ -37,36 +37,23 @@ internal static class ReporterFactory
     };
 
     /// <summary>
-    /// Resolves <c>--format</c> and the <c>--json</c> shorthand to a single <see cref="OutputFormat"/>. The two are
-    /// mutually exclusive when they disagree: <c>--json</c> alongside a non-json <c>--format</c> is a usage error.
+    /// Resolves <c>--format</c> and the <c>--json</c> shorthand to a single <see cref="OutputFormat"/>.
     /// </summary>
     public static OutputFormat ResolveFormat(ParseResult parseResult)
     {
         var json = CommonOptions.Json.GetValueOrDefault(parseResult, false);
         var format = CommonOptions.Format.GetValueOrDefault(parseResult, OutputFormat.Text);
-        var formatSpecified = parseResult.GetResult(CommonOptions.Format.Option) is { Implicit: false };
-
-        if (json && formatSpecified && format != OutputFormat.Json)
-        {
-            throw new InvalidOperationException("--json cannot be combined with --format; pass --format json instead.");
-        }
 
         return json ? OutputFormat.Json : format;
     }
 
     /// <summary>
-    /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single verbosity. The two flags are mutually exclusive:
-    /// passing both is a usage error rather than a silent precedence.
+    /// Resolves <c>--quiet</c> / <c>--verbose</c> to a single verbosity.
     /// </summary>
     public static Verbosity ResolveVerbosity(ParseResult parseResult)
     {
         var quiet = CommonOptions.Quiet.GetValueOrDefault(parseResult, false);
         var verbose = CommonOptions.Verbose.GetValueOrDefault(parseResult, false);
-
-        if (quiet && verbose)
-        {
-            throw new InvalidOperationException("--quiet and --verbose cannot be used together.");
-        }
 
         return verbose ? Verbosity.Verbose : quiet ? Verbosity.Quiet : Verbosity.Normal;
     }

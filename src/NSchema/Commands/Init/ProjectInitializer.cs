@@ -10,12 +10,19 @@ namespace NSchema.Commands.Init;
 /// </summary>
 internal static class ProjectInitializer
 {
-    public static async Task Initialize(string root, string? environment, PluginLoader loader, IConsoleMessenger messenger, CancellationToken cancellationToken)
+    /// <returns>Success once the lockfile is written and the plugins restored, or the reason resolution failed.</returns>
+    public static async Task<Result> Initialize(string root, string? environment, PluginLoader loader, IConsoleMessenger messenger, CancellationToken cancellationToken)
     {
         // Keep versions already locked, resolving only ranges that are new or unlocked — the lockfile is respected,
         // not silently upgraded (that is 'plugin update').
         var existing = (await LockFileManager.Read(ProjectConfigurationReader.LockFilePath(root), cancellationToken)).Require();
-        var configuration = await ProjectConfigurationReader.Refresh(root, environment, existing, loader, refresh: null, cancellationToken);
+        var resolved = await ProjectConfigurationReader.Refresh(root, environment, existing, loader, refresh: null, cancellationToken);
+        if (resolved.IsFailure)
+        {
+            return Result.From(resolved.Diagnostics);
+        }
+
+        var configuration = resolved.Require();
 
         // The file backend is built in, so only the provider and a plugin-backed state store need restoring.
         var references = new List<PluginReference>();
@@ -31,7 +38,7 @@ internal static class ProjectInitializer
         if (references.Count == 0)
         {
             messenger.Announce($"Nothing to restore: no database or state plugin is configured.");
-            return;
+            return Result.Success();
         }
 
         // Persist the resolved pins so a later plan/apply reads exactly the versions restored here.
@@ -41,10 +48,11 @@ internal static class ProjectInitializer
             var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), new LockFile(plugins), cancellationToken);
             if (written.IsFailure)
             {
-                throw new InvalidOperationException(string.Join(Environment.NewLine, written.Errors.Select(error => error.Message)));
+                return written;
             }
         }
 
         loader.Restore(references, messenger);
+        return Result.Success();
     }
 }

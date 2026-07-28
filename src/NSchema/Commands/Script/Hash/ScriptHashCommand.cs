@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Model;
 
 namespace NSchema.Commands.Script.Hash;
@@ -22,22 +21,26 @@ internal static class ScriptHashCommand
         return command;
     }
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
-    {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        await ConfigurationFactory.Load<ScriptHashConfiguration>(parseResult, environment, cancellationToken);
-        var name = parseResult.GetValue(NameArgument);
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run<ScriptHashConfiguration>(
+        parseResult,
+        configure: (builder, _) => builder.ConfigureDesiredSchema(),
+        command: Execute,
+        validator: null,
+        // Naming a script makes the bare hash the output, so narration is suppressed to keep
+        // `$(nschema script hash x)` clean.
+        announceEnvironment: parseResult.GetValue(NameArgument) is null,
+        cancellationToken: cancellationToken
+    );
 
-        // Only the project's DDL is read — no backend, no provider, no database, no lock.
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDesiredSchema()
-            .Build();
+    private static async Task<int> Execute(CommandContext<ScriptHashConfiguration> context, CancellationToken cancellationToken)
+    {
+        var (app, _, parseResult, _) = context;
+        var name = parseResult.GetValue(NameArgument);
 
         var project = (await app.Project.GetProject(PlanningScope.All, cancellationToken)).Require();
 
         if (name is null)
         {
-            app.Messenger.ReportEnvironment(environment);
             app.Messenger.ReportScriptHashes(project.ScriptHashes());
             return ExitCodes.NoChanges;
         }

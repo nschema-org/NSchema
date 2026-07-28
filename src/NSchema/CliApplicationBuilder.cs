@@ -14,6 +14,7 @@ internal sealed class CliApplicationBuilder
     private readonly bool _allowRestore;
     private readonly IConsoleMessenger _messenger;
     private readonly IConsolePresenter _presenter;
+    private readonly DiagnosticCollection _diagnostics = [];
 
     private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore)
     {
@@ -51,7 +52,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureState(StateConfiguration? state)
     {
-        Throw(TryConfigureState(state));
+        _diagnostics.Add(TryConfigureState(state).Diagnostics);
         return this;
     }
 
@@ -74,15 +75,12 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabase(PluginReference? provider)
     {
-        Throw(TryConfigureDatabase(provider));
+        _diagnostics.Add(TryConfigureDatabase(provider).Diagnostics);
         return this;
     }
 
     /// <summary>
-    /// Configures the database provider WITHOUT throwing: a <see cref="Result"/> that fails, carrying the plugin's
-    /// diagnostics, if it could not restore or configure. Success also covers "no provider configured" (a valid
-    /// offline setup). The fluent <see cref="ConfigureDatabase"/> is the throwing wrapper; callers that report
-    /// failures rather than abort (doctor) use this.
+    /// Configures the database provider.
     /// </summary>
     public Result TryConfigureDatabase(PluginReference? provider) =>
         provider is { } reference
@@ -90,9 +88,7 @@ internal sealed class CliApplicationBuilder
             : Result.Success();
 
     /// <summary>
-    /// Configures the state backend WITHOUT throwing. The built-in local-file store always succeeds; every other backend
-    /// is a plugin, which may fail — a <see cref="Result"/> that fails carrying its diagnostics (success also covers no
-    /// backend configured). The fluent <see cref="ConfigureState(NSchema.Configuration.State.StateConfiguration?)"/> is the throwing wrapper.
+    /// Configures the state backend.
     /// </summary>
     public Result TryConfigureState(StateConfiguration? state)
     {
@@ -143,16 +139,12 @@ internal sealed class CliApplicationBuilder
         return plugin;
     }
 
-    private static void Throw(Result result)
-    {
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException(
-                $"A plugin could not be configured:{Environment.NewLine}{string.Join(Environment.NewLine, result.Errors.Select(e => $"'{e.Source}': {e.Message}"))}");
-        }
-    }
-
-    public CliApplication Build() => new(_builder.Build(), _messenger, _presenter);
+    /// <summary>
+    /// Builds the application, or fails carrying the diagnostics the configuration steps accumulated.
+    /// </summary>
+    public Result<CliApplication> Build() => _diagnostics.HasErrors
+        ? Result.Failure<CliApplication>(_diagnostics)
+        : Result.From(new CliApplication(_builder.Build(), _messenger, _presenter), _diagnostics);
 
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.

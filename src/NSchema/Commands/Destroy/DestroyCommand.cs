@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 using NSchema.Services;
 using NSchema.Services.Confirmation;
@@ -20,28 +19,24 @@ internal static class DestroyCommand
         return command;
     }
 
-    private static async ValueTask<DestroyConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: Configure,
+        command: Execute,
+        validator: new DestroyConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
+
+    private static CliApplicationBuilder Configure(CliApplicationBuilder builder, DestroyConfiguration configuration) => builder
+        .ConfigurePolicies(PolicyEnforcement.Allow, dataHazards: null)
+        .ConfigureDatabase(configuration.Database)
+        .ConfigureState(configuration.State, configuration.Ephemeral);
+
+    private static async Task<int> Execute(CommandContext<DestroyConfiguration> context, CancellationToken cancellationToken)
     {
-        var config = await ConfigurationFactory.Load<DestroyConfiguration>(result, environment, cancellationToken);
-        new DestroyConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
+        var (app, configuration, _, _) = context;
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
-    {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-
-        // A teardown is fully destructive by design, so the destructive-action policy is set to Allow — the guard is
-        // the confirmation prompt below, not the policy. The managed schema comes from the recorded state, so the
-        // working-directory schema is not consulted.
-        var builder = CliApplicationBuilder.Create(parseResult)
-            .ConfigurePolicies(PolicyEnforcement.Allow, dataHazards: null)
-            .ConfigureDatabase(configuration.Database)
-            .ConfigureState(configuration.State, configuration.Ephemeral);
-
-        using var app = builder.Build();
-        app.Messenger.ReportEnvironment(environment);
         app.Messenger.Announce($"Destroying schema. All managed objects will be dropped from the database.");
 
         // Hold the state lock across the teardown plan + apply.

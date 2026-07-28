@@ -1,5 +1,4 @@
 using System.CommandLine;
-using NSchema.Configuration;
 using NSchema.Operations;
 using NSchema.Services;
 
@@ -17,22 +16,19 @@ internal static class DriftCommand
         return command;
     }
 
-    private static async ValueTask<DriftConfiguration> Resolve(ParseResult result, string? environment, CancellationToken cancellationToken = default)
-    {
-        var config = await ConfigurationFactory.Load<DriftConfiguration>(result, environment, cancellationToken);
-        new DriftConfigurationValidator().ValidateOrThrow(config);
-        return config;
-    }
 
-    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken) => CommandRunner.Run(
+        parseResult,
+        configure: (builder, configuration) => builder.ConfigureDatabase(configuration.Database).ConfigureState(configuration.State),
+        command: Execute,
+        validator: new DriftConfigurationValidator(),
+        announceEnvironment: true,
+        cancellationToken: cancellationToken
+    );
+
+    private static async Task<int> Execute(CommandContext<DriftConfiguration> context, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await Resolve(parseResult, environment, cancellationToken);
-        using var app = CliApplicationBuilder.Create(parseResult)
-            .ConfigureDatabase(configuration.Database)
-            .ConfigureState(configuration.State)
-            .Build();
-        app.Messenger.ReportEnvironment(environment);
+        var (app, configuration, _, _) = context;
 
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)

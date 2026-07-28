@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration;
-using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 
 namespace NSchema.Tests.Commands.Doctor;
@@ -26,16 +25,16 @@ public sealed class DoctorCommandTests : IDisposable
     public async Task Doctor_WithAMisconfiguredProvider_FailsAndReportsThePluginProblem()
     {
         // Arrange — a project whose postgres provider is missing the required connection_string.
-        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), """
+        await File.WriteAllTextAsync(Path.Combine(_projectDirectory, "config.sql"), $"""
             PLUGIN postgres (
               source  = 'NSchema.Postgres',
-              version = '5.0.0-beta.4'
+              version = '{PublishedPlugins.Postgres}'
             );
 
             DATABASE postgres ();
             """, TestContext.Current.CancellationToken);
         await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_projectDirectory),
-            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse("5.0.0-beta.4") }]), TestContext.Current.CancellationToken);
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = PublishedPlugins.Postgres }]), TestContext.Current.CancellationToken);
 
         var parseResult = NSchema.Commands.RootCommand.Create().Parse(["doctor", "--directory", _projectDirectory]);
 

@@ -14,13 +14,20 @@ internal static class PluginListCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
-        var configuration = await ConfigurationFactory.Load<PluginListConfiguration>(parseResult, environment, cancellationToken);
-
         var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
+
+        var resolved = await ConfigurationFactory.Load<PluginListConfiguration>(parseResult, environment, cancellationToken);
+        if (resolved.ReportFailure(messenger))
+        {
+            return ExitCodes.Error;
+        }
+
+        var configuration = resolved.Require();
         var plugins = PluginInventory.ForProject(configuration.Database, configuration.State, new PluginCache());
         messenger.ReportProjectPlugins(plugins);
+        return ExitCodes.NoChanges;
     }
 }

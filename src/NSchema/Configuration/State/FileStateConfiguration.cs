@@ -21,11 +21,6 @@ internal sealed class FileStateConfiguration
     /// <summary>
     /// Maps a <c>STATE file</c> statement's attributes onto a new config, rejecting any it doesn't recognize.
     /// </summary>
-    public static FileStateConfiguration FromSettings(PluginSettings config)
-    {
-        var result = config.Get<FileStateConfiguration>();
-        return result.IsFailure
-            ? throw new InvalidOperationException(string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => diagnostic.Message)))
-            : result.Require();
-    }
+    /// <returns>The bound configuration, or a failure carrying the binder's own diagnostics.</returns>
+    public static Result<FileStateConfiguration> FromSettings(PluginSettings config) => config.Get<FileStateConfiguration>();
 }

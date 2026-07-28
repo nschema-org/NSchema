@@ -19,10 +19,10 @@ internal static class ScaffoldPrompter
     /// <param name="console">The console to ask on, when it can be asked.</param>
     /// <param name="prompts">The questions the plugin declared, in the order to put them.</param>
     /// <param name="supplied">Answers given up front (from <c>--set</c>), keyed by prompt.</param>
-    /// <exception cref="ScaffoldAnswerRequiredException">
-    /// A question with no default went unanswered and there is no terminal to ask on.
-    /// </exception>
-    public static IReadOnlyDictionary<string, string?> Answer(
+    /// <returns>
+    /// The answers, or a failure when a question with no default went unanswered and there is no terminal to ask on.
+    /// </returns>
+    public static Result<IReadOnlyDictionary<string, string?>> Answer(
         IAnsiConsole console,
         IReadOnlyList<ScaffoldPrompt> prompts,
         IReadOnlyDictionary<string, string?> supplied
@@ -59,10 +59,14 @@ internal static class ScaffoldPrompter
 
         if (unanswerable.Count > 0)
         {
-            throw new ScaffoldAnswerRequiredException(unanswerable.Select(prompt => prompt.Key));
+            // Failing here is deliberate: a scripted run that silently scaffolded a half-configured project would only
+            // surface the problem at the first plan, further from the cause.
+            var keys = string.Join(", ", unanswerable.Select(prompt => prompt.Key));
+            return Result.Failure<IReadOnlyDictionary<string, string?>>(Diagnostic.Error("scaffold",
+                $"No terminal to prompt on, and no value given for: {keys}. Supply each with --set <key>=<value>, or run interactively."));
         }
 
-        return answers;
+        return Result.Success<IReadOnlyDictionary<string, string?>>(answers);
     }
 
     private static string Ask(IAnsiConsole console, ScaffoldPrompt prompt)

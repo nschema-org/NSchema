@@ -19,7 +19,7 @@ namespace NSchema.Tests.Commands.New;
 /// </summary>
 public sealed class NewSmokeTests : IDisposable
 {
-    private const string PostgresVersion = "5.0.0-beta.3";
+    private static SemanticVersion PostgresVersion => PublishedPlugins.Postgres;
 
     private readonly string _directory = Directory.CreateTempSubdirectory("nschema-new-smoke-").FullName;
 
@@ -29,7 +29,7 @@ public sealed class NewSmokeTests : IDisposable
     public async Task Scaffold_WithRealPostgresPlugin_ProducesAValidFormattedProject()
     {
         // Arrange — load the real plugin and take exactly what `new` would.
-        var plugin = new PluginLoader().Load(new PackageId("NSchema.Postgres"), SemanticVersion.Parse(PostgresVersion))
+        var plugin = new PluginLoader().Load(new PackageId("NSchema.Postgres"), PostgresVersion)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
@@ -43,7 +43,7 @@ public sealed class NewSmokeTests : IDisposable
             new ProjectTemplate
             {
                 EngineRequirement = "[5.0,6.0)",
-                Plugins = [new ResolvedPlugin(new PluginLabel("postgres"), new PackageId("NSchema.Postgres"), SemanticVersion.Parse(PostgresVersion))],
+                Plugins = [new ResolvedPlugin(new PluginLabel("postgres"), new PackageId("NSchema.Postgres"), PostgresVersion)],
                 Database = databaseStatement,
                 DatabaseOverlay = plugin.GetScaffoldTemplate(new ScaffoldContext { EnvironmentName = "prod" }),
                 State = ProjectScaffolder.FileState,
@@ -52,13 +52,13 @@ public sealed class NewSmokeTests : IDisposable
             },
             TestContext.Current.CancellationToken);
         await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(_directory),
-            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse(PostgresVersion) }]), TestContext.Current.CancellationToken);
+            new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = PostgresVersion }]), TestContext.Current.CancellationToken);
 
         // Assert — the generated config round-trips, pinning the resolved version.
-        var config = await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken);
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken)).Require();
         config.Database.ShouldNotBeNull();
         config.Database!.Label.ShouldBe("postgres");
-        config.Database.Version.ToString().ShouldBe(PostgresVersion);
+        config.Database.Version.ShouldBe(PostgresVersion);
         config.State!.File.ShouldNotBeNull();
 
         // Assert — the sample schema parses.

@@ -25,7 +25,7 @@ internal static class PlanShowCommand
         var file = parseResult.GetRequiredValue(FileArgument);
 
         // A saved plan is self-contained: no project config, database, or state store is needed.
-        using var app = CliApplicationBuilder.Create(parseResult).Build();
+        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
 
         app.Messenger.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
         var envelope = await app.PlanFile.Read(file, cancellationToken);
