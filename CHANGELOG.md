@@ -28,7 +28,6 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 
 ### Changed
 
-- **The `.env.<name>.` marker makes a file environment-specific.** A `<any>.env.<name>.sql` file is read only when that environment is selected, and never contributes schema; every other `.sql` file is the base. Configuration and schema share one grammar, so a configuration statement is read wherever you write it — `new` puts them in `config.sql` by convention.
 - **Environments select configuration, not schema.** `--environment` layers the environment's files over the base configuration; schema files are no longer overlaid per environment. An overlay merges the `DATABASE`, `STATE`, or `ENGINE` statement attributes.
 - **`DATABASE` and `STATE` replace `PROVIDER` and `BACKEND`.** Each names the thing it configures. The built-in local-file store is `STATE file ( path = '…' );`.
 - **`PLUGIN` declares plugin dependencies.** `PLUGIN <label> ( source = '…', version = '…' );` names the package and pins its version; `DATABASE`/`STATE` reference the label. The built-in label-to-package map is gone — every plugin is declared explicitly, and `version`/`source` no longer ride the configuring statement. A `version` may be an exact pin or a NuGet-style range (`[5.0,6.0)`).
@@ -43,12 +42,16 @@ v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes config
 - **Abbreviated commands are spelled out.** `fmt` is `format`, `db` is `database`, and `scaffold` is `new`. The old names are gone rather than aliased, so a script still using one fails loudly instead of drifting.
 - **`apply` re-runs policies.** The policy flags now apply to `apply --plan-file` too, re-checking the saved plan before executing it.
 - **`script hash`, `script taint`, and `script untaint` operate on deployment scripts.** A template-scoped script is addressed as `schema.name`, as `script hash` lists it.
-- **`state show` reports an error when no state has been recorded yet** instead of failing on a missing source.
+- **Errors you can fix are reported as diagnostics; anything else is considered a a bug.** A broken configuration file, an unresolvable plugin, an unreachable database — each renders in the diagnostics table, sourced by the file and line or the plugin label that caused it. Anything else reaching the top level is a defect in NSchema: it names the exception type, links the issue tracker, and prints a stack trace unconditionally, so a report needs no re-run with a flag. Messages carry the inner-exception chain, so a cause like `Failed to connect to 127.0.0.1:5432 -> Connection refused` keeps the part that matters.
+- **`--json` distinguishes the two.** An expected failure emits a `{"type":"diagnostics"}` event; an internal error's `{"type":"error"}` event gains `exception` and `stack`, so a consumer can tell "your project is wrong" from "NSchema is broken" by a null check.
 
 ### Fixed
 
 - Plugin loading now resolves a plugin's native libraries (e.g. SQLite's `e_sqlite3`) from its restored dependency closure.
 - **`new` names the right environment variable.** It pointed at a per-provider variable (`NSCHEMA_POSTGRES_CONNECTION_STRING`) that no longer has any effect; it now names `NSCHEMA_DATABASE_CONNECTION_STRING`.
+- **Contradictory flags fail fast.** `--quiet` with `--verbose`, or `--json` with a non-json `--format`, are now rejected while parsing.
+- **A failed command always exits non-zero.** `lock release`, `init`, `new`, and the `plugin` commands reported failures but still exited `0`.
+- **`state show` reports an error when no state has been recorded yet** instead of failing on a missing source.
 
 ## [4.5.1] - 2026-07-10
 
