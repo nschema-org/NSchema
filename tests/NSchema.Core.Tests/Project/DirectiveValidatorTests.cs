@@ -53,7 +53,7 @@ public sealed class DirectiveValidatorTests
 
         // Assert
         Validate(project).ShouldHaveSingleItem()
-            .ShouldBe(ProjectDiagnostics.RenameTargetNotDeclared("table", "app.users", "people"));
+            .ShouldBe(ProjectDiagnostics.RenameTargetNotDeclared("table", new ObjectAddress("app", "users"), "people"));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed class DirectiveValidatorTests
 
         // Assert
         Validate(project).ShouldHaveSingleItem()
-            .ShouldBe(ProjectDiagnostics.RenameSourceStillDeclared("table", "app.users", "people"));
+            .ShouldBe(ProjectDiagnostics.RenameSourceStillDeclared("table", new ObjectAddress("app", "users"), "people"));
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class DirectiveValidatorTests
             AppSchema(Table("users", "id")));
 
         // Assert
-        Validate(project).ShouldContain(ProjectDiagnostics.SelfRename("table", "app.users"));
+        Validate(project).ShouldContain(ProjectDiagnostics.SelfRename("table", new ObjectAddress("app", "users")));
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class DirectiveValidatorTests
             AppSchema(Table("people", "id"), Table("members", "id")));
 
         // Assert
-        Validate(project).ShouldContain(ProjectDiagnostics.DuplicateRenameSource("table", "app.users"));
+        Validate(project).ShouldContain(ProjectDiagnostics.DuplicateRenameSource("table", new ObjectAddress("app", "users")));
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public sealed class DirectiveValidatorTests
             AppSchema(Table("people", "id")));
 
         // Assert
-        Validate(project).ShouldContain(ProjectDiagnostics.DuplicateRenameTarget("table", "app.people"));
+        Validate(project).ShouldContain(ProjectDiagnostics.DuplicateRenameTarget("table", new ObjectAddress("app", "people")));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class DirectiveValidatorTests
             AppSchema(Table("b", "id"), Table("c", "id")));
 
         // Assert
-        Validate(project).ShouldContain(ProjectDiagnostics.RenameChain("table", "app.b"));
+        Validate(project).ShouldContain(ProjectDiagnostics.RenameChain("table", new ObjectAddress("app", "b")));
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class DirectiveValidatorTests
 
         // Assert
         Validate(project).ShouldHaveSingleItem()
-            .ShouldBe(ProjectDiagnostics.RenameTargetNotDeclared("column", "app.users.name", "full_name"));
+            .ShouldBe(ProjectDiagnostics.RenameTargetNotDeclared("column", new MemberAddress("app", "users", "name"), "full_name"));
     }
 
     [Fact]

@@ -15,13 +15,13 @@ internal static class ProjectDiagnostics
     /// No DDL file matched any registered project source.
     /// </summary>
     public static Diagnostic NoFilesMatched() => Diagnostic.Error(Source,
-        "No SQL DDL files matched the registered schema sources.");
+        "No SQL files matched the registered schema sources.");
 
     /// <summary>
     /// A script declared more than once in the same scope (the address is the run-once and diagnostic identity).
     /// </summary>
     public static Diagnostic DuplicateScriptName(ScopedAddress script) => Diagnostic.Error(Source,
-        $"Duplicate script '{script}' declared. A script's name must be unique within its scope.");
+        $"Duplicate script '{script}' declared.");
 
     /// <summary>
     /// Two change-event scripts declared for the same trigger and path.
@@ -43,7 +43,7 @@ internal static class ProjectDiagnostics
     /// </summary>
     public static NsqlDiagnostic ObjectAlreadyDeclared(ObjectKind kind, SqlIdentifier schema, SqlIdentifier name, SourcePosition position) =>
         kind is ObjectKind.Routine
-            ? Positioned($"Routine '{schema}.{name}' is already declared (functions and procedures share one name space).", position)
+            ? Positioned($"Routine '{schema}.{name}' is already declared.", position)
             : Positioned($"{Capitalized(kind.Display()):text} '{schema}.{name}' is already declared.", position);
 
     /// <summary>
@@ -86,26 +86,26 @@ internal static class ProjectDiagnostics
     /// A standalone index targeting a plain (non-materialized) view.
     /// </summary>
     public static NsqlDiagnostic IndexOnPlainView(SqlIdentifier schema, SqlIdentifier view, SourcePosition position) =>
-        Positioned($"CREATE INDEX targets '{schema}.{view}', which is not a materialized view (a plain view cannot be indexed).", position);
+        Positioned($"CREATE INDEX targets '{schema}.{view}', which is not a materialized view.", position);
 
     private static NsqlDiagnostic Positioned(FormattedText message, SourcePosition position) =>
         new(Source, $"{message} (at {position}).", DiagnosticSeverity.Error, position);
 
     private static string Capitalized(string prose) => char.ToUpperInvariant(prose[0]) + prose[1..];
 
-    // ── Directive rules — addresses arrive rendered because their shapes differ per kind. ──
+    // ── Directive rules ──
 
     /// <summary>
     /// A rename whose target the project does not declare.
     /// </summary>
-    public static Diagnostic RenameTargetNotDeclared(string kind, string address, SqlIdentifier to) => Diagnostic.Error(Source,
-        $"RENAME {kind:text} '{address}' TO {to}: the project does not declare '{to}'. A rename pairs the current object with its declaration under the new name.");
+    public static Diagnostic RenameTargetNotDeclared(string kind, Address address, SqlIdentifier to) => Diagnostic.Error(Source,
+        $"Unable to rename {kind:text} '{address}' to {to}. The project does not declare '{to}'.");
 
     /// <summary>
     /// A rename whose previous name the project still declares.
     /// </summary>
-    public static Diagnostic RenameSourceStillDeclared(string kind, string address, SqlIdentifier to) => Diagnostic.Error(Source,
-        $"RENAME {kind:text} '{address}' TO {to}: the previous name is still declared, so the rename cannot be told apart from a retain-plus-create.");
+    public static Diagnostic RenameSourceStillDeclared(string kind, Address address, SqlIdentifier to) => Diagnostic.Error(Source,
+        $"Unable to rename {kind:text} '{address}' to {to}. The previous name is still declared.");
 
     /// <summary>
     /// A directive addressing a schema the project does not declare.
@@ -122,24 +122,24 @@ internal static class ProjectDiagnostics
     /// <summary>
     /// A rename whose target is its own source.
     /// </summary>
-    public static Diagnostic SelfRename(string kind, string address) => Diagnostic.Error(Source,
+    public static Diagnostic SelfRename(string kind, Address address) => Diagnostic.Error(Source,
         $"RENAME {kind:text} '{address}': the target is the same name.");
 
     /// <summary>
     /// Two renames sharing a source.
     /// </summary>
-    public static Diagnostic DuplicateRenameSource(string kind, string address) => Diagnostic.Error(Source,
+    public static Diagnostic DuplicateRenameSource(string kind, Address address) => Diagnostic.Error(Source,
         $"Multiple renames of {kind:text} '{address}' declared.");
 
     /// <summary>
     /// Two renames sharing a target.
     /// </summary>
-    public static Diagnostic DuplicateRenameTarget(string kind, string address) => Diagnostic.Error(Source,
+    public static Diagnostic DuplicateRenameTarget(string kind, Address address) => Diagnostic.Error(Source,
         $"Multiple renames of {kind:text} to '{address}' declared.");
 
     /// <summary>
     /// One rename's target being another's source — unordered, therefore ambiguous.
     /// </summary>
-    public static Diagnostic RenameChain(string kind, string address) => Diagnostic.Error(Source,
-        $"Renames of {kind:text} chain through '{address}'; renames are unordered, so a chain is ambiguous. Collapse it into a single rename.");
+    public static Diagnostic RenameChain(string kind, Address address) => Diagnostic.Error(Source,
+        $"Conflicting rename directives found for {kind:text} '{address}'.");
 }

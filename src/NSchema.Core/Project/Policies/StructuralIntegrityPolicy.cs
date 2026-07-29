@@ -10,8 +10,6 @@ namespace NSchema.Project.Policies;
 /// </summary>
 internal sealed class StructuralIntegrityPolicy : IProjectPolicy
 {
-    private const string PolicyName = "structural-integrity";
-
     /// <inheritdoc />
     public IEnumerable<Diagnostic> Validate(ProjectDefinition project)
     {
@@ -52,8 +50,8 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
 
         foreach (var collision in named.GroupBy(x => x.Name).Where(g => g.Count() > 1))
         {
-            var sites = string.Join(", ", collision.Select(x => $"{x.Kind} on '{definition.Name}.{x.On}'"));
-            diagnostics.Add(Error($"Schema '{definition.Name}' declares the index name '{collision.Key}' more than once ({sites:text}); index and index-backed constraint names are schema-scoped."));
+            var sites = string.Join(", ", collision.Select(x => $"{x.Kind} on '{new ObjectAddress(definition.Name, x.On)}'"));
+            diagnostics.Add(StructuralIntegrityDiagnostics.DuplicateIndexName(new SchemaAddress(definition.Name), collision.Key, sites));
         }
     }
 
@@ -75,9 +73,10 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
             var kinds = collision.Select(x => x.Kind).ToList();
             // A single kind appearing twice (e.g. two sequences) reads as a plain duplicate; a mix of kinds reads
             // as a name-space collision. Either way the database would reject it.
+            var address = new ObjectAddress(definition.Name, collision.Key);
             diagnostics.Add(kinds.Distinct().Count() == 1
-                ? Error($"Schema '{definition.Name}' declares {kinds[0]:text} '{collision.Key}' more than once.")
-                : Error($"Schema '{definition.Name}' reuses the name '{collision.Key}' across object kinds that share a name space ({string.Join(", ", kinds.OrderBy(k => k, StringComparer.Ordinal)):text})."));
+                ? StructuralIntegrityDiagnostics.DuplicateObjectName(address, kinds[0])
+                : StructuralIntegrityDiagnostics.CollidingObjectName(address));
         }
     }
 
@@ -89,7 +88,7 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
     {
         foreach (var duplicate in Duplicates(definition.Routines.Select(r => r.Name)))
         {
-            diagnostics.Add(Error($"Schema '{definition.Name}' declares routine '{duplicate}' more than once (functions and procedures share a single name space)."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.DuplicateRoutineName(new ObjectAddress(definition.Name, duplicate)));
         }
     }
 
@@ -100,31 +99,31 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
         IReadOnlyDictionary<ObjectAddress, Table> tablesByKey,
         List<Diagnostic> diagnostics)
     {
-        var qualified = $"{definition.Name}.{table.Name}";
+        var address = new ObjectAddress(definition.Name, table.Name, table.Kind);
         var columns = table.Columns.Select(c => c.Name).ToHashSet();
 
         if (table.Columns.Count == 0)
         {
-            diagnostics.Add(Error($"Table '{qualified}' has no columns."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.EmptyTable(address));
         }
 
         foreach (var duplicate in Duplicates(table.Columns.Select(c => c.Name)))
         {
-            diagnostics.Add(Error($"Table '{qualified}' declares column '{duplicate}' more than once."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.DuplicateColumn(address.Member(duplicate)));
         }
 
         // A generated column is computed from an expression, so it cannot also carry a default — the database
         // rejects a column that declares both.
         foreach (var column in table.Columns.Where(c => c.DefaultExpression is not null && c.GeneratedExpression is not null))
         {
-            diagnostics.Add(Error($"Column '{qualified}.{column.Name}' has both a DEFAULT and a GENERATED expression; a generated column cannot have a default."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.DefaultOnGeneratedColumn(address.Member(column.Name)));
         }
 
         if (table.PrimaryKey is { } primaryKey)
         {
             foreach (var missing in primaryKey.ColumnNames.Where(c => !columns.Contains(c)))
             {
-                diagnostics.Add(Error($"Primary key '{primaryKey.Name}' on '{qualified}' references unknown column '{missing}'."));
+                diagnostics.Add(StructuralIntegrityDiagnostics.UnknownPrimaryKeyColumn(address.Member(primaryKey.Name), missing));
             }
         }
 
@@ -135,32 +134,35 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
             var referenced = index.Columns.Select(c => c.Column).OfType<SqlIdentifier>().Concat(index.Include);
             foreach (var missing in referenced.Where(c => !columns.Contains(c)))
             {
-                diagnostics.Add(Error($"Index '{index.Name}' on '{qualified}' references unknown column '{missing}'."));
+                diagnostics.Add(StructuralIntegrityDiagnostics.UnknownIndexColumn(address.Member(index.Name), missing));
             }
         }
 
         foreach (var foreignKey in table.ForeignKeys)
         {
-            ValidateForeignKey(qualified, foreignKey, columns, declaredSchemas, tablesByKey, diagnostics);
+            ValidateForeignKey(address, foreignKey, columns, declaredSchemas, tablesByKey, diagnostics);
         }
     }
 
     private static void ValidateForeignKey(
-        string qualified,
+        ObjectAddress table,
         ForeignKey foreignKey,
         HashSet<SqlIdentifier> localColumns,
         HashSet<SqlIdentifier> declaredSchemas,
         IReadOnlyDictionary<ObjectAddress, Table> tablesByKey,
         List<Diagnostic> diagnostics)
     {
+        var address = table.Member(foreignKey.Name);
+
         foreach (var missing in foreignKey.ColumnNames.Where(c => !localColumns.Contains(c)))
         {
-            diagnostics.Add(Error($"Foreign key '{foreignKey.Name}' on '{qualified}' references unknown local column '{missing}'."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.UnknownLocalColumn(address, missing));
         }
 
         if (foreignKey.ColumnNames.Count != foreignKey.ReferencedColumnNames.Count)
         {
-            diagnostics.Add(Error($"Foreign key '{foreignKey.Name}' on '{qualified}' has {foreignKey.ColumnNames.Count} local column(s) but {foreignKey.ReferencedColumnNames.Count} referenced column(s); the counts must match."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.ForeignKeyArityMismatch(
+                address, foreignKey.ColumnNames.Count, foreignKey.ReferencedColumnNames.Count));
             return;
         }
 
@@ -174,7 +176,7 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
         var target = foreignKey.References;
         if (!tablesByKey.TryGetValue(foreignKey.References, out var referencedTable))
         {
-            diagnostics.Add(Warning($"Foreign key '{foreignKey.Name}' on '{qualified}' references table '{target}', which this project does not declare; it must already exist in the database."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.UndeclaredForeignKeyTarget(address, target));
             return;
         }
 
@@ -182,13 +184,14 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
         var missingReferenced = foreignKey.ReferencedColumnNames.Where(c => !referencedColumns.Contains(c)).ToList();
         foreach (var missing in missingReferenced)
         {
-            diagnostics.Add(Error($"Foreign key '{foreignKey.Name}' on '{qualified}' references unknown column '{missing}' on '{target}'."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.UnknownReferencedColumn(address, target.Member(missing)));
         }
 
         // A foreign key must reference a uniquely-constrained set of columns; check only once the target columns resolve.
         if (missingReferenced.Count == 0 && !IsUniquelyConstrained(referencedTable, foreignKey.ReferencedColumnNames))
         {
-            diagnostics.Add(Error($"Foreign key '{foreignKey.Name}' on '{qualified}' references columns ({string.Join(", ", foreignKey.ReferencedColumnNames)}) on '{target}' that are not the primary key or a unique index."));
+            diagnostics.Add(StructuralIntegrityDiagnostics.ForeignKeyTargetNotUnique(
+                address, target, foreignKey.ReferencedColumnNames));
         }
     }
 
@@ -213,8 +216,4 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
         .GroupBy(n => n)
         .Where(g => g.Count() > 1)
         .Select(g => g.Key);
-
-    private static Diagnostic Error(FormattedText message) => Diagnostic.Error(PolicyName, message);
-
-    private static Diagnostic Warning(FormattedText message) => Diagnostic.Warning(PolicyName, message);
 }

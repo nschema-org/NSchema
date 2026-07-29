@@ -166,7 +166,7 @@ public sealed class DatabaseDiffTests
 
         var inferred = result.Diagnostics.Single(d => d.Message.Contains("billing.summary"));
         inferred.Source.ShouldBe("scope");
-        inferred.Message.ShouldContain("does not parse SQL");
+        inferred.Message.ShouldContain("appear to depend");
     }
 
     [Fact]

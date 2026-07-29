@@ -163,8 +163,7 @@ public sealed class ProjectComparerTests
         diagnostic.Source.ShouldBe("data-migrations");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
         diagnostic.Message.ShouldBe(
-            "Migration 'app.backfill_emails' (ADD COLUMN app.users.email) matches no change in this plan and will " +
-            "not run. If the change it supports has been applied everywhere, the block is safe to delete.");
+            "Migration 'app.backfill_emails' (ADD COLUMN app.users.email) matches no change in this plan.");
     }
 
     [Fact]
@@ -233,8 +232,8 @@ public sealed class ProjectComparerTests
         var diagnostic = comparison.Diagnostics.ShouldHaveSingleItem();
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
         diagnostic.Source.ShouldBe("directives");
-        diagnostic.Message.ShouldContain("Rename of table 'app.users'");
-        diagnostic.Message.ShouldContain("safe to delete");
+        diagnostic.Message.ShouldContain("The table 'app.users'");
+        diagnostic.Message.ShouldContain("already been renamed to 'people'");
     }
 
     [Fact]

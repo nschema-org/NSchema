@@ -22,6 +22,10 @@ public sealed record TableDiff : ISchemaObjectDiff
     /// </summary>
     public required SqlIdentifier Schema { get; init; }
 
+    /// <inheritdoc />
+    [JsonIgnore]
+    public ObjectAddress Address => new(Schema, Name, ObjectKind.Table);
+
     /// <summary>
     /// The table name.
     /// </summary>

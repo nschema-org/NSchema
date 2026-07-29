@@ -11,8 +11,6 @@ namespace NSchema.Configuration.Plugins;
 /// <param name="Values">The setting values, keyed as written (case-insensitive).</param>
 public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<string, string?> Values)
 {
-    private const string Source = "settings";
-
     /// <summary>
     /// The named setting as written, or <see langword="null"/> if the settings do not declare it.
     /// </summary>
@@ -41,7 +39,7 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
         var results = new List<ValidationResult>();
         Validator.TryValidateObject(instance, context, results, validateAllProperties: true);
 
-        return Result.From(instance, diagnostics.Concat(results.Select(result => Diagnostic.Error(Source, result.ErrorMessage ?? "Invalid configuration."))));
+        return Result.From(instance, diagnostics.Concat(results.Select(result => PluginSettingsDiagnostics.InvalidSetting(result.ErrorMessage))));
     }
 
     // Walks the dotted key onto its property path, creating intermediate objects, then converts and sets the leaf.
@@ -52,7 +50,7 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
         {
             if (!ignoreUnknown)
             {
-                diagnostics.Add(Diagnostic.Error(Source, $"Unknown setting '{key}'."));
+                diagnostics.Add(PluginSettingsDiagnostics.UnknownSetting(key));
             }
 
             return;
@@ -66,7 +64,7 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
             }
             else
             {
-                diagnostics.Add(Diagnostic.Error(Source, $"Value '{value}' cannot be assigned to '{key}'."));
+                diagnostics.Add(PluginSettingsDiagnostics.UnassignableValue(value, key));
             }
 
             return;
@@ -74,7 +72,7 @@ public sealed record PluginSettings(PluginLabel? Label, IReadOnlyDictionary<stri
 
         if ((property.GetValue(target) ?? Activator.CreateInstance(property.PropertyType)) is not { } child)
         {
-            diagnostics.Add(Diagnostic.Error(Source, $"Value '{value}' cannot be assigned to '{key}'."));
+            diagnostics.Add(PluginSettingsDiagnostics.UnassignableValue(value, key));
             return;
         }
 

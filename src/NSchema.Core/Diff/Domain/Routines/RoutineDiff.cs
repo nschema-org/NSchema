@@ -18,6 +18,10 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     /// </summary>
     public required SqlIdentifier Schema { get; init; }
 
+    /// <inheritdoc />
+    [JsonIgnore]
+    public ObjectAddress Address => new(Schema, Name, ObjectKind.Routine);
+
     /// <summary>
     /// The routine name.
     /// </summary>

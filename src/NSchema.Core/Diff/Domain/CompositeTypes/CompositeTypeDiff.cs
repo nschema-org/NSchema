@@ -18,6 +18,10 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     /// </summary>
     public required SqlIdentifier Schema { get; init; }
 
+    /// <inheritdoc />
+    [JsonIgnore]
+    public ObjectAddress Address => new(Schema, Name, ObjectKind.CompositeType);
+
     /// <summary>
     /// The composite type name.
     /// </summary>

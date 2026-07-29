@@ -133,7 +133,7 @@ public sealed class ProjectAssemblerTests
             "CREATE PROCEDURE app.r() AS $$ SELECT 1 $$;");
 
         // Assert
-        SingleError(result).Message.ShouldContain("share one name space");
+        SingleError(result).Message.ShouldContain("Routine 'app.r' is already declared");
     }
 
     [Fact]

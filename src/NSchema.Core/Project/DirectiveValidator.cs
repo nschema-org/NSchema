@@ -32,7 +32,7 @@ internal static class DirectiveValidator
     {
         foreach (var d in ValidateRenameShape("schema",
             directives.SchemaRenames.Select(r => (Container: 0, From: r.From.Schema, To: r.To.Schema)).ToList(),
-            (_, name) => name.Value))
+            (_, name) => new SchemaAddress(name)))
         {
             yield return d;
         }
@@ -41,11 +41,11 @@ internal static class DirectiveValidator
         {
             if (index.FindSchema(rename.To.Schema) is null)
             {
-                yield return ProjectDiagnostics.RenameTargetNotDeclared("schema", rename.From.Value, rename.To.Schema);
+                yield return ProjectDiagnostics.RenameTargetNotDeclared("schema", rename.From, rename.To.Schema);
             }
             if (index.FindSchema(rename.From.Schema) is not null)
             {
-                yield return ProjectDiagnostics.RenameSourceStillDeclared("schema", rename.From.Value, rename.To.Schema);
+                yield return ProjectDiagnostics.RenameSourceStillDeclared("schema", rename.From, rename.To.Schema);
             }
         }
     }
@@ -63,7 +63,7 @@ internal static class DirectiveValidator
 
             foreach (var d in ValidateRenameShape(kindName,
                 renames.Select(r => (Container: r.From.Schema, From: r.From.Name, r.To)).ToList(),
-                (schema, name) => $"{schema}.{name}"))
+                (schema, name) => new ObjectAddress(schema, name)))
             {
                 yield return d;
             }
@@ -77,11 +77,11 @@ internal static class DirectiveValidator
                 }
                 else if (!index.Has(kind, new ObjectAddress(declaredSchema, rename.To)))
                 {
-                    yield return ProjectDiagnostics.RenameTargetNotDeclared(kindName, rename.From.ToString(), rename.To);
+                    yield return ProjectDiagnostics.RenameTargetNotDeclared(kindName, rename.From, rename.To);
                 }
                 if (index.Has(kind, new ObjectAddress(declaredSchema, rename.From.Name)))
                 {
-                    yield return ProjectDiagnostics.RenameSourceStillDeclared(kindName, rename.From.ToString(), rename.To);
+                    yield return ProjectDiagnostics.RenameSourceStillDeclared(kindName, rename.From, rename.To);
                 }
             }
         }
@@ -92,7 +92,7 @@ internal static class DirectiveValidator
     {
         foreach (var d in ValidateRenameShape("column",
             directives.MemberRenames.Select(r => (Container: (r.From.Schema, r.From.Object), From: r.From.Member, r.To)).ToList(),
-            (table, name) => $"{table.Item1}.{table.Item2}.{name}"))
+            (table, name) => new MemberAddress(table.Schema, table.Object, name)))
         {
             yield return d;
         }
@@ -115,11 +115,11 @@ internal static class DirectiveValidator
             }
             if (table.Columns.All(c => c.Name != rename.To))
             {
-                yield return ProjectDiagnostics.RenameTargetNotDeclared("column", rename.From.ToString(), rename.To);
+                yield return ProjectDiagnostics.RenameTargetNotDeclared("column", rename.From, rename.To);
             }
             if (table.Columns.Any(c => c.Name == rename.From.Member))
             {
-                yield return ProjectDiagnostics.RenameSourceStillDeclared("column", rename.From.ToString(), rename.To);
+                yield return ProjectDiagnostics.RenameSourceStillDeclared("column", rename.From, rename.To);
             }
         }
     }
@@ -132,7 +132,7 @@ internal static class DirectiveValidator
     private static IEnumerable<Diagnostic> ValidateRenameShape<TContainer>(
         string kind,
         IReadOnlyList<(TContainer Container, SqlIdentifier From, SqlIdentifier To)> renames,
-        Func<TContainer, SqlIdentifier, string> display
+        Func<TContainer, SqlIdentifier, Address> display
     ) where TContainer : notnull
     {
         for (var i = 0; i < renames.Count; i++)

@@ -29,8 +29,6 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions> options) : IPlanPolicy
 {
-    private const string PolicyName = "destructive-actions";
-
     public IEnumerable<Diagnostic> Validate(MigrationPlan plan)
     {
         var diff = plan.Diff;
@@ -49,9 +47,9 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
 
         return options.Value.Policy switch
         {
-            PolicyEnforcement.Allow => [Diagnostic.Info(PolicyName, $"Allowing destructive actions in migration plan: {typeString}.")],
-            PolicyEnforcement.Warn => [Diagnostic.Warning(PolicyName, $"Migration plan contains destructive actions: {typeString}.")],
-            _ => [Diagnostic.Error(PolicyName, $"Destructive actions blocked by policy: {typeString}.")]
+            PolicyEnforcement.Allow => [DestructiveActionDiagnostics.Allowed(typeString)],
+            PolicyEnforcement.Warn => [DestructiveActionDiagnostics.Warned(typeString)],
+            _ => [DestructiveActionDiagnostics.Blocked(typeString)]
         };
     }
 

@@ -14,8 +14,6 @@ namespace NSchema.Project.Policies;
 /// </summary>
 internal sealed class SchemaLintPolicy : IProjectPolicy
 {
-    private const string PolicyName = "schema-lint";
-
     /// <inheritdoc />
     public IEnumerable<Diagnostic> Validate(ProjectDefinition project)
     {
@@ -33,38 +31,38 @@ internal sealed class SchemaLintPolicy : IProjectPolicy
 
     private static void ValidateTable(Schema schema, Table table, List<Diagnostic> diagnostics)
     {
-        var qualified = $"{schema.Name}.{table.Name}";
+        var address = new ObjectAddress(schema.Name, table.Name, table.Kind);
 
         if (table.PrimaryKey is not { } primaryKey)
         {
-            diagnostics.Add(Warning($"Table '{qualified}' has no primary key."));
+            diagnostics.Add(SchemaLintDiagnostics.MissingPrimaryKey(address));
         }
         else
         {
             var nullableColumns = table.Columns.Where(c => c.IsNullable).Select(c => c.Name).ToHashSet();
             foreach (var column in primaryKey.ColumnNames.Where(nullableColumns.Contains))
             {
-                diagnostics.Add(Warning($"Column '{column}' on '{qualified}' is part of the primary key but is declared nullable; it will be forced NOT NULL."));
+                diagnostics.Add(SchemaLintDiagnostics.NullablePrimaryKeyColumn(address.Member(column)));
             }
 
-            ReportDuplicates(diagnostics, qualified, $"primary key '{primaryKey.Name}'", primaryKey.ColumnNames);
+            ReportDuplicates(diagnostics, "primary key", address.Member(primaryKey.Name), primaryKey.ColumnNames);
         }
 
         foreach (var index in table.Indexes)
         {
             // Duplicate-column linting applies to plain-column keys; expression keys are opaque.
-            ReportDuplicates(diagnostics, qualified, $"index '{index.Name}'",
+            ReportDuplicates(diagnostics, "index", address.Member(index.Name),
                 index.Columns.Select(c => c.Column).OfType<SqlIdentifier>().ToList());
         }
 
         foreach (var foreignKey in table.ForeignKeys)
         {
-            ReportDuplicates(diagnostics, qualified, $"foreign key '{foreignKey.Name}'", foreignKey.ColumnNames);
+            ReportDuplicates(diagnostics, "foreign key", address.Member(foreignKey.Name), foreignKey.ColumnNames);
         }
     }
 
     private static void ReportDuplicates(
-        List<Diagnostic> diagnostics, string qualified, string owner, IEnumerable<SqlIdentifier> columnNames)
+        List<Diagnostic> diagnostics, string kind, MemberAddress key, IEnumerable<SqlIdentifier> columnNames)
     {
         var duplicates = columnNames
             .GroupBy(n => n)
@@ -73,9 +71,7 @@ internal sealed class SchemaLintPolicy : IProjectPolicy
 
         foreach (var duplicate in duplicates)
         {
-            diagnostics.Add(Warning($"The {owner} on '{qualified}' lists column '{duplicate}' more than once."));
+            diagnostics.Add(SchemaLintDiagnostics.RepeatedColumn(kind, key, duplicate));
         }
     }
-
-    private static Diagnostic Warning(string message) => Diagnostic.Warning(PolicyName, message);
 }

@@ -27,7 +27,6 @@ public sealed class EnumValueRemovalPolicyTests
         diagnostic.Source.ShouldBe("enum-value-removal");
         diagnostic.Message.ShouldContain("app.status");
         diagnostic.Message.ShouldContain("[a, b] -> [a]");
-        diagnostic.Message.ShouldContain("Recreate the type manually");
     }
 
     [Fact]

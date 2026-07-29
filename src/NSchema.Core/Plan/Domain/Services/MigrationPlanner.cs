@@ -118,7 +118,7 @@ internal sealed class MigrationPlanner(
             if (!observed.Schemas.Contains(schema)
                 && observed.Schemas.FirstOrDefault(o => EqualsIgnoringCase(o.Schema, schema.Schema)) is { } match)
             {
-                yield return PlanDiagnostics.CaseOnlySchemaMismatch(schema.Schema, match.Schema);
+                yield return PlanDiagnostics.CaseOnlyMismatch(schema, match);
             }
         }
 
@@ -138,7 +138,7 @@ internal sealed class MigrationPlanner(
             if (!observed.Extensions.Contains(extension)
                 && observed.Extensions.FirstOrDefault(o => EqualsIgnoringCase(o.Name, extension.Name)) is { } match)
             {
-                yield return PlanDiagnostics.CaseOnlyExtensionMismatch(extension.Name, match.Name);
+                yield return PlanDiagnostics.CaseOnlyMismatch(extension, match);
             }
         }
     }

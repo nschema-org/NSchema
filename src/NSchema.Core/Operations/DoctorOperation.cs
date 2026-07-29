@@ -41,10 +41,9 @@ internal sealed class DoctorOperation(
 
     private async Task<Diagnostic> CheckDatabase(CancellationToken cancellationToken)
     {
-        const string source = "database";
         if (online is null)
         {
-            return Diagnostic.Info(source, "Database: not configured (offline mode).");
+            return DoctorDiagnostics.DatabaseNotConfigured;
         }
 
         progress.Report(OperationProgress.Step("Checking database connectivity..."));
@@ -55,23 +54,22 @@ internal sealed class DoctorOperation(
             var schema = await online.GetDatabase(PlanningScope.All, cancellationToken);
             if (schema.IsFailure)
             {
-                return Diagnostic.Error(source, $"Database: unreachable — {Describe(schema):text}");
+                return DoctorDiagnostics.DatabaseUnreachable(Describe(schema));
             }
 
-            return Diagnostic.Info(source, $"Database: connected ({StatusHelpers.Count(schema.Require().Schemas.Count, "schema")} visible).");
+            return DoctorDiagnostics.DatabaseConnected(schema.Require().Schemas.Count);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"Database: unreachable — {ExceptionMessage.Describe(ex):text}");
+            return DoctorDiagnostics.DatabaseUnreachable(ExceptionMessage.Describe(ex));
         }
     }
 
     private async Task<Diagnostic> CheckStateStore(CancellationToken cancellationToken)
     {
-        const string source = "state-store";
         if (store is null)
         {
-            return Diagnostic.Info(source, "State store: not configured (offline planning unavailable).");
+            return DoctorDiagnostics.StateStoreNotConfigured;
         }
 
         progress.Report(OperationProgress.Step("Checking state store..."));
@@ -81,20 +79,20 @@ internal sealed class DoctorOperation(
             var read = await store.Read(cancellationToken);
             if (read.IsFailure)
             {
-                return Diagnostic.Error(source, $"State store: unreachable — {Describe(read):text}");
+                return DoctorDiagnostics.StateStoreUnreachable(Describe(read));
             }
 
             snapshot = read.Require().Payload;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"State store: unreachable — {ExceptionMessage.Describe(ex):text}");
+            return DoctorDiagnostics.StateStoreUnreachable(ExceptionMessage.Describe(ex));
         }
 
         // A missing or empty payload is a bootstrap store — reachable, with nothing recorded yet — not a corruption.
         if (snapshot is null or { IsEmpty: true })
         {
-            return Diagnostic.Info(source, "State store: reachable (no state recorded yet).");
+            return DoctorDiagnostics.StateStoreEmpty;
         }
 
         // Reachable is necessary but not sufficient — a payload we can't deserialize would break every plan, so prove
@@ -102,35 +100,34 @@ internal sealed class DoctorOperation(
         try
         {
             serializer.Deserialize(snapshot.Value);
-            return Diagnostic.Info(source, "State store: reachable, recorded state is valid.");
+            return DoctorDiagnostics.StateStoreValid;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"State store: reachable but the recorded state is unreadable — {ex.Message:text}");
+            return DoctorDiagnostics.StateStoreUnreadable(ex.Message);
         }
     }
 
     private async Task<Diagnostic> CheckStateLock(IStateLock @lock, CancellationToken cancellationToken)
     {
-        const string source = "state-lock";
         progress.Report(OperationProgress.Step("Checking state lock..."));
         try
         {
             var peeked = await @lock.Peek(cancellationToken);
             if (peeked.IsFailure)
             {
-                return Diagnostic.Error(source, $"State lock: could not be checked — {Describe(peeked):text}");
+                return DoctorDiagnostics.StateLockUncheckable(Describe(peeked));
             }
 
             return peeked.Require().Held is not { } info
-                ? Diagnostic.Info(source, "State lock: free.")
+                ? DoctorDiagnostics.StateLockFree
                 // A held lock is a state, not a misconfiguration — it may be a legitimately-running operation — so
                 // report it for visibility (warning) without counting it as a failure.
-                : Diagnostic.Warning(source, $"State lock: held by {info.Who} (operation '{info.Operation}', since {info.CreatedUtc:u}).");
+                : DoctorDiagnostics.StateLockHeld(info);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Diagnostic.Error(source, $"State lock: could not be checked — {ExceptionMessage.Describe(ex):text}");
+            return DoctorDiagnostics.StateLockUncheckable(ExceptionMessage.Describe(ex));
         }
     }
 

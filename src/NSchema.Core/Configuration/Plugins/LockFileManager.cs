@@ -10,8 +10,6 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 public static class LockFileManager
 {
-    private const string Source = "lockfile";
-
     private const string Header = "-- nschema.lock — managed by NSchema. Do not edit by hand; regenerate it instead.";
 
     /// <summary>
@@ -75,7 +73,7 @@ public static class LockFileManager
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return Result.From(Diagnostic.Error(Source, $"Could not write the lockfile '{path}': {exception.Message:text}"));
+            return Result.From(LockFileDiagnostics.Unwritable(path, exception.Message));
         }
     }
 }

@@ -152,7 +152,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
         conflicts.AddRange(Conflicts(Columns, members.Columns, "column"));
         if (PrimaryKey is not null && members.PrimaryKey is not null)
         {
-            conflicts.Add(Diagnostic.Error("table", $"Table '{Name}' already declares a primary key."));
+            conflicts.Add(TableDiagnostics.DuplicatePrimaryKey(Name));
         }
         conflicts.AddRange(Conflicts(ForeignKeys, members.ForeignKeys, "foreign key"));
         conflicts.AddRange(Conflicts(UniqueConstraints, members.UniqueConstraints, "unique constraint"));
@@ -168,7 +168,7 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
         IEnumerable<T> incoming,
         string kind) where T : DatabaseMember =>
         incoming.Where(candidate => existing.Any(member => member.Name == candidate.Name))
-            .Select(candidate => Diagnostic.Error("table", $"Table '{Name}' already declares {kind} '{candidate.Name}'."));
+            .Select(candidate => TableDiagnostics.DuplicateMember(Name, kind, candidate.Name));
 
     private static void AddClones<T>(IEnumerable<T> source, ICollection<T> destination) where T : DatabaseMember
     {

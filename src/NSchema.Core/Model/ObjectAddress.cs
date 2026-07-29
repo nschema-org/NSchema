@@ -12,7 +12,7 @@ public sealed record ObjectAddress(SqlIdentifier Schema, SqlIdentifier Name, Obj
     public override string Value => $"{Schema}.{Name}";
 
     /// <inheritdoc />
-    public override SqlIdentifier? SchemaName => Schema;
+    public override SqlIdentifier SchemaName => Schema;
 
     /// <inheritdoc />
     public override bool Covers(Address other) => other switch
@@ -22,4 +22,10 @@ public sealed record ObjectAddress(SqlIdentifier Schema, SqlIdentifier Name, Obj
         MemberAddress m => m.Schema == Schema && m.Object == Name,
         _ => false,
     };
+
+    /// <summary>
+    /// The address of one of the object's members.
+    /// </summary>
+    /// <param name="member">The member's name within the object.</param>
+    public MemberAddress Member(SqlIdentifier member) => new(Schema, Name, member);
 }

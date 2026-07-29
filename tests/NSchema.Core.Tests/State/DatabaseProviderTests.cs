@@ -92,7 +92,7 @@ public sealed class DatabaseProviderTests
 
         // Assert
         result.IsFailure.ShouldBeTrue();
-        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("live database provider");
+        result.Errors.ShouldHaveSingleItem().Message.ShouldContain("No online database");
     }
 
     // --- DI integration ---

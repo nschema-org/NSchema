@@ -118,7 +118,7 @@ public class Result<T> : Result
     public static implicit operator Result<T>(T value) => Success(value);
 
     /// <summary>
-    /// Lifts a single diagnostic into a result, so a method can <c>return Diagnostic.Error(...);</c> directly
+    /// Lifts a single diagnostic into a result, so a method can return one directly.
     /// (a failure when the diagnostic is an error).
     /// </summary>
     /// <param name="diagnostic">The diagnostic to carry.</param>

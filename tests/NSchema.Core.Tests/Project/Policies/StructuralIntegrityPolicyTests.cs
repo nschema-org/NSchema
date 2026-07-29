@@ -203,7 +203,7 @@ public sealed class StructuralIntegrityPolicyTests
         var diagnostics = _sut.Validate(Db(table)).ToList();
 
         // Assert
-        diagnostics.ShouldContain(d => d.Message.Contains("counts must match"));
+        diagnostics.ShouldContain(d => d.Message.Contains("2 local column(s) but 1 referenced column(s)"));
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public sealed class StructuralIntegrityPolicyTests
         var diagnostics = _sut.Validate(schema).ToList();
 
         // Assert
-        diagnostics.ShouldContain(d => d.Message.Contains("share a single name space"));
+        diagnostics.ShouldContain(d => d.Message.Contains("declares routine 'r' more than once"));
     }
 
     [Fact]
@@ -374,7 +374,7 @@ public sealed class StructuralIntegrityPolicyTests
         var diagnostics = _sut.Validate(schema).ToList();
 
         // Assert
-        diagnostics.ShouldContain(d => d.Message.Contains("reuses the name 'foo'") && d.Message.Contains("table") && d.Message.Contains("view"));
+        diagnostics.ShouldContain(d => d.Message.Contains("reuses the name 'foo'"));
     }
 
     [Fact]

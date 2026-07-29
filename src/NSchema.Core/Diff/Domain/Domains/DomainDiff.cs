@@ -20,6 +20,10 @@ public sealed record DomainDiff : ISchemaObjectDiff
     /// </summary>
     public required SqlIdentifier Schema { get; init; }
 
+    /// <inheritdoc />
+    [JsonIgnore]
+    public ObjectAddress Address => new(Schema, Name, ObjectKind.Domain);
+
     /// <summary>
     /// The domain name.
     /// </summary>

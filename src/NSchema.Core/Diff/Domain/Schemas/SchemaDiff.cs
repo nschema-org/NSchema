@@ -24,6 +24,12 @@ public sealed record SchemaDiff
     public required SqlIdentifier Name { get; init; }
 
     /// <summary>
+    /// The schema's address.
+    /// </summary>
+    [JsonIgnore]
+    public SchemaAddress Address => new(Name);
+
+    /// <summary>
     /// The change to the schema itself, or <see langword="null"/> when only its contents changed.
     /// </summary>
     public ChangeKind? Kind { get; init; }

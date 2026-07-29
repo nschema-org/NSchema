@@ -108,7 +108,7 @@ public sealed class DatabaseAlignerTests
         // Assert — the error blocks application; the tree comes back unaligned.
         result.IsFailure.ShouldBeTrue();
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
-            DiffDiagnostics.AmbiguousRenameSourceStillDeclared("table", "app.users", "people"));
+            DiffDiagnostics.AmbiguousRenameSourceStillDeclared("table", new ObjectAddress("app", "users"), "people"));
         result.Require().Database.Schemas.Single().Tables.ShouldHaveSingleItem().Name.ShouldBe("people");
     }
 
@@ -125,7 +125,7 @@ public sealed class DatabaseAlignerTests
         // Assert
         result.IsFailure.ShouldBeTrue();
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
-            DiffDiagnostics.AmbiguousRenameTargetTaken("table", "app.b", "a", "b"));
+            DiffDiagnostics.AmbiguousRenameTargetTaken("table", new ObjectAddress("app", "b"), "a", "b"));
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public sealed class DatabaseAlignerTests
         // Assert
         result.IsFailure.ShouldBeTrue();
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
-            DiffDiagnostics.AmbiguousRenameSourceStillDeclared("column", "app.t.email", "mail"));
+            DiffDiagnostics.AmbiguousRenameSourceStillDeclared("column", new MemberAddress("app", "t", "email"), "mail"));
     }
 
     [Fact]

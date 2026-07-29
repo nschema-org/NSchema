@@ -16,6 +16,11 @@ public interface ISchemaObjectDiff : INamedObjectDiff
     SqlIdentifier Schema { get; }
 
     /// <summary>
+    /// The object's address.
+    /// </summary>
+    ObjectAddress Address { get; }
+
+    /// <summary>
     /// The previous object name when the object is being renamed; otherwise <see langword="null"/>.
     /// </summary>
     SqlIdentifier? RenamedFrom { get; }

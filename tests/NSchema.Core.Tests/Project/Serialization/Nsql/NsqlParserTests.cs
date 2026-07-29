@@ -437,11 +437,11 @@ public sealed class NsqlParserTests
     [Fact]
     public void Parse_ProcedureNamedLikeAFunction_FailsTheRead()
         => new TestNsqlParser("CREATE SCHEMA app; CREATE FUNCTION app.r() RETURNS int AS $$ SELECT 1 $$; CREATE PROCEDURE app.r() AS $$ SELECT 1 $$;").Project().Errors.ShouldHaveSingleItem()
-            .Message.ShouldContain("share one name space");
+            .Message.ShouldContain("Routine 'app.r' is already declared");
 
     [Fact]
     public void Parse_FunctionNamedLikeAProcedure_FailsTheRead()
         => new TestNsqlParser("CREATE SCHEMA app; CREATE PROCEDURE app.r() AS $$ SELECT 1 $$; CREATE FUNCTION app.r() RETURNS int AS $$ SELECT 1 $$;").Project().Errors.ShouldHaveSingleItem()
-            .Message.ShouldContain("share one name space");
+            .Message.ShouldContain("Routine 'app.r' is already declared");
 
 }

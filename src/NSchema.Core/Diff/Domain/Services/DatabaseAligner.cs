@@ -31,19 +31,19 @@ internal static class DatabaseAligner
             {
                 if (current.Schemas.Any(s => s.Name == to))
                 {
-                    diagnostics.Add(DiffDiagnostics.AppliedRename("schema", from.Value, to));
+                    diagnostics.Add(DiffDiagnostics.AppliedRename("schema", new SchemaAddress(from), to));
                 }
                 continue;
             }
 
             if (desired.Schemas.Any(s => s.Name == from))
             {
-                diagnostics.Add(DiffDiagnostics.AmbiguousRenameSourceStillDeclared("schema", to.Value, from));
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameSourceStillDeclared("schema", new SchemaAddress(to), from));
                 continue;
             }
             if (current.Schemas.Any(s => s.Name == to))
             {
-                diagnostics.Add(DiffDiagnostics.AmbiguousRenameTargetTaken("schema", to.Value, from, to));
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameTargetTaken("schema", new SchemaAddress(to), from, to));
                 continue;
             }
 
@@ -64,13 +64,13 @@ internal static class DatabaseAligner
             {
                 if (schema?.Objects().Any(o => o.Kind == kind && o.Name == rename.To) == true)
                 {
-                    diagnostics.Add(DiffDiagnostics.AppliedRename(kind.Display(), rename.From.ToString(), rename.To));
+                    diagnostics.Add(DiffDiagnostics.AppliedRename(kind.Display(), rename.From, rename.To));
                 }
                 continue;
             }
 
             var declaredSchema = schemaRenames.GetValueOrDefault(rename.From.Schema, rename.From.Schema);
-            var address = new ObjectAddress(declaredSchema, rename.To).ToString();
+            var address = new ObjectAddress(declaredSchema, rename.To);
             if (desired.Schemas.FirstOrDefault(s => s.Name == declaredSchema)?.Objects()
                     .Any(o => o.Kind == kind && o.Name == rename.From.Name) == true)
             {
@@ -95,7 +95,7 @@ internal static class DatabaseAligner
             {
                 if (table?.Columns.Any(c => c.Name == rename.To) == true)
                 {
-                    diagnostics.Add(DiffDiagnostics.AppliedRename("column", rename.From.ToString(), rename.To));
+                    diagnostics.Add(DiffDiagnostics.AppliedRename("column", rename.From, rename.To));
                 }
                 continue;
             }
@@ -107,12 +107,12 @@ internal static class DatabaseAligner
                     ?.Tables.FirstOrDefault(t => t.Name == declaredTable)
                     ?.Columns.Any(c => c.Name == rename.From.Member) == true)
             {
-                diagnostics.Add(DiffDiagnostics.AmbiguousRenameSourceStillDeclared("column", address.ToString(), rename.From.Member));
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameSourceStillDeclared("column", address, rename.From.Member));
                 continue;
             }
             if (table.Columns.Any(c => c.Name == rename.To))
             {
-                diagnostics.Add(DiffDiagnostics.AmbiguousRenameTargetTaken("column", address.ToString(), rename.From.Member, rename.To));
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameTargetTaken("column", address, rename.From.Member, rename.To));
                 continue;
             }
 

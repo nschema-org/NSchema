@@ -376,8 +376,33 @@ public sealed class MigrationPlannerTests
         // Act
         var result = Sut.Plan(_current, _desired, PlanningScope.All);
 
-        // Assert
-        result.Errors.ShouldContain(PlanDiagnostics.UndeclaredSchemaMissing(["app"]));
+        // Assert — the evidence is the recorded state, which planning reads; it never contacts the database.
+        var error = result.Errors.ShouldHaveSingleItem();
+        error.ShouldBe(PlanDiagnostics.UndeclaredSchemaMissing(["app"]));
+
+        var message = error.Message;
+        message.ShouldContain("schema 'app'");
+    }
+
+    [Fact]
+    public void Plan_ObjectsInSeveralContainersTheDatabaseDoesNotHave_NamesEachOne()
+    {
+        // Arrange — two schemas with nowhere to put their tables, so the one message has to list both.
+        _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(
+            new DatabaseDiff([
+                SchemaDiff.Containing("app") with { Tables = [TableDiff.Added("app", new Table { Name = "users" })] },
+                SchemaDiff.Containing("audit") with { Tables = [TableDiff.Added("audit", new Table { Name = "events" })] },
+            ]), []));
+
+        // Act
+        var result = Sut.Plan(_current, _desired, PlanningScope.All);
+
+        // Assert — one message naming both, read plurally rather than "schemas 'app', 'audit' ... creates it".
+        var error = result.Errors.ShouldHaveSingleItem();
+        error.ShouldBe(PlanDiagnostics.UndeclaredSchemaMissing(["app", "audit"]));
+
+        var message = error.Message;
+        message.ShouldContain("schemas 'app', 'audit'");
     }
 
     [Fact]
@@ -406,7 +431,7 @@ public sealed class MigrationPlannerTests
         var result = Sut.Plan(new CurrentState(observed), new ProjectDefinition(declared), PlanningScope.All);
 
         // Assert
-        result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlySchemaMismatch("App", "app"));
+        result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(new SchemaAddress("App"), new SchemaAddress("app")));
     }
 
     [Fact]
