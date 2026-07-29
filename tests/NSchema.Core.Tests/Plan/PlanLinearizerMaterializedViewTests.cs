@@ -21,7 +21,7 @@ public sealed class PlanLinearizerMaterializedViewTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> Linearize(ViewDiff view) =>
-        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Views = [view] }]));
+        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Views = [view] }]), PlanDependencies.None, DialectCapabilities.Standard);
 
     [Fact]
     public void RecreatedMaterializedView_EmitsDropAndCreateBothMaterialized()

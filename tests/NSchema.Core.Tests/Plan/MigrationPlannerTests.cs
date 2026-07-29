@@ -1,6 +1,7 @@
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Domain.Tables;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
@@ -36,7 +37,7 @@ public sealed class MigrationPlannerTests
     public MigrationPlannerTests()
     {
         _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(_emptyDiff, []));
-        _linearizer.Linearize(Arg.Any<DatabaseDiff>()).Returns(_ => []);
+        _linearizer.Linearize(Arg.Any<DatabaseDiff>(), Arg.Any<PlanDependencies>(), Arg.Any<DialectCapabilities>()).Returns(_ => []);
     }
 
     /// <summary>A difference touching two schemas, so a scope has something to narrow away.</summary>
@@ -87,7 +88,7 @@ public sealed class MigrationPlannerTests
         Sut.Plan(_current, _desired, PlanningScope.To(new SchemaAddress("app")));
 
         // Assert
-        _linearizer.Received(1).Linearize(Arg.Is<DatabaseDiff>(d => d!.Schemas.Count == 1));
+        _linearizer.Received(1).Linearize(Arg.Is<DatabaseDiff>(d => d!.Schemas.Count == 1), Arg.Any<PlanDependencies>(), Arg.Any<DialectCapabilities>());
     }
 
     [Fact]
@@ -192,6 +193,24 @@ public sealed class MigrationPlannerTests
     }
 
     [Fact]
+    public void Plan_ManagedAfterApply_LeavesAnImplicitSchemaUnmanaged_ButManagesWhatIsInIt()
+    {
+        // Arrange — the project writes a table into `app` without ever declaring the schema itself.
+        SqlIdentifier app = "app";
+        var desired = new ProjectDefinition(new Database
+        {
+            Schemas = [new Schema { Name = app, IsImplicit = true, Tables = [new Table { Name = "users" }] }],
+        });
+
+        // Act
+        var plan = Sut.Plan(_current, desired, PlanningScope.All).Value!;
+
+        // Assert — a container NSchema was never asked to own is not something a teardown may drop.
+        plan.Managed.Schemas.ShouldBeEmpty();
+        plan.Managed.Objects.ShouldBe([new ObjectAddress(app, "users") with { Kind = ObjectKind.Table }]);
+    }
+
+    [Fact]
     public void Plan_ManagedAfterApply_RetainsOutOfScopeManagedIdentities()
     {
         // Arrange — billing is managed but out of scope, so this plan leaves its management untouched.
@@ -290,7 +309,7 @@ public sealed class MigrationPlannerTests
         // Arrange — the linearizer's ordered actions render one by one through the dialect; the stub renders
         // an ExecuteScript as its verbatim Statement, carrying the transaction placement.
         var script = new DeploymentScript("seed", "INSERT INTO app.c VALUES (1);", null, DeploymentPhase.Post) { RunOutsideTransaction = true };
-        _linearizer.Linearize(Arg.Any<DatabaseDiff>())
+        _linearizer.Linearize(Arg.Any<DatabaseDiff>(), Arg.Any<PlanDependencies>(), Arg.Any<DialectCapabilities>())
             .Returns(_ => [new CreateSchema("app"), new ExecuteScript(script)]);
 
         // Act
@@ -345,6 +364,35 @@ public sealed class MigrationPlannerTests
         result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(
             new ObjectAddress("app", "Users") with { Kind = ObjectKind.Table },
             new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }));
+    }
+
+    [Fact]
+    public void Plan_ObjectsInAContainerTheDatabaseDoesNotHave_BlocksThePlan()
+    {
+        // Arrange — nothing creates the schema, so the table it holds has nowhere to go.
+        _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(
+            new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [TableDiff.Added("app", new Table { Name = "users" })] }]), []));
+
+        // Act
+        var result = Sut.Plan(_current, _desired, PlanningScope.All);
+
+        // Assert
+        result.Errors.ShouldContain(PlanDiagnostics.UndeclaredSchemaMissing(["app"]));
+    }
+
+    [Fact]
+    public void Plan_ObjectsInAContainerTheDatabaseHas_IsFine()
+    {
+        // Arrange
+        var observed = new CurrentState(new Database { Schemas = [new Schema { Name = "app" }] });
+        _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(
+            new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [TableDiff.Added("app", new Table { Name = "users" })] }]), []));
+
+        // Act
+        var result = Sut.Plan(observed, _desired, PlanningScope.All);
+
+        // Assert
+        result.Errors.ShouldBeEmpty();
     }
 
     [Fact]

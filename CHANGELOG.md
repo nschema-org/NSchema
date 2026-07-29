@@ -82,6 +82,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 ### Added
 
+- **`SqlDialect.CanAlterForeignKeys`.** A dialect states whether a foreign key can be added to, or dropped from, a table that already exists. One that cannot (SQLite) keeps every key on the `CREATE TABLE` that declares it, and the plan never separates one from its table.
 - **The comparison seam is the `SqlEquivalence` class.** A provider can register (`UseSqlEquivalence<T>()`) one equality comparer per comparison context, deciding when two spellings mean the same thing. The neutral base compares types structurally and defaults on cosmetics-normalized text.
 - **Default expressions are `SqlDefaultExpression` now.** `Column.DefaultExpression` and `DomainType.Default` graduate from `SqlText` to their own value object, so equivalence rules register against the specific context.
 - **Change-script targets are value objects.** `ChangeScript` now takes a `ChangeTarget` instead of separate trigger and path values.
@@ -117,6 +118,12 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - `PolicyDiagnostics`, `PluginConfigureResult`, and the `DestructiveActionPolicy` enum — all made redundant by first-class severity on `Result` and the shared `PolicyEnforcement`.
 - `DdlSyntaxException`, `PlanFileDeserializationException`, and `StateDeserializationException` are now internal; the read seams surface these failures as diagnostics.
 - `MigrationAction.IsDestructive` has been removed. Destructiveness is judged from the diff by `DestructiveActionPolicy`, not per action.
+- `ViewDiff.DependsOn` has been removed.
+
+### Fixed
+
+- **Tables are created and dropped in foreign-key order.** A table is now always created after the tables it references and dropped before them, across schemas, so a teardown no longer fails on a table another one still points at. Where tables point at each other no order can satisfy every key, so the ones it cannot are moved out of the way: on a drop the constraint goes first, and on a create it is added once both tables exist rather than riding the `CREATE TABLE`. A dialect that cannot alter foreign keys says so with `SqlDialect.CanAlterForeignKeys`, and keeps every key on the table that declares it.
+- **Schemas are no longer created implicitly.** Creating an object without also creating its schema will no-longer auto-adopt the parent schema.
 
 ## [4.6.1] - 2026-07-10
 

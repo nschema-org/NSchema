@@ -101,8 +101,13 @@ public sealed record TableDiff : ISchemaObjectDiff
     /// <summary>
     /// A table being created, named by its own definition.
     /// </summary>
-    public static TableDiff Added(SqlIdentifier schema, Table definition) =>
-        new() { Schema = schema, Name = definition.Name, Kind = ChangeKind.Add, Definition = definition };
+    public static TableDiff Added(SqlIdentifier schema, Table definition) => new()
+    {
+        Schema = schema,
+        Name = definition.Name,
+        Kind = ChangeKind.Add,
+        Definition = definition
+    };
 
     /// <summary>
     /// A table being dropped.

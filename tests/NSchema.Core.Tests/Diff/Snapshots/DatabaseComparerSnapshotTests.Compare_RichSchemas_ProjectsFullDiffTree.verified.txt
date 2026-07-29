@@ -132,9 +132,6 @@
             IsMaterialized: false,
             Name: active_users
           },
-          DependsOn: [
-            app.users
-          ],
           IsMaterialized: false,
           RequiresRecreate: false
         },
@@ -142,9 +139,6 @@
           Schema: app,
           Name: old_summary,
           Kind: Remove,
-          DependsOn: [
-            app.users
-          ],
           IsMaterialized: false,
           RequiresRecreate: false
         },
@@ -153,9 +147,6 @@
           Name: report,
           Kind: Modify,
           RenamedFrom: legacy_report,
-          DependsOn: [
-            app.users
-          ],
           IsMaterialized: false,
           RequiresRecreate: false
         },
@@ -171,9 +162,6 @@
             IsMaterialized: false,
             Name: user_emails
           },
-          DependsOn: [
-            app.active_users
-          ],
           IsMaterialized: false,
           RequiresRecreate: false
         }
@@ -433,9 +421,6 @@
           Schema: scratch,
           Name: temp_summary,
           Kind: Remove,
-          DependsOn: [
-            scratch.temp_data
-          ],
           IsMaterialized: false,
           RequiresRecreate: false
         }

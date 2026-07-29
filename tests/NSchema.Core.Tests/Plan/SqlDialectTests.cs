@@ -26,6 +26,7 @@ using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Scripts;
 using NSchema.Plan.Domain.Sequences;
+using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Triggers;
 using NSchema.Plan.Domain.Views;
@@ -303,6 +304,24 @@ public sealed class SqlDialectTests
     private sealed class SkippingDialect : TestDialect
     {
         protected override Result<IReadOnlyList<SqlStatement>> SetTableComment(SetTableComment action) => Skipped(action);
+    }
+
+    [Fact]
+    public void ADialect_CanAlterForeignKeys_UnlessItSaysOtherwise()
+    {
+        // Assert
+        _sut.CanAlterForeignKeys.ShouldBeTrue();
+        new InlineConstraintDialect().CanAlterForeignKeys.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ADialectsCapabilities_DecideWhatThePlanMayDoWithAForeignKey()
+        => DialectCapabilities.Of(new InlineConstraintDialect()).CanAlterForeignKeys.ShouldBeFalse();
+
+    /// <summary>A dialect with no constraint surgery, the way SQLite has none.</summary>
+    private sealed class InlineConstraintDialect : TestDialect
+    {
+        public override bool CanAlterForeignKeys => false;
     }
 
     [Fact]

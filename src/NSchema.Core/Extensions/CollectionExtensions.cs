@@ -28,6 +28,7 @@ internal static class CollectionExtensions
         /// <param name="key">Projects an item's identity.</param>
         /// <param name="dependencies">Projects the identities an item depends on.</param>
         /// <param name="describe">Renders an item's identity for the cycle error message.</param>
+        /// <param name="allowCycles">Whether a cycle is legal, and so is broken at the edge that closes it rather than reported.</param>
         /// <exception cref="InvalidOperationException">A dependency cycle exists among the items.</exception>
         /// <remarks>
         /// Only dependencies that resolve to another item in the same set produce an edge; a dependency on
@@ -37,7 +38,8 @@ internal static class CollectionExtensions
         public IReadOnlyList<T> OrderedByDependencies<TKey>(
             Func<T, TKey> key,
             Func<T, IEnumerable<TKey>> dependencies,
-            Func<T, string> describe
+            Func<T, string> describe,
+            bool allowCycles = false
         ) where TKey : notnull
         {
             if (source.Count <= 1)
@@ -68,7 +70,7 @@ internal static class CollectionExtensions
                 var k = key(item);
                 if (state.TryGetValue(k, out var mark))
                 {
-                    if (mark == SortMark.InProgress)
+                    if (mark == SortMark.InProgress && !allowCycles)
                     {
                         throw new InvalidOperationException(
                             $"Dependency cycle detected involving {describe(item)}. Cyclic definitions cannot be ordered.");

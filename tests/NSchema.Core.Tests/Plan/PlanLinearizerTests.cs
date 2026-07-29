@@ -41,8 +41,10 @@ namespace NSchema.Tests.Plan;
 public sealed class PlanLinearizerTests
 {
     private readonly PlanLinearizer _linearizer = new();
+    private readonly MigrationSides _sides = new();
 
-    private IReadOnlyList<MigrationAction> Linearize(params SchemaDiff[] schemas) => _linearizer.Linearize(new DatabaseDiff(schemas));
+    private IReadOnlyList<MigrationAction> Linearize(params SchemaDiff[] schemas) =>
+        _linearizer.Linearize(new DatabaseDiff(schemas), _sides.Dependencies, DialectCapabilities.Standard);
 
     // -- diff node builders ----------------------------------------------------
 
@@ -150,18 +152,24 @@ public sealed class PlanLinearizerTests
             Generated = generated,
         };
 
-    private static ViewDiff AddView(string name, string schema = "app", params (string Schema, string Name)[] dependsOn)
+    private ViewDiff AddView(string name, string schema = "app", params (string Schema, string Name)[] dependsOn)
+        => ViewDiff.Added(schema, _sides.Creating(schema, ViewReading(name, dependsOn)));
+
+    private ViewDiff RemoveView(string name, string schema = "app", params (string Schema, string Name)[] dependsOn)
     {
-        var deps = dependsOn.Select(d => new ObjectAddress(d.Schema, d.Name)).ToList();
-        var view = new View { Name = name, Body = $"SELECT * FROM source_of_{name}", DependsOn = deps };
-        return ViewDiff.Added(schema, view) with { DependsOn = deps };
+        _sides.Dropping(schema, ViewReading(name, dependsOn));
+        return ViewDiff.Removed(schema, name);
     }
 
-    private static ViewDiff RemoveView(string name, string schema = "app", params (string Schema, string Name)[] dependsOn)
-        => ViewDiff.Removed(schema, name) with { DependsOn = [.. dependsOn.Select(d => new ObjectAddress(d.Schema, d.Name))] };
+    private static View ViewReading(string name, (string Schema, string Name)[] dependsOn) => new()
+    {
+        Name = name,
+        Body = $"SELECT * FROM source_of_{name}",
+        DependsOn = [.. dependsOn.Select(d => new ObjectAddress(d.Schema, d.Name))],
+    };
 
-    private static TableDiff AddTable(string name, string schema = "app")
-        => TableDiff.Added(schema, new Table { Name = name });
+    private TableDiff AddTable(string name, string schema = "app")
+        => TableDiff.Added(schema, _sides.Creating(schema, new Table { Name = name }));
 
     private static int IndexOfCreateView(IReadOnlyList<MigrationAction> plan, string name)
         => plan.ToList().FindIndex(a => a is CreateView v && v.View.Name.Value.Equals(name));

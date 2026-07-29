@@ -33,6 +33,16 @@ public abstract partial class SqlDialect
     protected virtual string Name => GetType().Name;
 
     /// <summary>
+    /// Whether a foreign key can be added to, or dropped from, a table that already exists.
+    /// </summary>
+    /// <remarks>
+    /// A dialect that says no keeps every foreign key on the <see cref="CreateTable"/> that declares it, and the
+    /// plan never separates one from its table — so the database must accept a key naming a table created later
+    /// in the run, and must not need one cut to drop the tables it joins. SQLite is the case this exists for.
+    /// </remarks>
+    public virtual bool CanAlterForeignKeys => true;
+
+    /// <summary>
     /// Renders <paramref name="action"/> as the SQL statement(s) that perform it.
     /// </summary>
     /// <param name="action">The migration action to render.</param>

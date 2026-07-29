@@ -45,7 +45,23 @@ public sealed class NsqlParserTests
         // Assert
         schema.Name.ShouldBe("app");
         schema.Comment.ShouldBeNull();
+        schema.IsImplicit.ShouldBeFalse();
     }
+
+    [Fact]
+    public void Parse_ObjectInAnUndeclaredSchema_ProducesAnImplicitSchema()
+    {
+        // Act
+        var schema = ParseSingleSchema("CREATE TABLE app.users (id int);");
+
+        // Assert
+        schema.Name.ShouldBe("app");
+        schema.IsImplicit.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Parse_ObjectInADeclaredSchema_ProducesADeclaredSchema()
+        => ParseSingleSchema("CREATE TABLE app.users (id int); CREATE SCHEMA app;").IsImplicit.ShouldBeFalse();
 
     [Fact]
     public void Parse_CreatePartialSchema_NoLongerParses()

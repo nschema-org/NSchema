@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Extensions;
@@ -7,6 +8,7 @@ using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
 using NSchema.Model;
 using NSchema.Model.Scripts;
+using NSchema.Model.Tables;
 using NSchema.Plan.Domain.Columns;
 using NSchema.Plan.Domain.CompositeTypes;
 using NSchema.Plan.Domain.Constraints;
@@ -29,7 +31,7 @@ namespace NSchema.Plan.Domain.Services;
 /// </summary>
 internal sealed class PlanLinearizer : IPlanLinearizer
 {
-    public IReadOnlyList<MigrationAction> Linearize(DatabaseDiff diff)
+    public IReadOnlyList<MigrationAction> Linearize(DatabaseDiff diff, PlanDependencies dependencies, DialectCapabilities capabilities)
     {
         var actions = new List<MigrationAction>();
         EmitExtensions(diff, actions);
@@ -38,9 +40,11 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             EmitSchema(schema, actions);
         }
 
-        // Views are emitted in one cross-schema pass: their create/drop order is governed by a dependency sort
-        // (a view after what it reads, dropped before), which the per-schema walk above cannot express.
-        EmitViews(diff, actions);
+        // Tables and views are each emitted in one cross-schema pass: their create/drop order is governed by a
+        // dependency sort (created after what they need, dropped before it), which the per-schema walk above
+        // cannot express — a foreign key or a view body may reach into another schema.
+        EmitTables(diff, dependencies, capabilities, actions);
+        EmitViews(diff, dependencies, actions);
 
         actions = [.. MigrationActionOrdering.Order(actions)];
 
@@ -52,11 +56,126 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         diff.DeploymentScripts.Where(s => s.Phase == phase).Select(s => new ExecuteScript(s));
 
     /// <summary>
+    /// Emits the table actions across every schema, in the order their foreign keys require: a table is created
+    /// after the tables it references and dropped before them. Tables may legally point at each other, and no
+    /// order satisfies a cycle — so any foreign key the order leaves unsatisfied is taken out of the way first,
+    /// unless the dialect keeps its keys on the tables that declare them.
+    /// </summary>
+    private static void EmitTables(
+        DatabaseDiff diff,
+        PlanDependencies dependencies,
+        DialectCapabilities capabilities,
+        List<MigrationAction> actions)
+    {
+        var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+
+        var created = InCreationOrder([.. tables.Where(table => table.Kind != ChangeKind.Remove)], dependencies);
+        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
+        foreach (var table in created)
+        {
+            EmitTable(table, actions, unfolded);
+        }
+
+        var dropped = InRemovalOrder([.. tables.Where(table => table.Kind == ChangeKind.Remove)], dependencies);
+        if (capabilities.CanAlterForeignKeys)
+        {
+            foreach (var foreignKey in UnsatisfiedOnDrop(dropped, dependencies))
+            {
+                actions.Add(new DropForeignKey(foreignKey));
+            }
+        }
+        foreach (var table in dropped)
+        {
+            EmitTable(table, actions, FrozenSet<MemberAddress>.Empty);
+        }
+    }
+
+    /// <summary>
+    /// The foreign keys a created table cannot carry inline, because the table they point at is created later in
+    /// the same plan. They are added afterwards instead, once every table exists.
+    /// </summary>
+    private static IReadOnlySet<MemberAddress> UnsatisfiedOnCreate(IReadOnlyList<TableDiff> created)
+    {
+        var positions = Positions(created, table => new ObjectAddress(table.Schema, table.Name));
+
+        return (from table in created
+                let address = new ObjectAddress(table.Schema, table.Name)
+                from foreignKey in InlineForeignKeys(table)
+                let references = new ObjectAddress(foreignKey.References.Schema, foreignKey.References.Name)
+                where positions.TryGetValue(references, out var referenced) && referenced > positions[address]
+                select new MemberAddress(table.Schema, table.Name, foreignKey.Name)).ToHashSet();
+    }
+
+    /// <summary>The foreign keys a change carries on the table it creates; none when it creates nothing.</summary>
+    private static IEnumerable<ForeignKey> InlineForeignKeys(TableDiff table) => table.IsAdd() ? table.Definition.ForeignKeys : [];
+
+    /// <summary>
+    /// The foreign keys the drop order leaves unsatisfied, held by a table dropped after the one it points at.
+    /// Dropping the constraint first is free: both tables are on their way out.
+    /// </summary>
+    private static IReadOnlyList<MemberAddress> UnsatisfiedOnDrop(IReadOnlyList<TableDiff> dropped, PlanDependencies dependencies)
+    {
+        var positions = Positions(dropped, table => new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name));
+
+        return [.. from table in dropped
+                   let address = new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name)
+                   from foreignKey in dependencies.ForeignKeysInto(address)
+                   where positions.TryGetValue(foreignKey.Owner, out var holder) && holder > positions[address]
+                   select foreignKey];
+    }
+
+    private static Dictionary<ObjectAddress, int> Positions(IReadOnlyList<TableDiff> tables, Func<TableDiff, ObjectAddress> address)
+    {
+        var positions = new Dictionary<ObjectAddress, int>();
+        for (var i = 0; i < tables.Count; i++)
+        {
+            positions[address(tables[i])] = i;
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// The objects in the order they can be created: each after the objects it requires.
+    /// </summary>
+    private static IReadOnlyList<T> InCreationOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
+        where T : ISchemaObjectDiff =>
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.Name), dependencies.Requires);
+
+    /// <summary>
+    /// The objects in the order they can be dropped: each before the objects it is required by. Addressed under
+    /// the name they currently carry, which is the one the current side knows them by.
+    /// </summary>
+    private static IReadOnlyList<T> InRemovalOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
+        where T : ISchemaObjectDiff =>
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.RenamedFrom ?? o.Name), dependencies.RequiredBy);
+
+    /// <summary>
+    /// The instance-level ordering layered on top of the fixed action-type order: where two objects of the same
+    /// kind change together and one requires the other, the type order cannot separate them — this can.
+    /// </summary>
+    /// <remarks>
+    /// Only an edge between two objects being changed together orders anything; everything else the graph knows
+    /// about is left where it is. Cycles are broken rather than reported: mutual foreign keys are legal, and a
+    /// view cycle can only come from a dependency NSchema inferred, which is too weak a thing to fail a plan on.
+    /// </remarks>
+    private static IReadOnlyList<T> Ordered<T>(
+        IReadOnlyList<T> objects,
+        Func<T, ObjectAddress> address,
+        Func<ObjectAddress, IReadOnlyCollection<ObjectAddress>> edges
+    ) where T : ISchemaObjectDiff =>
+        objects.OrderedByDependencies(
+            address,
+            o => edges(address(o)),
+            o => $"{o.Schema}.{o.Name}",
+            allowCycles: true);
+
+    /// <summary>
     /// Emits the view actions across every schema. <see cref="CreateView"/>s are appended in dependency order and
     /// <see cref="DropView"/>s in the reverse, so that once the stable type sort above gathers each kind into its
     /// band, a view is created after the views it reads and dropped before them.
     /// </summary>
-    private static void EmitViews(DatabaseDiff diff, List<MigrationAction> actions)
+    private static void EmitViews(DatabaseDiff diff, PlanDependencies dependencies, List<MigrationAction> actions)
     {
         var creates = new List<ViewDiff>();
         var drops = new List<ViewDiff>();
@@ -104,7 +223,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             }
         }
 
-        foreach (var view in OrderByDependency(creates))
+        foreach (var view in InCreationOrder(creates, dependencies))
         {
             if (view.Definition is { } definition)
             {
@@ -112,27 +231,14 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             }
         }
 
-        // Dropped views go out dependents-first: the reverse of the create order. A renamed view recreating is
-        // dropped under its old name (no rename precedes the drop), and a converting view is dropped as what it
-        // currently is — IsMaterialized reflects the desired side, so a flip drops with the old materialization.
-        foreach (var view in OrderByDependency(drops).Reverse())
+        // A renamed view recreating is dropped under its old name (no rename precedes the drop), and a converting
+        // view is dropped as what it currently is — IsMaterialized reflects the desired side, so a flip drops with
+        // the old materialization.
+        foreach (var view in InRemovalOrder(drops, dependencies))
         {
             actions.Add(new DropView(new ObjectAddress(view.Schema, view.RenamedFrom ?? view.Name), view.Materialized?.Old ?? view.IsMaterialized));
         }
     }
-
-    /// <summary>
-    /// The instance-level ordering layered on top of the fixed action-type order: where two views are created
-    /// together and one reads the other, the type order can't separate them — a dependency sort must.
-    /// </summary>
-    private static IReadOnlyList<ViewDiff> OrderByDependency(IReadOnlyList<ViewDiff> views) =>
-        views.OrderedByDependencies(
-            ViewKey,
-            view => view.DependsOn.Select(d => (d.Schema, d.Name)),
-            view => $"view {view.Schema}.{view.Name}");
-
-    private static (SqlIdentifier Schema, SqlIdentifier Name) ViewKey(ViewDiff view) => (view.Schema, view.Name);
-
 
     /// <summary>
     /// Emits the root-level extension actions. Ordering (extensions created/updated before schemas, dropped after
@@ -180,25 +286,17 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
-                foreach (var table in schema.Tables)
-                {
-                    EmitTable(table, actions);
-                }
                 break;
 
             case ChangeKind.Remove:
                 // Drop everything the schema contains before the schema itself, rather than relying on a
-                // provider-specific DROP SCHEMA CASCADE. The final type-sort orders these object drops ahead of the
-                // DropSchema, and views are emitted by the cross-schema view pass.
+                // provider-specific DROP SCHEMA CASCADE. The final type-sort orders these object drops ahead of
+                // the DropSchema, and tables and views are emitted by their own cross-schema passes.
                 EmitEnums(schema, actions);
                 EmitSequences(schema, actions);
                 EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
-                foreach (var table in schema.Tables)
-                {
-                    EmitTable(table, actions);
-                }
                 actions.Add(new DropSchema(schema.Name));
                 break;
 
@@ -213,10 +311,6 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
-                foreach (var table in schema.Tables)
-                {
-                    EmitTable(table, actions);
-                }
                 break;
         }
     }
@@ -403,14 +497,22 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
     }
 
-    private static void EmitTable(TableDiff table, List<MigrationAction> actions)
+    /// <summary>
+    /// Emits one table's actions.
+    /// </summary>
+    /// <param name="table">The change to emit.</param>
+    /// <param name="actions">The action list being built.</param>
+    /// <param name="unfolded">
+    /// The foreign keys that cannot ride the CREATE TABLE, and are added separately afterwards instead.
+    /// </param>
+    private static void EmitTable(TableDiff table, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
     {
         switch (table.Kind)
         {
             case ChangeKind.Add when table.IsAdd():
                 // The columns and every table constraint are created inline by CREATE TABLE (carried on
                 // Definition); only indexes, triggers, comments and grants arrive as separate actions.
-                actions.Add(new CreateTable(table.Schema, table.Definition));
+                actions.Add(new CreateTable(table.Schema, WithoutForeignKeys(table, unfolded)));
                 if (table.Comment is { } tableComment)
                 {
                     actions.Add(new SetTableComment(new ObjectAddress(table.Schema, table.Name), tableComment.Old, tableComment.New));
@@ -422,7 +524,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                         actions.Add(new SetColumnComment(new MemberAddress(table.Schema, table.Name, column.Name), columnComment.Old, columnComment.New));
                     }
                 }
-                EmitConstraints(table, actions);
+                EmitConstraints(table, actions, unfolded);
                 EmitIndexes(table, actions);
                 EmitTriggers(table, actions);
                 EmitGrants(table, actions);
@@ -445,7 +547,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 {
                     EmitColumn(table, column, actions);
                 }
-                EmitConstraints(table, actions);
+                EmitConstraints(table, actions, unfolded);
                 EmitIndexes(table, actions);
                 EmitTriggers(table, actions);
                 EmitGrants(table, actions);
@@ -528,7 +630,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
     // Drops and revokes are sorted before RenameTable, so on a renamed table they run while it still carries
     // its old name; every action from the rename onward targets the new name.
-    private static void EmitConstraints(TableDiff table, List<MigrationAction> actions)
+    private static void EmitConstraints(TableDiff table, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
     {
         var preRenameName = table.RenamedFrom ?? table.Name;
 
@@ -536,31 +638,33 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // into the CREATE TABLE and only comment changes still arrive as separate actions.
         var foldAdds = table.Kind == ChangeKind.Add;
 
-        EmitConstraintKind(table.PrimaryKeys, actions, foldAdds,
+        EmitConstraintKind(table.PrimaryKeys, actions, _ => foldAdds,
             pk => pk.Definition,
             (pk, definition) => new AddPrimaryKey(new ObjectAddress(table.Schema, table.Name), definition),
             pk => new DropPrimaryKey(new MemberAddress(table.Schema, preRenameName, pk.Name)),
             (pk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, pk.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.ForeignKeys, actions, foldAdds,
+        // A foreign key left out of the CREATE TABLE is added here instead, once the table it points at exists.
+        EmitConstraintKind(table.ForeignKeys, actions,
+            fk => foldAdds && !unfolded.Contains(new MemberAddress(table.Schema, table.Name, fk.Name)),
             fk => fk.Definition,
             (fk, definition) => new AddForeignKey(new ObjectAddress(table.Schema, table.Name), definition),
             fk => new DropForeignKey(new MemberAddress(table.Schema, preRenameName, fk.Name)),
             (fk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, fk.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.UniqueConstraints, actions, foldAdds,
+        EmitConstraintKind(table.UniqueConstraints, actions, _ => foldAdds,
             uq => uq.Definition,
             (uq, definition) => new AddUniqueConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             uq => new DropUniqueConstraint(new MemberAddress(table.Schema, preRenameName, uq.Name)),
             (uq, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, uq.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.Checks, actions, foldAdds,
+        EmitConstraintKind(table.Checks, actions, _ => foldAdds,
             ck => ck.Definition,
             (ck, definition) => new AddCheckConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             ck => new DropCheckConstraint(new MemberAddress(table.Schema, preRenameName, ck.Name)),
             (ck, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, ck.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.ExclusionConstraints, actions, foldAdds,
+        EmitConstraintKind(table.ExclusionConstraints, actions, _ => foldAdds,
             ex => ex.Definition,
             (ex, definition) => new AddExclusionConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             ex => new DropExclusionConstraint(new MemberAddress(table.Schema, preRenameName, ex.Name)),
@@ -568,15 +672,35 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     }
 
     /// <summary>
+    /// The table to create, less the foreign keys that cannot ride it. The definition belongs to the project
+    /// tree, so trimming one is a copy.
+    /// </summary>
+    private static Table WithoutForeignKeys(TableDiff table, IReadOnlySet<MemberAddress> unfolded)
+    {
+        if (!table.IsAdd() || unfolded.Count == 0)
+        {
+            return table.Definition!;
+        }
+
+        var trimmed = table.Definition.Clone();
+        foreach (var foreignKey in trimmed.ForeignKeys.Where(fk => unfolded.Contains(new MemberAddress(table.Schema, table.Name, fk.Name))).ToList())
+        {
+            trimmed.ForeignKeys.Remove(foreignKey);
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
     /// Emits one constraint kind: an add's matched migration first (it prepares the data the constraint depends
     /// on — de-duplication, backfill — and the priority table runs every data migration before the constraint
     /// adds), then the change itself. A constraint Modify is always a comment-only change. When <paramref
-    /// name="foldAdds"/> is set the table is being created, so an add is inlined into the CREATE TABLE and skipped.
+    /// name="foldAdd"/> holds the table is being created, so the add is inlined into the CREATE TABLE and skipped.
     /// </summary>
     private static void EmitConstraintKind<T, TDefinition>(
         IReadOnlyList<T> constraints,
         List<MigrationAction> actions,
-        bool foldAdds,
+        Func<T, bool> foldAdd,
         Func<T, TDefinition?> definition,
         Func<T, TDefinition, MigrationAction> add,
         Func<T, MigrationAction> drop,
@@ -585,7 +709,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     {
         foreach (var constraint in constraints)
         {
-            if (foldAdds && constraint.Kind == ChangeKind.Add)
+            if (constraint.Kind == ChangeKind.Add && foldAdd(constraint))
             {
                 continue;
             }

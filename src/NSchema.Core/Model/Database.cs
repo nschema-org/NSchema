@@ -50,9 +50,27 @@ public sealed class Database : IEquatable<Database>
     /// </summary>
     public Database FilteredTo(IdentitySet identities) => new()
     {
-        Schemas = [.. Schemas.Where(s => identities.ContainsSchema(s.Name)).Select(s => s.FilteredTo(identities))],
+        Schemas = [.. Schemas.Select(schema => Filter(schema, identities)).OfType<Schema>()],
         Extensions = [.. Extensions.Where(identities.Contains).Select(e => e.Clone())],
     };
+
+    private static Schema? Filter(Schema schema, IdentitySet identities)
+    {
+        var filtered = schema.FilteredTo(identities);
+        if (identities.ContainsSchema(schema.Name))
+        {
+            return filtered;
+        }
+
+        if (!filtered.Objects().Any())
+        {
+            return null;
+        }
+
+        // Held on to for its contents alone, which is what an implicit schema is: somewhere to put them.
+        filtered.IsImplicit = true;
+        return filtered;
+    }
 
     /// <summary>
     /// Returns a new database model restricted to the current scope.

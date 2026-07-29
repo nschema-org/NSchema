@@ -25,7 +25,7 @@ public sealed class PlanLinearizerExtensionTests
         // Arrange
         var actions = _linearizer.Linearize(Diff(
             [ExtensionDiff.Added(new Extension { Name = "citext" })],
-            SchemaDiff.Added("app")));
+            SchemaDiff.Added("app")), PlanDependencies.None, DialectCapabilities.Standard);
 
         var createExtension = actions.Select((a, i) => (a, i)).Single(x => x.a is CreateExtension).i;
 
@@ -42,7 +42,7 @@ public sealed class PlanLinearizerExtensionTests
         // Arrange
         var actions = _linearizer.Linearize(Diff(
             [ExtensionDiff.Removed("citext")],
-            SchemaDiff.Removed("app")));
+            SchemaDiff.Removed("app")), PlanDependencies.None, DialectCapabilities.Standard);
 
         var dropExtension = actions.Select((a, i) => (a, i)).Single(x => x.a is DropExtension).i;
 
@@ -57,7 +57,7 @@ public sealed class PlanLinearizerExtensionTests
     public void AddedExtension_WithComment_EmitsCreateThenSetComment()
     {
         var actions = _linearizer.Linearize(Diff(
-            [ExtensionDiff.Added(new Extension { Name = "postgis", Comment = "gis" }) with { Comment = new ValueChange<string>(null, "gis") }]));
+            [ExtensionDiff.Added(new Extension { Name = "postgis", Comment = "gis" }) with { Comment = new ValueChange<string>(null, "gis") }]), PlanDependencies.None, DialectCapabilities.Standard);
 
         actions.OfType<CreateExtension>().ShouldHaveSingleItem().Extension.Name.ShouldBe("postgis");
         actions.OfType<SetExtensionComment>().ShouldHaveSingleItem().NewComment.ShouldBe("gis");
@@ -67,7 +67,7 @@ public sealed class PlanLinearizerExtensionTests
     public void ModifiedExtension_VersionChange_EmitsAlterExtension()
     {
         var actions = _linearizer.Linearize(Diff(
-            [ExtensionDiff.Modified("postgis") with { Version = new ValueChange<string>("3.3", "3.4") }]));
+            [ExtensionDiff.Modified("postgis") with { Version = new ValueChange<string>("3.3", "3.4") }]), PlanDependencies.None, DialectCapabilities.Standard);
 
         var alter = actions.OfType<AlterExtension>().ShouldHaveSingleItem();
         alter.OldVersion.ShouldBe("3.3");

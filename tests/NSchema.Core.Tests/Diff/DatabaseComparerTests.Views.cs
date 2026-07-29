@@ -19,20 +19,17 @@ public partial class DatabaseComparerTests
         // Assert
         diff!.Kind.ShouldBe(ChangeKind.Add);
         diff.Definition.ShouldNotBeNull();
-        diff.DependsOn.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "users"));
     }
 
     [Fact]
-    public void Compare_RemovedView_IsRemove_AndCarriesCurrentDependencies()
+    public void Compare_RemovedView_IsRemove()
     {
         // Act
-        // A removed view keeps its (current) dependencies so the planner can order the drop.
         var diff = DiffViews([View("active", "SELECT * FROM app.users")], []);
 
         // Assert
         diff!.Kind.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
-        diff.DependsOn.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "users"));
     }
 
     [Fact]
@@ -109,14 +106,4 @@ public partial class DatabaseComparerTests
             [View("labelled", "SELECT 'a  b' AS label FROM app.users")],
             [View("labelled", "SELECT 'a b' AS label FROM app.users")])!.Kind.ShouldBe(ChangeKind.Modify);
 
-    [Fact]
-    public void Compare_ViewDependencies_AreDerivedFromTheBodyThroughTheComparer()
-    {
-        // Act
-        // The comparer surfaces every FROM/JOIN target the extractor finds.
-        var diff = DiffViews([], [View("report", "SELECT * FROM app.orders o JOIN app.customers c ON o.cid = c.id")]);
-
-        // Assert
-        diff!.DependsOn.Select(d => $"{d.Schema}.{d.Name}").ShouldBe(["app.orders", "app.customers"]);
-    }
 }

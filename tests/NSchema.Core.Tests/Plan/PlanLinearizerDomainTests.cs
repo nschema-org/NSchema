@@ -24,7 +24,7 @@ public sealed class PlanLinearizerDomainTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> Linearize(DomainDiff domain) =>
-        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Domains = [domain] }]));
+        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Domains = [domain] }]), PlanDependencies.None, DialectCapabilities.Standard);
 
     [Fact]
     public void AddedDomain_EmitsCreateDomain()
@@ -74,7 +74,7 @@ public sealed class PlanLinearizerDomainTests
         {
             Tables = [TableDiff.Added("app", new Table { Name = "t" })],
             Domains = [DomainDiff.Added("app", new DomainType { Name = "d", DataType = SqlType.Text })],
-        }]));
+        }]), PlanDependencies.None, DialectCapabilities.Standard);
 
         var createDomain = plan.Select((a, i) => (a, i)).Single(x => x.a is CreateDomain).i;
 

@@ -69,13 +69,15 @@ internal sealed class DatabaseAccumulator
     public void DeclareSchema(SqlIdentifier name, string? comment, SourcePosition position)
     {
         var entry = GetOrAdd(name);
-        if (entry.Declared)
+
+        // An entry that is no longer implicit was declared already: this is the second CREATE SCHEMA for it.
+        if (!entry.IsImplicit)
         {
             Report(ProjectDiagnostics.SchemaAlreadyDeclared(name, position), CurrentFile);
             return;
         }
 
-        entry.Declared = true;
+        entry.IsImplicit = false;
         entry.Comment = comment;
     }
 
@@ -160,6 +162,7 @@ internal sealed class DatabaseAccumulator
             .Select(e => new Schema
             {
                 Name = e.Name,
+                IsImplicit = e.IsImplicit,
                 Tables = e.Tables,
                 Grants = e.Grants,
                 Views = e.Views,
@@ -286,7 +289,7 @@ internal sealed class DatabaseAccumulator
     private sealed class Entry(SqlIdentifier name)
     {
         public SqlIdentifier Name { get; } = name;
-        public bool Declared { get; set; }
+        public bool IsImplicit { get; set; } = true;
         public string? Comment { get; set; }
         public DatabaseObjectCollection<Table> Tables { get; } = [];
         public List<SchemaGrant> Grants { get; } = [];

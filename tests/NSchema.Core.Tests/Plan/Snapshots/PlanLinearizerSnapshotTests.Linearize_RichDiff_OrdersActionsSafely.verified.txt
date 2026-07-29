@@ -2,14 +2,14 @@
   {
     Type: DropView,
     Action: {
-      View: scratch.temp_view,
+      View: app.stale_view,
       IsMaterialized: false
     }
   },
   {
     Type: DropView,
     Action: {
-      View: app.stale_view,
+      View: scratch.temp_view,
       IsMaterialized: false
     }
   },

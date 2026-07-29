@@ -281,6 +281,34 @@ public partial class DatabaseComparerTests
     }
 
     [Fact]
+    public void Compare_NewImplicitSchema_IsFilled_NotCreated()
+    {
+        // Arrange — nothing declares the schema, so the project expects to find it; only its contents are new.
+        var app = new Schema { Name = "app", IsImplicit = true, Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] };
+
+        // Act
+        var schema = Compare(Db(), Db(app)).Schemas.ShouldHaveSingleItem();
+
+        // Assert
+        schema.Kind.ShouldBeNull();
+        schema.Tables.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Add);
+    }
+
+    [Fact]
+    public void Compare_RemovedImplicitSchema_IsEmptied_NotDropped()
+    {
+        // Arrange — a container the run does not own: its contents are still ours to remove, the schema is not.
+        var legacy = new Schema { Name = "legacy", IsImplicit = true, Tables = [new Table { Name = "widgets" }] };
+
+        // Act
+        var schema = Compare(Db(legacy), Db()).Schemas.ShouldHaveSingleItem();
+
+        // Assert
+        schema.Kind.ShouldBeNull();
+        schema.Tables.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+    }
+
+    [Fact]
     public void Compare_NewSchema_FoldsCommentGrantsAndTablesWithDefinition()
     {
         var current = Db();

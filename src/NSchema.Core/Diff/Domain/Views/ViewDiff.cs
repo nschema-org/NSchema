@@ -40,11 +40,6 @@ public sealed record ViewDiff : ISchemaObjectDiff
     public View? Definition { get; init; }
 
     /// <summary>
-    /// The objects the view reads, used to order it relative to other views in the plan.
-    /// </summary>
-    public IReadOnlyList<ObjectAddress> DependsOn { get; init; } = [];
-
-    /// <summary>
     /// Whether the view is materialized (after the change, for a modified view).
     /// </summary>
     public bool IsMaterialized { get; init; }
@@ -85,7 +80,6 @@ public sealed record ViewDiff : ISchemaObjectDiff
         Kind = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
-        DependsOn = definition.DependsOn,
         IsMaterialized = definition.IsMaterialized,
     };
 

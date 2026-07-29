@@ -16,7 +16,7 @@ internal sealed partial class DatabaseComparer
             (currentView, desiredView, renamedFrom) => BuildModifiedView(schemaName, currentView, desiredView, renamedFrom));
 
     private static ViewDiff RemovedView(SqlIdentifier schema, View view) =>
-        ViewDiff.Removed(schema, view.Name) with { DependsOn = view.DependsOn, IsMaterialized = view.IsMaterialized };
+        ViewDiff.Removed(schema, view.Name) with { IsMaterialized = view.IsMaterialized };
 
     private static ViewDiff BuildNewView(SqlIdentifier schema, View view) => ViewDiff.Added(schema, view);
 
@@ -54,7 +54,6 @@ internal sealed partial class DatabaseComparer
             RenamedFrom = renamedFrom,
             Definition = carryDefinition ? desired : null,
             Comment = comment,
-            DependsOn = desired.DependsOn,
             IsMaterialized = desired.IsMaterialized,
             Materialized = materializationFlipped ? new ValueChange<bool>(current.IsMaterialized, desired.IsMaterialized) : null,
             RequiresRecreate = requiresRecreate,

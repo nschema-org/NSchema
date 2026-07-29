@@ -17,6 +17,7 @@ namespace NSchema.Model.Services;
 internal sealed class DependencyGraph
 {
     private readonly Dictionary<Address, List<DependencyNode>> _byAddress = [];
+    private readonly Dictionary<ObjectAddress, List<DependencyNode>> _byOwner = [];
     private readonly Dictionary<DependencyNode, List<Edge>> _requires = [];
     private readonly Dictionary<DependencyNode, List<Edge>> _requiredBy = [];
     private readonly ILookup<SqlIdentifier, ObjectAddress> _typesByName;
@@ -140,6 +141,30 @@ internal sealed class DependencyGraph
         Close(seeds, node => Nodes(_requires, node));
 
     /// <summary>
+    /// The objects the object at <paramref name="address"/> requires, folding what its members require into it.
+    /// </summary>
+    /// <remarks>
+    /// Severing asks about members — which constraint has to go — but ordering asks about objects: a table is
+    /// created after the tables its foreign keys point at, whichever constraint carries the edge.
+    /// </remarks>
+    public IReadOnlyCollection<ObjectAddress> ObjectDependenciesOf(ObjectAddress address) => Owners(address, _requires);
+
+    /// <summary>
+    /// The objects that require the object at <paramref name="address"/>: what must go before it can.
+    /// </summary>
+    public IReadOnlyCollection<ObjectAddress> ObjectDependentsOf(ObjectAddress address) => Owners(address, _requiredBy);
+
+    /// <summary>
+    /// The foreign keys pointing at the table at <paramref name="address"/> — the edges into it that can be cut,
+    /// where <see cref="ObjectDependentsOf"/> only says who holds them.
+    /// </summary>
+    public IReadOnlyCollection<MemberAddress> ForeignKeysInto(ObjectAddress address) =>
+        [.. Nodes(_requiredBy, new DependencyNode(address, DependencyKind.Table))
+            .Where(node => node.Kind == DependencyKind.ForeignKey)
+            .Select(node => node.Address)
+            .OfType<MemberAddress>()];
+
+    /// <summary>
     /// The nodes living at <paramref name="address"/>, of any kind.
     /// </summary>
     public IReadOnlyCollection<DependencyNode> At(Address address) =>
@@ -202,6 +227,31 @@ internal sealed class DependencyGraph
             ? [.. found.Where(e => only is null || e.Certainty == only).Select(e => e.Node)]
             : [];
 
+    /// <summary>
+    /// Walks <paramref name="edges"/> from every node the object at <paramref name="address"/> owns, and reads
+    /// each one that answers back as the object owning it. The object itself is excluded: an edge between two of
+    /// its own members says nothing about where it goes.
+    /// </summary>
+    private IReadOnlyCollection<ObjectAddress> Owners(ObjectAddress address, Dictionary<DependencyNode, List<Edge>> edges) =>
+        _byOwner.TryGetValue(address, out var owned)
+            ? [.. owned.SelectMany(node => Nodes(edges, node))
+                .Select(node => OwnerOf(node.Address))
+                .OfType<ObjectAddress>()
+                .Where(owner => owner != address)
+                .Distinct()]
+            : [];
+
+    /// <summary>
+    /// The object an address belongs to: a member's owner, or a kind-free reading of the object itself.
+    /// </summary>
+    private static ObjectAddress? OwnerOf(Address address) => address switch
+    {
+        MemberAddress member => member.Owner,
+        ObjectAddress { Kind: null } o => o,
+        ObjectAddress o => new ObjectAddress(o.Schema, o.Name),
+        _ => null,
+    };
+
     private void Add(DependencyNode node)
     {
         if (!_byAddress.TryGetValue(node.Address, out var atAddress))
@@ -211,6 +261,20 @@ internal sealed class DependencyGraph
         if (!atAddress.Contains(node))
         {
             atAddress.Add(node);
+        }
+
+        if (OwnerOf(node.Address) is not { } owner)
+        {
+            return;
+        }
+
+        if (!_byOwner.TryGetValue(owner, out var owned))
+        {
+            _byOwner[owner] = owned = [];
+        }
+        if (!owned.Contains(node))
+        {
+            owned.Add(node);
         }
     }
 

@@ -25,7 +25,7 @@ public sealed class PlanLinearizerDataMigrationTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> LinearizeTable(TableDiff table)
-        => _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [table] }]));
+        => _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { Tables = [table] }]), PlanDependencies.None, DialectCapabilities.Standard);
 
     private IReadOnlyList<MigrationAction> LinearizeColumn(ColumnDiff column)
         => LinearizeTable(TableDiff.Modified("app", "users") with { Columns = [column] });

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
@@ -17,6 +18,12 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
 {
     /// <inheritdoc/>
     public override SchemaAddress Address => new(Name);
+
+    /// <summary>
+    /// Whether the schema is here only because something inside it named it, rather than being declared in its own right.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsImplicit { get; internal set; }
 
     /// <summary>
     /// A list of tables that are part of the schema.
@@ -103,6 +110,7 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     public override Schema Clone() => new()
     {
         Name = Name,
+        IsImplicit = IsImplicit,
         Tables = [.. Tables.Select(t => t.Clone())],
         Grants = [.. Grants],
         Views = [.. Views.Select(v => v.Clone())],

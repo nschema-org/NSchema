@@ -18,6 +18,7 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
 using NSchema.Plan.Domain.Services;
+using NSchema.Tests.Helpers;
 
 namespace NSchema.Tests.Plan;
 
@@ -33,6 +34,7 @@ namespace NSchema.Tests.Plan;
 public sealed class PlanLinearizerSnapshotTests
 {
     private readonly PlanLinearizer _linearizer = new();
+    private readonly MigrationSides _sides = new();
 
     [Fact]
     public Task Linearize_RichDiff_OrdersActionsSafely()
@@ -86,8 +88,8 @@ public sealed class PlanLinearizerSnapshotTests
         // reads active_users) is created after it.
         var views = new ViewDiff[]
         {
-            ViewDiff.Added("app", new View { Name = "user_summary", Body = "SELECT * FROM app.active_users", DependsOn = [new ObjectAddress("app", "active_users")] }),
-            ViewDiff.Added("app", new View { Name = "active_users", Body = "SELECT * FROM app.users", DependsOn = [new ObjectAddress("app", "users")] }),
+            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "user_summary", Body = "SELECT * FROM app.active_users", DependsOn = [new ObjectAddress("app", "active_users")] })),
+            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "active_users", Body = "SELECT * FROM app.users", DependsOn = [new ObjectAddress("app", "users")] })),
             ViewDiff.Modified("app", "report") with { RenamedFrom = "legacy_report" },
             ViewDiff.Removed("app", "stale_view"),
         };
@@ -157,7 +159,7 @@ public sealed class PlanLinearizerSnapshotTests
             ]);
 
         // Act
-        var plan = _linearizer.Linearize(diff);
+        var plan = _linearizer.Linearize(diff, _sides.Dependencies, DialectCapabilities.Standard);
 
         // Assert
         return Verify(plan.Select(a => new { Type = a.GetType().Name, Action = a }));

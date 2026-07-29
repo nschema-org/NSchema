@@ -203,7 +203,12 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
         var comment = desired.Comment is not null ? new ValueChange<string>(null, desired.Comment) : null;
         var grants = desired.Grants.Select(grant => new GrantChange(ChangeKind.Add, grant.Role, null)).ToList();
 
-        return SchemaDiff.Added(desired.Name) with
+        // Don't create an implicit schema.
+        var schema = desired.IsImplicit
+            ? SchemaDiff.Containing(desired.Name)
+            : SchemaDiff.Added(desired.Name);
+
+        return schema with
         {
             Comment = comment,
             Grants = grants,
@@ -223,7 +228,13 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
     private SchemaDiff BuildRemovedSchema(Schema current)
     {
         var empty = new Schema { Name = current.Name };
-        return SchemaDiff.Removed(current.Name) with
+
+        // Don't drop an implicit schema.
+        var schema = current.IsImplicit
+            ? SchemaDiff.Containing(current.Name)
+            : SchemaDiff.Removed(current.Name);
+
+        return schema with
         {
             Tables = CompareTables(current.Name, current.Tables, empty, RenameLog.Empty),
             Views = CompareViews(current.Name, current.Views, empty, RenameLog.Empty),

@@ -21,7 +21,7 @@ public sealed class PlanLinearizerCompositeTypeTests
     private readonly PlanLinearizer _linearizer = new();
 
     private IReadOnlyList<MigrationAction> Linearize(CompositeTypeDiff type) =>
-        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { CompositeTypes = [type] }]));
+        _linearizer.Linearize(new DatabaseDiff([SchemaDiff.Containing("app") with { CompositeTypes = [type] }]), PlanDependencies.None, DialectCapabilities.Standard);
 
     [Fact]
     public void AddedCompositeType_EmitsCreateCompositeType()
@@ -69,7 +69,7 @@ public sealed class PlanLinearizerCompositeTypeTests
         {
             Tables = [TableDiff.Added("app", new Table { Name = "t" })],
             CompositeTypes = [CompositeTypeDiff.Added("app", new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] })],
-        }]));
+        }]), PlanDependencies.None, DialectCapabilities.Standard);
 
         var createType = plan.Select((a, i) => (a, i)).Single(x => x.a is CreateCompositeType).i;
 

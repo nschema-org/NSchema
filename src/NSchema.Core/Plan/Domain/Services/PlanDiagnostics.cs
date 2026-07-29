@@ -21,6 +21,12 @@ internal static class PlanDiagnostics
         Diagnostic.Warning(Source, $"The project declares '{declared}' but the database has '{observed}', which differs only in case. Identifiers are case-sensitive, so these are different objects; if they should be the same one, match the declared spelling to the database's.");
 
     /// <summary>
+    /// Schemas the plan creates objects in that it will neither create nor find, because nothing declares them.
+    /// </summary>
+    public static Diagnostic UndeclaredSchemaMissing(IEnumerable<SqlIdentifier> schemas) => Diagnostic.Error(Source,
+        $"This plan cannot be applied: it creates objects in {string.Join(", ", schemas.Select(s => $"'{s}'"))}, which nothing declares and the database does not have. NSchema creates the schemas a project declares and adopts the rest, so declare these with CREATE SCHEMA, or create them before applying.");
+
+    /// <summary>
     /// A declared schema matches an observed one only up to case.
     /// </summary>
     public static Diagnostic CaseOnlySchemaMismatch(SqlIdentifier declared, SqlIdentifier observed) =>

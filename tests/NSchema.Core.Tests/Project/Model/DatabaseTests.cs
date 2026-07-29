@@ -20,6 +20,43 @@ public sealed class DatabaseTests
     };
 
     [Fact]
+    public void FilteredTo_KeepsASchemaTheSetDoesNotName_AsAContainerForWhatItDoes()
+    {
+        // Arrange — the object is managed, the schema holding it is not.
+        var database = Db(Schema("app", Table("users")));
+        var identities = new IdentitySet(Objects: [new ObjectAddress("app", "users", ObjectKind.Table)]);
+
+        // Act
+        var filtered = database.FilteredTo(identities);
+
+        // Assert
+        var schema = filtered.Schemas.ShouldHaveSingleItem();
+        schema.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
+        schema.IsImplicit.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void FilteredTo_DropsASchemaTheSetNamesNothingIn()
+    {
+        // Act
+        var filtered = Db(Schema("app", Table("users"))).FilteredTo(new IdentitySet(Schemas: [new SchemaAddress("other")]));
+
+        // Assert
+        filtered.Schemas.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void FilteredTo_KeepsANamedSchemaAsItsOwn()
+    {
+        // Act
+        var filtered = Db(Schema("app", Table("users"))).FilteredTo(
+            new IdentitySet(Schemas: [new SchemaAddress("app")], Objects: [new ObjectAddress("app", "users", ObjectKind.Table)]));
+
+        // Assert
+        filtered.Schemas.ShouldHaveSingleItem().IsImplicit.ShouldBeFalse();
+    }
+
+    [Fact]
     public void ScopedTo_RestrictsSchemas()
     {
         var result = Sample().ScopedTo(PlanningScope.To(new SchemaAddress("app")));
