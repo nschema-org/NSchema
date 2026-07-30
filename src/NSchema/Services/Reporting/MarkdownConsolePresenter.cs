@@ -59,11 +59,15 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
         return $"{Fenced(body.ToString(), "diff")}\n\n**Plan:** {added} to add, {modified} to change, {removed} to destroy.";
     }
 
+    // Touched marks an element carried only by what it owns. The core's renderer emits no line for one today (a
+    // touched schema contributes its contents and no header), so this arm is defensive: it keeps the two text faces
+    // agreeing, and stops an unmarked element rendering as '?' if that ever changes.
     private static char DiffMarker(ChangeKind change) => change switch
     {
         ChangeKind.Add => '+',
         ChangeKind.Remove => '-',
         ChangeKind.Modify => '!',
+        ChangeKind.Touched => ' ',
         _ => '?',
     };
 
