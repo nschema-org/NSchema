@@ -134,6 +134,6 @@ internal static class FormatCommand
                 [.. Directory.EnumerateFiles(path, "*.sql", SearchOption.AllDirectories).OrderBy(file => file, StringComparer.Ordinal)]);
         }
 
-        return Result.Failure<IReadOnlyList<string>>(Diagnostic.Error(path, $"No such file or directory: '{path}'."));
+        return Result.Failure<IReadOnlyList<string>>(FormatDiagnostics.PathNotFound(path));
     }
 }

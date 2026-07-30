@@ -57,8 +57,7 @@ internal static class LockReleaseCommand
         if (configuration.LockId is { } lockId && current.Id.Value != lockId)
         {
             app.Messenger.ReportDiagnostics([
-                Diagnostic.Error(lockId,
-                    $"The lock id '{lockId}' does not match the held lock '{current.Id.Value}' (held by {current.Who}, operation '{current.Operation}'). Check the current lock with 'nschema lock status'.")
+                LockDiagnostics.IdMismatch(lockId, current)
             ]);
             return ExitCodes.Error;
         }

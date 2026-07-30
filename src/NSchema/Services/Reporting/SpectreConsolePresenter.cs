@@ -58,9 +58,9 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
 
         foreach (var line in document.Lines)
         {
-            if (line.Kind is { } kind)
+            if (line.Change is { } change)
             {
-                var (marker, colour) = DiffStyle(kind);
+                var (marker, colour) = DiffStyle(change);
                 var text = Markup.Escape($"{new string(' ', line.Depth * 4)}{marker} {line.Text}");
                 lines.Add($"[{colour}]{text}[/]");
             }
@@ -77,11 +77,12 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
         return new Markup(string.Join('\n', lines));
     }
 
-    private static (string Marker, string Colour) DiffStyle(ChangeKind kind) => kind switch
+    private static (string Marker, string Colour) DiffStyle(ChangeKind change) => change switch
     {
         ChangeKind.Add => ("+", "green"),
         ChangeKind.Remove => ("-", "red"),
         ChangeKind.Modify => ("~", "yellow"),
+        ChangeKind.Touched => (" ", "dim"),
         _ => ("?", "grey"),
     };
 

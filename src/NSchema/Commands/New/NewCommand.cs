@@ -207,7 +207,7 @@ internal static class NewCommand
             return plugin;
         }
 
-        return Diagnostic.Error(packageId.Value, $"The package '{packageId}' does not provide the expected plugin capability.");
+        return PluginDiagnostics.MissingCapability(packageId);
     }
 
     private static (string Package, string Label) DatabasePackage(DatabaseKind database) => database switch

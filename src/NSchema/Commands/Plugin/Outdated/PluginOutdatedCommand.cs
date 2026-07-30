@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
+using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
 using NSchema.Services.Reporting;
 
@@ -71,16 +72,21 @@ internal static class PluginOutdatedCommand
         var declaration = declarations.First(declaration => declaration.Label == reference.Label);
 
         // 'Wanted' is what 'plugin update' would install: the highest the range admits (an exact pin admits only itself).
-        var wanted = declaration.Package.Version.IsExact
-            ? reference.Version
-            : loader.ResolveHighest(declaration.Package.Source, declaration.Package.Version) is { IsSuccess: true } highest
-                ? highest.Require()
-                : null;
-
-        if (wanted is null)
+        // An unsatisfiable range is the loader's own finding, so its diagnostics are carried rather than restated.
+        SemanticVersion wanted;
+        if (declaration.Package.Version.IsExact)
         {
-            return Diagnostic.Error(declaration.Package.Source.Value,
-                $"No version of '{declaration.Package.Source}' satisfying '{declaration.Package.Version}' is available.");
+            wanted = reference.Version;
+        }
+        else
+        {
+            var highest = loader.ResolveHighest(declaration.Package.Source, declaration.Package.Version);
+            if (highest.IsFailure)
+            {
+                return Result.Failure<OutdatedPlugin>(highest.Diagnostics);
+            }
+
+            wanted = highest.Require();
         }
 
         var latest = loader.ResolveLatestVersion(reference.PackageId);

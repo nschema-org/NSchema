@@ -1,3 +1,4 @@
+using NSchema.Configuration;
 using NSchema.Model;
 using NSchema.Project.Nsql;
 
@@ -30,15 +31,14 @@ internal static class ScopeExtensions
                 if (read.Value is not { } address)
                 {
                     var reason = read.Errors.FirstOrDefault()?.Message ?? "it is not an address";
-                    diagnostics.Add(Diagnostic.Error("scope", $"--scope '{value}': {reason} Name a schema ('app') or an object ('app.orders')."));
+                    diagnostics.Add(OptionDiagnostics.InvalidScope(value, reason));
                     continue;
                 }
 
                 // The scope model addresses schemas and objects; a member is a level below what a run can target.
                 if (address is MemberAddress member)
                 {
-                    diagnostics.Add(Diagnostic.Error("scope",
-                        $"--scope '{value}': scoping to a column or constraint is not supported yet. Scope to '{member.Owner}' instead."));
+                    diagnostics.Add(OptionDiagnostics.UnsupportedScopeTarget(value, member.Owner));
                     continue;
                 }
 

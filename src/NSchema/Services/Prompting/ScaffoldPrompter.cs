@@ -1,3 +1,4 @@
+using NSchema.Commands.New;
 using NSchema.Plugins;
 using Spectre.Console;
 
@@ -62,8 +63,7 @@ internal static class ScaffoldPrompter
             // Failing here is deliberate: a scripted run that silently scaffolded a half-configured project would only
             // surface the problem at the first plan, further from the cause.
             var keys = string.Join(", ", unanswerable.Select(prompt => prompt.Key));
-            return Result.Failure<IReadOnlyDictionary<string, string?>>(Diagnostic.Error("scaffold",
-                $"No terminal to prompt on, and no value given for: {keys}. Supply each with --set <key>=<value>, or run interactively."));
+            return Result.Failure<IReadOnlyDictionary<string, string?>>(ScaffoldDiagnostics.UnanswerablePrompts(keys));
         }
 
         return Result.Success<IReadOnlyDictionary<string, string?>>(answers);

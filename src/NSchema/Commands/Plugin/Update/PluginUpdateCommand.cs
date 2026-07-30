@@ -120,7 +120,7 @@ internal static class PluginUpdateCommand
         var declaration = declarations.Require().FirstOrDefault(declaration => declaration.Label == new PluginLabel(label));
         if (declaration is null)
         {
-            return Result.Failure<PackageId?>(Diagnostic.Error(label, $"No plugin labelled '{label}' is declared."));
+            return Result.Failure<PackageId?>(PluginDiagnostics.NotDeclared(label));
         }
 
         return Result.Success<PackageId?>(declaration.Package.Version.IsExact ? null : declaration.Package.Source);

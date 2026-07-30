@@ -37,6 +37,14 @@ public sealed class CliApplicationBuilderTests
         parseResult.Errors.ShouldContain(error => error.Message.Contains("--quiet and --verbose cannot be used together"));
     }
 
+    // A policy's enforcement is now an override registered against the producer's diagnostic source, so what a
+    // configured flag leaves behind is an entry in DiagnosticOptions rather than a policy-specific options object.
+    private const string DestructiveActions = "destructive-actions";
+    private const string DataHazards = "data-hazards";
+
+    private static DiagnosticOptions Enforcement(CliApplication app) =>
+        app.Services.GetRequiredService<IOptions<DiagnosticOptions>>().Value;
+
     [Fact]
     public void ConfigurePolicies_AppliesDestructiveActionPolicy()
     {
@@ -44,8 +52,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.ConfigurePolicies(PolicyEnforcement.Warn, null).Build().Require();
 
         // Assert
-        var options = app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value;
-        options.Policy.ShouldBe(PolicyEnforcement.Warn);
+        Enforcement(app).BySource[DestructiveActions].ShouldBe(PolicyEnforcement.Warn);
     }
 
     [Fact]
@@ -55,8 +62,7 @@ public sealed class CliApplicationBuilderTests
         using var app = _sut.ConfigurePolicies(null, PolicyEnforcement.Error).Build().Require();
 
         // Assert
-        var options = app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value;
-        options.Policy.ShouldBe(PolicyEnforcement.Error);
+        Enforcement(app).BySource[DataHazards].ShouldBe(PolicyEnforcement.Error);
     }
 
     [Fact]
@@ -65,11 +71,9 @@ public sealed class CliApplicationBuilderTests
         // Act
         using var app = _sut.ConfigurePolicies(null, null).Build().Require();
 
-        // Assert
-        app.Services.GetRequiredService<IOptions<DestructiveActionOptions>>().Value
-            .Policy.ShouldBe(PolicyEnforcement.Error);
-        app.Services.GetRequiredService<IOptions<DataHazardOptions>>().Value
-            .Policy.ShouldBe(PolicyEnforcement.Warn);
+        // Assert — no override is registered, so each policy reports at the severity it judges natural.
+        Enforcement(app).BySource.ShouldNotContainKey(DestructiveActions);
+        Enforcement(app).BySource.ShouldNotContainKey(DataHazards);
     }
 
     [Fact]
@@ -116,9 +120,10 @@ public sealed class CliApplicationBuilderTests
         // Act
         var result = _sut.TryConfigureDatabase(reference);
 
-        // Assert — captured (not thrown) as a failed Result, its errors labelled with the plugin block.
+        // Assert — captured (not thrown) as a failed Result, its errors labelled with the plugin block. The label
+        // leads the message rather than replacing the source, which now says only what produced the finding.
         result.IsFailure.ShouldBeTrue();
-        result.Errors.ShouldAllBe(error => error.Source == "postgres");
+        result.Errors.ShouldAllBe(error => error.Message.StartsWith("postgres: ", StringComparison.Ordinal));
         result.Errors.ShouldContain(error => error.Message.Contains("connection_string", StringComparison.OrdinalIgnoreCase));
     }
 

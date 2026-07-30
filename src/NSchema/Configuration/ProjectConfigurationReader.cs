@@ -33,8 +33,7 @@ internal static class ProjectConfigurationReader
 
         return Assemble(definition.Require(), (source, range) =>
             lockFile.Find(source)?.Version
-            ?? Result.Failure<SemanticVersion>(Diagnostic.Error(source.Value,
-                $"Plugin '{source}' is declared as '{range}' but is not locked. Run 'nschema init' to resolve and lock it.")));
+            ?? Result.Failure<SemanticVersion>(PluginDiagnostics.NotLocked(source, range)));
     }
 
     /// <summary>
@@ -113,7 +112,7 @@ internal static class ProjectConfigurationReader
             var overlayFiles = ProjectGlobs.Match(root, ProjectGlobs.EnvironmentConfiguration(environment));
             if (overlayFiles.Count == 0)
             {
-                return Diagnostic.Error(environment, $"No configuration files found for environment '{environment}'.");
+                return ConfigurationDiagnostics.UnknownEnvironment(environment);
             }
 
             layers.Add(new ConfigurationLayer(overlayFiles));
@@ -121,15 +120,19 @@ internal static class ProjectConfigurationReader
 
         var loaded = await ConfigurationProvider.Load(layers, HostVersion.Current, cancellationToken);
 
-        // The parser's findings carry a file and position of their own; fold them into plain diagnostics sourced by
-        // file, so each one keeps pointing at the line the reader has to go and edit.
+        // The parser's findings carry a file and position of their own, which the diagnostics table does not render;
+        // fold the location into the message so each one keeps pointing at the line the reader has to go and edit.
         return Result.From(loaded.Value, loaded.Diagnostics.Select(Describe));
     }
 
-    private static Diagnostic Describe(NsqlDiagnostic diagnostic) => new(
-        diagnostic.File is { } file && diagnostic.Position != SourcePosition.None
+    // The finding keeps its own source and code — they say what produced it and which finding it is, neither of which
+    // is a location — so only the text is rewritten.
+    private static Diagnostic Describe(NsqlDiagnostic diagnostic) =>
+        Location(diagnostic) is { } location ? diagnostic with { Text = $"{location}: {diagnostic.Text}" } : diagnostic;
+
+    private static string? Location(NsqlDiagnostic diagnostic) => diagnostic.File is not { } file
+        ? null
+        : diagnostic.Position != SourcePosition.None
             ? $"{Path.GetFileName(file)}:{diagnostic.Position.Line}"
-            : diagnostic.File is { } named ? Path.GetFileName(named) : "configuration",
-        diagnostic.Text,
-        diagnostic.Severity);
+            : Path.GetFileName(file);
 }

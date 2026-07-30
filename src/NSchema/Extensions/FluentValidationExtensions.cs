@@ -1,5 +1,6 @@
 using FluentValidation;
 using FluentValidation.Validators;
+using NSchema.Configuration;
 
 namespace NSchema.Extensions;
 
@@ -20,7 +21,7 @@ internal static class FluentValidationExtensions
             return result.IsValid
                 ? instance
                 : Result.Failure<T>(result.Errors.Select(error =>
-                    Diagnostic.Error(error.PropertyName, error.ErrorMessage)));
+                    ConfigurationDiagnostics.InvalidConfiguration(error.ErrorMessage)));
         }
     }
 

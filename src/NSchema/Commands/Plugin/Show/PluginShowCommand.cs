@@ -38,8 +38,7 @@ internal static class PluginShowCommand
         {
             var configured = plugins.Count == 0 ? "none are configured" : string.Join(", ", plugins.Select(p => p.Label));
             messenger.ReportDiagnostics([
-                Diagnostic.Error(configuration.Label ?? "plugin",
-                    $"No plugin labelled '{configuration.Label}' is configured for this project (configured: {configured}).")
+                PluginDiagnostics.NotConfigured(configuration.Label, configured)
             ]);
             return ExitCodes.Error;
         }

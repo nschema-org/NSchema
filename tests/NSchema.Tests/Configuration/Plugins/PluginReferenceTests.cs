@@ -93,5 +93,5 @@ public sealed class PluginReferenceTests
     private static Func<PackageId, VersionRange, Result<SemanticVersion>> Resolver(SemanticVersion? resolved = null) =>
         (source, range) => resolved is not null
             ? resolved
-            : Result.Failure<SemanticVersion>(Diagnostic.Error(source.Value, $"'{source}' is not locked."));
+            : Result.Failure<SemanticVersion>(Diagnostic.Error("plugins", "plugin-not-locked", $"'{source}' is not locked."));
 }

@@ -109,7 +109,7 @@ public sealed class JsonConsoleMessengerTests
     public void ReportScriptExecutions_EmitsASingleArray()
     {
         // A query result: one clean array on stdout a script can consume directly.
-        _sut.ReportScripts([new ScriptExecution(new ScopedAddress(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
+        _sut.ReportScripts([new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         var record = evt.EnumerateArray().ShouldHaveSingleItem();
@@ -181,7 +181,7 @@ public sealed class JsonConsoleMessengerTests
     public void ReportDiagnostics_EmitsDiagnosticsEvent()
     {
         // Act
-        _sut.ReportDiagnostics((Diagnostic[])[new Diagnostic("destructive", "Dropping column id", DiagnosticSeverity.Error)]);
+        _sut.ReportDiagnostics((Diagnostic[])[new Diagnostic("destructive-actions", "destructive-change", "Dropping column id", DiagnosticSeverity.Error)]);
 
         // Assert
         var evt = StdoutEvents().ShouldHaveSingleItem();

@@ -56,7 +56,7 @@ internal static class ProjectScaffolder
     {
         if (Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories).Length != 0 && !force)
         {
-            return Diagnostic.Error(directory, $"{directory} is not empty. Use --force to override.");
+            return ScaffoldDiagnostics.DirectoryNotEmpty(directory);
         }
 
         // Each contributor hands over a document; they are merged and written once, so nothing here builds NSQL. The
