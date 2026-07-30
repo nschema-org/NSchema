@@ -68,8 +68,7 @@ internal static class ImportCommand
         }
 
         return Directory.EnumerateFiles(outputDirectory, "*.sql", SearchOption.AllDirectories).Any()
-            ? Result.From(Diagnostic.Error(outputDirectory,
-                $"{outputDirectory} already contains .sql files that import would overwrite. Re-run with --force to overwrite."))
+            ? Result.From(ImportDiagnostics.OutputNotEmpty(outputDirectory))
             : Result.Success();
     }
 }

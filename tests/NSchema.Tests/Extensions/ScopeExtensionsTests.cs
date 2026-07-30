@@ -21,7 +21,7 @@ public sealed class ScopeExtensionsTests
     {
         var scope = new[] { "app" }.ToPlanningScope().Require();
 
-        scope.Addresses.ShouldHaveSingleItem().ShouldBe(new SchemaAddress("app"));
+        scope.Addresses.ShouldHaveSingleItem().ShouldBe(DatabaseAddress.Schema("app"));
     }
 
     [Fact]
@@ -29,7 +29,11 @@ public sealed class ScopeExtensionsTests
     {
         var scope = new[] { "app.orders" }.ToPlanningScope().Require();
 
-        scope.Addresses.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "orders"));
+        // A scope value names an object without saying what kind it is, so the address stays kind-free and covers
+        // every kind sharing the name.
+        var address = scope.Addresses.ShouldHaveSingleItem().ShouldBeOfType<ObjectAddress>();
+        address.ShouldBe(new ObjectAddress("app", "orders"));
+        address.Kind.ShouldBeNull();
     }
 
     [Fact]
@@ -46,7 +50,7 @@ public sealed class ScopeExtensionsTests
     {
         var scope = new[] { "app", "billing.invoices" }.ToPlanningScope().Require();
 
-        scope.Addresses.ShouldBe([new SchemaAddress("app"), new ObjectAddress("billing", "invoices")]);
+        scope.Addresses.ShouldBe([DatabaseAddress.Schema("app"), new ObjectAddress("billing", "invoices")]);
     }
 
     [Fact]

@@ -57,7 +57,7 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
 
     // `script list` is a structured query too, so the ledger emits as a single clean array.
     public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out,
-        scripts.Select(s => new { Name = s.Script.Value, Hash = s.Hash.Value, s.ExecutedUtc }));
+        scripts.Select(s => new { Name = s.Script.ToString(), Hash = s.Hash.Value, s.ExecutedUtc }));
 
     public void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts) => JsonOutput.Write(_out, scripts);
 
@@ -79,7 +79,13 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
             return;
         }
 
-        JsonOutput.Write(_out, new { type = "diagnostics", diagnostics = diagnostics.Select(d => new { d.Source, d.Severity, d.Message }) });
+        // Source and Code are value objects, so they are unwrapped to their strings — serializing them whole would
+        // emit `{"value":…}` wrappers. The code is what a consumer should gate on: it survives a reworded message.
+        JsonOutput.Write(_out, new
+        {
+            type = "diagnostics",
+            diagnostics = diagnostics.Select(d => new { Source = d.Source.Value, Code = d.Code.Value, d.Severity, d.Message }),
+        });
     }
 
     // The --json shape for a lock (lock status / lock acquire): a single object so a script can gate on `locked`

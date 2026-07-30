@@ -52,7 +52,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureState(StateConfiguration? state)
     {
-        _diagnostics.Add(TryConfigureState(state).Diagnostics);
+        _diagnostics.AddRange(TryConfigureState(state).Diagnostics);
         return this;
     }
 
@@ -75,7 +75,7 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigureDatabase(PluginReference? provider)
     {
-        _diagnostics.Add(TryConfigureDatabase(provider).Diagnostics);
+        _diagnostics.AddRange(TryConfigureDatabase(provider).Diagnostics);
         return this;
     }
 
@@ -111,15 +111,30 @@ internal sealed class CliApplicationBuilder
         where TPlugin : class, INSchemaPlugin
     {
         var resolved = ResolvePlugin<TPlugin>(reference);
-        return resolved.IsFailure
-            ? Labelled(reference.Label, resolved.Diagnostics)
-            : Labelled(reference.Label, configure(resolved.Value).Diagnostics);
+        if (resolved.IsFailure)
+        {
+            return Labelled(reference.Label, resolved.Diagnostics);
+        }
+
+        try
+        {
+            return Labelled(reference.Label, configure(resolved.Value).Diagnostics);
+        }
+        catch (Exception ex) when (ex is TypeLoadException or MissingMemberException)
+        {
+            // The plugin loaded, but a member it calls is missing from this host's NSchema.Core — the same version
+            // skew the loader rejects at instantiation, surfacing here because the runtime binds a member on first
+            // call. Reported like any other unloadable plugin, so doctor can say so instead of the CLI crashing.
+            return Labelled(reference.Label,
+                [PluginDiagnostics.IncompatiblePlugin(reference.PackageId, reference.Version, ex.Message)]);
+        }
     }
 
-    // A plugin failure is reported under the block label the configuration declares it with (e.g. 'postgres'/'s3') —
-    // what the user wrote and can act on — rather than the package id or the plugin's own diagnostic source.
+    // A plugin failure is prefixed with the block label the configuration declares it with (e.g. 'postgres'/'s3') —
+    // what the user wrote and can act on, rather than the package id. It rides in the message rather than replacing
+    // the source, because a source says what produced a finding and the label is neither producer nor code.
     private static Result Labelled(PluginLabel label, IEnumerable<Diagnostic> diagnostics) =>
-        Result.From(diagnostics.Select(diagnostic => diagnostic with { Source = label.Value }));
+        Result.From(diagnostics.Select(diagnostic => diagnostic with { Text = $"{label}: {diagnostic.Text}" }));
 
     private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
@@ -132,8 +147,7 @@ internal sealed class CliApplicationBuilder
         var plugin = loaded.Require().OfType<TPlugin>().FirstOrDefault();
         if (plugin is null)
         {
-            return Diagnostic.Error(reference.PackageId.Value,
-                $"The package '{reference.PackageId}' does not provide a plugin for '{reference.Label}'.");
+            return PluginDiagnostics.MissingCapability(reference.PackageId);
         }
 
         return plugin;

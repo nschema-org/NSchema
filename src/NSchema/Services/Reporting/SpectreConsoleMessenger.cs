@@ -96,7 +96,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         foreach (var script in scripts)
         {
             table.AddRow(
-                new Markup(Markup.Escape(script.Script.Value)),
+                new Markup(Markup.Escape(script.Script.ToString())),
                 new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
                 new Markup($"[grey]{Markup.Escape(script.Hash.Value)}[/]"));
         }
@@ -302,7 +302,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         {
             table.AddRow(
                 new Markup(SeverityLabel(diagnostic.Severity)),
-                new Markup(Markup.Escape(diagnostic.Source)),
+                new Markup(Markup.Escape(diagnostic.Source.Value)),
                 new Markup(Markup.Escape(diagnostic.Message)));
         }
 

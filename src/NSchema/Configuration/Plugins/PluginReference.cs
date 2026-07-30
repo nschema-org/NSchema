@@ -27,8 +27,7 @@ internal sealed record PluginReference(PackageId PackageId, SemanticVersion Vers
         var declaration = plugins.FirstOrDefault(p => p.Label == label);
         if (declaration is null)
         {
-            return Diagnostic.Error(label.Value,
-                $"'{label}' does not reference a declared plugin. Add: PLUGIN {label} ( source = '...', version = '...' );");
+            return PluginDiagnostics.NotDeclared(label);
         }
 
         var version = resolve(declaration.Package.Source, declaration.Package.Version);

@@ -17,14 +17,14 @@ internal static class ProjectScriptExtensions
         /// The deployment script with the given name, or <see langword="null"/> when none exists.
         /// </summary>
         public DeploymentScript? FindScript(string name) =>
-            project.Directives.DeploymentScripts.FirstOrDefault(s => Matches(s.Address.Value, name));
+            project.Directives.DeploymentScripts.FirstOrDefault(s => Matches(s.Reference.ToString(), name));
 
         /// <summary>
         /// Every deployment script in the project, in declaration order, as name + body hash pairs.
         /// </summary>
         public IReadOnlyList<ScriptHashEntry> ScriptHashes() =>
         [
-            .. project.Directives.DeploymentScripts.Select(s => new ScriptHashEntry(s.Address.Value, s.Hash.Value)),
+            .. project.Directives.DeploymentScripts.Select(s => new ScriptHashEntry(s.Reference.ToString(), s.Hash.Value)),
         ];
     }
 
@@ -34,9 +34,9 @@ internal static class ProjectScriptExtensions
         /// The recorded execution for the named script, or <see langword="null"/> when none is recorded.
         /// </summary>
         public ScriptExecution? FindScript(string name) =>
-            state.Scripts.FirstOrDefault(s => Matches(s.Script.Value, name));
+            state.Scripts.FirstOrDefault(s => Matches(s.Script.ToString(), name));
     }
 
-    private static bool Matches(string address, string name) =>
-        string.Equals(address, name, StringComparison.OrdinalIgnoreCase);
+    private static bool Matches(string reference, string name) =>
+        string.Equals(reference, name, StringComparison.OrdinalIgnoreCase);
 }

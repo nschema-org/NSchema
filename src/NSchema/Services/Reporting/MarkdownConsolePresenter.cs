@@ -45,9 +45,9 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
 
         foreach (var line in document.Lines)
         {
-            if (line.Kind is { } kind)
+            if (line.Change is { } change)
             {
-                body.Append(DiffMarker(kind)).Append(' ').Append(new string(' ', line.Depth * 2)).Append(line.Text).Append('\n');
+                body.Append(DiffMarker(change)).Append(' ').Append(new string(' ', line.Depth * 2)).Append(line.Text).Append('\n');
             }
             else
             {
@@ -59,7 +59,7 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
         return $"{Fenced(body.ToString(), "diff")}\n\n**Plan:** {added} to add, {modified} to change, {removed} to destroy.";
     }
 
-    private static char DiffMarker(ChangeKind kind) => kind switch
+    private static char DiffMarker(ChangeKind change) => change switch
     {
         ChangeKind.Add => '+',
         ChangeKind.Remove => '-',
