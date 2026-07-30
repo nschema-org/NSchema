@@ -20,7 +20,7 @@ public sealed record SequenceDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Sequence);
+    public ObjectAddress Address => ObjectAddress.Sequence(Schema, Name);
 
     /// <summary>
     /// The sequence name.

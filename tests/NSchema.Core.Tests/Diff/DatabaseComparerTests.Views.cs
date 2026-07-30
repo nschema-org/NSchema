@@ -70,7 +70,7 @@ public partial class DatabaseComparerTests
         var diff = DiffViews(
             [View("legacy", "SELECT * FROM app.users")],
             [View("active", "SELECT * FROM app.users")],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("legacy") with { Kind = SchemaObjectKind.View }, "active")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.View("app", "legacy"), "active")]));
 
         diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RenamedFrom.ShouldBe("legacy");

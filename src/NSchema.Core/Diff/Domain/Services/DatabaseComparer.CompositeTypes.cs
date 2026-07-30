@@ -10,7 +10,7 @@ internal sealed partial class DatabaseComparer
 {
     private List<CompositeTypeDiff> CompareCompositeTypes(SqlIdentifier schemaName, IReadOnlyList<CompositeType> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.CompositeTypes,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.CompositeType)),
+            name => renames.RenamedFrom(ObjectAddress.CompositeType(schemaName, name)),
             type => CompositeTypeDiff.Removed(schemaName, type.Name),
             type => BuildNewCompositeType(schemaName, type),
             (currentType, desiredType, renamedFrom) => BuildModifiedCompositeType(schemaName, currentType, desiredType, renamedFrom));

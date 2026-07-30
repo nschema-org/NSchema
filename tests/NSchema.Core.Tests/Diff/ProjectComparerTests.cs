@@ -223,7 +223,7 @@ public sealed class ProjectComparerTests
             Tables = [new Table { Name = "people" }] }],
         });
         var directives = new ProjectDirectives(
-            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }, "people")]);
+            ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Table("app", "users"), "people")]);
 
         // Act
         var comparison = Sut.Compare(current, new ProjectDefinition(_emptySchema, directives));
@@ -242,7 +242,7 @@ public sealed class ProjectComparerTests
         // Arrange — neither side of the rename exists (a fresh environment): the directive is pending, not
         // spent, so no expiry info fires.
         var directives = new ProjectDirectives(
-            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }, "people")]);
+            ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Table("app", "users"), "people")]);
 
         // Act
         var comparison = Sut.Compare(new CurrentState(_emptySchema), new ProjectDefinition(_emptySchema, directives));

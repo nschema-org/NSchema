@@ -168,7 +168,7 @@ public sealed class MigrationPlannerTests
         {
             Managed = new IdentitySet(
                 DatabaseObjects: [DatabaseAddress.Schema(app)],
-                SchemaObjects: [new ObjectAddress(app, "mine") with { Kind = SchemaObjectKind.Table }]),
+                SchemaObjects: [ObjectAddress.Table(app, "mine")]),
         };
 
         // Act
@@ -192,7 +192,7 @@ public sealed class MigrationPlannerTests
 
         // Assert — within scope, management after an apply is exactly what the project declares.
         plan.Managed.Schemas.Select(s => s.Name).ShouldBe([app]);
-        plan.Managed.SchemaObjects.ShouldBe([new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table }]);
+        plan.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table(app, "users")]);
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public sealed class MigrationPlannerTests
 
         // Assert — a container NSchema was never asked to own is not something a teardown may drop.
         plan.Managed.Schemas.ShouldBeEmpty();
-        plan.Managed.SchemaObjects.ShouldBe([new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table }]);
+        plan.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table(app, "users")]);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public sealed class MigrationPlannerTests
         {
             Managed = new IdentitySet(
                 DatabaseObjects: [DatabaseAddress.Schema(billing)],
-                SchemaObjects: [new ObjectAddress(billing, "invoices") with { Kind = SchemaObjectKind.Table }]),
+                SchemaObjects: [ObjectAddress.Table(billing, "invoices")]),
         };
         var desired = new ProjectDefinition(new Database { Schemas = [new Schema { Name = app }] });
 
@@ -241,8 +241,8 @@ public sealed class MigrationPlannerTests
         // Arrange — targeting one object converges only it towards nothing: the container and its siblings
         // stay managed, because an object entry covers nothing above or beside itself.
         SqlIdentifier app = "app";
-        var users = new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table };
-        var orders = new ObjectAddress(app, "orders") with { Kind = SchemaObjectKind.Table };
+        var users = ObjectAddress.Table(app, "users");
+        var orders = ObjectAddress.Table(app, "orders");
         var current = new CurrentState(_emptySchema)
         {
             Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(app)], SchemaObjects: [users, orders]),
@@ -384,8 +384,8 @@ public sealed class MigrationPlannerTests
 
         // Assert
         result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(
-            new ObjectAddress("app", "Users") with { Kind = SchemaObjectKind.Table },
-            new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }));
+            ObjectAddress.Table("app", "Users"),
+            ObjectAddress.Table("app", "users")));
     }
 
     [Fact]

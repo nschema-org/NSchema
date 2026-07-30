@@ -40,9 +40,6 @@ public partial class DatabaseComparerTests
         return ChangeScriptDecorator.Decorate(diff, effective.ChangeScripts).Require();
     }
 
-    /// <summary>An address in the <c>app</c> schema.</summary>
-    private static ObjectAddress App(string name) => new("app", name);
-
     /// <summary>Diffs two single-table <c>app</c> schemas, returning the table diff (null when unchanged).</summary>
     private TableDiff? DiffTable(Table current, Table desired, ProjectDirectives? directives = null) =>
         Compare(Db(new Schema { Name = "app", Tables = [current] }), Db(new Schema { Name = "app", Tables = [desired] }), directives)
@@ -59,7 +56,7 @@ public partial class DatabaseComparerTests
 
     /// <summary>Directives renaming table <c>app.&lt;from&gt;</c> to <paramref name="to"/>.</summary>
     private static ProjectDirectives TableRename(string from, string to) =>
-        new(ObjectRenames: [new ObjectRenameDirective(App(from) with { Kind = SchemaObjectKind.Table }, to)]);
+        new(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Table("app", from), to)]);
 
     /// <summary>Directives renaming column <c>app.t.&lt;from&gt;</c> to <paramref name="to"/>.</summary>
     private static ProjectDirectives ColumnRename(string from, string to, string table = "t") =>
@@ -388,7 +385,7 @@ public partial class DatabaseComparerTests
         SqlIdentifier sales = "sales";
         var directives = new ProjectDirectives(
             SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema(sales), DatabaseAddress.Schema("core"))],
-            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress(sales, "users") with { Kind = SchemaObjectKind.Table }, "people")],
+            ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Table(sales, "users"), "people")],
             MemberRenames: [new MemberRenameDirective(new MemberAddress(sales, "users", "name"), "full_name")]);
 
         var schema = Compare(current, desired, directives).Schemas.ShouldHaveSingleItem();

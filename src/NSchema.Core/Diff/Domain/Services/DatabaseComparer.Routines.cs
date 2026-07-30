@@ -9,7 +9,7 @@ internal sealed partial class DatabaseComparer
 {
     private static List<RoutineDiff> CompareRoutines(SqlIdentifier schemaName, IReadOnlyList<Routine> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.Routines,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.Routine)),
+            name => renames.RenamedFrom(ObjectAddress.Routine(schemaName, name)),
             routine => RoutineDiff.Removed(schemaName, routine.Name, routine.RoutineKind),
             routine => BuildNewRoutine(schemaName, routine),
             (currentRoutine, desiredRoutine, renamedFrom) => BuildModifiedRoutine(schemaName, currentRoutine, desiredRoutine, renamedFrom));

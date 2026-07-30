@@ -21,7 +21,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.View);
+    public ObjectAddress Address => ObjectAddress.View(Schema, Name);
 
     /// <summary>
     /// The view name.

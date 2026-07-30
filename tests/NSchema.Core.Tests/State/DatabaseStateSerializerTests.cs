@@ -148,7 +148,7 @@ public sealed class DatabaseStateSerializerTests
         {
             Managed = new IdentitySet(
                 DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Extension("citext")],
-                SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]),
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
         }).Span));
 
     [Fact]
@@ -161,10 +161,10 @@ public sealed class DatabaseStateSerializerTests
                 DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("my.schema"), DatabaseAddress.Extension("citext"), DatabaseAddress.Extension("uuid-ossp")],
                 SchemaObjects:
                 [
-                    new ObjectAddress("app", "users", SchemaObjectKind.Table),
-                    new ObjectAddress("app", "active_users", SchemaObjectKind.View),
-                    new ObjectAddress("app", "user_id_seq", SchemaObjectKind.Sequence),
-                    new ObjectAddress("my.schema", "Order Details", SchemaObjectKind.Table),
+                    ObjectAddress.Table("app", "users"),
+                    ObjectAddress.View("app", "active_users"),
+                    ObjectAddress.Sequence("app", "user_id_seq"),
+                    ObjectAddress.Table("my.schema", "Order Details"),
                 ]),
         }).Span));
 
@@ -176,8 +176,8 @@ public sealed class DatabaseStateSerializerTests
             DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("my.schema"), DatabaseAddress.Extension("citext")],
             SchemaObjects:
             [
-                new ObjectAddress("app", "users", SchemaObjectKind.Table),
-                new ObjectAddress("my.schema", "Order Details", SchemaObjectKind.View),
+                ObjectAddress.Table("app", "users"),
+                ObjectAddress.View("my.schema", "Order Details"),
             ]);
 
         // Act

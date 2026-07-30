@@ -11,7 +11,7 @@ public sealed class IdentitySetTests
 {
     private static readonly SqlIdentifier _app = new("app");
 
-    private static ObjectAddress Table(string name) => new(_app, name, SchemaObjectKind.Table);
+    private static ObjectAddress Table(string name) => ObjectAddress.Table(_app, name);
 
     [Fact]
     public void Contains_MatchesByValue_PerLevel()
@@ -25,7 +25,7 @@ public sealed class IdentitySetTests
         set.ContainsSchema("app").ShouldBeTrue();
         set.ContainsSchema("APP").ShouldBeFalse(); // identifiers are case-sensitive
         set.ContainsObject(Table("users")).ShouldBeTrue();
-        set.ContainsObject(new ObjectAddress(_app, "users") with { Kind = SchemaObjectKind.View }).ShouldBeFalse(); // same address, different kind
+        set.ContainsObject(ObjectAddress.View(_app, "users")).ShouldBeFalse(); // same address, different kind
         set.ContainsExtension("citext").ShouldBeTrue();
     }
 
@@ -117,7 +117,7 @@ public sealed class IdentitySetTests
 
         scope.Contains(_app).ShouldBeTrue();
         scope.Contains(Table("users")).ShouldBeTrue();
-        scope.Contains(new ObjectAddress("other", "users") with { Kind = SchemaObjectKind.Table }).ShouldBeFalse();
+        scope.Contains(ObjectAddress.Table("other", "users")).ShouldBeFalse();
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public sealed class IdentitySetTests
         // Extensions are database-global, so every scope covers them.
         var set = new IdentitySet(
             DatabaseObjects: [DatabaseAddress.Schema(_app), DatabaseAddress.Schema("other"), DatabaseAddress.Extension("citext")],
-            SchemaObjects: [Table("users"), new ObjectAddress("other", "t") with { Kind = SchemaObjectKind.Table }]);
+            SchemaObjects: [Table("users"), ObjectAddress.Table("other", "t")]);
 
         var covered = set.CoveredBy(PlanningScope.To(DatabaseAddress.Schema(_app)));
 
@@ -184,7 +184,7 @@ public sealed class IdentitySetTests
 
         // Assert
         identities.Schemas.Select(s => s.Name).ShouldBe([_app]);
-        identities.SchemaObjects.ShouldBe([Table("users"), new ObjectAddress(_app, "v") with { Kind = SchemaObjectKind.View }], ignoreOrder: true);
+        identities.SchemaObjects.ShouldBe([Table("users"), ObjectAddress.View(_app, "v")], ignoreOrder: true);
         identities.Extensions.Select(e => e.Name).ShouldBe(["citext"]);
     }
 

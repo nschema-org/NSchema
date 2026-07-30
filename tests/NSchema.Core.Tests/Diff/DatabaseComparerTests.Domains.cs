@@ -85,7 +85,7 @@ public partial class DatabaseComparerTests
     public void Compare_RenamedDomain_SetsRenamedFrom()
     {
         var diff = DiffDomains([new DomainType { Name = "old_d", DataType = SqlType.Text }], [new DomainType { Name = "d", DataType = SqlType.Text }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("old_d") with { Kind = SchemaObjectKind.Domain }, "d")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Domain("app", "old_d"), "d")]));
 
         diff!.RenamedFrom.ShouldBe("old_d");
         diff.RequiresRecreate.ShouldBeFalse(); // a rename is in place, not a recreate

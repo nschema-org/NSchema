@@ -9,7 +9,7 @@ internal sealed partial class DatabaseComparer
 {
     private static List<SequenceDiff> CompareSequences(SqlIdentifier schemaName, IReadOnlyList<Sequence> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.Sequences,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.Sequence)),
+            name => renames.RenamedFrom(ObjectAddress.Sequence(schemaName, name)),
             sequence => SequenceDiff.Removed(schemaName, sequence.Name),
             sequence => BuildNewSequence(schemaName, sequence),
             (currentSequence, desiredSequence, renamedFrom) => BuildModifiedSequence(schemaName, currentSequence, desiredSequence, renamedFrom));

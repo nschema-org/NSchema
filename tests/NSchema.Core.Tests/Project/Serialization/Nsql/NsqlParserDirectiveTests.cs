@@ -19,8 +19,6 @@ public sealed class NsqlParserDirectiveTests
         return NSchema.Project.ProjectAssembler.Assemble([read.Value]).Value!.Directives;
     }
 
-    private static ObjectAddress App(string name) => new("app", name);
-
     [Fact]
     public void Parse_RenameSchema_TakesBareNames()
         => Directives("CREATE SCHEMA core; RENAME SCHEMA sales TO core;")
@@ -31,7 +29,7 @@ public sealed class NsqlParserDirectiveTests
     public void Parse_RenameTable_TakesQualifiedFromAndBareTo()
         => Directives("CREATE SCHEMA app; CREATE TABLE app.people ( id int NOT NULL ); RENAME TABLE app.users TO people;")
             .ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people"));
+            .ShouldBe(new ObjectRenameDirective(ObjectAddress.Table("app", "users"), "people"));
 
     [Fact]
     public void Parse_RenameColumn_TakesAThreePartPath()

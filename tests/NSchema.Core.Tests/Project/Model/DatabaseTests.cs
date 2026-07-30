@@ -24,7 +24,7 @@ public sealed class DatabaseTests
     {
         // Arrange — the object is managed, the schema holding it is not.
         var database = Db(Schema("app", Table("users")));
-        var identities = new IdentitySet(SchemaObjects: [new ObjectAddress("app", "users", SchemaObjectKind.Table)]);
+        var identities = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "users")]);
 
         // Act
         var filtered = database.FilteredTo(identities);
@@ -50,7 +50,7 @@ public sealed class DatabaseTests
     {
         // Act
         var filtered = Db(Schema("app", Table("users"))).FilteredTo(
-            new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("app")], SchemaObjects: [new ObjectAddress("app", "users", SchemaObjectKind.Table)]));
+            new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("app")], SchemaObjects: [ObjectAddress.Table("app", "users")]));
 
         // Assert
         filtered.Schemas.ShouldHaveSingleItem().IsImplicit.ShouldBeFalse();
@@ -109,8 +109,8 @@ public sealed class DatabaseTests
                 SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema(sales), DatabaseAddress.Schema(core))],
                 ObjectRenames:
                 [
-                    new ObjectRenameDirective(new ObjectAddress(sales, "old") with { Kind = SchemaObjectKind.Table }, "current"),
-                    new ObjectRenameDirective(new ObjectAddress("audit", "stale") with { Kind = SchemaObjectKind.Table }, "fresh"),
+                    new ObjectRenameDirective(ObjectAddress.Table(sales, "old"), "current"),
+                    new ObjectRenameDirective(ObjectAddress.Table("audit", "stale"), "fresh"),
                 ]));
 
         var filtered = project.ScopedTo(PlanningScope.To(DatabaseAddress.Schema(core))).Directives;
@@ -130,8 +130,8 @@ public sealed class DatabaseTests
         var directives = new ProjectDirectives(
             ObjectRenames:
             [
-                new ObjectRenameDirective(new ObjectAddress(app, "customers") with { Kind = SchemaObjectKind.Table }, "users"),
-                new ObjectRenameDirective(new ObjectAddress(app, "stale") with { Kind = SchemaObjectKind.Table }, "fresh"),
+                new ObjectRenameDirective(ObjectAddress.Table(app, "customers"), "users"),
+                new ObjectRenameDirective(ObjectAddress.Table(app, "stale"), "fresh"),
             ],
             MemberRenames: [new MemberRenameDirective(new MemberAddress(app, "users", "mail"), "email")],
             ChangeScripts:

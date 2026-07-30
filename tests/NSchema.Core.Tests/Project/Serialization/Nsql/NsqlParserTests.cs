@@ -240,7 +240,7 @@ public sealed class NsqlParserTests
     public void Parse_RenameView_BecomesADirective()
         => Directives("CREATE SCHEMA app; CREATE VIEW app.v AS SELECT 1 FROM app.t; RENAME VIEW app.old_v TO v;")
             .ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(new ObjectAddress("app", "old_v") with { Kind = SchemaObjectKind.View }, "v"));
+            .ShouldBe(new ObjectRenameDirective(ObjectAddress.View("app", "old_v"), "v"));
 
     [Fact]
     public void Parse_CreateView_WithDocComment_AttachesComment()
@@ -318,7 +318,7 @@ public sealed class NsqlParserTests
     public void Parse_RenameEnum_BecomesADirective()
         => Directives("CREATE SCHEMA app; CREATE ENUM app.status ('a'); RENAME ENUM app.state TO status;")
             .ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(new ObjectAddress("app", "state") with { Kind = SchemaObjectKind.Enum }, "status"));
+            .ShouldBe(new ObjectRenameDirective(ObjectAddress.Enum("app", "state"), "status"));
 
     [Fact]
     public void Parse_CreateEnum_WithDocComment_AttachesComment()
@@ -354,7 +354,7 @@ public sealed class NsqlParserTests
     public void Parse_RenameSequence_BecomesADirective()
         => Directives("CREATE SCHEMA app; CREATE SEQUENCE app.invoice_id; RENAME SEQUENCE app.bill_id TO invoice_id;")
             .ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(new ObjectAddress("app", "bill_id") with { Kind = SchemaObjectKind.Sequence }, "invoice_id"));
+            .ShouldBe(new ObjectRenameDirective(ObjectAddress.Sequence("app", "bill_id"), "invoice_id"));
 
     [Fact]
     public void Parse_CreateSequence_WithDocComment_AttachesComment()
@@ -398,7 +398,7 @@ public sealed class NsqlParserTests
 
         // Assert
         directives.ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(new ObjectAddress("app", "old_f") with { Kind = SchemaObjectKind.Routine }, "f"));
+            .ShouldBe(new ObjectRenameDirective(ObjectAddress.Routine("app", "old_f"), "f"));
     }
 
     [Fact]

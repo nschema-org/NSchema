@@ -20,7 +20,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.CompositeType);
+    public ObjectAddress Address => ObjectAddress.CompositeType(Schema, Name);
 
     /// <summary>
     /// The composite type name.

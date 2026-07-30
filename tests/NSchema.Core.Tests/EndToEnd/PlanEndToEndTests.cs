@@ -161,7 +161,7 @@ public sealed class PlanEndToEndTests : IDisposable
         // here through state surgery. billing stays unmanaged — the plan may only sever, never tear it down.
         await Manage(app, new IdentitySet(
             DatabaseObjects: [DatabaseAddress.Schema("app")],
-            SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]));
+            SchemaObjects: [ObjectAddress.Table("app", "users")]));
 
         var result = await app.Operations.Plan(
             new PlanArguments { Target = PlanTarget.Empty, Scope = PlanningScope.To(DatabaseAddress.Schema("app")) },
@@ -231,7 +231,7 @@ public sealed class PlanEndToEndTests : IDisposable
         // here through state surgery.
         await Manage(app, new IdentitySet(
             DatabaseObjects: [DatabaseAddress.Schema("app")],
-            SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]));
+            SchemaObjects: [ObjectAddress.Table("app", "users")]));
 
         var result = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Empty }, TestContext.Current.CancellationToken);
 

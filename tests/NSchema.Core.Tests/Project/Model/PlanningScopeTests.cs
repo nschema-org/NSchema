@@ -30,7 +30,7 @@ public sealed class PlanningScopeTests
         // Assert
         scope.Contains(App).ShouldBeTrue();
         scope.Contains(Address("app", "users")).ShouldBeTrue();
-        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.Table }).ShouldBeTrue();
+        scope.Contains(ObjectAddress.Table("app", "users")).ShouldBeTrue();
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public sealed class PlanningScopeTests
         var scope = PlanningScope.To([Address("app", "users")]);
 
         // Assert
-        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.Table }).ShouldBeTrue();
-        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.View }).ShouldBeTrue();
+        scope.Contains(ObjectAddress.Table("app", "users")).ShouldBeTrue();
+        scope.Contains(ObjectAddress.View("app", "users")).ShouldBeTrue();
     }
 
     [Fact]

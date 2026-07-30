@@ -11,7 +11,7 @@ internal sealed partial class DatabaseComparer
 {
     private List<DomainDiff> CompareDomains(SqlIdentifier schemaName, IReadOnlyList<DomainType> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.Domains,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.Domain)),
+            name => renames.RenamedFrom(ObjectAddress.Domain(schemaName, name)),
             domain => DomainDiff.Removed(schemaName, domain.Name),
             domain => BuildNewDomain(schemaName, domain),
             (currentDomain, desiredDomain, renamedFrom) => BuildModifiedDomain(schemaName, currentDomain, desiredDomain, renamedFrom));
@@ -36,7 +36,7 @@ internal sealed partial class DatabaseComparer
         var notNull = requiresRecreate || current.NotNull == desired.NotNull
             ? null
             : new ValueChange<bool>(current.NotNull, desired.NotNull);
-        IReadOnlyList<CheckConstraintDiff> checks = requiresRecreate
+        var checks = requiresRecreate
             ? []
             : CompareTableMembers(new ObjectAddress(schema, desired.Name), "DomainType check", current.Checks, desired.Checks,
                 CheckConstraintDiff.Added, CheckConstraintDiff.Removed, CheckConstraintDiff.CommentChanged);

@@ -47,7 +47,7 @@ public partial class DatabaseComparerTests
         var diff = DiffEnums(
             [new EnumType { Name = "state", Values = ["a"] }],
             [new EnumType { Name = "status", Values = ["a"] }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("state") with { Kind = SchemaObjectKind.Enum }, "status")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Enum("app", "state"), "status")]));
 
         diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RenamedFrom.ShouldBe("state");

@@ -101,7 +101,7 @@ internal static class DatabaseAligner
             }
 
             var declaredSchema = schemaRenames.GetValueOrDefault(rename.From.Schema, rename.From.Schema);
-            var declaredTable = objectRenames.GetValueOrDefault(new ObjectAddress(rename.From.Schema, rename.From.Object, SchemaObjectKind.Table), rename.From.Object);
+            var declaredTable = objectRenames.GetValueOrDefault(ObjectAddress.Table(rename.From.Schema, rename.From.Object), rename.From.Object);
             var address = new MemberAddress(declaredSchema, declaredTable, rename.To);
             if (desired.Schemas.FirstOrDefault(s => s.Name == declaredSchema)
                     ?.Tables.FirstOrDefault(t => t.Name == declaredTable)

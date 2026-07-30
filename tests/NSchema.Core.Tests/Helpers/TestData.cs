@@ -165,18 +165,15 @@ public static class TestData
         SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema("legacy_app"), DatabaseAddress.Schema("app"))],
         ObjectRenames:
         [
-            new ObjectRenameDirective(Current("members") with { Kind = SchemaObjectKind.Table }, "users"),
-            new ObjectRenameDirective(Current("legacy_directory") with { Kind = SchemaObjectKind.View }, "user_directory"),
-            new ObjectRenameDirective(Current("importance") with { Kind = SchemaObjectKind.Enum }, "priority"),
-            new ObjectRenameDirective(Current("bill_id") with { Kind = SchemaObjectKind.Sequence }, "invoice_id"),
-            new ObjectRenameDirective(Current("clean_code") with { Kind = SchemaObjectKind.Routine }, "normalize_code"),
-            new ObjectRenameDirective(Current("legacy_id") with { Kind = SchemaObjectKind.Domain }, "typeid"),
-            new ObjectRenameDirective(Current("legacy_address") with { Kind = SchemaObjectKind.CompositeType }, "address"),
+            new ObjectRenameDirective(ObjectAddress.Table("legacy_app", "members"), "users"),
+            new ObjectRenameDirective(ObjectAddress.View("legacy_app", "legacy_directory"), "user_directory"),
+            new ObjectRenameDirective(ObjectAddress.Enum("legacy_app", "importance"), "priority"),
+            new ObjectRenameDirective(ObjectAddress.Sequence("legacy_app", "bill_id"), "invoice_id"),
+            new ObjectRenameDirective(ObjectAddress.Routine("legacy_app", "clean_code"), "normalize_code"),
+            new ObjectRenameDirective(ObjectAddress.Domain("legacy_app", "legacy_id"), "typeid"),
+            new ObjectRenameDirective(ObjectAddress.CompositeType("legacy_app", "legacy_address"), "address"),
         ],
         MemberRenames: [new MemberRenameDirective(new MemberAddress("legacy_app", "members", "short_code"), "code")]);
-
-    /// <summary>An address under the schema's current (pre-rename) name.</summary>
-    private static ObjectAddress Current(string name) => new("legacy_app", name);
 
     /// <summary>Builds a view with dependencies derived from its body, exactly as the DDL parser would.</summary>
     private static View View(string name, string body, string? comment = null) =>
