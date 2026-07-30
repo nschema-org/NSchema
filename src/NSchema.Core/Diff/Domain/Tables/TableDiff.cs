@@ -24,7 +24,7 @@ public sealed record TableDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.Table);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Table);
 
     /// <summary>
     /// The table name.
@@ -34,7 +34,7 @@ public sealed record TableDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the table.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous table name when the table is being renamed; otherwise <see langword="null"/>.
@@ -100,7 +100,7 @@ public sealed record TableDiff : ISchemaObjectDiff
     /// Whether this is a table being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A table being created, named by its own definition.
@@ -109,7 +109,7 @@ public sealed record TableDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition
     };
 
@@ -117,21 +117,21 @@ public sealed record TableDiff : ISchemaObjectDiff
     /// A table being dropped.
     /// </summary>
     public static TableDiff Removed(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Remove };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove };
 
     /// <summary>
     /// A table altered in place; the member changes are set on the result.
     /// </summary>
     public static TableDiff Modified(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Modify };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Modify };
 
     /// <summary>
     /// Enumerates every changed member of this table across all kinds (columns, indexes, constraints, triggers),
     /// for kind-agnostic consumers. A method rather than a property so serializers and snapshot tooling do not
     /// duplicate the per-kind collections. Grants are not members (they are keyed by role, not name).
     /// </summary>
-    public IEnumerable<INamedObjectDiff> EnumerateMembers() =>
-        Columns.Cast<INamedObjectDiff>()
+    public IEnumerable<IObjectMemberDiff> EnumerateMembers() =>
+        Columns.Cast<IObjectMemberDiff>()
             .Concat(Indexes)
             .Concat(PrimaryKeys)
             .Concat(ForeignKeys)

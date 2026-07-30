@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace NSchema.Diagnostics;
 
@@ -6,6 +7,7 @@ namespace NSchema.Diagnostics;
 /// An ordered set of diagnostics.
 /// </summary>
 /// <typeparam name="TDiagnostic">The diagnostic type the producer mints.</typeparam>
+[CollectionBuilder(typeof(DiagnosticCollectionBuilder), nameof(DiagnosticCollectionBuilder.Create))]
 public class DiagnosticCollection<TDiagnostic> : IDiagnosticCollection<TDiagnostic> where TDiagnostic : Diagnostic
 {
     private readonly List<TDiagnostic> _items;
@@ -43,7 +45,7 @@ public class DiagnosticCollection<TDiagnostic> : IDiagnosticCollection<TDiagnost
     /// <summary>
     /// Adds a set of findings.
     /// </summary>
-    public void Add(IEnumerable<TDiagnostic> diagnostics) => _items.AddRange(diagnostics);
+    public void AddRange(IEnumerable<TDiagnostic> diagnostics) => _items.AddRange(diagnostics);
 
     /// <summary>
     /// Downgrades every finding above <paramref name="severity"/> to it, in place.
@@ -56,6 +58,18 @@ public class DiagnosticCollection<TDiagnostic> : IDiagnosticCollection<TDiagnost
         }
     }
 
+    /// <summary>
+    /// Collapses to a value-less result carrying everything collected; a failure when any finding is an error.
+    /// </summary>
+    public Result ToResult() => Result.From(this);
+
+    /// <summary>
+    /// Collapses to a result carrying <paramref name="value"/> plus everything collected.
+    /// </summary>
+    /// <typeparam name="T">The value the run produced.</typeparam>
+    /// <param name="value">The produced value, when the run produced one.</param>
+    public Result<T, TDiagnostic> ToResult<T>(T? value) => Result<T, TDiagnostic>.From(value, this);
+
     /// <inheritdoc />
     public IEnumerator<TDiagnostic> GetEnumerator() => _items.GetEnumerator();
 
@@ -65,6 +79,7 @@ public class DiagnosticCollection<TDiagnostic> : IDiagnosticCollection<TDiagnost
 /// <summary>
 /// A <see cref="DiagnosticCollection{TDiagnostic}"/> of the base <see cref="Diagnostic"/> — the common case.
 /// </summary>
+[CollectionBuilder(typeof(DiagnosticCollectionBuilder), nameof(DiagnosticCollectionBuilder.Create))]
 public class DiagnosticCollection : DiagnosticCollection<Diagnostic>
 {
     /// <summary>
@@ -80,4 +95,21 @@ public class DiagnosticCollection : DiagnosticCollection<Diagnostic>
     public DiagnosticCollection(IEnumerable<Diagnostic> diagnostics) : base(diagnostics)
     {
     }
+}
+
+/// <summary>
+/// Builds a <see cref="DiagnosticCollection{TDiagnostic}"/> from a collection expression.
+/// </summary>
+public static class DiagnosticCollectionBuilder
+{
+    /// <summary>
+    /// A collection of the given findings.
+    /// </summary>
+    public static DiagnosticCollection<TDiagnostic> Create<TDiagnostic>(ReadOnlySpan<TDiagnostic> diagnostics)
+        where TDiagnostic : Diagnostic => new(diagnostics.ToArray());
+
+    /// <summary>
+    /// A collection of the given findings.
+    /// </summary>
+    public static DiagnosticCollection Create(ReadOnlySpan<Diagnostic> diagnostics) => new(diagnostics.ToArray());
 }

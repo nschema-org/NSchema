@@ -23,7 +23,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffSequences([], [new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 100) }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.Options.StartWith.ShouldBe(100);
     }
 
@@ -32,7 +32,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffSequences([new Sequence { Name = "order_id" }], []);
 
-        diff!.Kind.ShouldBe(ChangeKind.Remove);
+        diff!.Change.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
     }
 
@@ -53,9 +53,9 @@ public partial class DatabaseComparerTests
         var diff = DiffSequences(
             [new Sequence { Name = "bill_id" }],
             [new Sequence { Name = "invoice_id" }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("bill_id") with { Kind = ObjectKind.Sequence }, "invoice_id")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("bill_id") with { Kind = SchemaObjectKind.Sequence }, "invoice_id")]));
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RenamedFrom.ShouldBe("bill_id");
         diff.Name.ShouldBe("invoice_id");
         diff.Options.ShouldBeNull(); // options unchanged, so it is a rename only
@@ -68,7 +68,7 @@ public partial class DatabaseComparerTests
             [new Sequence { Name = "order_id", Comment = "old" }],
             [new Sequence { Name = "order_id", Comment = "new" }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
         diff.Options.ShouldBeNull();
     }
@@ -80,7 +80,7 @@ public partial class DatabaseComparerTests
             [new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 1, IncrementBy: 1) }],
             [new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 1, IncrementBy: 5, Cycle: true) }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Options.ShouldBe(new ValueChange<SequenceOptions>(
             new SequenceOptions(StartWith: 1, IncrementBy: 1),
             new SequenceOptions(StartWith: 1, IncrementBy: 5, Cycle: true)));

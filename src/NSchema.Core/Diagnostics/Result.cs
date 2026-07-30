@@ -71,6 +71,12 @@ public class Result
     /// <param name="value">The produced value.</param>
     /// <param name="diagnostics">Every finding produced, if any.</param>
     public static Result<T> From<T>(T? value, IEnumerable<Diagnostic> diagnostics) => new(value, new DiagnosticCollection(diagnostics));
+
+    /// <summary>
+    /// Lifts a single diagnostic into a value-less result, so a method can return one directly (a failure when it is an error).
+    /// </summary>
+    /// <param name="diagnostic">The diagnostic to carry.</param>
+    public static implicit operator Result(Diagnostic diagnostic) => From(diagnostic);
 }
 
 /// <summary>
@@ -173,4 +179,16 @@ public sealed class Result<TValue, TDiagnostic> : Result<TValue> where TDiagnost
     /// <param name="value">The produced value.</param>
     /// <param name="diagnostics">Every finding produced.</param>
     public static Result<TValue, TDiagnostic> From(TValue? value, IEnumerable<TDiagnostic> diagnostics) => new(value, new DiagnosticCollection<TDiagnostic>(diagnostics));
+
+    /// <summary>
+    /// Lifts a value into a successful result, so a method can <c>return value;</c> directly.
+    /// </summary>
+    /// <param name="value">The value to lift.</param>
+    public static implicit operator Result<TValue, TDiagnostic>(TValue value) => Success(value);
+
+    /// <summary>
+    /// Lifts a single diagnostic into a result, so a method can return one directly (a failure when it is an error).
+    /// </summary>
+    /// <param name="diagnostic">The diagnostic to carry.</param>
+    public static implicit operator Result<TValue, TDiagnostic>(TDiagnostic diagnostic) => Failure(diagnostic);
 }

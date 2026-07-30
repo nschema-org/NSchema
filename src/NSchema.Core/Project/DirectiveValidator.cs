@@ -20,7 +20,7 @@ internal static class DirectiveValidator
         var declaredNames = new Dictionary<SqlIdentifier, SqlIdentifier>();
         foreach (var rename in directives.SchemaRenames)
         {
-            declaredNames.TryAdd(rename.From.Schema, rename.To.Schema);
+            declaredNames.TryAdd(rename.From.Name, rename.To.Name);
         }
 
         return ValidateSchemaRenames(directives, index)
@@ -31,21 +31,21 @@ internal static class DirectiveValidator
     private static IEnumerable<Diagnostic> ValidateSchemaRenames(ProjectDirectives directives, DatabaseLookup index)
     {
         foreach (var d in ValidateRenameShape("schema",
-            directives.SchemaRenames.Select(r => (Container: 0, From: r.From.Schema, To: r.To.Schema)).ToList(),
-            (_, name) => new SchemaAddress(name)))
+            directives.SchemaRenames.Select(r => (Container: 0, From: r.From.Name, To: r.To.Name)).ToList(),
+            (_, name) => DatabaseAddress.Schema(name)))
         {
             yield return d;
         }
 
         foreach (var rename in directives.SchemaRenames)
         {
-            if (index.FindSchema(rename.To.Schema) is null)
+            if (index.FindSchema(rename.To.Name) is null)
             {
-                yield return ProjectDiagnostics.RenameTargetNotDeclared("schema", rename.From, rename.To.Schema);
+                yield return ProjectDiagnostics.RenameTargetNotDeclared("schema", rename.From, rename.To.Name);
             }
-            if (index.FindSchema(rename.From.Schema) is not null)
+            if (index.FindSchema(rename.From.Name) is not null)
             {
-                yield return ProjectDiagnostics.RenameSourceStillDeclared("schema", rename.From, rename.To.Schema);
+                yield return ProjectDiagnostics.RenameSourceStillDeclared("schema", rename.From, rename.To.Name);
             }
         }
     }
@@ -56,7 +56,7 @@ internal static class DirectiveValidator
     private static IEnumerable<Diagnostic> ValidateObjectRenames(
         ProjectDirectives directives, DatabaseLookup index, Dictionary<SqlIdentifier, SqlIdentifier> declaredNames)
     {
-        foreach (var kind in Enum.GetValues<ObjectKind>())
+        foreach (var kind in Enum.GetValues<SchemaObjectKind>())
         {
             var kindName = kind.Display();
             var renames = directives.ObjectRenames.Where(r => r.From.Kind == kind).ToList();
@@ -98,7 +98,7 @@ internal static class DirectiveValidator
         }
 
         var tableRenames = new Dictionary<ObjectAddress, SqlIdentifier>();
-        foreach (var rename in directives.ObjectRenames.Where(r => r.From.Kind == ObjectKind.Table))
+        foreach (var rename in directives.ObjectRenames.Where(r => r.From.Kind == SchemaObjectKind.Table))
         {
             tableRenames.TryAdd(rename.From with { Kind = null }, rename.To);
         }

@@ -98,7 +98,7 @@ public sealed class MigrationWorkflowTests
     public async Task Validate_PolicyViolation_ReturnsErrorFindings_WithoutReporting()
     {
         // Arrange
-        _planner.Validate(Arg.Any<ProjectDefinition>()).Returns(Result.From(Diagnostic.Error("P1", "msg")));
+        _planner.Validate(Arg.Any<ProjectDefinition>()).Returns(Result.From(Diagnostic.Error("p1", "msg", "msg")));
 
         // Act
         var findings = await _sut.Validate(TestContext.Current.CancellationToken);
@@ -113,7 +113,7 @@ public sealed class MigrationWorkflowTests
     {
         // Arrange
         _planner.Validate(Arg.Any<ProjectDefinition>())
-            .Returns(Result.From(new Diagnostic("P1", "info", DiagnosticSeverity.Info)));
+            .Returns(Result.From(new Diagnostic("p1", "policy-finding", "info", DiagnosticSeverity.Info)));
 
         // Act
         var findings = await _sut.Validate(TestContext.Current.CancellationToken);
@@ -127,7 +127,7 @@ public sealed class MigrationWorkflowTests
     public async Task Validate_ProjectDiagnostics_AreCarriedInTheFindings()
     {
         // Arrange — findings raised while reading the DDL (e.g. deprecated syntax) arrive on the read result.
-        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
+        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old-form", "old form")]);
         _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
 
         // Act
@@ -249,7 +249,7 @@ public sealed class MigrationWorkflowTests
         });
 
         // Act
-        await sut.ComputePlan(PlanTarget.Empty, PlanningScope.To(new SchemaAddress("app")), TestContext.Current.CancellationToken);
+        await sut.ComputePlan(PlanTarget.Empty, PlanningScope.To(DatabaseAddress.Schema("app")), TestContext.Current.CancellationToken);
 
         // Assert — the scope reaches the planner, which narrows the difference it computes. The current side
         // stays whole: a scoped teardown may still have to disturb what it is not tearing down.
@@ -283,7 +283,7 @@ public sealed class MigrationWorkflowTests
         // Arrange — a teardown genuinely is destructive, so the finding is correct rather than noise. It must
         // stay possible, but it does not have to be easy.
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
-            .Returns(Result.From(EmptyPlan(), [Diagnostic.Error("destructive", "drops everything")]));
+            .Returns(Result.From(EmptyPlan(), [Diagnostic.Error("destructive", "drops-everything", "drops everything")]));
 
         // Act
         var result = await _sut.ComputePlan(PlanTarget.Empty, PlanningScope.All, TestContext.Current.CancellationToken);
@@ -312,11 +312,11 @@ public sealed class MigrationWorkflowTests
     public async Task ComputePlan_ReadDiagnostics_ArePrependedToThePlannerResult()
     {
         // Arrange — the pure planner never sees read provenance; this shell merges it into the outcome.
-        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
+        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old-form", "old form")]);
         _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.From(EmptyPlan(),
-                [Diagnostic.Warning("data-hazards", "hazard")]));
+                [Diagnostic.Warning("data-hazards", "hazard", "hazard")]));
 
         // Act
         var result = await _sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
@@ -330,17 +330,17 @@ public sealed class MigrationWorkflowTests
     public async Task ComputePlan_ReadDiagnostics_AreCarriedOnAPlannerFailureToo()
     {
         // Arrange
-        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old form")]);
+        var project = Result.From(TestProjects.Project(new Database { Schemas = [] }), [Diagnostic.Warning("deprecations", "old-form", "old form")]);
         _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>()).Returns(project);
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
-            .Returns(Result.Failure<MigrationPlan>([Diagnostic.Error("P1", "blocked")]));
+            .Returns(Result.Failure<MigrationPlan>([Diagnostic.Error("p1", "blocked", "blocked")]));
 
         // Act
         var result = await _sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsFailure.ShouldBeTrue();
-        result.Diagnostics.Select(d => d.Source).ShouldBe(["deprecations", "P1"]);
+        result.Diagnostics.Select(d => d.Source).ShouldBe(["deprecations", "p1"]);
     }
 
     private static Script SeedScript(RunCondition condition = RunCondition.Once) =>
@@ -365,14 +365,14 @@ public sealed class MigrationWorkflowTests
         // Arrange — the planner's "what I have" input is the schema plus the recorded executions; execution
         // records are shared script vocabulary, so the ledger passes straight through.
         var sut = SutWithState(TestProjects.Project(new Database { Schemas = [] }, [SeedScript()]),
-            new ScriptExecution(new ScopedAddress(null, "seed"), "abc", DateTimeOffset.UnixEpoch));
+            new ScriptExecution(new ScriptReference(null, "seed"), "abc", DateTimeOffset.UnixEpoch));
 
         // Act
         await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
 
         // Assert
         _planner.Received(1).Plan(
-            Arg.Is<CurrentState>(c => c!.ExecutedScripts.Count == 1 && c.ExecutedScripts[0] == new ScriptExecution(new ScopedAddress(null, "seed"), "abc", DateTimeOffset.UnixEpoch)),
+            Arg.Is<CurrentState>(c => c!.ExecutedScripts.Count == 1 && c.ExecutedScripts[0] == new ScriptExecution(new ScriptReference(null, "seed"), "abc", DateTimeOffset.UnixEpoch)),
             Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>());
     }
 
@@ -442,21 +442,21 @@ public sealed class MigrationWorkflowTests
         ReadOnlyMemory<byte>? written = null;
         await store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m), Arg.Any<CancellationToken>());
         var sut = BuildSut(store);
-        var managed = new IdentitySet(Schemas: [new SchemaAddress("app")]);
+        var managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("app")]);
         var applied = EmptyPlan() with { Managed = managed };
 
         // Act
         await sut.Refresh(applied, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _stateSerializer.Deserialize(written!.Value).Managed.Schemas.Select(s => s.Schema).ShouldBe(["app"]);
+        _stateSerializer.Deserialize(written!.Value).Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
     }
 
     [Fact]
     public async Task Refresh_WithoutAnAppliedPlan_PreservesTheManagedSet()
     {
         // Arrange — a plain refresh observes; it neither adopts nor abandons anything.
-        var managed = new IdentitySet(Schemas: [new SchemaAddress("app")]);
+        var managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("app")]);
         var store = Substitute.For<IDatabaseStateStore>();
         store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
         store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
@@ -470,14 +470,14 @@ public sealed class MigrationWorkflowTests
         await sut.Refresh(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _stateSerializer.Deserialize(written!.Value).Managed.Schemas.Select(s => s.Schema).ShouldBe(["app"]);
+        _stateSerializer.Deserialize(written!.Value).Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
     }
 
     [Fact]
     public async Task Refresh_PreservesTheExistingLedger()
     {
         // Arrange — the ledger is the one part of state a capture cannot rebuild, so it must carry over.
-        var existing = new ScriptExecution(new ScopedAddress(null, "api-login"), "hash", DateTimeOffset.UnixEpoch);
+        var existing = new ScriptExecution(new ScriptReference(null, "api-login"), "hash", DateTimeOffset.UnixEpoch);
         var store = Substitute.For<IDatabaseStateStore>();
         store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
         store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
@@ -498,7 +498,7 @@ public sealed class MigrationWorkflowTests
     public async Task Refresh_ReRecordingAScript_ReplacesItsEntryByName()
     {
         // Arrange
-        var existing = new ScriptExecution(new ScopedAddress(null, "seed"), "old-hash", DateTimeOffset.UnixEpoch);
+        var existing = new ScriptExecution(new ScriptReference(null, "seed"), "old-hash", DateTimeOffset.UnixEpoch);
         var store = Substitute.For<IDatabaseStateStore>();
         store.Read(Arg.Any<CancellationToken>()).Returns(Result.Success(new StoreReadResult(null)));
         store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
@@ -583,7 +583,7 @@ public sealed class MigrationWorkflowTests
     public async Task ComputePlan_PolicyViolation_ReturnsErrors_WithoutThrowingOrReporting()
     {
         // Arrange
-        var errors = new[] { Diagnostic.Error("P1", "msg") };
+        var errors = new[] { Diagnostic.Error("p1", "msg", "msg") };
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.Failure<MigrationPlan>(errors));
 
@@ -601,7 +601,7 @@ public sealed class MigrationWorkflowTests
         // Arrange: a diff policy (e.g. destructive-action on a dropped table) fails, so the result
         // carries errors but also the diff that triggered them — for the caller to render.
         var diff = new DatabaseDiff([]);
-        var errors = new[] { Diagnostic.Error("destructive", "drops table") };
+        var errors = new[] { Diagnostic.Error("destructive", "drops-table", "drops table") };
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.From(new MigrationPlan(diff, []), errors));
 
@@ -617,7 +617,7 @@ public sealed class MigrationWorkflowTests
     public async Task ComputePlan_CarriesNonErrorDiagnostics_WithoutReporting()
     {
         // Arrange
-        var diagnostics = new[] { new Diagnostic("P1", "info", DiagnosticSeverity.Info) };
+        var diagnostics = new[] { new Diagnostic("p1", "policy-finding", "info", DiagnosticSeverity.Info) };
         var plan = EmptyPlan();
         _planner.Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>())
             .Returns(Result.From(plan, diagnostics));
@@ -650,7 +650,7 @@ public sealed class MigrationWorkflowTests
             new Schema { Name = "unmanaged" },
         ],
         }) with
-        { Managed = new IdentitySet(Schemas: [new SchemaAddress("legacy")]) });
+        { Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("legacy")]) });
 
         // Act
         await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
@@ -671,7 +671,7 @@ public sealed class MigrationWorkflowTests
             .Returns(call => { desiredScope = call.Arg<PlanningScope>(); return ProjectDefinition(new Database { Schemas = [] }); });
 
         // Act
-        await _sut.ComputePlan(PlanTarget.Project, PlanningScope.To(new SchemaAddress("app"), new SchemaAddress("legacy")), TestContext.Current.CancellationToken);
+        await _sut.ComputePlan(PlanTarget.Project, PlanningScope.To(DatabaseAddress.Schema("app"), DatabaseAddress.Schema("legacy")), TestContext.Current.CancellationToken);
 
         // Assert — the project read is load-bearing: template instances bind at aggregation.
         desiredScope!.Addresses.Select(a => a.Value).ShouldBe(["app", "legacy"]);
@@ -687,7 +687,7 @@ public sealed class MigrationWorkflowTests
         });
 
         // Act
-        await sut.ComputePlan(PlanTarget.Project, PlanningScope.To(new SchemaAddress("app")), TestContext.Current.CancellationToken);
+        await sut.ComputePlan(PlanTarget.Project, PlanningScope.To(DatabaseAddress.Schema("app")), TestContext.Current.CancellationToken);
 
         // Assert — narrowing the current side here would hide the out-of-scope objects a scoped run may still
         // disturb, so the planner is handed everything and told what is in play.

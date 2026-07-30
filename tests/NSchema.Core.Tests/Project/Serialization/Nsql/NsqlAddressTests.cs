@@ -17,7 +17,7 @@ public sealed class NsqlAddressTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldBeOfType<SchemaAddress>().Schema.ShouldBe("app");
+        result.Value.ShouldBeOfType<DatabaseAddress>().Name.ShouldBe("app");
     }
 
     [Fact]

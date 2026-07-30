@@ -48,7 +48,7 @@ public sealed class RefreshOperationTests
     {
         // Arrange — without force, an unreadable payload fails the refresh rather than being replaced.
         _workflow.Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<StateCapture>(Diagnostic.Error("state", "unreadable")));
+            .Returns(Result.Failure<StateCapture>(Diagnostic.Error("state", "unreadable", "unreadable")));
 
         // Act
         var result = await _sut.Execute(new RefreshArguments(), TestContext.Current.CancellationToken);
@@ -64,7 +64,7 @@ public sealed class RefreshOperationTests
         // Arrange — the capture replaced state it couldn't read, resetting the run-once ledger.
         _workflow.Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new StateCapture(new Database { Schemas = [] }, 64),
-                Diagnostic.Warning("state", "the run-once script ledger was reset")));
+                Diagnostic.Warning("state", "the-run-once-script", "the run-once script ledger was reset")));
 
         // Act
         var result = await _sut.Execute(new RefreshArguments(), TestContext.Current.CancellationToken);
@@ -81,7 +81,7 @@ public sealed class RefreshOperationTests
     {
         // Arrange — refresh's whole purpose is to capture to a store, so a missing store is a failure (not a no-op).
         _workflow.Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<StateCapture>(Diagnostic.Error("refresh", "Unable to refresh state without a configured state store.")));
+            .Returns(Result.Failure<StateCapture>(Diagnostic.Error("refresh", "unable-to-refresh-state", "Unable to refresh state without a configured state store.")));
 
         // Act
         var result = await _sut.Execute(new RefreshArguments(), TestContext.Current.CancellationToken);

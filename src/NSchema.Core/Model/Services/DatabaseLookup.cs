@@ -19,15 +19,15 @@ internal sealed class DatabaseLookup(Database schema)
     /// <summary>
     /// Whether an object of <paramref name="kind"/> is declared at <paramref name="address"/>.
     /// </summary>
-    public bool Has(ObjectKind kind, ObjectAddress address) => kind switch
+    public bool Has(SchemaObjectKind kind, ObjectAddress address) => kind switch
     {
-        ObjectKind.Table => FindTable(address) is not null,
-        ObjectKind.View => FindSchema(address.Schema)?.Views.Any(v => v.Name == address.Name) == true,
-        ObjectKind.Enum => FindSchema(address.Schema)?.Enums.Any(e => e.Name == address.Name) == true,
-        ObjectKind.Sequence => FindSchema(address.Schema)?.Sequences.Any(s => s.Name == address.Name) == true,
-        ObjectKind.Routine => FindSchema(address.Schema)?.Routines.Any(r => r.Name == address.Name) == true,
-        ObjectKind.Domain => FindSchema(address.Schema)?.Domains.Any(d => d.Name == address.Name) == true,
-        ObjectKind.CompositeType => FindSchema(address.Schema)?.CompositeTypes.Any(t => t.Name == address.Name) == true,
+        SchemaObjectKind.Table => FindTable(address) is not null,
+        SchemaObjectKind.View => FindSchema(address.Schema)?.Views.Any(v => v.Name == address.Name) == true,
+        SchemaObjectKind.Enum => FindSchema(address.Schema)?.Enums.Any(e => e.Name == address.Name) == true,
+        SchemaObjectKind.Sequence => FindSchema(address.Schema)?.Sequences.Any(s => s.Name == address.Name) == true,
+        SchemaObjectKind.Routine => FindSchema(address.Schema)?.Routines.Any(r => r.Name == address.Name) == true,
+        SchemaObjectKind.Domain => FindSchema(address.Schema)?.Domains.Any(d => d.Name == address.Name) == true,
+        SchemaObjectKind.CompositeType => FindSchema(address.Schema)?.CompositeTypes.Any(t => t.Name == address.Name) == true,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

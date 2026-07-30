@@ -39,9 +39,9 @@ internal static class DiffRenderer
 
         foreach (var schema in diff.Schemas)
         {
-            if (schema.Kind is { } kind)
+            if (schema.Change != ChangeKind.Touched)
             {
-                RenderSchema(lines, schema, kind);
+                RenderSchema(lines, schema, schema.Change);
             }
 
             foreach (var table in schema.Tables)
@@ -99,7 +99,7 @@ internal static class DiffRenderer
 
         foreach (var script in scripts)
         {
-            AppendHeader(lines, ChangeKind.Add, $"script {script.Address} ({EventText(script)})");
+            AppendHeader(lines, ChangeKind.Add, $"script {script.Reference} ({EventText(script)})");
         }
     }
 
@@ -112,14 +112,14 @@ internal static class DiffRenderer
 
         foreach (var grant in schema.Grants)
         {
-            var text = grant.Kind == ChangeKind.Add ? $"grant usage to {grant.Role}" : $"revoke usage from {grant.Role}";
-            AppendDetail(lines, grant.Kind, text);
+            var text = grant.Change == ChangeKind.Add ? $"grant usage to {grant.Role}" : $"revoke usage from {grant.Role}";
+            AppendDetail(lines, grant.Change, text);
         }
     }
 
     private static void RenderTable(List<DiffLine> lines, TableDiff table)
     {
-        AppendHeader(lines, table.Kind, $"table {QualifiedName(table)}{CommentSuffix(table.Comment)}");
+        AppendHeader(lines, table.Change, $"table {QualifiedName(table)}{CommentSuffix(table.Comment)}");
 
         foreach (var column in table.Columns)
         {
@@ -131,53 +131,53 @@ internal static class DiffRenderer
         var hasTrailingBlock = table.PrimaryKeys.Count > 0 || table.ForeignKeys.Count > 0
             || table.UniqueConstraints.Count > 0 || table.Checks.Count > 0
             || table.Indexes.Count > 0 || table.Triggers.Count > 0 || table.Grants.Count > 0;
-        if (table is { Kind: ChangeKind.Add, Columns.Count: > 0 } && hasTrailingBlock)
+        if (table is { Change: ChangeKind.Add, Columns.Count: > 0 } && hasTrailingBlock)
         {
             lines.Add(DiffLine.Blank);
         }
 
         foreach (var pk in table.PrimaryKeys)
         {
-            AppendDetail(lines, pk.Kind, MemberText("primary key", pk.Name, pk.Kind, pk.Comment) + MigrationSuffix(pk.MigrationScript));
+            AppendDetail(lines, pk.Change, MemberText("primary key", pk.Name, pk.Change, pk.Comment) + MigrationSuffix(pk.MigrationScript));
         }
 
         foreach (var fk in table.ForeignKeys)
         {
-            AppendDetail(lines, fk.Kind, MemberText("foreign key", fk.Name, fk.Kind, fk.Comment) + MigrationSuffix(fk.MigrationScript));
+            AppendDetail(lines, fk.Change, MemberText("foreign key", fk.Name, fk.Change, fk.Comment) + MigrationSuffix(fk.MigrationScript));
         }
 
         foreach (var unique in table.UniqueConstraints)
         {
-            AppendDetail(lines, unique.Kind, MemberText("unique constraint", unique.Name, unique.Kind, unique.Comment) + MigrationSuffix(unique.MigrationScript));
+            AppendDetail(lines, unique.Change, MemberText("unique constraint", unique.Name, unique.Change, unique.Comment) + MigrationSuffix(unique.MigrationScript));
         }
 
         foreach (var check in table.Checks)
         {
-            AppendDetail(lines, check.Kind, MemberText("check constraint", check.Name, check.Kind, check.Comment) + MigrationSuffix(check.MigrationScript));
+            AppendDetail(lines, check.Change, MemberText("check constraint", check.Name, check.Change, check.Comment) + MigrationSuffix(check.MigrationScript));
         }
 
         foreach (var exclusion in table.ExclusionConstraints)
         {
-            AppendDetail(lines, exclusion.Kind, MemberText("exclusion constraint", exclusion.Name, exclusion.Kind, exclusion.Comment) + MigrationSuffix(exclusion.MigrationScript));
+            AppendDetail(lines, exclusion.Change, MemberText("exclusion constraint", exclusion.Name, exclusion.Change, exclusion.Comment) + MigrationSuffix(exclusion.MigrationScript));
         }
 
         foreach (var index in table.Indexes)
         {
-            AppendDetail(lines, index.Kind, MemberText("index", index.Name, index.Kind, index.Comment));
+            AppendDetail(lines, index.Change, MemberText("index", index.Name, index.Change, index.Comment));
         }
 
         foreach (var trigger in table.Triggers)
         {
-            AppendDetail(lines, trigger.Kind, MemberText("trigger", trigger.Name, trigger.Kind, trigger.Comment));
+            AppendDetail(lines, trigger.Change, MemberText("trigger", trigger.Name, trigger.Change, trigger.Comment));
         }
 
         foreach (var grant in table.Grants)
         {
             var privileges = FormatPrivileges(grant.Privileges);
-            var text = grant.Kind == ChangeKind.Add
+            var text = grant.Change == ChangeKind.Add
                 ? $"grant {privileges} to {grant.Role}"
                 : $"revoke {privileges} from {grant.Role}";
-            AppendDetail(lines, grant.Kind, text);
+            AppendDetail(lines, grant.Change, text);
         }
     }
 
@@ -190,18 +190,18 @@ internal static class DiffRenderer
         var name = QualifiedName(view);
 
         // A comment-only modify (no body or index change) reports the comment transition rather than a bare header.
-        if (view is { Kind: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only, Indexes.Count: 0 })
+        if (view is { Change: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only, Indexes.Count: 0 })
         {
             AppendHeader(lines, ChangeKind.Modify, $"{label} {name} {CommentTransition(only)}");
             return;
         }
 
-        AppendHeader(lines, view.Kind, $"{label} {name}{CommentSuffix(view.Comment)}");
+        AppendHeader(lines, view.Change, $"{label} {name}{CommentSuffix(view.Comment)}");
 
         // In-place index changes on a materialized view.
         foreach (var index in view.Indexes)
         {
-            AppendDetail(lines, index.Kind, MemberText("index", index.Name, index.Kind, index.Comment));
+            AppendDetail(lines, index.Change, MemberText("index", index.Name, index.Change, index.Comment));
         }
     }
 
@@ -212,16 +212,16 @@ internal static class DiffRenderer
         var name = QualifiedName(enumDiff);
 
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (enumDiff is { Kind: ChangeKind.Modify, Values: null, RenamedFrom: null, Comment: { } only })
+        if (enumDiff is { Change: ChangeKind.Modify, Values: null, RenamedFrom: null, Comment: { } only })
         {
             AppendHeader(lines, ChangeKind.Modify, $"enum {name} {CommentTransition(only)}");
             return;
         }
 
-        var values = enumDiff is { Kind: ChangeKind.Add, Definition: { } definition }
+        var values = enumDiff is { Change: ChangeKind.Add, Definition: { } definition }
             ? $" ({string.Join(", ", definition.Values)})"
             : string.Empty;
-        AppendHeader(lines, enumDiff.Kind, $"enum {name}{values}{CommentSuffix(enumDiff.Comment)}");
+        AppendHeader(lines, enumDiff.Change, $"enum {name}{values}{CommentSuffix(enumDiff.Comment)}");
 
         foreach (var addition in enumDiff.AddedValues)
         {
@@ -247,17 +247,17 @@ internal static class DiffRenderer
         var name = QualifiedName(sequence);
 
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (sequence is { Kind: ChangeKind.Modify, Options: null, RenamedFrom: null, Comment: { } only })
+        if (sequence is { Change: ChangeKind.Modify, Options: null, RenamedFrom: null, Comment: { } only })
         {
             AppendHeader(lines, ChangeKind.Modify, $"sequence {name} {CommentTransition(only)}");
             return;
         }
 
-        var options = sequence is { Kind: ChangeKind.Add, Definition: { } definition }
+        var options = sequence is { Change: ChangeKind.Add, Definition: { } definition }
             && FormatSequenceOptions(definition.Options) != "<default>"
             ? $" ({FormatSequenceOptions(definition.Options)})"
             : string.Empty;
-        AppendHeader(lines, sequence.Kind, $"sequence {name}{options}{CommentSuffix(sequence.Comment)}");
+        AppendHeader(lines, sequence.Change, $"sequence {name}{options}{CommentSuffix(sequence.Comment)}");
 
         if (sequence.Options is { } change)
         {
@@ -271,14 +271,14 @@ internal static class DiffRenderer
         var name = QualifiedName(routine);
 
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (routine is { Kind: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only })
+        if (routine is { Change: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only })
         {
             AppendHeader(lines, ChangeKind.Modify, $"{label} {name} {CommentTransition(only)}");
             return;
         }
 
-        var arguments = routine is { Kind: ChangeKind.Add, Definition: { } definition } ? $"({definition.Arguments})" : string.Empty;
-        AppendHeader(lines, routine.Kind, $"{label} {name}{arguments}{CommentSuffix(routine.Comment)}");
+        var arguments = routine is { Change: ChangeKind.Add, Definition: { } definition } ? $"({definition.Arguments})" : string.Empty;
+        AppendHeader(lines, routine.Change, $"{label} {name}{arguments}{CommentSuffix(routine.Comment)}");
 
         if (routine.Arguments is { } change)
         {
@@ -289,14 +289,14 @@ internal static class DiffRenderer
     private static void RenderExtension(List<DiffLine> lines, ExtensionDiff extension)
     {
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (extension is { Kind: ChangeKind.Modify, Version: null, Comment: { } only })
+        if (extension is { Change: ChangeKind.Modify, Version: null, Comment: { } only })
         {
             AppendHeader(lines, ChangeKind.Modify, $"extension {extension.Name} {CommentTransition(only)}");
             return;
         }
 
-        var version = extension is { Kind: ChangeKind.Add, Definition.Version: { } added } ? $" version {added}" : string.Empty;
-        AppendHeader(lines, extension.Kind, $"extension {extension.Name}{version}{CommentSuffix(extension.Comment)}");
+        var version = extension is { Change: ChangeKind.Add, Definition.Version: { } added } ? $" version {added}" : string.Empty;
+        AppendHeader(lines, extension.Change, $"extension {extension.Name}{version}{CommentSuffix(extension.Comment)}");
 
         if (extension.Version is { } change)
         {
@@ -309,14 +309,14 @@ internal static class DiffRenderer
         var name = QualifiedName(domain);
 
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (domain is { Kind: ChangeKind.Modify, Definition: null, RenamedFrom: null, DataType: null, Default: null, NotNull: null, Comment: { } only, Checks.Count: 0 })
+        if (domain is { Change: ChangeKind.Modify, Definition: null, RenamedFrom: null, DataType: null, Default: null, NotNull: null, Comment: { } only, Checks.Count: 0 })
         {
             AppendHeader(lines, ChangeKind.Modify, $"domain {name} {CommentTransition(only)}");
             return;
         }
 
-        var type = domain is { Kind: ChangeKind.Add, Definition: { } definition } ? $" {definition.DataType}" : string.Empty;
-        AppendHeader(lines, domain.Kind, $"domain {name}{type}{CommentSuffix(domain.Comment)}");
+        var type = domain is { Change: ChangeKind.Add, Definition: { } definition } ? $" {definition.DataType}" : string.Empty;
+        AppendHeader(lines, domain.Change, $"domain {name}{type}{CommentSuffix(domain.Comment)}");
 
         if (domain.DataType is { } dataType)
         {
@@ -332,7 +332,7 @@ internal static class DiffRenderer
         }
         foreach (var check in domain.Checks)
         {
-            AppendDetail(lines, check.Kind, $"check {check.Name}");
+            AppendDetail(lines, check.Change, $"check {check.Name}");
         }
     }
 
@@ -341,38 +341,38 @@ internal static class DiffRenderer
         var name = QualifiedName(type);
 
         // A comment-only modify reports the comment transition rather than a bare header.
-        if (type is { Kind: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only, Fields.Count: 0 })
+        if (type is { Change: ChangeKind.Modify, Definition: null, RenamedFrom: null, Comment: { } only, Fields.Count: 0 })
         {
             AppendHeader(lines, ChangeKind.Modify, $"type {name} {CommentTransition(only)}");
             return;
         }
 
-        var fields = type is { Kind: ChangeKind.Add, Definition: { } definition }
+        var fields = type is { Change: ChangeKind.Add, Definition: { } definition }
             ? $" ({string.Join(", ", definition.Fields.Select(f => $"{f.Name} {f.DataType}"))})"
             : string.Empty;
-        AppendHeader(lines, type.Kind, $"type {name}{fields}{CommentSuffix(type.Comment)}");
+        AppendHeader(lines, type.Change, $"type {name}{fields}{CommentSuffix(type.Comment)}");
 
         foreach (var field in type.Fields)
         {
             var text = field switch
             {
-                { Kind: ChangeKind.Add, Definition: { } def } => $"field {def.Name} {def.DataType}",
-                { Kind: ChangeKind.Modify, Type: { } change } => $"field {field.Name} type: {change.Old} → {change.New}",
+                { Change: ChangeKind.Add, Definition: { } def } => $"field {def.Name} {def.DataType}",
+                { Change: ChangeKind.Modify, Type: { } change } => $"field {field.Name} type: {change.Old} → {change.New}",
                 _ => $"field {field.Name}",
             };
-            AppendDetail(lines, field.Kind, text);
+            AppendDetail(lines, field.Change, text);
         }
     }
 
     private static void RenderColumn(List<DiffLine> lines, ColumnDiff column)
     {
-        if (column is { Kind: ChangeKind.Add, Definition: { } added })
+        if (column is { Change: ChangeKind.Add, Definition: { } added })
         {
             AppendDetail(lines, ChangeKind.Add, FormatColumn(added) + CommentSuffix(column.Comment) + MigrationSuffix(column.MigrationScript));
             return;
         }
 
-        if (column is { Kind: ChangeKind.Remove, Definition: { } removed })
+        if (column is { Change: ChangeKind.Remove, Definition: { } removed })
         {
             AppendDetail(lines, ChangeKind.Remove, FormatColumn(removed));
             return;

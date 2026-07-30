@@ -48,7 +48,7 @@ public sealed class ProjectComparerTests
 
     /// <summary>A current state recording <paramref name="sql"/> as <paramref name="script"/>'s executed body.</summary>
     private static CurrentState Executed(Script script, string sql) =>
-        new(_emptySchema, [new ScriptExecution(script.Address, (script with { Sql = sql }).Hash, DateTimeOffset.UnixEpoch)]);
+        new(_emptySchema, [new ScriptExecution(script.Reference, (script with { Sql = sql }).Hash, DateTimeOffset.UnixEpoch)]);
 
     [Fact]
     public void Compare_DiffsBothSchemas()
@@ -61,7 +61,7 @@ public sealed class ProjectComparerTests
         var diff = Sut.Compare(new CurrentState(current), new ProjectDefinition(desired)).Require();
 
         // Assert
-        diff.Schemas.Select(x => (x.Name.Value, x.Kind)).ShouldBe(
+        diff.Schemas.Select(x => (x.Name.Value, x.Change)).ShouldBe(
             [("fresh", ChangeKind.Add), ("gone", ChangeKind.Remove)], ignoreOrder: true);
     }
 
@@ -109,7 +109,7 @@ public sealed class ProjectComparerTests
         // satisfy a global (or differently scoped) script sharing the name.
         var script = SeedScript();
         var scoped = new CurrentState(_emptySchema,
-            [new ScriptExecution(new ScopedAddress("sales", script.Name), script.Hash, DateTimeOffset.UnixEpoch)]);
+            [new ScriptExecution(new ScriptReference("sales", script.Name), script.Hash, DateTimeOffset.UnixEpoch)]);
 
         // Act
         var comparison = Sut.Compare(scoped, TestProjects.Project(_emptySchema, [script]));
@@ -160,7 +160,7 @@ public sealed class ProjectComparerTests
         // Assert
         comparison.Require().AllScripts().ShouldBeEmpty();
         var diagnostic = comparison.Diagnostics.ShouldHaveSingleItem();
-        diagnostic.Source.ShouldBe("data-migrations");
+        diagnostic.Code.ShouldBe("dead-migration");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
         diagnostic.Message.ShouldBe(
             "Migration 'app.backfill_emails' (ADD COLUMN app.users.email) matches no change in this plan.");
@@ -173,7 +173,7 @@ public sealed class ProjectComparerTests
         // gated by the change alone, so a re-planned change re-runs it.
         var migration = EmailBackfillMigration();
         var current = new CurrentState(UsersWithId().Database,
-            [new ScriptExecution(migration.Address, migration.Hash, DateTimeOffset.UnixEpoch)]);
+            [new ScriptExecution(migration.Reference, migration.Hash, DateTimeOffset.UnixEpoch)]);
 
         // Act
         var comparison = Sut.Compare(current, TestProjects.Project(UsersWithEmail(), [migration]));
@@ -188,7 +188,7 @@ public sealed class ProjectComparerTests
     {
         // Arrange — the hazard policy sees the complete diff, so a matched backfill silences the NOT-NULL-add
         // warning it would otherwise raise.
-        var policy = new DataHazardPolicy(Options.Create(new DataHazardOptions()));
+        var policy = new DataHazardPolicy();
 
         // Act — the same required-column add, once without a backfill (hazard) and once with (suppressed).
         var unmatched = Sut.Compare(UsersWithId(), new ProjectDefinition(UsersWithEmail(required: true)));
@@ -209,7 +209,7 @@ public sealed class ProjectComparerTests
         var diff = Sut.Compare(current, new ProjectDefinition(new Database())).Require();
 
         // Assert
-        diff.Schemas.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+        diff.Schemas.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
         diff.AllScripts().ShouldBeEmpty();
     }
 
@@ -223,7 +223,7 @@ public sealed class ProjectComparerTests
             Tables = [new Table { Name = "people" }] }],
         });
         var directives = new ProjectDirectives(
-            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }, "people")]);
+            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }, "people")]);
 
         // Act
         var comparison = Sut.Compare(current, new ProjectDefinition(_emptySchema, directives));
@@ -231,7 +231,7 @@ public sealed class ProjectComparerTests
         // Assert
         var diagnostic = comparison.Diagnostics.ShouldHaveSingleItem();
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Info);
-        diagnostic.Source.ShouldBe("directives");
+        diagnostic.Code.ShouldBe("applied-rename");
         diagnostic.Message.ShouldContain("The table 'app.users'");
         diagnostic.Message.ShouldContain("already been renamed to 'people'");
     }
@@ -242,7 +242,7 @@ public sealed class ProjectComparerTests
         // Arrange — neither side of the rename exists (a fresh environment): the directive is pending, not
         // spent, so no expiry info fires.
         var directives = new ProjectDirectives(
-            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }, "people")]);
+            ObjectRenames: [new ObjectRenameDirective(new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }, "people")]);
 
         // Act
         var comparison = Sut.Compare(new CurrentState(_emptySchema), new ProjectDefinition(_emptySchema, directives));

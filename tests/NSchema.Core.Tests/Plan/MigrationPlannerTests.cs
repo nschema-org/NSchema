@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
@@ -32,7 +33,9 @@ public sealed class MigrationPlannerTests
     private readonly List<IProjectPolicy> _projectPolicies = [];
     private readonly List<IPlanPolicy> _planPolicies = [];
 
-    private MigrationPlanner Sut => new(_differ, _linearizer, _projectPolicies, _planPolicies, new StubSqlDialect());
+    private readonly DiagnosticOptions _diagnosticOptions = new();
+
+    private MigrationPlanner Sut => new(_differ, _linearizer, _projectPolicies, _planPolicies, Options.Create(_diagnosticOptions), new StubSqlDialect());
 
     public MigrationPlannerTests()
     {
@@ -55,7 +58,7 @@ public sealed class MigrationPlannerTests
         _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(TwoSchemaDiff(), []));
 
         // Act
-        var result = Sut.Plan(_current, _desired, PlanningScope.To(new SchemaAddress("app")));
+        var result = Sut.Plan(_current, _desired, PlanningScope.To(DatabaseAddress.Schema("app")));
 
         // Assert
         result.Value!.Diff.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
@@ -71,7 +74,7 @@ public sealed class MigrationPlannerTests
         _planPolicies.Add(policy);
 
         // Act
-        Sut.Plan(_current, _desired, PlanningScope.To(new SchemaAddress("app")));
+        Sut.Plan(_current, _desired, PlanningScope.To(DatabaseAddress.Schema("app")));
 
         // Assert
         policy.Received(1).Validate(Arg.Is<MigrationPlan>(p => p!.Diff.Schemas.Count == 1
@@ -85,7 +88,7 @@ public sealed class MigrationPlannerTests
         _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(TwoSchemaDiff(), []));
 
         // Act
-        Sut.Plan(_current, _desired, PlanningScope.To(new SchemaAddress("app")));
+        Sut.Plan(_current, _desired, PlanningScope.To(DatabaseAddress.Schema("app")));
 
         // Assert
         _linearizer.Received(1).Linearize(Arg.Is<DatabaseDiff>(d => d!.Schemas.Count == 1), Arg.Any<PlanDependencies>(), Arg.Any<DialectCapabilities>());
@@ -97,7 +100,7 @@ public sealed class MigrationPlannerTests
         // Arrange
         var desired = new ProjectDefinition(new Database { Schemas = [new Schema { Name = "app" }] });
         var policy = Substitute.For<IProjectPolicy>();
-        policy.Validate(desired).Returns([Diagnostic.Error("Test", "bad schema")]);
+        policy.Validate(desired).Returns([Diagnostic.Error("test", "bad-schema", "bad schema")]);
         _projectPolicies.Add(policy);
 
         // Act
@@ -113,7 +116,7 @@ public sealed class MigrationPlannerTests
     {
         // Arrange
         var policy = Substitute.For<IProjectPolicy>();
-        policy.Validate(Arg.Any<ProjectDefinition>()).Returns([Diagnostic.Error("Test", "bad schema")]);
+        policy.Validate(Arg.Any<ProjectDefinition>()).Returns([Diagnostic.Error("test", "bad-schema", "bad schema")]);
         _projectPolicies.Add(policy);
 
         // Act
@@ -132,7 +135,7 @@ public sealed class MigrationPlannerTests
         // Arrange
         var policy = Substitute.For<IProjectPolicy>();
         policy.Validate(Arg.Any<ProjectDefinition>())
-            .Returns([new Diagnostic("Test", "lint", DiagnosticSeverity.Warning)]);
+            .Returns([new Diagnostic("test", "policy-finding", "lint", DiagnosticSeverity.Warning)]);
         _projectPolicies.Add(policy);
 
         // Act
@@ -164,8 +167,8 @@ public sealed class MigrationPlannerTests
         var current = new CurrentState(new Database { Schemas = [new Schema { Name = app, Tables = [new Table { Name = "mine" }, new Table { Name = "theirs" }] }] })
         {
             Managed = new IdentitySet(
-                Schemas: [new SchemaAddress(app)],
-                Objects: [new ObjectAddress(app, "mine") with { Kind = ObjectKind.Table }]),
+                DatabaseObjects: [DatabaseAddress.Schema(app)],
+                SchemaObjects: [new ObjectAddress(app, "mine") with { Kind = SchemaObjectKind.Table }]),
         };
 
         // Act
@@ -188,8 +191,8 @@ public sealed class MigrationPlannerTests
         var plan = Sut.Plan(_current, desired, PlanningScope.All).Value!;
 
         // Assert — within scope, management after an apply is exactly what the project declares.
-        plan.Managed.Schemas.Select(s => s.Schema).ShouldBe([app]);
-        plan.Managed.Objects.ShouldBe([new ObjectAddress(app, "users") with { Kind = ObjectKind.Table }]);
+        plan.Managed.Schemas.Select(s => s.Name).ShouldBe([app]);
+        plan.Managed.SchemaObjects.ShouldBe([new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table }]);
     }
 
     [Fact]
@@ -207,7 +210,7 @@ public sealed class MigrationPlannerTests
 
         // Assert — a container NSchema was never asked to own is not something a teardown may drop.
         plan.Managed.Schemas.ShouldBeEmpty();
-        plan.Managed.Objects.ShouldBe([new ObjectAddress(app, "users") with { Kind = ObjectKind.Table }]);
+        plan.Managed.SchemaObjects.ShouldBe([new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table }]);
     }
 
     [Fact]
@@ -219,17 +222,17 @@ public sealed class MigrationPlannerTests
         var current = new CurrentState(_emptySchema)
         {
             Managed = new IdentitySet(
-                Schemas: [new SchemaAddress(billing)],
-                Objects: [new ObjectAddress(billing, "invoices") with { Kind = ObjectKind.Table }]),
+                DatabaseObjects: [DatabaseAddress.Schema(billing)],
+                SchemaObjects: [new ObjectAddress(billing, "invoices") with { Kind = SchemaObjectKind.Table }]),
         };
         var desired = new ProjectDefinition(new Database { Schemas = [new Schema { Name = app }] });
 
         // Act
-        var plan = Sut.Plan(current, desired, PlanningScope.To(new SchemaAddress(app))).Value!;
+        var plan = Sut.Plan(current, desired, PlanningScope.To(DatabaseAddress.Schema(app))).Value!;
 
         // Assert
-        plan.Managed.Schemas.Select(s => s.Schema).ShouldBe([app, billing], ignoreOrder: true);
-        plan.Managed.Objects.ShouldHaveSingleItem().Schema.ShouldBe(billing);
+        plan.Managed.Schemas.Select(s => s.Name).ShouldBe([app, billing], ignoreOrder: true);
+        plan.Managed.SchemaObjects.ShouldHaveSingleItem().Schema.ShouldBe(billing);
     }
 
     [Fact]
@@ -238,19 +241,19 @@ public sealed class MigrationPlannerTests
         // Arrange — targeting one object converges only it towards nothing: the container and its siblings
         // stay managed, because an object entry covers nothing above or beside itself.
         SqlIdentifier app = "app";
-        var users = new ObjectAddress(app, "users") with { Kind = ObjectKind.Table };
-        var orders = new ObjectAddress(app, "orders") with { Kind = ObjectKind.Table };
+        var users = new ObjectAddress(app, "users") with { Kind = SchemaObjectKind.Table };
+        var orders = new ObjectAddress(app, "orders") with { Kind = SchemaObjectKind.Table };
         var current = new CurrentState(_emptySchema)
         {
-            Managed = new IdentitySet(Schemas: [new SchemaAddress(app)], Objects: [users, orders]),
+            Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(app)], SchemaObjects: [users, orders]),
         };
 
         // Act
         var plan = Sut.Plan(current, new ProjectDefinition(new Database()), PlanningScope.To([users])).Value!;
 
         // Assert
-        plan.Managed.Schemas.Select(s => s.Schema).ShouldBe([app]);
-        plan.Managed.Objects.ShouldBe([orders]);
+        plan.Managed.Schemas.Select(s => s.Name).ShouldBe([app]);
+        plan.Managed.SchemaObjects.ShouldBe([orders]);
     }
 
     [Fact]
@@ -260,11 +263,11 @@ public sealed class MigrationPlannerTests
         SqlIdentifier app = "app";
         var current = new CurrentState(_emptySchema)
         {
-            Managed = new IdentitySet(Schemas: [new SchemaAddress(app)]),
+            Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(app)]),
         };
 
         // Act — an unrestricted teardown's scope covers every managed schema (derived by the workflow).
-        var plan = Sut.Plan(current, new ProjectDefinition(new Database()), PlanningScope.To(new SchemaAddress(app))).Value!;
+        var plan = Sut.Plan(current, new ProjectDefinition(new Database()), PlanningScope.To(DatabaseAddress.Schema(app))).Value!;
 
         // Assert
         plan.Managed.IsEmpty.ShouldBeTrue();
@@ -275,7 +278,7 @@ public sealed class MigrationPlannerTests
     {
         // Arrange — run-once skips and dead-migration findings are diff-stage diagnostics; the planner surfaces them.
         _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>())
-            .Returns(Result.From(_emptyDiff, [Diagnostic.Info("data-migrations", "inert block")]));
+            .Returns(Result.From(_emptyDiff, [Diagnostic.Info("data-migrations", "inert-block", "inert block")]));
 
         // Act
         var result = Sut.Plan(_current, _desired, PlanningScope.All);
@@ -286,13 +289,32 @@ public sealed class MigrationPlannerTests
     }
 
     [Fact]
+    public void Plan_EnforcementAppliesToAnyPolicysFindings_NotJustTheBuiltInOnes()
+    {
+        // Arrange — a policy the engine knows nothing about, reporting a judgement that would block the plan.
+        var policy = Substitute.For<IPlanPolicy>();
+        policy.Validate(Arg.Any<MigrationPlan>())
+            .Returns([Diagnostic.Error("my-rules", "no-wide-tables", "too many columns")
+                with { Kind = DiagnosticKind.Advisory }]);
+        _planPolicies.Add(policy);
+        _diagnosticOptions.ByCode["no-wide-tables"] = PolicyEnforcement.Warn;
+
+        // Act
+        var result = Sut.Plan(_current, _desired, PlanningScope.All);
+
+        // Assert — downgraded, so the plan is no longer blocked by it.
+        result.IsSuccess.ShouldBeTrue();
+        result.Warnings.ShouldContain(d => d.Code == "no-wide-tables");
+    }
+
+    [Fact]
     public void Plan_RunsPlanPoliciesAgainstTheCompletePlan()
     {
         // Arrange
         var diff = _emptyDiff with { DeploymentScripts = [new DeploymentScript("seed", "SELECT 1", null, DeploymentPhase.Post)] };
         _differ.Compare(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>()).Returns(Result.From(diff, []));
         var policy = Substitute.For<IPlanPolicy>();
-        policy.Validate(Arg.Is<MigrationPlan>(p => p!.Diff == diff)).Returns([Diagnostic.Error("Test", "destructive")]);
+        policy.Validate(Arg.Is<MigrationPlan>(p => p!.Diff == diff)).Returns([Diagnostic.Error("test", "destructive", "destructive")]);
         _planPolicies.Add(policy);
 
         // Act
@@ -362,8 +384,8 @@ public sealed class MigrationPlannerTests
 
         // Assert
         result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(
-            new ObjectAddress("app", "Users") with { Kind = ObjectKind.Table },
-            new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }));
+            new ObjectAddress("app", "Users") with { Kind = SchemaObjectKind.Table },
+            new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }));
     }
 
     [Fact]
@@ -431,7 +453,7 @@ public sealed class MigrationPlannerTests
         var result = Sut.Plan(new CurrentState(observed), new ProjectDefinition(declared), PlanningScope.All);
 
         // Assert
-        result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(new SchemaAddress("App"), new SchemaAddress("app")));
+        result.Warnings.ShouldContain(PlanDiagnostics.CaseOnlyMismatch(DatabaseAddress.Schema("App"), DatabaseAddress.Schema("app")));
     }
 
     [Fact]

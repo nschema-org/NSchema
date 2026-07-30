@@ -6,10 +6,10 @@ namespace NSchema.Model.CompositeTypes;
 /// Represents a database composite type: a schema-scoped named tuple of typed <see cref="Fields"/>.
 /// </summary>
 [DebuggerDisplay("{Name,nq} (composite type, {Fields.Count} fields)")]
-public sealed class CompositeType : DatabaseObject, IEquatable<CompositeType>
+public sealed class CompositeType : SchemaObject, IEquatable<CompositeType>
 {
     /// <inheritdoc/>
-    public override ObjectKind Kind => ObjectKind.CompositeType;
+    public override SchemaObjectKind Kind => SchemaObjectKind.CompositeType;
 
     /// <summary>
     /// The fields (attributes) of the type, matched by name; may be empty.

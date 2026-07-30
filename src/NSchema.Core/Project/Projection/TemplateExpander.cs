@@ -34,7 +34,7 @@ internal static class TemplateExpander
             SqlIdentifier name = template.Name.Value;
             if (!byName.TryAdd(name, template))
             {
-                diagnostics.Add(TemplateDiagnostics.DuplicateTemplate(name));
+                diagnostics.AddRange(TemplateDiagnostics.DuplicateTemplate(name));
             }
         }
 
@@ -61,12 +61,12 @@ internal static class TemplateExpander
             SqlIdentifier templateName = application.TemplateName.Value;
             if (!templates.TryGetValue(templateName, out var template))
             {
-                diagnostics.Add(TemplateDiagnostics.UnknownTemplate(templateName));
+                diagnostics.AddRange(TemplateDiagnostics.UnknownTemplate(templateName));
                 continue;
             }
             if (template is not SchemaTemplateStatement schemaTemplate)
             {
-                diagnostics.Add(TemplateDiagnostics.AppliedTableTemplate(templateName));
+                diagnostics.AddRange(TemplateDiagnostics.AppliedTableTemplate(templateName));
                 continue;
             }
 
@@ -75,7 +75,7 @@ internal static class TemplateExpander
                 SqlIdentifier schemaName = schemaNameNode.Value;
                 if (!accumulator.HasSchema(schemaName))
                 {
-                    diagnostics.Add(TemplateDiagnostics.UnknownTargetSchema(templateName, schemaName));
+                    diagnostics.AddRange(TemplateDiagnostics.UnknownTargetSchema(templateName, schemaName));
                     continue;
                 }
 

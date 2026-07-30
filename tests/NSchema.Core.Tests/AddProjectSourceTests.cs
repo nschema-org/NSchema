@@ -124,7 +124,7 @@ public sealed class AddProjectSourceTests : IDisposable
     {
         File.WriteAllText(Path.Combine(_root, "multi.sql"), "CREATE SCHEMA app; CREATE SCHEMA audit;");
 
-        var project = await ResolveProject(b => b.AddProjectSource(_root), scope: PlanningScope.To(new SchemaAddress("app")));
+        var project = await ResolveProject(b => b.AddProjectSource(_root), scope: PlanningScope.To(DatabaseAddress.Schema("app")));
 
         project.Database.Schemas.Select(s => s.Name).ShouldBe(["app"]);
     }

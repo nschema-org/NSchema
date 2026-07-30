@@ -7,12 +7,12 @@ namespace NSchema.Diff.Domain.Services;
 /// </summary>
 internal sealed class RenameLog
 {
-    private readonly IReadOnlyDictionary<SchemaAddress, SqlIdentifier> _schemas;
+    private readonly IReadOnlyDictionary<DatabaseAddress, SqlIdentifier> _schemas;
     private readonly IReadOnlyDictionary<ObjectAddress, SqlIdentifier> _objects;
     private readonly IReadOnlyDictionary<MemberAddress, SqlIdentifier> _columns;
 
     internal RenameLog(
-        IReadOnlyDictionary<SchemaAddress, SqlIdentifier> schemas,
+        IReadOnlyDictionary<DatabaseAddress, SqlIdentifier> schemas,
         IReadOnlyDictionary<ObjectAddress, SqlIdentifier> objects,
         IReadOnlyDictionary<MemberAddress, SqlIdentifier> columns
     )
@@ -26,7 +26,7 @@ internal sealed class RenameLog
     /// The empty log — nothing was renamed.
     /// </summary>
     public static RenameLog Empty { get; } = new(
-        new Dictionary<SchemaAddress, SqlIdentifier>(),
+        new Dictionary<DatabaseAddress, SqlIdentifier>(),
         new Dictionary<ObjectAddress, SqlIdentifier>(),
         new Dictionary<MemberAddress, SqlIdentifier>()
     );
@@ -35,7 +35,7 @@ internal sealed class RenameLog
     /// The previous name of the schema now named <paramref name="declared"/>, or <see langword="null"/> when
     /// it was not renamed.
     /// </summary>
-    public SqlIdentifier? RenamedFrom(SchemaAddress declared) => _schemas.GetValueOrDefault(declared);
+    public SqlIdentifier? RenamedFrom(DatabaseAddress declared) => _schemas.GetValueOrDefault(declared);
 
     /// <summary>
     /// The previous name of the object now at <paramref name="declared"/>, or <see langword="null"/> when it

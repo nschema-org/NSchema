@@ -18,7 +18,6 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
 using NSchema.Plan.Domain.Services;
-using NSchema.Tests.Helpers;
 
 namespace NSchema.Tests.Plan;
 

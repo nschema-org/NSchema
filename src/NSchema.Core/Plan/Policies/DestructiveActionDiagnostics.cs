@@ -5,23 +5,13 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class DestructiveActionDiagnostics
 {
-    private const string Source = "destructive-actions";
+    internal static readonly DiagnosticSource Source = "destructive-actions";
 
     /// <summary>
-    /// Destructive actions the configured policy permits.
+    /// Changes in the plan that destroy something: a definition, its data, or a guarantee over it.
     /// </summary>
-    public static Diagnostic Allowed(string actions) =>
-        Diagnostic.Info(Source, $"Allowing destructive actions in migration plan: {actions}.");
-
-    /// <summary>
-    /// Destructive actions the configured policy permits but flags.
-    /// </summary>
-    public static Diagnostic Warned(string actions) =>
-        Diagnostic.Warning(Source, $"Migration plan contains destructive actions: {actions}.");
-
-    /// <summary>
-    /// Destructive actions the configured policy rejects.
-    /// </summary>
-    public static Diagnostic Blocked(string actions) =>
-        Diagnostic.Error(Source, $"Destructive actions blocked by policy: {actions}.");
+    public static Diagnostic DestructiveChange(string actions) =>
+        Diagnostic.Error(Source, "destructive-change", $"This plan contains destructive actions: {actions}.")
+            with
+        { Kind = DiagnosticKind.Advisory };
 }

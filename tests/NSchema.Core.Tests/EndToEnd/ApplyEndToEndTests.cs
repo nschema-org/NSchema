@@ -157,7 +157,7 @@ public sealed class ApplyEndToEndTests : IDisposable
         ]);
 
         // Billing's instance is inert this run and says so; sales' matched instance reports nothing.
-        var inert = result.Diagnostics.Where(d => d.Source == "data-migrations").ShouldHaveSingleItem();
+        var inert = result.Diagnostics.Where(d => d.Code == "dead-migration").ShouldHaveSingleItem();
         inert.Message.ShouldContain("'billing.backfill_actors'");
         inert.Message.ShouldContain("billing.events.actor");
     }

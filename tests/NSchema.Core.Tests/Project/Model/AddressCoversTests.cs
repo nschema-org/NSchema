@@ -8,7 +8,7 @@ namespace NSchema.Tests.Project.Model;
 /// </summary>
 public sealed class AddressCoversTests
 {
-    private static readonly SchemaAddress Schema = new("app");
+    private static readonly DatabaseAddress Schema = DatabaseAddress.Schema("app");
     private static readonly ObjectAddress Object = new("app", "orders");
     private static readonly MemberAddress Member = new("app", "orders", "total");
 
@@ -23,7 +23,7 @@ public sealed class AddressCoversTests
     [Fact]
     public void Schema_DoesNotCoverAnotherSchema()
     {
-        Schema.Covers(new SchemaAddress("billing")).ShouldBeFalse();
+        Schema.Covers(DatabaseAddress.Schema("billing")).ShouldBeFalse();
         Schema.Covers(new ObjectAddress("billing", "invoices")).ShouldBeFalse();
     }
 

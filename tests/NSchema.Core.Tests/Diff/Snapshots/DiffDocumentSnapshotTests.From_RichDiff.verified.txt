@@ -1,11 +1,11 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: schema reporting ("analytics")
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: grant usage to analyst
     },
@@ -13,16 +13,16 @@
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: table app.users ("all users")
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: id bigint not null identity
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: name varchar(255) not null default 'anonymous'
     },
@@ -30,27 +30,27 @@
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: primary key users_pkey
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: unique constraint users_email_uq
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: check constraint users_age_chk
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: index users_name_ix
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: grant SELECT to readers
     },
@@ -58,66 +58,66 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: table app.purchases → orders
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: total type: int → bigint
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: total nullable: null → not null
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: total_label generated: <none> → total::text
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: amount int not null generated as (total * 100)
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: legacy_flag boolean not null
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: primary key orders_pkey comment: "old note" → "new note"
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: foreign key orders_user_fk
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: unique constraint orders_code_uq
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: check constraint orders_total_chk
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: exclusion constraint orders_slot_excl
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: exclusion constraint orders_old_excl
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: revoke INSERT from writers
     },
@@ -125,7 +125,7 @@
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: schema scratch
     }
   ],

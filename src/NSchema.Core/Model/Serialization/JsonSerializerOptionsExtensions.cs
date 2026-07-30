@@ -19,7 +19,6 @@ public static class JsonSerializerOptionsExtensions
             ArgumentNullException.ThrowIfNull(options);
 
             options.Converters.Add(new ValueObjectJsonConverter());
-            options.Converters.Add(new SchemaAddressJsonConverter());
             options.Converters.Add(new ObjectAddressJsonConverter());
             return options;
         }

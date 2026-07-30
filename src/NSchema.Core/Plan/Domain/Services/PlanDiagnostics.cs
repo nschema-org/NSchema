@@ -7,18 +7,18 @@ namespace NSchema.Plan.Domain.Services;
 /// </summary>
 internal static class PlanDiagnostics
 {
-    private const string Source = "plan";
+    internal static readonly DiagnosticSource Source = "plan";
 
     /// <summary>
     /// Planning without a registered SQL dialect (the plan's statements cannot be rendered).
     /// </summary>
-    public static Diagnostic MissingDialect => Diagnostic.Error(Source, "Planning requires a database provider to render SQL, but none is registered.");
+    public static Diagnostic MissingDialect => Diagnostic.Error(Source, "missing-dialect", "Planning requires a database provider to render SQL, but none is registered.");
 
     /// <summary>
     /// A declared object matches an observed one with the same name, but different casing.
     /// </summary>
     public static Diagnostic CaseOnlyMismatch(Address declared, Address observed) =>
-        Diagnostic.Warning(Source, $"The project declares schema '{declared}' but the database has '{observed}', which differs only by case.");
+        Diagnostic.Warning(Source, "case-only-mismatch", $"The project declares schema '{declared}' but the database has '{observed}', which differs only by case.");
 
     /// <summary>
     /// Schemas the plan creates objects in that it will neither create nor find, because nothing declares them.
@@ -31,7 +31,7 @@ internal static class PlanDiagnostics
             : $"schemas {string.Join(", ", names.Select(name => $"'{name}'"))}";
         var pronoun = names.Count == 1 ? "it" : "them";
 
-        return Diagnostic.Error(Source,
+        return Diagnostic.Error(Source, "undeclared-schema-missing",
             $"This plan creates objects in {subject}, which could not be found in the project or state.\n"
             + $"Declare {pronoun} with CREATE SCHEMA or refresh the state if the database has it already."
         );

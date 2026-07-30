@@ -38,7 +38,7 @@ internal sealed partial class DatabaseComparer
             }
             else
             {
-                var renamedFrom = renames.RenamedFrom(new ObjectAddress(schemaName, desiredTable.Name, ObjectKind.Table));
+                var renamedFrom = renames.RenamedFrom(new ObjectAddress(schemaName, desiredTable.Name, SchemaObjectKind.Table));
                 if (BuildModifiedTable(schemaName, matchingCurrent, desiredTable, renamedFrom, renames) is { } diff)
                 {
                     result.Add(diff);

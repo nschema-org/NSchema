@@ -29,7 +29,7 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
         async Task Import(string path, Database partition, bool declareSchemas)
         {
             var wrote = await WritePartition(path, partition, declareSchemas, cancellationToken);
-            diagnostics.Add(wrote);
+            diagnostics.AddRange(wrote);
             if (wrote.IsSuccess)
             {
                 written.Add(path);
@@ -171,8 +171,10 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
         return existing;
     }
 
-    /// <summary>Replaces the target's same-named objects with clones of the incoming ones.</summary>
-    private static void MergeObjects<T>(DatabaseObjectCollection<T> target, IReadOnlyList<T> incoming) where T : DatabaseObject
+    /// <summary>
+    /// Replaces the target's same-named objects with clones of the incoming ones.
+    /// </summary>
+    private static void MergeObjects<T>(SchemaObjectCollection<T> target, IReadOnlyList<T> incoming) where T : SchemaObject
     {
         PruneByName(target, incoming);
         foreach (var item in incoming)

@@ -54,19 +54,19 @@ public sealed record DatabaseState(Database Database, IReadOnlyList<ScriptExecut
     public DatabaseState RecordExecution(IReadOnlyList<DeploymentScript> applied, DateTimeOffset executedAt) =>
         RecordExecution([.. applied
             .Where(s => s.RunCondition == RunCondition.Once)
-            .Select(s => new ScriptExecution(s.Address, s.Hash, executedAt))]);
+            .Select(s => new ScriptExecution(s.Reference, s.Hash, executedAt))]);
 
     /// <summary>
     /// Finds the recorded execution for the given script, or <see langword="null"/> when none is recorded.
     /// </summary>
     /// <param name="script">The script's address.</param>
-    public ScriptExecution? FindExecution(ScopedAddress script) => Scripts.FirstOrDefault(e => e.Script == script);
+    public ScriptExecution? FindExecution(ScriptReference script) => Scripts.FirstOrDefault(e => e.Script == script);
 
     /// <summary>
     /// Removes the recorded execution for the given script, so a later plan runs the script again.
     /// </summary>
     /// <param name="script">The script's address.</param>
-    public DatabaseState RemoveExecution(ScopedAddress script)
+    public DatabaseState RemoveExecution(ScriptReference script)
     {
         var executions = Scripts.Where(e => e.Script != script).ToList();
         return executions.Count == Scripts.Count ? this : this with { Scripts = executions };

@@ -1,18 +1,18 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: domain app.typeid text ("id as text")
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: domain app.code
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: type: text → varchar(8) (recreate)
     },
@@ -20,21 +20,21 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: domain app.amount
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: default: <none> → 0
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: nullable: null → not null
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: check amount_pos
     },
@@ -42,11 +42,11 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: domain app.email
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: check email_fmt
     },
@@ -54,21 +54,21 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: domain app.old_d → renamed_d
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: domain app.noted comment: "old" → "new"
     },
     {
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: domain app.stale_d
     }
   ],

@@ -65,7 +65,7 @@ internal static class SyntaxBuilder
     {
         foreach (var rename in directives.SchemaRenames)
         {
-            statements.Add(new Syn.Schemas.RenameSchemaStatement(Name(rename.From.Schema), Name(rename.To.Schema)));
+            statements.Add(new Syn.Schemas.RenameSchemaStatement(Name(rename.From.Name), Name(rename.To.Name)));
         }
         foreach (var rename in directives.ObjectRenames)
         {
@@ -642,16 +642,15 @@ internal static class SyntaxBuilder
     /// The canonical keyword for an object kind; the spelling variants (MATERIALIZED VIEW, FUNCTION,
     /// PROCEDURE) normalize to it.
     /// </summary>
-    private static string KindKeyword(ObjectKind kind) => kind switch
+    private static string KindKeyword(SchemaObjectKind kind) => kind switch
     {
-        ObjectKind.Table => NsqlKeywords.Table,
-        ObjectKind.View => NsqlKeywords.View,
-        ObjectKind.Enum => NsqlKeywords.Enum,
-        ObjectKind.Sequence => NsqlKeywords.Sequence,
-        ObjectKind.Routine => NsqlKeywords.Routine,
-        ObjectKind.Domain => NsqlKeywords.Domain,
-        ObjectKind.CompositeType => NsqlKeywords.Type,
-        ObjectKind.Extension => NsqlKeywords.Extension,
+        SchemaObjectKind.Table => NsqlKeywords.Table,
+        SchemaObjectKind.View => NsqlKeywords.View,
+        SchemaObjectKind.Enum => NsqlKeywords.Enum,
+        SchemaObjectKind.Sequence => NsqlKeywords.Sequence,
+        SchemaObjectKind.Routine => NsqlKeywords.Routine,
+        SchemaObjectKind.Domain => NsqlKeywords.Domain,
+        SchemaObjectKind.CompositeType => NsqlKeywords.Type,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 

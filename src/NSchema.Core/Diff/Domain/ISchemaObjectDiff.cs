@@ -1,14 +1,11 @@
-using NSchema.Diff.Domain.Schemas;
 using NSchema.Model;
 
 namespace NSchema.Diff.Domain;
 
 /// <summary>
-/// The members every schema-level object diff shares. Implemented by the per-kind diff records so kind-agnostic
-/// consumers (change summaries, destructive-change detection) can walk one heterogeneous sequence — see
-/// <see cref="SchemaDiff.EnumerateObjects"/> — instead of repeating a loop per kind.
+/// The members every schema-level object diff shares.
 /// </summary>
-public interface ISchemaObjectDiff : INamedObjectDiff
+public interface ISchemaObjectDiff : IDatabaseElementDiff
 {
     /// <summary>
     /// The name of the schema the object belongs to.

@@ -17,7 +17,7 @@ public sealed record CompositeFieldDiff
     /// <summary>
     /// The change to the field.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The field name.
@@ -38,23 +38,23 @@ public sealed record CompositeFieldDiff
     /// Whether this is a field being added, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A field being created, named by its own definition.
     /// </summary>
     public static CompositeFieldDiff Added(CompositeField definition) =>
-        new() { Kind = ChangeKind.Add, Name = definition.Name, Definition = definition };
+        new() { Change = ChangeKind.Add, Name = definition.Name, Definition = definition };
 
     /// <summary>
     /// A field being dropped.
     /// </summary>
     public static CompositeFieldDiff Removed(SqlIdentifier name) =>
-        new() { Kind = ChangeKind.Remove, Name = name };
+        new() { Change = ChangeKind.Remove, Name = name };
 
     /// <summary>
     /// An in-place retype (<c>ALTER ATTRIBUTE … TYPE</c>).
     /// </summary>
     public static CompositeFieldDiff TypeChanged(SqlIdentifier name, ValueChange<SqlType> type) =>
-        new() { Kind = ChangeKind.Modify, Name = name, Type = type };
+        new() { Change = ChangeKind.Modify, Name = name, Type = type };
 }

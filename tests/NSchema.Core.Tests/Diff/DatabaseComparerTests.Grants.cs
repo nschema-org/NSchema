@@ -18,7 +18,7 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] });
 
         var grant = table!.Grants.ShouldHaveSingleItem();
-        grant.Kind.ShouldBe(ChangeKind.Remove);
+        grant.Change.ShouldBe(ChangeKind.Remove);
         grant.Role.ShouldBe("reader");
     }
 
@@ -29,7 +29,7 @@ public partial class DatabaseComparerTests
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }], Grants = [new TableGrant("reader", TablePrivilege.Select)] },
             new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }], Grants = [new TableGrant("reader", TablePrivilege.All)] });
 
-        table!.Grants.Select(g => (g.Kind, g.Privileges)).ShouldBe(
+        table!.Grants.Select(g => (g.Change, g.Privileges)).ShouldBe(
             [(ChangeKind.Remove, TablePrivilege.Select), (ChangeKind.Add, TablePrivilege.All)]);
     }
 }

@@ -64,7 +64,7 @@ internal static class DocumentProjector
             case Syn.Domains.CreateDomainStatement s:
                 {
                     var (schema, name) = Bind(s.Name, context);
-                    DatabaseMemberCollection<CheckConstraint> checks = [.. s.Checks.Select(c => new CheckConstraint { Name = Name(c.Name), Expression = c.Expression })];
+                    ObjectMemberCollection<CheckConstraint> checks = [.. s.Checks.Select(c => new CheckConstraint { Name = Name(c.Name), Expression = c.Expression })];
                     schemas.AddDomain(schema, new DomainType { Name = name, DataType = ParseType(s.Type), Default = ProjectDefault(s.Default), NotNull = s.NotNull, Checks = checks, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
@@ -108,12 +108,12 @@ internal static class DocumentProjector
         SqlIdentifier name, string? doc, IReadOnlyList<Syn.Tables.TableMember> members, SqlIdentifier? context = null)
     {
         PrimaryKey? primaryKey = null;
-        var columns = new DatabaseMemberCollection<Column>();
-        var foreignKeys = new DatabaseMemberCollection<ForeignKey>();
-        var uniqueConstraints = new DatabaseMemberCollection<UniqueConstraint>();
-        var checkConstraints = new DatabaseMemberCollection<CheckConstraint>();
-        var exclusionConstraints = new DatabaseMemberCollection<ExclusionConstraint>();
-        var indexes = new DatabaseMemberCollection<TableIndex>();
+        var columns = new ObjectMemberCollection<Column>();
+        var foreignKeys = new ObjectMemberCollection<ForeignKey>();
+        var uniqueConstraints = new ObjectMemberCollection<UniqueConstraint>();
+        var checkConstraints = new ObjectMemberCollection<CheckConstraint>();
+        var exclusionConstraints = new ObjectMemberCollection<ExclusionConstraint>();
+        var indexes = new ObjectMemberCollection<TableIndex>();
         var includes = new List<(SqlIdentifier TemplateName, int ColumnPosition)>();
 
         foreach (var member in members)
@@ -209,7 +209,7 @@ internal static class DocumentProjector
             case Syn.Scripts.DeploymentEventClause deployment:
                 // A hand-written deployment script is global (null scope); a templated one scopes to the
                 // applied schema. A bare RUN (null condition) is the default, RUN ALWAYS.
-                scripts.Add(new DeploymentScript(Name(statement.Name), sql, context is { } scope ? new SchemaAddress(scope) : null, Map(deployment.Phase))
+                scripts.Add(new DeploymentScript(Name(statement.Name), sql, context, Map(deployment.Phase))
                 {
                     RunOutsideTransaction = statement.RunOutsideTransaction,
                     RunCondition = Map(statement.RunCondition),
@@ -251,10 +251,8 @@ internal static class DocumentProjector
         var stray = fragment.Schemas.FirstOrDefault(s => s.Name != SchemaToken.TargetSchemaPlaceholder);
         if (stray is not null)
         {
-            diagnostics.Add(new NsqlDiagnostic("project",
-                $"Template '{statement.Name.Value}' declares objects in schema '{stray.Name}'; objects inside a template must use " +
-                $"unqualified names so they are created in each schema the template is applied to. (at {statement.Name.Position}).",
-                DiagnosticSeverity.Error, statement.Name.Position));
+            diagnostics.Add(TemplateDiagnostics.QualifiedTemplateObject(
+                statement.Name.Value, stray.Name, statement.Name.Position));
         }
         return diagnostics;
     }

@@ -104,8 +104,8 @@ internal sealed class DatabaseAccumulator
     public void AddRoutine(SqlIdentifier schema, Routine routine, SourcePosition position) =>
         Add(schema, routine, e => e.Routines, position);
 
-    private void Add<T>(SqlIdentifier schema, T item, Func<Entry, DatabaseObjectCollection<T>> collection, SourcePosition position)
-        where T : DatabaseObject
+    private void Add<T>(SqlIdentifier schema, T item, Func<Entry, SchemaObjectCollection<T>> collection, SourcePosition position)
+        where T : SchemaObject
     {
         var target = collection(GetOrAdd(schema));
         if (target.Any(x => x.Name == item.Name))
@@ -291,14 +291,14 @@ internal sealed class DatabaseAccumulator
         public SqlIdentifier Name { get; } = name;
         public bool IsImplicit { get; set; } = true;
         public string? Comment { get; set; }
-        public DatabaseObjectCollection<Table> Tables { get; } = [];
+        public SchemaObjectCollection<Table> Tables { get; } = [];
         public List<SchemaGrant> Grants { get; } = [];
-        public DatabaseObjectCollection<View> Views { get; } = [];
-        public DatabaseObjectCollection<EnumType> Enums { get; } = [];
-        public DatabaseObjectCollection<Sequence> Sequences { get; } = [];
-        public DatabaseObjectCollection<Routine> Routines { get; } = [];
-        public DatabaseObjectCollection<DomainType> Domains { get; } = [];
-        public DatabaseObjectCollection<CompositeType> CompositeTypes { get; } = [];
+        public SchemaObjectCollection<View> Views { get; } = [];
+        public SchemaObjectCollection<EnumType> Enums { get; } = [];
+        public SchemaObjectCollection<Sequence> Sequences { get; } = [];
+        public SchemaObjectCollection<Routine> Routines { get; } = [];
+        public SchemaObjectCollection<DomainType> Domains { get; } = [];
+        public SchemaObjectCollection<CompositeType> CompositeTypes { get; } = [];
     }
 
     private readonly record struct PendingGrant(SqlIdentifier Schema, SqlIdentifier Table, TableGrant Grant, SourcePosition Position, string? File);

@@ -71,40 +71,40 @@ internal sealed partial class NsqlParser
     /// MATERIALIZED VIEW both name a view, and FUNCTION, PROCEDURE and ROUTINE all name a routine (they share
     /// one name space) — the concrete kind is resolved from the current state when the directive is planned.
     /// </summary>
-    private (ObjectKind Kind, IReadOnlyList<Token> Keywords)? TryParseObjectKind()
+    private (SchemaObjectKind Kind, IReadOnlyList<Token> Keywords)? TryParseObjectKind()
     {
         if (_current.IsKeyword(NsqlKeywords.Table))
         {
-            return (ObjectKind.Table, [Advance()]);
+            return (SchemaObjectKind.Table, [Advance()]);
         }
         if (_current.IsAnyKeyword(NsqlKeywords.View, NsqlKeywords.Materialized))
         {
             var first = Advance();
             if (first.IsKeyword(NsqlKeywords.Materialized))
             {
-                return (ObjectKind.View, [first, ExpectKeyword(NsqlKeywords.View)]);
+                return (SchemaObjectKind.View, [first, ExpectKeyword(NsqlKeywords.View)]);
             }
-            return (ObjectKind.View, [first]);
+            return (SchemaObjectKind.View, [first]);
         }
         if (_current.IsKeyword(NsqlKeywords.Enum))
         {
-            return (ObjectKind.Enum, [Advance()]);
+            return (SchemaObjectKind.Enum, [Advance()]);
         }
         if (_current.IsKeyword(NsqlKeywords.Domain))
         {
-            return (ObjectKind.Domain, [Advance()]);
+            return (SchemaObjectKind.Domain, [Advance()]);
         }
         if (_current.IsKeyword(NsqlKeywords.Type))
         {
-            return (ObjectKind.CompositeType, [Advance()]);
+            return (SchemaObjectKind.CompositeType, [Advance()]);
         }
         if (_current.IsKeyword(NsqlKeywords.Sequence))
         {
-            return (ObjectKind.Sequence, [Advance()]);
+            return (SchemaObjectKind.Sequence, [Advance()]);
         }
         if (_current.IsAnyKeyword(NsqlKeywords.Function, NsqlKeywords.Procedure, NsqlKeywords.Routine))
         {
-            return (ObjectKind.Routine, [Advance()]);
+            return (SchemaObjectKind.Routine, [Advance()]);
         }
         return null;
     }
@@ -113,15 +113,15 @@ internal sealed partial class NsqlParser
     /// What a rename's target should be, for the error when it is missing. The noun follows the keyword the
     /// kind is written as, not the model's name for it (a composite type is written <c>TYPE</c>).
     /// </summary>
-    private static string RenameTargetNoun(ObjectKind kind) => kind switch
+    private static string RenameTargetNoun(SchemaObjectKind kind) => kind switch
     {
-        ObjectKind.Table => "a table name",
-        ObjectKind.View => "a view name",
-        ObjectKind.Enum => "an enum name",
-        ObjectKind.Domain => "a domain name",
-        ObjectKind.CompositeType => "a type name",
-        ObjectKind.Sequence => "a sequence name",
-        ObjectKind.Routine => "a routine name",
+        SchemaObjectKind.Table => "a table name",
+        SchemaObjectKind.View => "a view name",
+        SchemaObjectKind.Enum => "an enum name",
+        SchemaObjectKind.Domain => "a domain name",
+        SchemaObjectKind.CompositeType => "a type name",
+        SchemaObjectKind.Sequence => "a sequence name",
+        SchemaObjectKind.Routine => "a routine name",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 

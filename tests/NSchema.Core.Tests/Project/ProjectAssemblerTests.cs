@@ -86,7 +86,7 @@ public sealed class ProjectAssemblerTests
 
         var error = SingleError(result);
         error.ShouldBe(ProjectDiagnostics.ObjectAlreadyDeclared(
-            ObjectKind.Table, "app", "users", error.Position) with
+            SchemaObjectKind.Table, "app", "users", error.Position) with
         { File = "file2.sql" });
         error.Position.Line.ShouldBe(1);
     }
@@ -104,7 +104,7 @@ public sealed class ProjectAssemblerTests
 
         // Assert
         error.ShouldBe(ProjectDiagnostics.ObjectAlreadyDeclared(
-            ObjectKind.View, "app", "v", error.Position) with
+            SchemaObjectKind.View, "app", "v", error.Position) with
         { File = "file2.sql" });
     }
 

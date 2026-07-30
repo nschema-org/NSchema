@@ -1,25 +1,25 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: sequence app.order_id (as=bigint, start=100, step=5, max=999999, cache=10, cycle) ("order numbers")
     },
     {
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: sequence app.invoice_id
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: sequence app.ticket_id
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: options: start=1, step=1 → start=1000, step=10, cycle
     },
@@ -27,21 +27,21 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: sequence app.audit_id comment: "old note" → "new note"
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: sequence app.job_id → batch_id
     },
     {
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: sequence app.stale_seq
     }
   ],

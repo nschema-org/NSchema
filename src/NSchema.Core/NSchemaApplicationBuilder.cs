@@ -47,8 +47,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
 
         // Drop the default console logger so third-party libraries don't spam the terminal.
         _innerBuilder.Logging.ClearProviders();
-        _innerBuilder.Services.AddOptions<DestructiveActionOptions>();
-        _innerBuilder.Services.AddOptions<DataHazardOptions>();
+        _innerBuilder.Services.AddOptions<DiagnosticOptions>();
 
         // Policies registered up front so users can remove them before Build().
         AddProjectPolicy<StructuralIntegrityPolicy>();

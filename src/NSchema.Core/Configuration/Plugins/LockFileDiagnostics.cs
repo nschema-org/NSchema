@@ -5,11 +5,11 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 internal static class LockFileDiagnostics
 {
-    private const string Source = "lockfile";
+    internal static readonly DiagnosticSource Source = "lockfile";
 
     /// <summary>
     /// The lockfile could not be written.
     /// </summary>
     public static Diagnostic Unwritable(string path, string reason) =>
-        Diagnostic.Error(Source, $"Could not write the lockfile '{path}': {reason:text}");
+        Diagnostic.Error(Source, "unwritable", $"Could not write the lockfile '{path}': {reason:text}");
 }

@@ -10,10 +10,10 @@ namespace NSchema.Model.Tables;
 /// Represents a database table. Adopts its members.
 /// </summary>
 [DebuggerDisplay("{Name,nq} ({Columns.Count} columns)")]
-public sealed class Table : DatabaseObject, IEquatable<Table>
+public sealed class Table : SchemaObject, IEquatable<Table>
 {
     /// <inheritdoc/>
-    public override ObjectKind Kind => ObjectKind.Table;
+    public override SchemaObjectKind Kind => SchemaObjectKind.Table;
 
     /// <summary>
     /// The primary key of the table.
@@ -36,54 +36,54 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// <summary>
     /// A list of columns that are part of the table.
     /// </summary>
-    public DatabaseMemberCollection<Column> Columns
+    public ObjectMemberCollection<Column> Columns
     {
-        get => field ??= new DatabaseMemberCollection<Column>(this);
+        get => field ??= new ObjectMemberCollection<Column>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of foreign keys that define the relationships between this table and other tables in the database schema.
     /// </summary>
-    public DatabaseMemberCollection<ForeignKey> ForeignKeys
+    public ObjectMemberCollection<ForeignKey> ForeignKeys
     {
-        get => field ??= new DatabaseMemberCollection<ForeignKey>(this);
+        get => field ??= new ObjectMemberCollection<ForeignKey>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of unique constraints defined on the table.
     /// </summary>
-    public DatabaseMemberCollection<UniqueConstraint> UniqueConstraints
+    public ObjectMemberCollection<UniqueConstraint> UniqueConstraints
     {
-        get => field ??= new DatabaseMemberCollection<UniqueConstraint>(this);
+        get => field ??= new ObjectMemberCollection<UniqueConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of check constraints defined on the table.
     /// </summary>
-    public DatabaseMemberCollection<CheckConstraint> CheckConstraints
+    public ObjectMemberCollection<CheckConstraint> CheckConstraints
     {
-        get => field ??= new DatabaseMemberCollection<CheckConstraint>(this);
+        get => field ??= new ObjectMemberCollection<CheckConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of exclusion constraints defined on the table.
     /// </summary>
-    public DatabaseMemberCollection<ExclusionConstraint> ExclusionConstraints
+    public ObjectMemberCollection<ExclusionConstraint> ExclusionConstraints
     {
-        get => field ??= new DatabaseMemberCollection<ExclusionConstraint>(this);
+        get => field ??= new ObjectMemberCollection<ExclusionConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of indexes that are defined on the table.
     /// </summary>
-    public DatabaseMemberCollection<TableIndex> Indexes
+    public ObjectMemberCollection<TableIndex> Indexes
     {
-        get => field ??= new DatabaseMemberCollection<TableIndex>(this);
+        get => field ??= new ObjectMemberCollection<TableIndex>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -95,9 +95,9 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     /// <summary>
     /// A list of triggers defined on the table.
     /// </summary>
-    public DatabaseMemberCollection<Trigger> Triggers
+    public ObjectMemberCollection<Trigger> Triggers
     {
-        get => field ??= new DatabaseMemberCollection<Trigger>(this);
+        get => field ??= new ObjectMemberCollection<Trigger>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -149,28 +149,27 @@ public sealed class Table : DatabaseObject, IEquatable<Table>
     private List<Diagnostic> MemberConflicts(Table members)
     {
         var conflicts = new List<Diagnostic>();
-        conflicts.AddRange(Conflicts(Columns, members.Columns, "column"));
+        conflicts.AddRange(Conflicts(Columns, members.Columns));
         if (PrimaryKey is not null && members.PrimaryKey is not null)
         {
             conflicts.Add(TableDiagnostics.DuplicatePrimaryKey(Name));
         }
-        conflicts.AddRange(Conflicts(ForeignKeys, members.ForeignKeys, "foreign key"));
-        conflicts.AddRange(Conflicts(UniqueConstraints, members.UniqueConstraints, "unique constraint"));
-        conflicts.AddRange(Conflicts(CheckConstraints, members.CheckConstraints, "check constraint"));
-        conflicts.AddRange(Conflicts(ExclusionConstraints, members.ExclusionConstraints, "exclusion constraint"));
-        conflicts.AddRange(Conflicts(Indexes, members.Indexes, "index"));
-        conflicts.AddRange(Conflicts(Triggers, members.Triggers, "trigger"));
+        conflicts.AddRange(Conflicts(ForeignKeys, members.ForeignKeys));
+        conflicts.AddRange(Conflicts(UniqueConstraints, members.UniqueConstraints));
+        conflicts.AddRange(Conflicts(CheckConstraints, members.CheckConstraints));
+        conflicts.AddRange(Conflicts(ExclusionConstraints, members.ExclusionConstraints));
+        conflicts.AddRange(Conflicts(Indexes, members.Indexes));
+        conflicts.AddRange(Conflicts(Triggers, members.Triggers));
         return conflicts;
     }
 
     private IEnumerable<Diagnostic> Conflicts<T>(
         IEnumerable<T> existing,
-        IEnumerable<T> incoming,
-        string kind) where T : DatabaseMember =>
+        IEnumerable<T> incoming) where T : ObjectMember =>
         incoming.Where(candidate => existing.Any(member => member.Name == candidate.Name))
-            .Select(candidate => TableDiagnostics.DuplicateMember(Name, kind, candidate.Name));
+            .Select(candidate => TableDiagnostics.DuplicateMember(Name, candidate.Kind, candidate.Name));
 
-    private static void AddClones<T>(IEnumerable<T> source, ICollection<T> destination) where T : DatabaseMember
+    private static void AddClones<T>(IEnumerable<T> source, ICollection<T> destination) where T : ObjectMember
     {
         foreach (var member in source)
         {

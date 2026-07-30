@@ -20,7 +20,7 @@ public sealed record RoutineDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.Routine);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Routine);
 
     /// <summary>
     /// The routine name.
@@ -30,7 +30,7 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the routine.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// Whether the routine is a function or a procedure (carried so the correct statement is emitted for a rename, comment change, or removal).
@@ -61,7 +61,7 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     /// Whether this is a routine being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A routine being created, named by its own definition.
@@ -70,7 +70,7 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         RoutineKind = definition.RoutineKind,
         Comment = ValueChange.Between(null, definition.Comment),
@@ -80,13 +80,13 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     /// A routine being dropped.
     /// </summary>
     public static RoutineDiff Removed(SqlIdentifier schema, SqlIdentifier name, RoutineKind routineKind) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Remove, RoutineKind = routineKind };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove, RoutineKind = routineKind };
 
     /// <summary>
     /// A routine altered in place; the individual changes are set on the result.
     /// </summary>
     public static RoutineDiff Modified(SqlIdentifier schema, SqlIdentifier name, RoutineKind routineKind) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Modify, RoutineKind = routineKind };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Modify, RoutineKind = routineKind };
 
     /// <summary>
     /// The signature changed, so the routine must be dropped and recreated: replacing in place would leave the

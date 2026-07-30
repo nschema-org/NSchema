@@ -6,8 +6,11 @@ namespace NSchema.Model.Tables;
 /// Represents a foreign key constraint in a database schema.
 /// </summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public sealed class ForeignKey : DatabaseMember, IEquatable<ForeignKey>
+public sealed class ForeignKey : ObjectMember, IEquatable<ForeignKey>
 {
+    /// <inheritdoc/>
+    public override MemberKind Kind => MemberKind.ForeignKey;
+
     /// <summary>
     /// A list of column names in the current table that are part of the foreign key constraint.
     /// </summary>

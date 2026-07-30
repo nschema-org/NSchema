@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
+using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.State;
 using NSchema.State.Domain;
@@ -104,7 +105,7 @@ public sealed class DatabaseStateSerializerTests
     public void RoundTrip_PreservesExecutedScripts()
     {
         // Arrange
-        var executed = new ScriptExecution(new ScopedAddress(null, "api-login"), "abc123", new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero));
+        var executed = new ScriptExecution(new ScriptReference(null, "api-login"), "abc123", new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero));
         var state = new DatabaseState(new Database { Schemas = [new Schema { Name = "app" }] }, [executed]);
 
         // Act
@@ -121,7 +122,7 @@ public sealed class DatabaseStateSerializerTests
         // Pins the wire field name — renaming it silently empties every existing ledger.
         var state = new DatabaseState(
             new Database { Schemas = [] },
-            [new ScriptExecution(new ScopedAddress(null, "api-login"), "abc123", DateTimeOffset.UnixEpoch)]);
+            [new ScriptExecution(new ScriptReference(null, "api-login"), "abc123", DateTimeOffset.UnixEpoch)]);
 
         // Act
         var json = Encoding.UTF8.GetString(_sut.Serialize(state).Span);
@@ -135,8 +136,8 @@ public sealed class DatabaseStateSerializerTests
         // Pins the ledger entry's wire shape: the script address is structural ({schema, name}, schema null
         // when the script is global), beside the hash and timestamp.
         => VerifyJson(Encoding.UTF8.GetString(_sut.Serialize(new DatabaseState(new Database { Schemas = [] }, [
-            new ScriptExecution(new ScopedAddress(null, "api-login"), "abc123", DateTimeOffset.UnixEpoch),
-            new ScriptExecution(new ScopedAddress("sales", "seed"), "def456", DateTimeOffset.UnixEpoch),
+            new ScriptExecution(new ScriptReference(null, "api-login"), "abc123", DateTimeOffset.UnixEpoch),
+            new ScriptExecution(new ScriptReference("sales", "seed"), "def456", DateTimeOffset.UnixEpoch),
         ])).Span));
 
     [Fact]
@@ -146,9 +147,8 @@ public sealed class DatabaseStateSerializerTests
         => VerifyJson(Encoding.UTF8.GetString(_sut.Serialize(new DatabaseState(new Database { Schemas = [] })
         {
             Managed = new IdentitySet(
-                Schemas: [new SchemaAddress("app")],
-                Objects: [new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }],
-                Extensions: [new ScopedAddress(null, "citext")]),
+                DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Extension("citext")],
+                SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]),
         }).Span));
 
     [Fact]
@@ -158,15 +158,14 @@ public sealed class DatabaseStateSerializerTests
         => VerifyJson(Encoding.UTF8.GetString(_sut.Serialize(new DatabaseState(new Database { Schemas = [] })
         {
             Managed = new IdentitySet(
-                Schemas: [new SchemaAddress("app"), new SchemaAddress("my.schema")],
-                Objects:
+                DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("my.schema"), DatabaseAddress.Extension("citext"), DatabaseAddress.Extension("uuid-ossp")],
+                SchemaObjects:
                 [
-                    new ObjectAddress("app", "users", ObjectKind.Table),
-                    new ObjectAddress("app", "active_users", ObjectKind.View),
-                    new ObjectAddress("app", "user_id_seq", ObjectKind.Sequence),
-                    new ObjectAddress("my.schema", "Order Details", ObjectKind.Table),
-                ],
-                Extensions: [new ScopedAddress(null, "citext"), new ScopedAddress(null, "uuid-ossp")]),
+                    new ObjectAddress("app", "users", SchemaObjectKind.Table),
+                    new ObjectAddress("app", "active_users", SchemaObjectKind.View),
+                    new ObjectAddress("app", "user_id_seq", SchemaObjectKind.Sequence),
+                    new ObjectAddress("my.schema", "Order Details", SchemaObjectKind.Table),
+                ]),
         }).Span));
 
     [Fact]
@@ -174,13 +173,12 @@ public sealed class DatabaseStateSerializerTests
     {
         // Arrange — every level, including names that would need quoting if written as a path.
         var managed = new IdentitySet(
-            Schemas: [new SchemaAddress("app"), new SchemaAddress("my.schema")],
-            Objects:
+            DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("my.schema"), DatabaseAddress.Extension("citext")],
+            SchemaObjects:
             [
-                new ObjectAddress("app", "users", ObjectKind.Table),
-                new ObjectAddress("my.schema", "Order Details", ObjectKind.View),
-            ],
-            Extensions: [new ScopedAddress(null, "citext")]);
+                new ObjectAddress("app", "users", SchemaObjectKind.Table),
+                new ObjectAddress("my.schema", "Order Details", SchemaObjectKind.View),
+            ]);
 
         // Act
         var restored = _sut
@@ -188,9 +186,8 @@ public sealed class DatabaseStateSerializerTests
             .Managed;
 
         // Assert — kinds and hostile names survive the wire.
-        restored.Schemas.ShouldBe(managed.Schemas);
-        restored.Objects.ShouldBe(managed.Objects);
-        restored.Extensions.ShouldBe(managed.Extensions);
+        restored.DatabaseObjects.ShouldBe(managed.DatabaseObjects);
+        restored.SchemaObjects.ShouldBe(managed.SchemaObjects);
     }
 
     [Fact]

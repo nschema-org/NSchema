@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.CompositeTypes;
 using NSchema.Diff.Domain.Constraints;
@@ -24,52 +23,36 @@ using NSchema.Plan.Domain.Views;
 namespace NSchema.Plan.Policies;
 
 /// <summary>
-/// A plan policy that checks for destructive changes and applies the configured policy.
-/// Non-fatal outcomes are returned as Info/Warning diagnostics so the pipeline can surface them without aborting.
+/// A plan policy that reports the destructive changes in a plan.
 /// </summary>
-internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions> options) : IPlanPolicy
+internal sealed class DestructiveActionPolicy : IPlanPolicy
 {
     public IEnumerable<Diagnostic> Validate(MigrationPlan plan)
     {
-        var diff = plan.Diff;
-        if (options.Value.Policy == PolicyEnforcement.Ignore)
-        {
-            return [];
-        }
+        var destructive = DestructiveChanges(plan.Diff).Distinct().ToList();
 
-        var destructive = DestructiveChanges(diff).Distinct().ToList();
-        if (destructive.Count == 0)
-        {
-            return [];
-        }
-
-        var typeString = string.Join(", ", destructive);
-
-        return options.Value.Policy switch
-        {
-            PolicyEnforcement.Allow => [DestructiveActionDiagnostics.Allowed(typeString)],
-            PolicyEnforcement.Warn => [DestructiveActionDiagnostics.Warned(typeString)],
-            _ => [DestructiveActionDiagnostics.Blocked(typeString)]
-        };
+        return destructive.Count == 0
+            ? []
+            : [DestructiveActionDiagnostics.DestructiveChange(string.Join(", ", destructive))];
     }
 
     private static IEnumerable<string> DestructiveChanges(DatabaseDiff diff)
     {
         // Dropping a database-global extension removes shared infrastructure (and anything that depended on it),
         // so it is destructive.
-        foreach (var extension in diff.Extensions.Where(e => e.Kind == ChangeKind.Remove))
+        foreach (var extension in diff.Extensions.Where(e => e.Change == ChangeKind.Remove))
         {
             yield return nameof(DropExtension);
         }
 
         foreach (var schema in diff.Schemas)
         {
-            if (schema.Kind == ChangeKind.Remove)
+            if (schema.Change == ChangeKind.Remove)
             {
                 yield return nameof(DropSchema);
             }
 
-            foreach (var grant in schema.Grants.Where(g => g.Kind == ChangeKind.Remove))
+            foreach (var grant in schema.Grants.Where(g => g.Change == ChangeKind.Remove))
             {
                 yield return nameof(RevokeSchemaUsage);
             }
@@ -78,7 +61,7 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
             // from managed state. Only whole-object removals count — a routine's signature-change recreate is a
             // declared edit (the database blocks the underlying drop loudly if dependents exist), and dropping
             // a check constraint only loosens validation, so neither is flagged here.
-            foreach (var obj in schema.EnumerateObjects().Where(o => o.Kind == ChangeKind.Remove))
+            foreach (var obj in schema.EnumerateObjects().Where(o => o.Change == ChangeKind.Remove))
             {
                 yield return obj switch
                 {
@@ -95,9 +78,9 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
 
             // Dropping a field from a composite type removes that attribute from every row of every table whose
             // column uses the type, so it is destructive — the analogue of dropping a column.
-            foreach (var type in schema.CompositeTypes.Where(t => t.Kind != ChangeKind.Remove))
+            foreach (var type in schema.CompositeTypes.Where(t => t.Change != ChangeKind.Remove))
             {
-                foreach (var field in type.Fields.Where(f => f.Kind == ChangeKind.Remove))
+                foreach (var field in type.Fields.Where(f => f.Change == ChangeKind.Remove))
                 {
                     yield return nameof(DropCompositeField);
                 }
@@ -105,7 +88,7 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
 
             foreach (var table in schema.Tables)
             {
-                foreach (var grant in table.Grants.Where(g => g.Kind == ChangeKind.Remove))
+                foreach (var grant in table.Grants.Where(g => g.Change == ChangeKind.Remove))
                 {
                     yield return nameof(RevokeTablePrivileges);
                 }
@@ -114,7 +97,7 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
                 // not just removed.
                 foreach (var column in table.Columns)
                 {
-                    if (column.Kind == ChangeKind.Remove)
+                    if (column.Change == ChangeKind.Remove)
                     {
                         yield return nameof(DropColumn);
                     }
@@ -128,7 +111,7 @@ internal sealed class DestructiveActionPolicy(IOptions<DestructiveActionOptions>
                 // Dropping a key or unique constraint removes a structural guarantee (and a unique constraint
                 // may be a foreign-key target), so those are destructive; dropping a check only loosens
                 // validation and an index can be rebuilt, so neither is flagged.
-                foreach (var member in table.EnumerateMembers().Where(m => m.Kind == ChangeKind.Remove))
+                foreach (var member in table.EnumerateMembers().Where(m => m.Change == ChangeKind.Remove))
                 {
                     var actionName = member switch
                     {

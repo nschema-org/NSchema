@@ -39,19 +39,14 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
     private static void ValidateIndexNames(Schema definition, List<Diagnostic> diagnostics)
     {
         var named = definition.Tables
-            .SelectMany(t => t.Indexes.Select(i => (i.Name, Kind: "index", On: t.Name))
-                .Concat(t.PrimaryKey is { } pk
-                    ? [(pk.Name, Kind: "primary key", On: t.Name)]
-                    : Array.Empty<(SqlIdentifier Name, string Kind, SqlIdentifier On)>())
-                .Concat(t.UniqueConstraints.Select(u => (u.Name, Kind: "unique constraint", On: t.Name)))
-                .Concat(t.ExclusionConstraints.Select(x => (x.Name, Kind: "exclusion constraint", On: t.Name))))
+            .SelectMany(t => IndexBacked(t).Select(m => (m.Name, m.Kind, On: t.Name)))
             .Concat(definition.Views.Where(v => v.IsMaterialized)
-                .SelectMany(v => v.Indexes.Select(i => (i.Name, Kind: "index", On: v.Name))));
+                .SelectMany(v => v.Indexes.Select(i => (i.Name, i.Kind, On: v.Name))));
 
         foreach (var collision in named.GroupBy(x => x.Name).Where(g => g.Count() > 1))
         {
-            var sites = string.Join(", ", collision.Select(x => $"{x.Kind} on '{new ObjectAddress(definition.Name, x.On)}'"));
-            diagnostics.Add(StructuralIntegrityDiagnostics.DuplicateIndexName(new SchemaAddress(definition.Name), collision.Key, sites));
+            var sites = string.Join(", ", collision.Select(x => $"{x.Kind.Display()} on '{new ObjectAddress(definition.Name, x.On)}'"));
+            diagnostics.Add(StructuralIntegrityDiagnostics.DuplicateIndexName(DatabaseAddress.Schema(definition.Name), collision.Key, sites));
         }
     }
 
@@ -211,6 +206,14 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
             && i.Columns.All(c => c.Column is not null)
             && referenced.SetEquals(i.Columns.Select(c => c.Column).OfType<SqlIdentifier>()));
     }
+
+    // The members that occupy the schema's index name space: an index, and the constraints the database backs
+    // with one. A check constraint has no index, so it is not among them.
+    private static IEnumerable<ObjectMember> IndexBacked(Table table) =>
+        table.Indexes.Cast<ObjectMember>()
+            .Concat(table.PrimaryKey is { } primaryKey ? [primaryKey] : [])
+            .Concat(table.UniqueConstraints)
+            .Concat(table.ExclusionConstraints);
 
     private static IEnumerable<SqlIdentifier> Duplicates(IEnumerable<SqlIdentifier> names) => names
         .GroupBy(n => n)

@@ -8,16 +8,16 @@ namespace NSchema.Plan.Plugins;
 /// </summary>
 internal static partial class SqlDialectDiagnostics
 {
-    private const string Source = "sql-dialect";
+    internal static readonly DiagnosticSource Source = "sql-dialect";
 
     public static Diagnostic Unsupported(MigrationAction action, string dialect) =>
-        Diagnostic.Error(Source, $"{dialect} does not support the '{Describe(action)}' action.");
+        Diagnostic.Error(Source, "unsupported", $"{dialect} does not support the '{Describe(action)}' action.");
 
     public static Diagnostic Skipped(MigrationAction action, string dialect) =>
-        Diagnostic.Warning(Source, $"{dialect} does not support the '{Describe(action)}' action; the change was skipped. Remove the declaration from the project to clear this warning.");
+        Diagnostic.Warning(Source, "skipped", $"{dialect} does not support the '{Describe(action)}' action; the change was skipped. Remove the declaration from the project to clear this warning.");
 
     public static Diagnostic Unknown(MigrationAction action, string dialect) =>
-        Diagnostic.Error(Source, $"'{action.GetType().Name}' is not a migration action {dialect} recognizes.");
+        Diagnostic.Error(Source, "unknown", $"'{action.GetType().Name}' is not a migration action {dialect} recognizes.");
 
     /// <summary>
     /// The action type's name as prose: <c>AddExclusionConstraint</c> → <c>add exclusion constraint</c>.

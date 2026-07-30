@@ -34,7 +34,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffTriggers([], [AfterInsert("audit")]).ShouldHaveSingleItem();
 
-        diff.Kind.ShouldBe(ChangeKind.Add);
+        diff.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.Function.ShouldBe("app.log");
         diff.Definition.Events.ShouldBe(TriggerEvent.Insert);
     }
@@ -44,7 +44,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffTriggers([AfterInsert("audit")], []).ShouldHaveSingleItem();
 
-        diff.Kind.ShouldBe(ChangeKind.Remove);
+        diff.Change.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
     }
 
@@ -62,7 +62,7 @@ public partial class DatabaseComparerTests
         // Assert
             .ShouldHaveSingleItem();
 
-        diff.Kind.ShouldBe(ChangeKind.Modify);
+        diff.Change.ShouldBe(ChangeKind.Modify);
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
     }
 
@@ -78,7 +78,7 @@ public partial class DatabaseComparerTests
         var diffs = DiffTriggers([current], [desired]);
 
         // Assert
-        diffs.Select(d => d.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
+        diffs.Select(d => d.Change).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public partial class DatabaseComparerTests
         var current = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Update, Function = new RoutineReference("app", "log"), UpdateOfColumns = ["a"] };
         var desired = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Update, Function = new RoutineReference("app", "log"), UpdateOfColumns = ["a", "b"] };
 
-        DiffTriggers([current], [desired]).Select(d => d.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
+        DiffTriggers([current], [desired]).Select(d => d.Change).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
     }
 
     [Fact]
@@ -97,6 +97,6 @@ public partial class DatabaseComparerTests
         var current = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "BEGIN SELECT 1 END" };
         var desired = new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "BEGIN SELECT 2 END" };
 
-        DiffTriggers([current], [desired]).Select(d => d.Kind).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
+        DiffTriggers([current], [desired]).Select(d => d.Change).ShouldBe([ChangeKind.Remove, ChangeKind.Add], ignoreOrder: true);
     }
 }

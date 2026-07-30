@@ -1,28 +1,28 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: type app.address (street text, zip int) ("a postal address")
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: type app.money
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: field currency text
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: field amount type: int → decimal(18,2)
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: field legacy
     },
@@ -30,21 +30,21 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: type app.old_t → renamed_t
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: type app.noted comment: "old" → "new"
     },
     {
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: type app.stale_t
     }
   ],

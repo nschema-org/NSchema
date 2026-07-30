@@ -20,7 +20,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.CompositeType);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.CompositeType);
 
     /// <summary>
     /// The composite type name.
@@ -30,7 +30,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the composite type.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous name when renamed; otherwise <see langword="null"/>.
@@ -56,7 +56,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     /// Whether this is a composite type being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A composite type being created, named by its own definition.
@@ -65,7 +65,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
     };
@@ -77,7 +77,7 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = name,
-        Kind = ChangeKind.Remove
+        Change = ChangeKind.Remove
     };
 
     /// <summary>
@@ -87,6 +87,6 @@ public sealed record CompositeTypeDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = name,
-        Kind = ChangeKind.Modify
+        Change = ChangeKind.Modify
     };
 }

@@ -9,7 +9,7 @@ namespace NSchema.Project.Nsql.Syntax;
 /// <param name="Kind">The kind of object being renamed.</param>
 /// <param name="From">The object's current address.</param>
 /// <param name="To">The name the object is renamed to.</param>
-public sealed record RenameObjectStatement(ObjectKind Kind, QualifiedName From, Identifier To) : NsqlStatement
+public sealed record RenameObjectStatement(SchemaObjectKind Kind, QualifiedName From, Identifier To) : NsqlStatement
 {
     /// <summary>
     /// The <c>RENAME</c> keyword token.

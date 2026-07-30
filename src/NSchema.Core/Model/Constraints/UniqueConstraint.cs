@@ -6,8 +6,11 @@ namespace NSchema.Model.Constraints;
 /// Represents a unique constraint in a database schema.
 /// </summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public sealed class UniqueConstraint : DatabaseMember, IEquatable<UniqueConstraint>
+public sealed class UniqueConstraint : ObjectMember, IEquatable<UniqueConstraint>
 {
+    /// <inheritdoc/>
+    public override MemberKind Kind => MemberKind.UniqueConstraint;
+
     /// <summary>
     /// A list of column names that are part of the unique constraint.
     /// </summary>

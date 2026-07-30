@@ -23,7 +23,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffEnums([], [new EnumType { Name = "status", Values = ["a", "b"] }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.Values.ShouldBe(["a", "b"]);
         diff.AddedValues.ShouldBeEmpty();
     }
@@ -33,7 +33,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffEnums([new EnumType { Name = "status", Values = ["a"] }], []);
 
-        diff!.Kind.ShouldBe(ChangeKind.Remove);
+        diff!.Change.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
     }
 
@@ -47,9 +47,9 @@ public partial class DatabaseComparerTests
         var diff = DiffEnums(
             [new EnumType { Name = "state", Values = ["a"] }],
             [new EnumType { Name = "status", Values = ["a"] }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("state") with { Kind = ObjectKind.Enum }, "status")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("state") with { Kind = SchemaObjectKind.Enum }, "status")]));
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RenamedFrom.ShouldBe("state");
         diff.Name.ShouldBe("status");
         diff.Values.ShouldBeNull(); // values unchanged, so it is a rename only
@@ -62,7 +62,7 @@ public partial class DatabaseComparerTests
             [new EnumType { Name = "status", Values = ["a"], Comment = "old" }],
             [new EnumType { Name = "status", Values = ["a"], Comment = "new" }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
         diff.Values.ShouldBeNull();
     }
@@ -137,7 +137,7 @@ public partial class DatabaseComparerTests
             [new EnumType { Name = "status", Values = ["a", "b", "c"] }],
             [new EnumType { Name = "status", Values = ["a", "c"] }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.AddedValues.ShouldBeEmpty();
         diff.RequiresRecreate.ShouldBeTrue();
         // The old and new lists are still recorded so drift can display the change.

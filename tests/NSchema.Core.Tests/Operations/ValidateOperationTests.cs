@@ -31,7 +31,7 @@ public sealed class ValidateOperationTests
     public async Task Execute_WhenSchemaInvalid_FailsWithTheFindings()
     {
         // Arrange — an error finding fails the operation the same way a blocked plan does; the findings ride the result.
-        _workflow.Validate(Arg.Any<CancellationToken>()).Returns(Result.From(Diagnostic.Error("P1", "bad schema")));
+        _workflow.Validate(Arg.Any<CancellationToken>()).Returns(Result.From(Diagnostic.Error("p1", "bad-schema", "bad schema")));
 
         // Act
         var result = await _sut.Execute(new ValidateArguments(), TestContext.Current.CancellationToken);
@@ -45,7 +45,7 @@ public sealed class ValidateOperationTests
     public async Task Execute_CarriesAdvisoryFindings_WithoutFailing()
     {
         // Arrange
-        _workflow.Validate(Arg.Any<CancellationToken>()).Returns(Result.From(new Diagnostic("P1", "lint", DiagnosticSeverity.Warning)));
+        _workflow.Validate(Arg.Any<CancellationToken>()).Returns(Result.From(new Diagnostic("p1", "policy-finding", "lint", DiagnosticSeverity.Warning)));
 
         // Act
         var result = await _sut.Execute(new ValidateArguments(), TestContext.Current.CancellationToken);

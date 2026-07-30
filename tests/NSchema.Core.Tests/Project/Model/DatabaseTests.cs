@@ -24,7 +24,7 @@ public sealed class DatabaseTests
     {
         // Arrange — the object is managed, the schema holding it is not.
         var database = Db(Schema("app", Table("users")));
-        var identities = new IdentitySet(Objects: [new ObjectAddress("app", "users", ObjectKind.Table)]);
+        var identities = new IdentitySet(SchemaObjects: [new ObjectAddress("app", "users", SchemaObjectKind.Table)]);
 
         // Act
         var filtered = database.FilteredTo(identities);
@@ -39,7 +39,7 @@ public sealed class DatabaseTests
     public void FilteredTo_DropsASchemaTheSetNamesNothingIn()
     {
         // Act
-        var filtered = Db(Schema("app", Table("users"))).FilteredTo(new IdentitySet(Schemas: [new SchemaAddress("other")]));
+        var filtered = Db(Schema("app", Table("users"))).FilteredTo(new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("other")]));
 
         // Assert
         filtered.Schemas.ShouldBeEmpty();
@@ -50,7 +50,7 @@ public sealed class DatabaseTests
     {
         // Act
         var filtered = Db(Schema("app", Table("users"))).FilteredTo(
-            new IdentitySet(Schemas: [new SchemaAddress("app")], Objects: [new ObjectAddress("app", "users", ObjectKind.Table)]));
+            new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("app")], SchemaObjects: [new ObjectAddress("app", "users", SchemaObjectKind.Table)]));
 
         // Assert
         filtered.Schemas.ShouldHaveSingleItem().IsImplicit.ShouldBeFalse();
@@ -59,7 +59,7 @@ public sealed class DatabaseTests
     [Fact]
     public void ScopedTo_RestrictsSchemas()
     {
-        var result = Sample().ScopedTo(PlanningScope.To(new SchemaAddress("app")));
+        var result = Sample().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
 
         result.Schemas.Select(s => s.Name).ShouldBe(["app"]);
     }
@@ -69,7 +69,7 @@ public sealed class DatabaseTests
     {
         var schema = new Database { Schemas = [new Schema { Name = "App" }] };
 
-        var result = schema.ScopedTo(PlanningScope.To(new SchemaAddress("app")));
+        var result = schema.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
 
         result.Schemas.ShouldBeEmpty();
     }
@@ -77,7 +77,7 @@ public sealed class DatabaseTests
     [Fact]
     public void ScopedTo_NamesNotPresent_AreIgnored()
     {
-        var result = Sample().ScopedTo(PlanningScope.To(new SchemaAddress("app"), new SchemaAddress("does-not-exist")));
+        var result = Sample().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app"), DatabaseAddress.Schema("does-not-exist")));
 
         result.Schemas.Select(s => s.Name).ShouldBe(["app"]);
     }
@@ -106,14 +106,14 @@ public sealed class DatabaseTests
         var project = new ProjectDefinition(
             new Database { Schemas = [new Schema { Name = core }, new Schema { Name = "audit" }] },
             new ProjectDirectives(
-                SchemaRenames: [new SchemaRenameDirective(new SchemaAddress(sales), new SchemaAddress(core))],
+                SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema(sales), DatabaseAddress.Schema(core))],
                 ObjectRenames:
                 [
-                    new ObjectRenameDirective(new ObjectAddress(sales, "old") with { Kind = ObjectKind.Table }, "current"),
-                    new ObjectRenameDirective(new ObjectAddress("audit", "stale") with { Kind = ObjectKind.Table }, "fresh"),
+                    new ObjectRenameDirective(new ObjectAddress(sales, "old") with { Kind = SchemaObjectKind.Table }, "current"),
+                    new ObjectRenameDirective(new ObjectAddress("audit", "stale") with { Kind = SchemaObjectKind.Table }, "fresh"),
                 ]));
 
-        var filtered = project.ScopedTo(PlanningScope.To(new SchemaAddress(core))).Directives;
+        var filtered = project.ScopedTo(PlanningScope.To(DatabaseAddress.Schema(core))).Directives;
 
         filtered.SchemaRenames.ShouldHaveSingleItem(); // kept — its To side is in scope
         filtered.ObjectRenames.ShouldHaveSingleItem().From.Schema.ShouldBe(sales); // resolves through the rename
@@ -130,8 +130,8 @@ public sealed class DatabaseTests
         var directives = new ProjectDirectives(
             ObjectRenames:
             [
-                new ObjectRenameDirective(new ObjectAddress(app, "customers") with { Kind = ObjectKind.Table }, "users"),
-                new ObjectRenameDirective(new ObjectAddress(app, "stale") with { Kind = ObjectKind.Table }, "fresh"),
+                new ObjectRenameDirective(new ObjectAddress(app, "customers") with { Kind = SchemaObjectKind.Table }, "users"),
+                new ObjectRenameDirective(new ObjectAddress(app, "stale") with { Kind = SchemaObjectKind.Table }, "fresh"),
             ],
             MemberRenames: [new MemberRenameDirective(new MemberAddress(app, "users", "mail"), "email")],
             ChangeScripts:
@@ -139,7 +139,7 @@ public sealed class DatabaseTests
                 new ChangeScript("backfill", "UPDATE 1;", new ChangeTarget(app, "users", "email", ChangeTrigger.AddColumn)),
                 new ChangeScript("other", "UPDATE 2;", new ChangeTarget(app, "orders", "total", ChangeTrigger.AddColumn)),
             ],
-            DeploymentScripts: [new DeploymentScript("seed", "SELECT 1;", new SchemaAddress(app), DeploymentPhase.Pre)]);
+            DeploymentScripts: [new DeploymentScript("seed", "SELECT 1;", app, DeploymentPhase.Pre)]);
 
         // Act
         var filtered = directives.ScopedTo(PlanningScope.To([users]));

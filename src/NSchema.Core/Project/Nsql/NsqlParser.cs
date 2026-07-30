@@ -217,7 +217,7 @@ internal sealed partial class NsqlParser
         }
         return segments switch
         {
-            [var schema] => new SchemaAddress(schema.Value),
+            [var schema] => DatabaseAddress.Schema(schema.Value),
             [var schema, var name] => new ObjectAddress(schema.Value, name.Value),
             [var schema, var obj, var member] => new MemberAddress(schema.Value, obj.Value, member.Value),
             _ => throw Error("An address has at most three parts: schema.object.member."),

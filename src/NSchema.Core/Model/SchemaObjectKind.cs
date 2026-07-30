@@ -1,9 +1,9 @@
 namespace NSchema.Model;
 
 /// <summary>
-/// The kind of a schema-level object: what sort of thing lives at an address.
+/// The kind of an object a schema owns: what sort of thing lives at an address.
 /// </summary>
-public enum ObjectKind
+public enum SchemaObjectKind
 {
     /// <summary>
     /// A table.
@@ -26,7 +26,7 @@ public enum ObjectKind
     Sequence,
 
     /// <summary>
-    /// A routine (function or procedure — one name space).
+    /// A routine (function or procedure).
     /// </summary>
     Routine,
 
@@ -38,34 +38,26 @@ public enum ObjectKind
     /// <summary>
     /// A composite type.
     /// </summary>
-    CompositeType,
-
-    /// <summary>
-    /// An extension.
-    /// </summary>
-    Extension
+    CompositeType
 }
 
 /// <summary>
-/// Rendering for <see cref="ObjectKind"/>.
+/// Rendering for <see cref="SchemaObjectKind"/>.
 /// </summary>
-internal static class ObjectKindExtensions
+internal static class SchemaObjectKindExtensions
 {
     /// <summary>
     /// The kind as display prose (e.g. <c>"composite type"</c>), for diagnostics.
     /// </summary>
-    public static string Display(this ObjectKind kind) => kind switch
+    public static string Display(this SchemaObjectKind kind) => kind switch
     {
-        ObjectKind.Table => "table",
-        ObjectKind.View => "view",
-        ObjectKind.Enum => "enum",
-        ObjectKind.Sequence => "sequence",
-        ObjectKind.Routine => "routine",
-        ObjectKind.Domain => "domain",
-        ObjectKind.CompositeType => "composite type",
-        ObjectKind.Extension => "extension",
+        SchemaObjectKind.Table => "table",
+        SchemaObjectKind.View => "view",
+        SchemaObjectKind.Enum => "enum",
+        SchemaObjectKind.Sequence => "sequence",
+        SchemaObjectKind.Routine => "routine",
+        SchemaObjectKind.Domain => "domain",
+        SchemaObjectKind.CompositeType => "composite type",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }
-
-

@@ -14,7 +14,7 @@ internal sealed class ObjectAddressJsonConverter : JsonConverter<ObjectAddress>
     {
         SqlIdentifier? schema = null;
         SqlIdentifier? name = null;
-        ObjectKind? kind = null;
+        SchemaObjectKind? kind = null;
         while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
         {
             var property = reader.GetString();
@@ -23,7 +23,7 @@ internal sealed class ObjectAddressJsonConverter : JsonConverter<ObjectAddress>
             {
                 case "schema": schema = JsonSerializer.Deserialize<SqlIdentifier>(ref reader, options); break;
                 case "name": name = JsonSerializer.Deserialize<SqlIdentifier>(ref reader, options); break;
-                case "kind": kind = JsonSerializer.Deserialize<ObjectKind?>(ref reader, options); break;
+                case "kind": kind = JsonSerializer.Deserialize<SchemaObjectKind?>(ref reader, options); break;
             }
         }
         return new ObjectAddress(

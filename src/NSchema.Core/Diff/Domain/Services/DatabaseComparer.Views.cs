@@ -10,7 +10,7 @@ internal sealed partial class DatabaseComparer
 {
     private List<ViewDiff> CompareViews(SqlIdentifier schemaName, IReadOnlyList<View> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.Views,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, ObjectKind.View)),
+            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.View)),
             view => RemovedView(schemaName, view),
             view => BuildNewView(schemaName, view),
             (currentView, desiredView, renamedFrom) => BuildModifiedView(schemaName, currentView, desiredView, renamedFrom));

@@ -25,13 +25,13 @@ public sealed class NsqlParserDirectiveTests
     public void Parse_RenameSchema_TakesBareNames()
         => Directives("CREATE SCHEMA core; RENAME SCHEMA sales TO core;")
             .SchemaRenames.ShouldHaveSingleItem()
-            .ShouldBe(new SchemaRenameDirective(new SchemaAddress("sales"), new SchemaAddress("core")));
+            .ShouldBe(new SchemaRenameDirective(DatabaseAddress.Schema("sales"), DatabaseAddress.Schema("core")));
 
     [Fact]
     public void Parse_RenameTable_TakesQualifiedFromAndBareTo()
         => Directives("CREATE SCHEMA app; CREATE TABLE app.people ( id int NOT NULL ); RENAME TABLE app.users TO people;")
             .ObjectRenames.ShouldHaveSingleItem()
-            .ShouldBe(new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people"));
+            .ShouldBe(new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people"));
 
     [Fact]
     public void Parse_RenameColumn_TakesAThreePartPath()
@@ -45,7 +45,7 @@ public sealed class NsqlParserDirectiveTests
     public void Parse_RenameMaterializedView_IsAViewRename()
         => Directives("CREATE SCHEMA app; CREATE MATERIALIZED VIEW app.daily AS SELECT 1 FROM app.t; RENAME MATERIALIZED VIEW app.old_daily TO daily;")
             .ObjectRenames.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
-                r => r.From.Kind.ShouldBe(ObjectKind.View),
+                r => r.From.Kind.ShouldBe(SchemaObjectKind.View),
                 r => r.From.Name.ShouldBe("old_daily"));
 
     [Theory]
@@ -55,7 +55,7 @@ public sealed class NsqlParserDirectiveTests
     public void Parse_RenameRoutineSpellings_AllRenameARoutine(string keyword)
         => Directives($"CREATE SCHEMA app; CREATE FUNCTION app.f() RETURNS int AS $$ SELECT 1 $$; RENAME {keyword} app.old_f TO f;")
             .ObjectRenames.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
-                r => r.From.Kind.ShouldBe(ObjectKind.Routine),
+                r => r.From.Kind.ShouldBe(SchemaObjectKind.Routine),
                 r => r.From.Name.ShouldBe("old_f"));
 
     // -------------------------------------------------------------------------

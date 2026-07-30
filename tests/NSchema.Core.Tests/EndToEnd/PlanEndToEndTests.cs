@@ -71,12 +71,12 @@ public sealed class PlanEndToEndTests : IDisposable
         var users = schema.Tables.Single(t => t.Name.Value.Equals("users"));
 
         // Assert
-        users.Kind.ShouldBe(ChangeKind.Modify);
+        users.Change.ShouldBe(ChangeKind.Modify);
         users.Columns.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             c => c.Name.ShouldBe("email"),
-            c => c.Kind.ShouldBe(ChangeKind.Add));
+            c => c.Change.ShouldBe(ChangeKind.Add));
 
-        schema.Tables.Single(t => t.Name.Value.Equals("orders")).Kind.ShouldBe(ChangeKind.Add);
+        schema.Tables.Single(t => t.Name.Value.Equals("orders")).Change.ShouldBe(ChangeKind.Add);
     }
 
     [Fact]
@@ -160,30 +160,30 @@ public sealed class PlanEndToEndTests : IDisposable
         // A teardown destroys what NSchema manages; management is normally established by an apply, adopted
         // here through state surgery. billing stays unmanaged — the plan may only sever, never tear it down.
         await Manage(app, new IdentitySet(
-            Schemas: [new SchemaAddress("app")],
-            Objects: [new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }]));
+            DatabaseObjects: [DatabaseAddress.Schema("app")],
+            SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]));
 
         var result = await app.Operations.Plan(
-            new PlanArguments { Target = PlanTarget.Empty, Scope = PlanningScope.To(new SchemaAddress("app")) },
+            new PlanArguments { Target = PlanTarget.Empty, Scope = PlanningScope.To(DatabaseAddress.Schema("app")) },
             TestContext.Current.CancellationToken);
 
         var diff = result.Value.ShouldNotBeNull().Plan.ShouldNotBeNull().Diff;
 
         // app goes entirely...
-        diff.Schemas.Single(s => s.Name.Value.Equals("app")).Kind.ShouldBe(ChangeKind.Remove);
+        diff.Schemas.Single(s => s.Name.Value.Equals("app")).Change.ShouldBe(ChangeKind.Remove);
 
         // Act
         // ...and billing is disturbed, but not torn down: the table survives, minus the constraint.
         var billing = diff.Schemas.Single(s => s.Name.Value.Equals("billing"));
 
         // Assert
-        billing.Kind.ShouldBeNull();
+        billing.Change.ShouldBe(ChangeKind.Touched);
         var orders = billing.Tables.ShouldHaveSingleItem();
-        orders.Kind.ShouldBe(ChangeKind.Modify);
-        orders.ForeignKeys.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+        orders.Change.ShouldBe(ChangeKind.Modify);
+        orders.ForeignKeys.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
 
         // And the reach outside the scope is announced rather than done quietly.
-        result.Diagnostics.ShouldContain(d => d.Source == "scope" && d.Message.Contains("billing.orders.fk_orders_user"));
+        result.Diagnostics.ShouldContain(d => d.Code == "severed-out-of-scope" && d.Message.Contains("billing.orders.fk_orders_user"));
     }
 
     [Fact]
@@ -203,11 +203,11 @@ public sealed class PlanEndToEndTests : IDisposable
         var plan = result.Value.ShouldNotBeNull().Plan.ShouldNotBeNull();
 
         var schema = plan.Diff.Schemas.ShouldHaveSingleItem();
-        schema.Kind.ShouldBe(ChangeKind.Add);
+        schema.Change.ShouldBe(ChangeKind.Add);
         schema.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
 
-        plan.Managed.Schemas.Select(s => s.Schema).ShouldBe(["app"]);
-        plan.Managed.Objects.ShouldHaveSingleItem().ShouldBe(users with { Kind = ObjectKind.Table });
+        plan.Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
+        plan.Managed.SchemaObjects.ShouldHaveSingleItem().ShouldBe(users with { Kind = SchemaObjectKind.Table });
     }
 
     [Fact]
@@ -230,8 +230,8 @@ public sealed class PlanEndToEndTests : IDisposable
         // A teardown destroys what NSchema manages; management is normally established by an apply, adopted
         // here through state surgery.
         await Manage(app, new IdentitySet(
-            Schemas: [new SchemaAddress("app")],
-            Objects: [new ObjectAddress("app", "users") with { Kind = ObjectKind.Table }]));
+            DatabaseObjects: [DatabaseAddress.Schema("app")],
+            SchemaObjects: [new ObjectAddress("app", "users") with { Kind = SchemaObjectKind.Table }]));
 
         var result = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Empty }, TestContext.Current.CancellationToken);
 
@@ -242,7 +242,7 @@ public sealed class PlanEndToEndTests : IDisposable
 
         // The teardown plan drops the managed table.
         var schema = result.Value.ShouldNotBeNull().Plan.ShouldNotBeNull().Diff.Schemas.ShouldHaveSingleItem();
-        schema.Tables.ShouldContain(t => t.Name.Value.Equals("users") && t.Kind == ChangeKind.Remove);
+        schema.Tables.ShouldContain(t => t.Name.Value.Equals("users") && t.Change == ChangeKind.Remove);
     }
 
     /// <summary>Adopts identities into management through state surgery: pull, mutate, push.</summary>

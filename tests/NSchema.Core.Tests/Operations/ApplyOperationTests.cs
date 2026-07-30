@@ -173,7 +173,7 @@ public sealed class ApplyOperationTests
         // Arrange — policies are enforced at the execution point against the exact plan being applied, so a saved plan
         // (older config, other tooling, hand edits) cannot slip past them.
         var policy = Substitute.For<IPlanPolicy>();
-        policy.Validate(_plan).Returns([Diagnostic.Error("destructive", "drops table")]);
+        policy.Validate(_plan).Returns([Diagnostic.Error("destructive", "drops-table", "drops table")]);
         _planPolicies.Add(policy);
 
         // Act
@@ -192,7 +192,7 @@ public sealed class ApplyOperationTests
     {
         // Arrange — force is an informed override: the findings stay visible, demoted so they don't fail the run.
         var policy = Substitute.For<IPlanPolicy>();
-        policy.Validate(_plan).Returns([Diagnostic.Error("destructive", "drops table")]);
+        policy.Validate(_plan).Returns([Diagnostic.Error("destructive", "drops-table", "drops table")]);
         _planPolicies.Add(policy);
 
         // Act
@@ -209,7 +209,7 @@ public sealed class ApplyOperationTests
     {
         // Arrange
         var policy = Substitute.For<IPlanPolicy>();
-        policy.Validate(_plan).Returns([Diagnostic.Warning("data-hazards", "risky add")]);
+        policy.Validate(_plan).Returns([Diagnostic.Warning("data-hazards", "risky-add", "risky add")]);
         _planPolicies.Add(policy);
 
         // Act

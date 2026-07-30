@@ -7,7 +7,6 @@ using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Domain.Tables;
-using NSchema.Tests.Helpers;
 
 namespace NSchema.Tests.Plan;
 

@@ -13,7 +13,7 @@ namespace NSchema.Diff.Domain.Schemas;
 /// <summary>
 /// Describes the changes in a given schema and its tables.
 /// </summary>
-public sealed record SchemaDiff
+public sealed record SchemaDiff : IDatabaseObjectDiff
 {
     [JsonConstructor]
     private SchemaDiff() { }
@@ -27,12 +27,12 @@ public sealed record SchemaDiff
     /// The schema's address.
     /// </summary>
     [JsonIgnore]
-    public SchemaAddress Address => new(Name);
+    public DatabaseAddress Address => DatabaseAddress.Schema(Name);
 
     /// <summary>
-    /// The change to the schema itself, or <see langword="null"/> when only its contents changed.
+    /// The change to the schema itself; <see cref="ChangeKind.Touched"/> when only its contents changed.
     /// </summary>
-    public ChangeKind? Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous schema name when renamed; otherwise <see langword="null"/>.
@@ -87,22 +87,22 @@ public sealed record SchemaDiff
     /// <summary>
     /// A schema being created.
     /// </summary>
-    public static SchemaDiff Added(SqlIdentifier name) => new() { Name = name, Kind = ChangeKind.Add };
+    public static SchemaDiff Added(SqlIdentifier name) => new() { Name = name, Change = ChangeKind.Add };
 
     /// <summary>
     /// A schema being dropped, along with everything it contains.
     /// </summary>
-    public static SchemaDiff Removed(SqlIdentifier name) => new() { Name = name, Kind = ChangeKind.Remove };
+    public static SchemaDiff Removed(SqlIdentifier name) => new() { Name = name, Change = ChangeKind.Remove };
 
     /// <summary>
     /// A schema whose own definition changed — renamed, or its comment or grants altered.
     /// </summary>
-    public static SchemaDiff Modified(SqlIdentifier name) => new() { Name = name, Kind = ChangeKind.Modify };
+    public static SchemaDiff Modified(SqlIdentifier name) => new() { Name = name, Change = ChangeKind.Modify };
 
     /// <summary>
     /// A schema untouched in itself, carried only because objects inside it changed.
     /// </summary>
-    public static SchemaDiff Containing(SqlIdentifier name) => new() { Name = name };
+    public static SchemaDiff Containing(SqlIdentifier name) => new() { Name = name, Change = ChangeKind.Touched };
 
     /// <summary>
     /// Narrows this schema's changes to what <paramref name="scope"/> covers, or <see langword="null"/> when nothing in it is covered.
@@ -116,7 +116,8 @@ public sealed record SchemaDiff
 
         var narrowed = this with
         {
-            Kind = Kind == ChangeKind.Add ? ChangeKind.Add : null,
+            // Outside the scope the schema is only a container — unless it has to be created to hold what is.
+            Change = Change == ChangeKind.Add ? ChangeKind.Add : ChangeKind.Touched,
             RenamedFrom = null,
             Comment = null,
             Grants = [],

@@ -7,10 +7,10 @@ namespace NSchema.Model.Views;
 /// Represents a database view: a named query stored in a schema. Adopts its indexes.
 /// </summary>
 [DebuggerDisplay("{Name,nq} (view)")]
-public sealed class View : DatabaseObject, IEquatable<View>
+public sealed class View : SchemaObject, IEquatable<View>
 {
     /// <inheritdoc/>
-    public override ObjectKind Kind => ObjectKind.View;
+    public override SchemaObjectKind Kind => SchemaObjectKind.View;
 
     /// <summary>
     /// The view's defining query, stored verbatim (the text after <c>AS</c>).
@@ -30,9 +30,9 @@ public sealed class View : DatabaseObject, IEquatable<View>
     /// <summary>
     /// Indexes on the view (materialized views only; empty for a plain view).
     /// </summary>
-    public DatabaseMemberCollection<TableIndex> Indexes
+    public ObjectMemberCollection<TableIndex> Indexes
     {
-        get => field ??= new DatabaseMemberCollection<TableIndex>(this);
+        get => field ??= new ObjectMemberCollection<TableIndex>(this);
         init { value.Attach(this); field = value; }
     }
 

@@ -21,7 +21,7 @@ public sealed record ColumnDiff : IMigratableDiff
     /// <summary>
     /// The change to the column.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The full column definition: the declared column, or the recorded one when it is being dropped.
@@ -74,7 +74,7 @@ public sealed record ColumnDiff : IMigratableDiff
     public static ColumnDiff Added(Column definition) => new()
     {
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = definition.Comment is null ? null : new ValueChange<string>(null, definition.Comment),
     };
@@ -83,11 +83,11 @@ public sealed record ColumnDiff : IMigratableDiff
     /// A column being dropped, carrying the recorded definition it is dropped from.
     /// </summary>
     public static ColumnDiff Removed(Column definition) =>
-        new() { Name = definition.Name, Kind = ChangeKind.Remove, Definition = definition };
+        new() { Name = definition.Name, Change = ChangeKind.Remove, Definition = definition };
 
     /// <summary>
     /// A column altered in place; the individual changes are set on the result.
     /// </summary>
     public static ColumnDiff Modified(Column definition) =>
-        new() { Name = definition.Name, Kind = ChangeKind.Modify, Definition = definition };
+        new() { Name = definition.Name, Change = ChangeKind.Modify, Definition = definition };
 }

@@ -23,7 +23,7 @@ public sealed class DiffDocumentTests
 
     /// <summary>Asserts a content line exists with the given kind whose text contains the snippet.</summary>
     private static void ShouldHaveLine(DatabaseDiff diff, ChangeKind kind, string textContains)
-        => DiffDocument.From(diff).Lines.ShouldContain(line => line.Kind == kind && line.Text.Contains(textContains));
+        => DiffDocument.From(diff).Lines.ShouldContain(line => line.Change == kind && line.Text.Contains(textContains));
 
     private static DatabaseDiff DiffOf(IReadOnlyList<SchemaDiff>? schemas = null) => new(schemas ?? []);
 
@@ -182,7 +182,7 @@ public sealed class DiffDocumentTests
 
         // Assert
         lines.ShouldNotContain(line => line.Text.Contains("schema app"));
-        lines.ShouldContain(line => line.Kind == ChangeKind.Add && line.Text == "table app.users");
+        lines.ShouldContain(line => line.Change == ChangeKind.Add && line.Text == "table app.users");
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public sealed class DiffDocumentTests
         var between = lines.Skip(columnIndex + 1).Take(indexIndex - columnIndex - 1).ToList();
 
         // Assert
-        between.ShouldHaveSingleItem().Kind.ShouldBeNull();
+        between.ShouldHaveSingleItem().Change.ShouldBeNull();
     }
 
     // -------------------------------------------------------------------------
@@ -429,7 +429,7 @@ public sealed class DiffDocumentTests
 
         // The table header is a depth-0 line tagged Add; its text carries no marker glyph or indentation.
         var header = document.Lines.Single(line => line.Text.StartsWith("table "));
-        header.Kind.ShouldBe(ChangeKind.Add);
+        header.Change.ShouldBe(ChangeKind.Add);
         header.Depth.ShouldBe(0);
         header.Text.ShouldBe("table app.users");
 
@@ -438,7 +438,7 @@ public sealed class DiffDocumentTests
         var column = document.Lines.Single(line => line.Text.StartsWith("id "));
 
         // Assert
-        column.Kind.ShouldBe(ChangeKind.Add);
+        column.Change.ShouldBe(ChangeKind.Add);
         column.Depth.ShouldBe(1);
         column.Text.ShouldNotContain("+");
     }
@@ -451,7 +451,7 @@ public sealed class DiffDocumentTests
 
         // Assert
         // Every blank spacer is a kindless, empty line — a formatter renders or ignores it as it sees fit.
-        document.Lines.Where(line => line.Kind is null).ShouldAllBe(line => line.Text == "");
+        document.Lines.Where(line => line.Change is null).ShouldAllBe(line => line.Text == "");
     }
 
     // The index of the first line matching the predicate, or -1.

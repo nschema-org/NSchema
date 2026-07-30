@@ -2,9 +2,9 @@ namespace NSchema.Tests.Diagnostics;
 
 public sealed class ResultTests
 {
-    private static Diagnostic Error(string message = "boom") => Diagnostic.Error("source", message);
+    private static Diagnostic Error(string message = "boom") => Diagnostic.Error("source", "error", message);
 
-    private static Diagnostic Warning(string message = "careful") => Diagnostic.Warning("source", message);
+    private static Diagnostic Warning(string message = "careful") => Diagnostic.Warning("source", "warning", message);
 
     // -------------------------------------------------------------------------
     // Diagnostic factories
@@ -19,9 +19,9 @@ public sealed class ResultTests
         // Act
         var diagnostic = severity switch
         {
-            DiagnosticSeverity.Info => Diagnostic.Info("cfg", "msg"),
-            DiagnosticSeverity.Warning => Diagnostic.Warning("cfg", "msg"),
-            _ => Diagnostic.Error("cfg", "msg"),
+            DiagnosticSeverity.Info => Diagnostic.Info("cfg", "msg", "msg"),
+            DiagnosticSeverity.Warning => Diagnostic.Warning("cfg", "msg", "msg"),
+            _ => Diagnostic.Error("cfg", "msg", "msg"),
         };
 
         // Assert

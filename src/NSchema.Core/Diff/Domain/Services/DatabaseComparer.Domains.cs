@@ -11,7 +11,7 @@ internal sealed partial class DatabaseComparer
 {
     private List<DomainDiff> CompareDomains(SqlIdentifier schemaName, IReadOnlyList<DomainType> current, Schema desired, RenameLog renames) =>
         CompareObjects(current, desired.Domains,
-            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, ObjectKind.Domain)),
+            name => renames.RenamedFrom(new ObjectAddress(schemaName, name, SchemaObjectKind.Domain)),
             domain => DomainDiff.Removed(schemaName, domain.Name),
             domain => BuildNewDomain(schemaName, domain),
             (currentDomain, desiredDomain, renamedFrom) => BuildModifiedDomain(schemaName, currentDomain, desiredDomain, renamedFrom));

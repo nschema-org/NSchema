@@ -19,7 +19,12 @@ public static class VerifyModuleInitializer
         ));
 
         // Gotta ignore these to prevent circular references when creating the snapshot.
-        VerifierSettings.IgnoreMember<DatabaseObject>(o => o.Schema);
-        VerifierSettings.IgnoreMember<DatabaseMember>(m => m.Parent);
+        VerifierSettings.IgnoreMember<SchemaObject>(o => o.Schema);
+        VerifierSettings.IgnoreMember<ObjectMember>(m => m.Parent);
+
+        // An object outside a tree has no address and says so by throwing. The serializer reads every getter
+        // whether the snapshot needs it or not, so a definition carried by a diff — which records its own
+        // location, and holds the definition only to describe shape — would fail the whole snapshot.
+        VerifierSettings.IgnoreMembersThatThrow<InvalidOperationException>();
     }
 }

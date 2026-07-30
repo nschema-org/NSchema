@@ -39,7 +39,7 @@ internal sealed class ProjectComparer(IDatabaseComparer comparer) : IProjectComp
 
         foreach (var script in declared)
         {
-            if (script.RunCondition != RunCondition.Once || !executed.TryGetValue(script.Address, out var recordedHash))
+            if (script.RunCondition != RunCondition.Once || !executed.TryGetValue(script.Reference, out var recordedHash))
             {
                 newScripts.Add(script);
                 continue;

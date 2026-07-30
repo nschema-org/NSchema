@@ -24,7 +24,7 @@ internal static class ConfigurationAssembler
         IReadOnlyDictionary<string, string?>? environment = null
     )
     {
-        var diagnostics = new List<NsqlDiagnostic>();
+        DiagnosticCollection<NsqlDiagnostic> diagnostics = [];
 
         // Roll the statements up by keyword, then resolve each keyword's group against its own rule. Plugins
         // resolve first so a reference declared before its PLUGIN still finds it.
@@ -39,11 +39,11 @@ internal static class ConfigurationAssembler
             Reference(byKeyword[SettingsKeyword.Database], NsqlKeywords.Database, plugins, diagnostics, environment),
             Reference(byKeyword[SettingsKeyword.State], NsqlKeywords.State, plugins, diagnostics, environment));
 
-        return Result<ConfigurationDefinition, NsqlDiagnostic>.From(definition, diagnostics);
+        return diagnostics.ToResult(definition);
     }
 
     // A declaration collection: bind each, keeping only the first with a given label and the first with a given source.
-    private static List<PluginDeclaration> Plugins(IEnumerable<Located> statements, List<NsqlDiagnostic> diagnostics)
+    private static List<PluginDeclaration> Plugins(IEnumerable<Located> statements, DiagnosticCollection<NsqlDiagnostic> diagnostics)
     {
         var plugins = new List<PluginDeclaration>();
         foreach (var located in statements)
@@ -77,7 +77,7 @@ internal static class ConfigurationAssembler
         IEnumerable<Located> statements,
         string keyword,
         IReadOnlyList<PluginDeclaration> plugins,
-        List<NsqlDiagnostic> diagnostics,
+        DiagnosticCollection<NsqlDiagnostic> diagnostics,
         IReadOnlyDictionary<string, string?>? environment
     )
     {
@@ -103,7 +103,7 @@ internal static class ConfigurationAssembler
     }
 
     // Enforces at-most-one for a keyword, returning the first and reporting each one beyond it as a duplicate.
-    private static Located? Sole(IEnumerable<Located> statements, string keyword, List<NsqlDiagnostic> diagnostics)
+    private static Located? Sole(IEnumerable<Located> statements, string keyword, DiagnosticCollection<NsqlDiagnostic> diagnostics)
     {
         Located? first = null;
         foreach (var located in statements)
@@ -125,10 +125,10 @@ internal static class ConfigurationAssembler
     private sealed record Located(SettingsStatement Statement, string? File)
     {
         // Binds the statement's attributes to a new T, attributing any binding diagnostics; null when binding fails.
-        public T? Bind<T>(List<NsqlDiagnostic> diagnostics) where T : notnull
+        public T? Bind<T>(DiagnosticCollection<NsqlDiagnostic> diagnostics) where T : notnull
         {
             var result = Statement.ToSettings().Get<T>();
-            diagnostics.AddRange(result.Diagnostics.Select(d => Stamp(new NsqlDiagnostic(d.Source, d.Text, d.Severity, Statement.Position))));
+            diagnostics.AddRange(result.Diagnostics.Select(d => Stamp(new NsqlDiagnostic(d.Source, d.Code, d.Text, d.Severity, Statement.Position))));
             return result.IsSuccess ? result.Require() : default;
         }
 

@@ -17,7 +17,7 @@ public sealed record ForeignKeyDiff : IMigratableDiff
     /// <summary>
     /// The change to the foreign key.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The foreign key name.
@@ -43,23 +43,23 @@ public sealed record ForeignKeyDiff : IMigratableDiff
     /// Whether this is a foreign key being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A foreign key being created, named by its own definition.
     /// </summary>
     public static ForeignKeyDiff Added(ForeignKey definition) =>
-        new() { Kind = ChangeKind.Add, Name = definition.Name, Definition = definition };
+        new() { Change = ChangeKind.Add, Name = definition.Name, Definition = definition };
 
     /// <summary>
     /// A foreign key being dropped.
     /// </summary>
     public static ForeignKeyDiff Removed(SqlIdentifier name) =>
-        new() { Kind = ChangeKind.Remove, Name = name };
+        new() { Change = ChangeKind.Remove, Name = name };
 
     /// <summary>
     /// A comment change applied in place.
     /// </summary>
     public static ForeignKeyDiff CommentChanged(SqlIdentifier name, ValueChange<string> comment) =>
-        new() { Kind = ChangeKind.Modify, Name = name, Comment = comment };
+        new() { Change = ChangeKind.Modify, Name = name, Comment = comment };
 }

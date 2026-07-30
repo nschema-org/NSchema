@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Services;
 using NSchema.Model;
@@ -16,16 +17,20 @@ namespace NSchema.Plan.Domain.Services;
 /// <param name="projectPolicies">Policies that validate the declared project.</param>
 /// <param name="planPolicies">Policies that validate the complete plan (e.g. destructive-change checks).</param>
 /// <param name="dialect">The SQL dialect the plan's statements are rendered with. Required for planning.</param>
+/// <param name="options">How the findings the policies report are enforced.</param>
 internal sealed class MigrationPlanner(
     IProjectComparer comparer,
     IPlanLinearizer linearizer,
     IEnumerable<IProjectPolicy> projectPolicies,
     IEnumerable<IPlanPolicy> planPolicies,
+    IOptions<DiagnosticOptions>? options = null,
     SqlDialect? dialect = null
 ) : IMigrationPlanner
 {
+    private DiagnosticOptions Enforcement => options?.Value ?? new DiagnosticOptions();
+
     public Result Validate(ProjectDefinition project) =>
-        Result.From(projectPolicies.SelectMany(p => p.Validate(project)));
+        Result.From(Enforcement.Apply(projectPolicies.SelectMany(p => p.Validate(project))));
 
     public Result<MigrationPlan> Plan(CurrentState current, ProjectDefinition project, PlanningScope scope)
     {
@@ -37,12 +42,12 @@ internal sealed class MigrationPlanner(
         var diagnostics = new DiagnosticCollector();
 
         // Validate the declared project.
-        diagnostics.Add(Validate(project));
+        diagnostics.AddRange(Validate(project));
 
         // Identifiers are case-sensitive, so a declared name matching reality only up to case is a different
         // object — almost always a misspelled adoption. Warn before the diff turns it into a create beside
         // the existing object.
-        diagnostics.Add(Result.From(CaseMismatches(current.Database.Identities(), project.Database.Identities())));
+        diagnostics.AddRange(Result.From(CaseMismatches(current.Database.Identities(), project.Database.Identities())));
 
         // The plan converges what NSchema manages: the current side is the observation restricted to the
         // managed identities plus everything the project declares or addresses.
@@ -56,13 +61,13 @@ internal sealed class MigrationPlanner(
         var diff = diagnostics.Require(compared.ScopedTo(scope, current.Database));
 
         // Checked after scoping: a container out of scope holds nothing this run creates.
-        diagnostics.Add(Result.From(MissingSchemas(diff, current.Database)));
+        diagnostics.AddRange(Result.From(MissingSchemas(diff, current.Database)));
 
         var dependencies = new PlanDependencies(current.Database, project.Database);
         var plan = Realize(diff, dependencies, dialect, ManagedAfterApply(current, project, scope), diagnostics);
 
         // Validate the complete plan — post-render, so policies see exactly what an apply would execute.
-        diagnostics.Add(planPolicies.SelectMany(p => p.Validate(plan)));
+        diagnostics.AddRange(Enforcement.Apply(planPolicies.SelectMany(p => p.Validate(plan))));
 
         return diagnostics.ToResult(plan);
     }
@@ -78,8 +83,8 @@ internal sealed class MigrationPlanner(
         var directives = project.Directives;
 
         // Objects declared inside a renamed schema exist under the schema's current name until the rename applies.
-        var currentSchemaNames = directives.SchemaRenames.ToDictionary(r => r.To.Schema, r => r.From.Schema);
-        var declaredUnderCurrentNames = declared.Objects
+        var currentSchemaNames = directives.SchemaRenames.ToDictionary(r => r.To.Name, r => r.From.Name);
+        var declaredUnderCurrentNames = declared.SchemaObjects
             .Where(o => currentSchemaNames.ContainsKey(o.Schema))
             .Select(o => o with { Schema = currentSchemaNames[o.Schema] });
 
@@ -98,10 +103,10 @@ internal sealed class MigrationPlanner(
         var observed = current.Schemas.Select(s => s.Name).ToHashSet();
 
         var missing = diff.Schemas
-            .Where(schema => schema.Kind != ChangeKind.Add
+            .Where(schema => schema.Change != ChangeKind.Add
                 && schema.RenamedFrom is null
                 && !observed.Contains(schema.Name)
-                && schema.EnumerateObjects().Any(o => o.Kind == ChangeKind.Add))
+                && schema.EnumerateObjects().Any(o => o.Change == ChangeKind.Add))
             .Select(schema => schema.Name)
             .ToList();
 
@@ -116,16 +121,16 @@ internal sealed class MigrationPlanner(
         foreach (var schema in declared.Schemas)
         {
             if (!observed.Schemas.Contains(schema)
-                && observed.Schemas.FirstOrDefault(o => EqualsIgnoringCase(o.Schema, schema.Schema)) is { } match)
+                && observed.Schemas.FirstOrDefault(o => EqualsIgnoringCase(o.Name, schema.Name)) is { } match)
             {
                 yield return PlanDiagnostics.CaseOnlyMismatch(schema, match);
             }
         }
 
-        foreach (var identity in declared.Objects)
+        foreach (var identity in declared.SchemaObjects)
         {
-            if (!observed.Objects.Contains(identity)
-                && observed.Objects.FirstOrDefault(o => o.Kind == identity.Kind
+            if (!observed.SchemaObjects.Contains(identity)
+                && observed.SchemaObjects.FirstOrDefault(o => o.Kind == identity.Kind
                     && EqualsIgnoringCase(o.Schema, identity.Schema)
                     && EqualsIgnoringCase(o.Name, identity.Name)) is { } match)
             {
@@ -159,7 +164,7 @@ internal sealed class MigrationPlanner(
 
         var implicitSchemas = scoped.Schemas.Where(s => s.IsImplicit).Select(s => s.Address).ToHashSet();
 
-        return (declared with { Schemas = [.. declared.Schemas.Where(s => !implicitSchemas.Contains(s))] })
+        return (declared with { DatabaseObjects = [.. declared.DatabaseObjects.Where(o => !implicitSchemas.Contains(o))] })
             .Union(retained);
     }
 

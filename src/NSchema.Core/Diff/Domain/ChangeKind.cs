@@ -6,6 +6,11 @@ namespace NSchema.Diff.Domain;
 public enum ChangeKind
 {
     /// <summary>
+    /// The element itself is unchanged, but something it owns is.
+    /// </summary>
+    Touched,
+
+    /// <summary>
     /// The element is being created.
     /// </summary>
     Add,

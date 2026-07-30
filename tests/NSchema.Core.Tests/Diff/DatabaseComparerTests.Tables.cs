@@ -25,7 +25,7 @@ public partial class DatabaseComparerTests
         var tables = Compare(current, desired).Schemas.Single().Tables;
 
         // Assert
-        tables.Single(t => t.Name.Value.Equals("stale")).Kind.ShouldBe(ChangeKind.Remove);
+        tables.Single(t => t.Name.Value.Equals("stale")).Change.ShouldBe(ChangeKind.Remove);
     }
 
     // -------------------------------------------------------------------------
@@ -45,7 +45,7 @@ public partial class DatabaseComparerTests
 
         // Assert
         table.ShouldNotBeNull();
-        table.Kind.ShouldBe(ChangeKind.Modify);
+        table.Change.ShouldBe(ChangeKind.Modify);
         table.RenamedFrom.ShouldBe("people");
     }
 
@@ -73,7 +73,7 @@ public partial class DatabaseComparerTests
         var table = Compare(current, desired, TableRename("people", "users")).Schemas.Single().Tables.ShouldHaveSingleItem();
 
         table.Name.ShouldBe("users");
-        table.Kind.ShouldBe(ChangeKind.Add);
+        table.Change.ShouldBe(ChangeKind.Add);
         table.RenamedFrom.ShouldBeNull();
     }
 
@@ -91,7 +91,7 @@ public partial class DatabaseComparerTests
 
         // Assert
         table.ShouldNotBeNull();
-        table.Kind.ShouldBe(ChangeKind.Modify);
+        table.Change.ShouldBe(ChangeKind.Modify);
         table.RenamedFrom.ShouldBe("people");
     }
 
@@ -123,7 +123,7 @@ public partial class DatabaseComparerTests
         table.ForeignKeys.ShouldHaveSingleItem().ShouldBe(ForeignKeyDiff.Added(new ForeignKey { Name = "orders_user_fk", ColumnNames = ["user_id"], References = new ObjectAddress("app", "users"), ReferencedColumnNames = ["id"] }));
         table.Grants.ShouldHaveSingleItem().Privileges.ShouldBe(TablePrivilege.Select);
         // A new index carries both its definition and a folded comment change.
-        table.Indexes.Select(i => i.Kind).ShouldBe([ChangeKind.Add, ChangeKind.Modify]);
+        table.Indexes.Select(i => i.Change).ShouldBe([ChangeKind.Add, ChangeKind.Modify]);
         table.Indexes[1].Comment.ShouldBe(new ValueChange<string>(null, "lookup"));
     }
 }

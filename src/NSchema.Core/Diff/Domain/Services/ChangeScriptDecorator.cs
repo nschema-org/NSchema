@@ -36,7 +36,7 @@ internal static class ChangeScriptDecorator
             Schemas = [.. diff.Schemas.Select(schema => schema with
             {
                 Tables = [.. schema.Tables.Select(table =>
-                    table.Kind == ChangeKind.Modify && byTable.TryGetValue(new ObjectAddress(schema.Name, table.Name), out var tableScripts)
+                    table.Change == ChangeKind.Modify && byTable.TryGetValue(new ObjectAddress(schema.Name, table.Name), out var tableScripts)
                         ? Attach(schema.Name, table, tableScripts)
                         : table)],
             })],
@@ -58,8 +58,8 @@ internal static class ChangeScriptDecorator
         {
             Columns = table.Columns.Select(column => column switch
             {
-                { Kind: ChangeKind.Add } when Match(ChangeTrigger.AddColumn, column.Name) is { } m => column with { MigrationScript = m },
-                { Kind: ChangeKind.Modify, Type: not null } when Match(ChangeTrigger.AlterColumnType, column.Name) is { } m => column with { MigrationScript = m },
+                { Change: ChangeKind.Add } when Match(ChangeTrigger.AddColumn, column.Name) is { } m => column with { MigrationScript = m },
+                { Change: ChangeKind.Modify, Type: not null } when Match(ChangeTrigger.AlterColumnType, column.Name) is { } m => column with { MigrationScript = m },
                 _ => column,
             }).ToList(),
             PrimaryKeys = AttachConstraints(table.PrimaryKeys, Match, (pk, m) => pk with { MigrationScript = m }),
@@ -81,5 +81,5 @@ internal static class ChangeScriptDecorator
         Func<ChangeTrigger, SqlIdentifier, ChangeScript?> match,
         Func<T, ChangeScript, T> attach)
         where T : IMigratableDiff =>
-        [.. constraints.Select(c => c.Kind == ChangeKind.Add && match(ChangeTrigger.AddConstraint, c.Name) is { } m ? attach(c, m) : c)];
+        [.. constraints.Select(c => c.Change == ChangeKind.Add && match(ChangeTrigger.AddConstraint, c.Name) is { } m ? attach(c, m) : c)];
 }

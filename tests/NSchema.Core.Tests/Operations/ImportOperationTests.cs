@@ -98,7 +98,7 @@ public sealed class ImportOperationTests : IDisposable
     public async Task Execute_PassesScopeFilterToSource()
     {
         // Arrange
-        var arguments = new ImportArguments { OutputDirectory = _dir, Scope = PlanningScope.To(new SchemaAddress("app"), new SchemaAddress("audit")) };
+        var arguments = new ImportArguments { OutputDirectory = _dir, Scope = PlanningScope.To(DatabaseAddress.Schema("app"), DatabaseAddress.Schema("audit")) };
 
         // Act
         await Execute(arguments);

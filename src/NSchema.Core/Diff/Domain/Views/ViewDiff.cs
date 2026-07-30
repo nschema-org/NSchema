@@ -21,7 +21,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.View);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.View);
 
     /// <summary>
     /// The view name.
@@ -31,7 +31,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the view.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous name when renamed; otherwise <see langword="null"/>.
@@ -72,7 +72,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
     /// Whether this is a view being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A view being created, named by its own definition.
@@ -81,7 +81,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
         IsMaterialized = definition.IsMaterialized,
@@ -91,11 +91,11 @@ public sealed record ViewDiff : ISchemaObjectDiff
     /// A view being dropped.
     /// </summary>
     public static ViewDiff Removed(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Remove };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove };
 
     /// <summary>
     /// A view altered in place; the individual changes are set on the result.
     /// </summary>
     public static ViewDiff Modified(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Modify };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Modify };
 }

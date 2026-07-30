@@ -20,7 +20,7 @@ public partial class DatabaseComparerTests
 
         var column = table!.Columns.ShouldHaveSingleItem();
         column.Name.ShouldBe("email");
-        column.Kind.ShouldBe(ChangeKind.Remove);
+        column.Change.ShouldBe(ChangeKind.Remove);
         column.Definition.ShouldNotBeNull();
     }
 
@@ -30,7 +30,7 @@ public partial class DatabaseComparerTests
         var column = DiffColumn(new Column { Name = "mail", Type = SqlType.Text }, new Column { Name = "email", Type = SqlType.Text }, ColumnRename("mail", "email"));
 
         column!.RenamedFrom.ShouldBe("mail");
-        column.Kind.ShouldBe(ChangeKind.Modify);
+        column.Change.ShouldBe(ChangeKind.Modify);
     }
 
     [Fact]

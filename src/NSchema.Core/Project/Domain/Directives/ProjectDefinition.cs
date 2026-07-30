@@ -17,11 +17,11 @@ public sealed record ProjectDefinition(Database Database, ProjectDirectives? Dir
     /// <summary>
     /// The address of every schema the project manages.
     /// </summary>
-    public SchemaAddress[] AddressedSchemas => Database.Schemas
+    public DatabaseAddress[] AddressedSchemas => Database.Schemas
         .Select(s => s.Name)
-        .Concat(Directives.SchemaRenames.Select(r => r.From.Schema))
+        .Concat(Directives.SchemaRenames.Select(r => r.From.Name))
         .Distinct()
-        .Select(name => new SchemaAddress(name))
+        .Select(name => DatabaseAddress.Schema(name))
         .ToArray();
 
     /// <summary>

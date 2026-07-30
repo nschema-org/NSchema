@@ -14,10 +14,13 @@ namespace NSchema.Model.Schemas;
 /// Represents the definition of a database schema. Adopts the objects it is given.
 /// </summary>
 [DebuggerDisplay("{Name,nq} ({Tables.Count} tables)")]
-public sealed class Schema : DatabaseElement, IEquatable<Schema>
+public sealed class Schema : DatabaseObject, IEquatable<Schema>
 {
     /// <inheritdoc/>
-    public override SchemaAddress Address => new(Name);
+    public override DatabaseObjectKind Kind => DatabaseObjectKind.Schema;
+
+    /// <inheritdoc/>
+    public override DatabaseAddress Address => DatabaseAddress.Schema(Name);
 
     /// <summary>
     /// Whether the schema is here only because something inside it named it, rather than being declared in its own right.
@@ -28,36 +31,36 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// <summary>
     /// A list of tables that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<Table> Tables
+    public SchemaObjectCollection<Table> Tables
     {
-        get => field ??= new DatabaseObjectCollection<Table>(this);
+        get => field ??= new SchemaObjectCollection<Table>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of views that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<View> Views
+    public SchemaObjectCollection<View> Views
     {
-        get => field ??= new DatabaseObjectCollection<View>(this);
+        get => field ??= new SchemaObjectCollection<View>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of enum types that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<EnumType> Enums
+    public SchemaObjectCollection<EnumType> Enums
     {
-        get => field ??= new DatabaseObjectCollection<EnumType>(this);
+        get => field ??= new SchemaObjectCollection<EnumType>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of sequences that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<Sequence> Sequences
+    public SchemaObjectCollection<Sequence> Sequences
     {
-        get => field ??= new DatabaseObjectCollection<Sequence>(this);
+        get => field ??= new SchemaObjectCollection<Sequence>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -65,27 +68,27 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// A list of routines (functions and procedures) that are part of the schema. Functions and procedures share
     /// one name space, so they live in a single list.
     /// </summary>
-    public DatabaseObjectCollection<Routine> Routines
+    public SchemaObjectCollection<Routine> Routines
     {
-        get => field ??= new DatabaseObjectCollection<Routine>(this);
+        get => field ??= new SchemaObjectCollection<Routine>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of domains that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<DomainType> Domains
+    public SchemaObjectCollection<DomainType> Domains
     {
-        get => field ??= new DatabaseObjectCollection<DomainType>(this);
+        get => field ??= new SchemaObjectCollection<DomainType>(this);
         init { value.Attach(this); field = value; }
     }
 
     /// <summary>
     /// A list of composite types that are part of the schema.
     /// </summary>
-    public DatabaseObjectCollection<CompositeType> CompositeTypes
+    public SchemaObjectCollection<CompositeType> CompositeTypes
     {
-        get => field ??= new DatabaseObjectCollection<CompositeType>(this);
+        get => field ??= new SchemaObjectCollection<CompositeType>(this);
         init { value.Attach(this); field = value; }
     }
 
@@ -97,8 +100,8 @@ public sealed class Schema : DatabaseElement, IEquatable<Schema>
     /// <summary>
     /// Every schema-level object the schema contains, in one sequence.
     /// </summary>
-    public IEnumerable<DatabaseObject> Objects() =>
-        Tables.Cast<DatabaseObject>()
+    public IEnumerable<SchemaObject> Objects() =>
+        Tables.Cast<SchemaObject>()
         .Concat(Views)
         .Concat(Enums)
         .Concat(Sequences)

@@ -5,11 +5,11 @@ namespace NSchema.Deployment;
 /// </summary>
 internal static class DeploymentDiagnostics
 {
-    private const string Source = "current";
+    internal static readonly DiagnosticSource Source = "current";
 
     /// <summary>
     /// An online read without a registered live database provider.
     /// </summary>
     public static Diagnostic NoOnlineSource =>
-        Diagnostic.Error(Source, "No online database provider is registered.");
+        Diagnostic.Error(Source, "no-online-source", "No online database provider is registered.");
 }

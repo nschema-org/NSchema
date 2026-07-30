@@ -10,7 +10,7 @@ public sealed class PlanningScopeTests
 {
     private static readonly SqlIdentifier App = new("app");
 
-    private static SchemaAddress Schema(string name) => new(name);
+    private static DatabaseAddress Schema(string name) => DatabaseAddress.Schema(name);
 
     private static ObjectAddress Address(string schema, string name) => new(schema, name);
 
@@ -30,7 +30,7 @@ public sealed class PlanningScopeTests
         // Assert
         scope.Contains(App).ShouldBeTrue();
         scope.Contains(Address("app", "users")).ShouldBeTrue();
-        scope.Contains(Address("app", "users") with { Kind = ObjectKind.Table }).ShouldBeTrue();
+        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.Table }).ShouldBeTrue();
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public sealed class PlanningScopeTests
         var scope = PlanningScope.To([Address("app", "users")]);
 
         // Assert
-        scope.Contains(Address("app", "users") with { Kind = ObjectKind.Table }).ShouldBeTrue();
-        scope.Contains(Address("app", "users") with { Kind = ObjectKind.View }).ShouldBeTrue();
+        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.Table }).ShouldBeTrue();
+        scope.Contains(Address("app", "users") with { Kind = SchemaObjectKind.View }).ShouldBeTrue();
     }
 
     [Fact]

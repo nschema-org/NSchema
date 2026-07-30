@@ -20,7 +20,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.Enum);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Enum);
 
     /// <summary>
     /// The enum type name.
@@ -30,7 +30,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the enum type.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous name when renamed; otherwise <see langword="null"/>.
@@ -61,7 +61,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
     /// Whether this is a enum type being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// An enum type being created, named by its own definition.
@@ -70,7 +70,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
     };
@@ -82,7 +82,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = name,
-        Kind = ChangeKind.Remove
+        Change = ChangeKind.Remove
     };
 
     /// <summary>
@@ -92,7 +92,7 @@ public sealed record EnumDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = name,
-        Kind = ChangeKind.Modify
+        Change = ChangeKind.Modify
     };
 
     /// <summary>

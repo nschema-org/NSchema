@@ -23,7 +23,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffExtensions([], [new Extension { Name = "postgis", Version = "3.4" }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.Name.ShouldBe("postgis");
         diff.Definition.Version.ShouldBe("3.4");
     }
@@ -35,7 +35,7 @@ public partial class DatabaseComparerTests
         // removal like any other object; unmanaged shared infrastructure never enters the compare.
         var diff = DiffExtensions([new Extension { Name = "citext" }], []);
 
-        diff!.Kind.ShouldBe(ChangeKind.Remove);
+        diff!.Change.ShouldBe(ChangeKind.Remove);
         diff.Name.ShouldBe("citext");
     }
 
@@ -53,7 +53,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffExtensions([new Extension { Name = "postgis", Version = "3.3" }], [new Extension { Name = "postgis", Version = "3.4" }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Version.ShouldBe(new ValueChange<string>("3.3", "3.4"));
     }
 
@@ -62,7 +62,7 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffExtensions([new Extension { Name = "citext", Comment = "old" }], [new Extension { Name = "citext", Comment = "new" }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
         diff.Version.ShouldBeNull();
     }

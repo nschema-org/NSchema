@@ -17,7 +17,7 @@ public sealed record PrimaryKeyDiff : IMigratableDiff
     /// <summary>
     /// The change to the primary key.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The primary key constraint name.
@@ -43,23 +43,23 @@ public sealed record PrimaryKeyDiff : IMigratableDiff
     /// Whether this is a primary key being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A primary key being created, named by its own definition.
     /// </summary>
     public static PrimaryKeyDiff Added(PrimaryKey definition) =>
-        new() { Kind = ChangeKind.Add, Name = definition.Name, Definition = definition };
+        new() { Change = ChangeKind.Add, Name = definition.Name, Definition = definition };
 
     /// <summary>
     /// A primary key being dropped.
     /// </summary>
     public static PrimaryKeyDiff Removed(SqlIdentifier name) =>
-        new() { Kind = ChangeKind.Remove, Name = name };
+        new() { Change = ChangeKind.Remove, Name = name };
 
     /// <summary>
     /// A comment change applied in place — the only modification a key takes without being recreated.
     /// </summary>
     public static PrimaryKeyDiff CommentChanged(SqlIdentifier name, ValueChange<string> comment) =>
-        new() { Kind = ChangeKind.Modify, Name = name, Comment = comment };
+        new() { Change = ChangeKind.Modify, Name = name, Comment = comment };
 }

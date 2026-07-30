@@ -18,10 +18,11 @@ public abstract class DatabaseElement
     public string? Comment { get; set; }
 
     /// <summary>
-    /// The element's address, or <see langword="null"/> when it is not yet placed in a tree.
+    /// Where the element lives.
     /// </summary>
+    /// <exception cref="InvalidOperationException">The element is not in a tree, so it has no address.</exception>
     [JsonIgnore]
-    public abstract Address? Address { get; }
+    public abstract Address Address { get; }
 
     /// <summary>
     /// Returns a deep copy of the element, outside any tree.

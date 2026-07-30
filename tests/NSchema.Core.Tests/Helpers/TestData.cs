@@ -162,16 +162,16 @@ public static class TestData
     /// Shared so the writer round-trip pins the whole grammar.
     /// </summary>
     public static ProjectDirectives RichDirectives() => new(
-        SchemaRenames: [new SchemaRenameDirective(new SchemaAddress("legacy_app"), new SchemaAddress("app"))],
+        SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema("legacy_app"), DatabaseAddress.Schema("app"))],
         ObjectRenames:
         [
-            new ObjectRenameDirective(Current("members") with { Kind = ObjectKind.Table }, "users"),
-            new ObjectRenameDirective(Current("legacy_directory") with { Kind = ObjectKind.View }, "user_directory"),
-            new ObjectRenameDirective(Current("importance") with { Kind = ObjectKind.Enum }, "priority"),
-            new ObjectRenameDirective(Current("bill_id") with { Kind = ObjectKind.Sequence }, "invoice_id"),
-            new ObjectRenameDirective(Current("clean_code") with { Kind = ObjectKind.Routine }, "normalize_code"),
-            new ObjectRenameDirective(Current("legacy_id") with { Kind = ObjectKind.Domain }, "typeid"),
-            new ObjectRenameDirective(Current("legacy_address") with { Kind = ObjectKind.CompositeType }, "address"),
+            new ObjectRenameDirective(Current("members") with { Kind = SchemaObjectKind.Table }, "users"),
+            new ObjectRenameDirective(Current("legacy_directory") with { Kind = SchemaObjectKind.View }, "user_directory"),
+            new ObjectRenameDirective(Current("importance") with { Kind = SchemaObjectKind.Enum }, "priority"),
+            new ObjectRenameDirective(Current("bill_id") with { Kind = SchemaObjectKind.Sequence }, "invoice_id"),
+            new ObjectRenameDirective(Current("clean_code") with { Kind = SchemaObjectKind.Routine }, "normalize_code"),
+            new ObjectRenameDirective(Current("legacy_id") with { Kind = SchemaObjectKind.Domain }, "typeid"),
+            new ObjectRenameDirective(Current("legacy_address") with { Kind = SchemaObjectKind.CompositeType }, "address"),
         ],
         MemberRenames: [new MemberRenameDirective(new MemberAddress("legacy_app", "members", "short_code"), "code")]);
 
@@ -183,6 +183,6 @@ public static class TestData
         new View { Name = name, Body = body, DependsOn = ViewDependencyExtractor.Extract(body, "app"), Comment = comment };
 
     /// <summary>Builds a materialized view (optionally with indexes), dependencies derived from its body.</summary>
-    private static View MaterializedView(string name, string body, string? comment = null, DatabaseMemberCollection<TableIndex>? indexes = null) =>
+    private static View MaterializedView(string name, string body, string? comment = null, ObjectMemberCollection<TableIndex>? indexes = null) =>
         new View { Name = name, Body = body, DependsOn = ViewDependencyExtractor.Extract(body, "app"), IsMaterialized = true, Indexes = indexes ?? [], Comment = comment };
 }

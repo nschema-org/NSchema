@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Scripts;
 using NSchema.State;
 using NSchema.State.Domain;
 using NSchema.State.Plugins;
@@ -65,7 +66,7 @@ public sealed class DatabaseStateManagerTests
     public async Task Read_ReturnsTheRecordedState()
     {
         // Arrange
-        var state = DatabaseState.Empty.RecordExecution([new ScriptExecution(new ScopedAddress(null, "seed"), "abc", _now)]);
+        var state = DatabaseState.Empty.RecordExecution([new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now)]);
         StoreHolds(_serializer.Serialize(state));
 
         // Act
@@ -104,7 +105,7 @@ public sealed class DatabaseStateManagerTests
     public async Task Write_PersistsTheSerializedState_AndReportsThePayloadSize()
     {
         // Arrange
-        var state = DatabaseState.Empty.RecordExecution([new ScriptExecution(new ScopedAddress(null, "seed"), "abc", _now)]);
+        var state = DatabaseState.Empty.RecordExecution([new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now)]);
         byte[]? written = null;
         await _store.Write(Arg.Do<ReadOnlyMemory<byte>>(m => written = m.ToArray()), Arg.Any<CancellationToken>());
 
@@ -202,7 +203,7 @@ public sealed class DatabaseStateManagerTests
 
     private void StoreIsUnreachable()
     {
-        var unreachable = Diagnostic.Error("state", "Could not reach the state store: Connection refused");
+        var unreachable = Diagnostic.Error("state", "could-not-reach-the", "Could not reach the state store: Connection refused");
         _store.Read(Arg.Any<CancellationToken>()).Returns(Result.Failure<StoreReadResult>(unreachable));
         _store.Write(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(Result.From(unreachable));
     }

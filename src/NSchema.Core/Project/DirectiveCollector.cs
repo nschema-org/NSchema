@@ -30,7 +30,7 @@ internal sealed class DirectiveCollector
                 DocumentProjector.ProjectScript(s, context, _scripts);
                 return true;
             case Syn.Schemas.RenameSchemaStatement s:
-                _schemaRenames.Add(new SchemaRenameDirective(new SchemaAddress(Name(s.From)), new SchemaAddress(Name(s.To))));
+                _schemaRenames.Add(new SchemaRenameDirective(DatabaseAddress.Schema(Name(s.From)), DatabaseAddress.Schema(Name(s.To))));
                 return true;
             case RenameObjectStatement s:
                 _renames.Add(new ObjectRenameDirective(Reference(s.From, context) with { Kind = s.Kind }, Name(s.To)));

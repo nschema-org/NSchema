@@ -3,22 +3,22 @@ using NSchema.Model;
 namespace NSchema.Diff.Domain;
 
 /// <summary>
-/// The members every named-object diff shares.
+/// What every diff node shares, at whatever level it sits.
 /// </summary>
-public interface INamedObjectDiff
+public interface IDatabaseElementDiff
 {
     /// <summary>
-    /// The object name.
+    /// The name of the thing the diff describes.
     /// </summary>
     SqlIdentifier Name { get; }
 
     /// <summary>
-    /// The change to the object.
+    /// How the thing changed.
     /// </summary>
-    ChangeKind Kind { get; }
+    ChangeKind Change { get; }
 
     /// <summary>
-    /// The change to the object's comment, if any.
+    /// The change to the thing's comment, if any.
     /// </summary>
     ValueChange<string>? Comment { get; }
 }

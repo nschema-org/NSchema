@@ -7,4 +7,4 @@ namespace NSchema.Project.Domain.Directives;
 /// </summary>
 /// <param name="From">The schema's current address.</param>
 /// <param name="To">The address the schema is renamed to.</param>
-public sealed record SchemaRenameDirective(SchemaAddress From, SchemaAddress To);
+public sealed record SchemaRenameDirective(DatabaseAddress From, DatabaseAddress To);

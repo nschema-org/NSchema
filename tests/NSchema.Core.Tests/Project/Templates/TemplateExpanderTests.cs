@@ -558,10 +558,10 @@ public sealed class TemplateExpanderTests
         // distinct scripts), token substituted in the body, run condition carried.
         scripts.Count.ShouldBe(2);
         scripts[0].ShouldBeOfType<DeploymentScript>().ScopeSchema.ShouldBe("sales");
-        scripts[0].Address.ShouldBe(new ScopedAddress("sales", "seed"));
+        scripts[0].Reference.ShouldBe(new ScriptReference("sales", "seed"));
         scripts[0].Sql.ShouldBe("INSERT INTO sales.outbox_events VALUES (1);");
         scripts[0].ShouldBeOfType<DeploymentScript>().RunCondition.ShouldBe(RunCondition.Once);
         scripts[1].ShouldBeOfType<DeploymentScript>().ScopeSchema.ShouldBe("billing");
-        scripts[1].Address.ShouldBe(new ScopedAddress("billing", "seed"));
+        scripts[1].Reference.ShouldBe(new ScriptReference("billing", "seed"));
     }
 }

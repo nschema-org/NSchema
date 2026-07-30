@@ -112,40 +112,40 @@ public sealed class DatabaseDiffTests
     public void ScopedTo_ScopedTeardown_SeversTheOutOfScopeForeignKey_WithoutDroppingItsTable()
     {
         // Act — tear down app only. billing.orders keeps its rows; only the constraint aimed at app.users goes.
-        var result = TeardownDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), CurrentDatabase());
+        var result = TeardownDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), CurrentDatabase());
 
         // Assert
         var billing = result.Value!.Schemas.Single(s => s.Name == "billing");
-        billing.Kind.ShouldBeNull(); // the run is not about billing; it just cannot avoid it
+        billing.Change.ShouldBe(ChangeKind.Touched); // the run is not about billing; it just cannot avoid it
         var orders = billing.Tables.ShouldHaveSingleItem();
-        orders.Kind.ShouldBe(ChangeKind.Modify);
+        orders.Change.ShouldBe(ChangeKind.Modify);
         orders.ForeignKeys.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             f => f.Name.ShouldBe("fk_orders_user"),
-            f => f.Kind.ShouldBe(ChangeKind.Remove));
+            f => f.Change.ShouldBe(ChangeKind.Remove));
     }
 
     [Fact]
     public void ScopedTo_ScopedTeardown_DropsTheOutOfScopeViewThatReadsIt()
     {
         // Act — a view's dependency is embedded in its body, so there is nothing to sever but the view.
-        var result = TeardownDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), CurrentDatabase());
+        var result = TeardownDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), CurrentDatabase());
 
         // Assert
         var billing = result.Value!.Schemas.Single(s => s.Name == "billing");
         billing.Views.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             v => v.Name.ShouldBe("summary"),
-            v => v.Kind.ShouldBe(ChangeKind.Remove));
+            v => v.Change.ShouldBe(ChangeKind.Remove));
     }
 
     [Fact]
     public void ScopedTo_ScopedTeardown_StillTearsDownTheScopedSchema()
     {
         // Act
-        var result = TeardownDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), CurrentDatabase());
+        var result = TeardownDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), CurrentDatabase());
 
         // Assert
         var app = result.Value!.Schemas.Single(s => s.Name == "app");
-        app.Kind.ShouldBe(ChangeKind.Remove);
+        app.Change.ShouldBe(ChangeKind.Remove);
         app.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
     }
 
@@ -155,25 +155,24 @@ public sealed class DatabaseDiffTests
         // Act — a plan that touches what it was not asked to touch must announce it, not do it quietly. And
         // the two edge kinds are not equally trustworthy: the foreign key names its table outright, while the
         // view was scanned out of SQL nobody parsed.
-        var result = TeardownDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), CurrentDatabase());
+        var result = TeardownDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), CurrentDatabase());
 
         // Assert
         result.Diagnostics.Count.ShouldBe(2);
 
-        var stated = result.Diagnostics.Single(d => d.Message.Contains("billing.orders.fk_orders_user"));
-        stated.Source.ShouldBe("scope");
+        var stated = result.Diagnostics.Single(d => d.Code == "severed-out-of-scope");
+        stated.Message.ShouldContain("billing.orders.fk_orders_user");
         stated.Message.ShouldNotContain("billing.summary");
 
-        var inferred = result.Diagnostics.Single(d => d.Message.Contains("billing.summary"));
-        inferred.Source.ShouldBe("scope");
-        inferred.Message.ShouldContain("appear to depend");
+        var inferred = result.Diagnostics.Single(d => d.Code == "inferred-severed-out-of-scope");
+        inferred.Message.ShouldContain("billing.summary");
     }
 
     [Fact]
     public void ScopedTo_ScopeThatDisturbsNothing_WidensNothing_AndIsQuiet()
     {
         // Arrange — tearing billing down costs app nothing: the dependencies point the other way.
-        var result = TeardownDiff().ScopedTo(PlanningScope.To(new SchemaAddress("billing")), CurrentDatabase());
+        var result = TeardownDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("billing")), CurrentDatabase());
 
         // Assert
         result.Value!.Schemas.ShouldHaveSingleItem().Name.ShouldBe("billing");
@@ -192,7 +191,7 @@ public sealed class DatabaseDiffTests
         ]);
 
         // Act
-        var result = diff.ScopedTo(PlanningScope.To(new SchemaAddress("app")), CurrentDatabase());
+        var result = diff.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), CurrentDatabase());
 
         // Assert
         result.Value!.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
@@ -227,7 +226,7 @@ public sealed class DatabaseDiffTests
         var current = DatabaseWithEnumTypedColumn(SqlType.Custom("app", "status"));
 
         // Act
-        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), current);
+        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
         // Assert
         result.IsFailure.ShouldBeTrue();
@@ -244,7 +243,7 @@ public sealed class DatabaseDiffTests
         var current = DatabaseWithEnumTypedColumn(SqlType.Custom("status"));
 
         // Act
-        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), current);
+        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -267,15 +266,15 @@ public sealed class DatabaseDiffTests
         };
 
         // Act
-        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(new SchemaAddress("app")), current);
+        var result = EnumRemovalDiff().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         var billing = result.Value!.Schemas.Single(s => s.Name == "billing");
-        billing.Kind.ShouldBeNull();
+        billing.Change.ShouldBe(ChangeKind.Touched);
         billing.Domains.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             d => d.Name.ShouldBe("tracked_status"),
-            d => d.Kind.ShouldBe(ChangeKind.Remove));
+            d => d.Change.ShouldBe(ChangeKind.Remove));
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
             DiffDiagnostics.SeveredOutOfScope([new ObjectAddress("billing", "tracked_status")]));
     }
@@ -489,7 +488,7 @@ public sealed class DatabaseDiffTests
 
         // Assert
         var app = result.Value!.Schemas.ShouldHaveSingleItem();
-        app.Kind.ShouldBe(ChangeKind.Add);
+        app.Change.ShouldBe(ChangeKind.Add);
         app.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
     }
 
@@ -502,12 +501,12 @@ public sealed class DatabaseDiffTests
 
         // Assert
         var app = result.Value!.Schemas.Single(s => s.Name == "app");
-        app.Kind.ShouldBeNull(); // the container is not covered, so it is not removed
+        app.Change.ShouldBe(ChangeKind.Touched); // the container is not covered, so it is not removed
         app.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
 
         var billing = result.Value.Schemas.Single(s => s.Name == "billing");
-        billing.Tables.ShouldHaveSingleItem().ForeignKeys.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
-        billing.Views.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+        billing.Tables.ShouldHaveSingleItem().ForeignKeys.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
+        billing.Views.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
         result.Diagnostics.Count.ShouldBe(2);
     }
 
@@ -521,8 +520,8 @@ public sealed class DatabaseDiffTests
 
         // Assert
         var billing = result.Value!.Schemas.Single(s => s.Name == "billing");
-        billing.Tables.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
-        billing.Views.ShouldHaveSingleItem().Kind.ShouldBe(ChangeKind.Remove);
+        billing.Tables.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
+        billing.Views.ShouldHaveSingleItem().Change.ShouldBe(ChangeKind.Remove);
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
             DiffDiagnostics.InferredSeveredOutOfScope([new ObjectAddress("billing", "summary")]));
     }

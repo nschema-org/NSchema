@@ -26,13 +26,13 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffCompositeTypes([], [Address(new CompositeField("street", SqlType.Text), new CompositeField("zip", SqlType.Int))]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.Fields.Count.ShouldBe(2);
     }
 
     [Fact]
     public void Compare_RemovedCompositeType_IsRemove()
-        => DiffCompositeTypes([Address(new CompositeField("street", SqlType.Text))], [])!.Kind.ShouldBe(ChangeKind.Remove);
+        => DiffCompositeTypes([Address(new CompositeField("street", SqlType.Text))], [])!.Change.ShouldBe(ChangeKind.Remove);
 
     [Fact]
     public void Compare_UnchangedCompositeType_ProducesNoDiff()
@@ -47,9 +47,9 @@ public partial class DatabaseComparerTests
             [Address(new CompositeField("street", SqlType.Text))],
             [Address(new CompositeField("street", SqlType.Text), new CompositeField("zip", SqlType.Int))]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         var field = diff.Fields.ShouldHaveSingleItem();
-        field.Kind.ShouldBe(ChangeKind.Add);
+        field.Change.ShouldBe(ChangeKind.Add);
         field.Name.ShouldBe("zip");
         field.Definition!.DataType.ShouldBe(SqlType.Int);
     }
@@ -62,7 +62,7 @@ public partial class DatabaseComparerTests
             [Address(new CompositeField("street", SqlType.Text))]);
 
         var field = diff!.Fields.ShouldHaveSingleItem();
-        field.Kind.ShouldBe(ChangeKind.Remove);
+        field.Change.ShouldBe(ChangeKind.Remove);
         field.Name.ShouldBe("zip");
     }
 
@@ -74,7 +74,7 @@ public partial class DatabaseComparerTests
             [Address(new CompositeField("zip", SqlType.Int))]);
 
         var field = diff!.Fields.ShouldHaveSingleItem();
-        field.Kind.ShouldBe(ChangeKind.Modify);
+        field.Change.ShouldBe(ChangeKind.Modify);
         field.Type.ShouldBe(new ValueChange<SqlType>(SqlType.Text, SqlType.Int));
     }
 
@@ -84,7 +84,7 @@ public partial class DatabaseComparerTests
         var diff = DiffCompositeTypes(
             [new CompositeType { Name = "legacy_address", Fields = [new CompositeField("street", SqlType.Text)] }],
             [new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("legacy_address") with { Kind = ObjectKind.CompositeType }, "address")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("legacy_address") with { Kind = SchemaObjectKind.CompositeType }, "address")]));
 
         diff!.RenamedFrom.ShouldBe("legacy_address");
     }

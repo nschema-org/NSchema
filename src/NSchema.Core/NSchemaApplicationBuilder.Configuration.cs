@@ -12,22 +12,39 @@ namespace NSchema;
 public partial class NSchemaApplicationBuilder
 {
     /// <summary>
-    /// Configures how destructive actions are handled in the migration.
+    /// Configures how one finding is reported, by its code.
     /// </summary>
-    public NSchemaApplicationBuilder WithDestructiveActions(PolicyEnforcement enforcement)
+    /// <param name="code">The finding's code.</param>
+    /// <param name="enforcement">How to report it.</param>
+    public NSchemaApplicationBuilder WithDiagnostic(DiagnosticCode code, PolicyEnforcement enforcement)
     {
-        Services.Configure<DestructiveActionOptions>(o => o.Policy = enforcement);
+        Services.Configure<DiagnosticOptions>(o => o.ByCode[code] = enforcement);
         return this;
     }
 
     /// <summary>
-    /// Configures how changes that can fail on existing data are handled..
+    /// Configures how every finding from one producer is reported, by its source. A finding configured by code
+    /// keeps that setting.
     /// </summary>
-    public NSchemaApplicationBuilder WithDataHazards(PolicyEnforcement enforcement)
+    /// <param name="source">The producer's source.</param>
+    /// <param name="enforcement">How to report its findings.</param>
+    public NSchemaApplicationBuilder WithDiagnosticsFrom(DiagnosticSource source, PolicyEnforcement enforcement)
     {
-        Services.Configure<DataHazardOptions>(o => o.Policy = enforcement);
+        Services.Configure<DiagnosticOptions>(o => o.BySource[source] = enforcement);
         return this;
     }
+
+    /// <summary>
+    /// Configures how destructive actions are handled in the migration.
+    /// </summary>
+    public NSchemaApplicationBuilder WithDestructiveActions(PolicyEnforcement enforcement) =>
+        WithDiagnosticsFrom(DestructiveActionDiagnostics.Source, enforcement);
+
+    /// <summary>
+    /// Configures how changes that can fail on existing data are handled.
+    /// </summary>
+    public NSchemaApplicationBuilder WithDataHazards(PolicyEnforcement enforcement) =>
+        WithDiagnosticsFrom(DataHazardDiagnostics.Source, enforcement);
 
     /// <summary>
     /// Configures the transaction mode to use when executing the migration plan.

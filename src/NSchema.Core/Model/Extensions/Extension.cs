@@ -9,12 +9,10 @@ namespace NSchema.Model.Extensions;
 public sealed class Extension : DatabaseObject, IEquatable<Extension>
 {
     /// <inheritdoc/>
-    public override ObjectKind Kind => ObjectKind.Extension;
+    public override DatabaseObjectKind Kind => DatabaseObjectKind.Extension;
 
-    /// <summary>
-    /// An extension is database-global, so its address carries no schema.
-    /// </summary>
-    public override ScopedAddress Address => new(null, Name);
+    /// <inheritdoc/>
+    public override DatabaseAddress Address => DatabaseAddress.Extension(Name);
 
     /// <summary>
     /// The requested version, or <see langword="null"/> to accept whatever the provider installs.

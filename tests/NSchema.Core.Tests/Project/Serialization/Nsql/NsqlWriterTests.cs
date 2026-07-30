@@ -166,7 +166,7 @@ public sealed class NsqlWriterTests
     public void Write_SchemaRenameDirective_IsEmitted()
     {
         var ddl = WriteDirectives(new ProjectDirectives(
-                SchemaRenames: [new SchemaRenameDirective(new SchemaAddress("legacy"), new SchemaAddress("app"))]),
+                SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema("legacy"), DatabaseAddress.Schema("app"))]),
             new Schema { Name = "app" });
         ddl.ShouldContain("CREATE SCHEMA app;");
         ddl.ShouldContain("RENAME SCHEMA legacy TO app;");

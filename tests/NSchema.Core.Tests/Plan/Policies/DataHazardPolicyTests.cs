@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Constraints;
@@ -16,14 +15,7 @@ namespace NSchema.Tests.Plan.Policies;
 
 public class DataHazardPolicyTests
 {
-    private readonly IOptions<DataHazardOptions> _options = Options.Create(new DataHazardOptions());
-
-    private readonly DataHazardPolicy _sut;
-
-    public DataHazardPolicyTests()
-    {
-        _sut = new DataHazardPolicy(_options);
-    }
+    private readonly DataHazardPolicy _sut = new();
 
     [Fact]
     public void Validate_RequiredColumnAddWithoutDefault_IsFlagged()
@@ -43,9 +35,9 @@ public class DataHazardPolicyTests
     }
 
     [Fact]
-    public void Validate_DefaultsToWarning()
+    public void Validate_ReportsHazardsAsWarnings()
     {
-        // Arrange — hazards depend on the data in the table, so the default policy warns rather than blocks.
+        // Arrange — whether a hazard actually fails depends on the data, so it warns rather than blocks.
         var diff = ModifiedTable(columns:
             [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
 
@@ -55,37 +47,6 @@ public class DataHazardPolicyTests
         // Assert
         results.ShouldHaveSingleItem();
         results[0].Severity.ShouldBe(DiagnosticSeverity.Warning);
-    }
-
-    [Theory]
-    [InlineData(PolicyEnforcement.Error, DiagnosticSeverity.Error)]
-    [InlineData(PolicyEnforcement.Warn, DiagnosticSeverity.Warning)]
-    [InlineData(PolicyEnforcement.Allow, DiagnosticSeverity.Info)]
-    public void Validate_MapsPolicyToSeverity(PolicyEnforcement policy, DiagnosticSeverity expected)
-    {
-        // Arrange
-        _options.Value.Policy = policy;
-        var diff = ModifiedTable(columns:
-            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
-
-        // Act
-        var results = _sut.Validate(diff).ToList();
-
-        // Assert
-        results.ShouldHaveSingleItem();
-        results[0].Severity.ShouldBe(expected);
-    }
-
-    [Fact]
-    public void Validate_WhenPolicyIsIgnore_ReturnsNothing()
-    {
-        // Arrange
-        _options.Value.Policy = PolicyEnforcement.Ignore;
-        var diff = ModifiedTable(columns:
-            [ColumnDiff.Added(new Column { Name = "email", Type = SqlType.Text })]);
-
-        // Act / Assert
-        _sut.Validate(diff).ShouldBeEmpty();
     }
 
     [Fact]

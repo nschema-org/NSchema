@@ -25,7 +25,7 @@ public static class ConfigurationProvider
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     public static async Task<Result<ConfigurationDefinition, NsqlDiagnostic>> Load(IReadOnlyList<ConfigurationLayer> layers, SemanticVersion? hostVersion = null, CancellationToken cancellationToken = default)
     {
-        var diagnostics = new List<NsqlDiagnostic>();
+        var diagnostics = new DiagnosticCollector<NsqlDiagnostic>();
 
         List<NsqlDocument> merged = [];
         foreach (var layer in layers)
@@ -33,9 +33,7 @@ public static class ConfigurationProvider
             var documents = new List<NsqlDocument>();
             foreach (var path in layer.Paths)
             {
-                var read = await NsqlReader.ReadFile(path, cancellationToken);
-                diagnostics.AddRange(read.Diagnostics);
-                if (read.Value is { } document)
+                if (diagnostics.TryTake(await NsqlReader.ReadFile(path, cancellationToken), out var document))
                 {
                     documents.Add(document);
                 }
@@ -45,7 +43,7 @@ public static class ConfigurationProvider
         }
 
         var assembled = ConfigurationAssembler.Assemble(merged);
-        diagnostics.AddRange(assembled.Diagnostics);
+        diagnostics.Add(assembled);
 
         var definition = assembled.Value;
         if (definition?.Engine is { } engine)
@@ -53,7 +51,7 @@ public static class ConfigurationProvider
             Enforce(engine, hostVersion, diagnostics);
         }
 
-        return Result<ConfigurationDefinition, NsqlDiagnostic>.From(definition, diagnostics);
+        return diagnostics.ToResult(definition);
     }
 
     /// <summary>
@@ -64,7 +62,7 @@ public static class ConfigurationProvider
 
     // The ENGINE assertion is enforced here, not in the assembler: assembly only combines the sources, while
     // enforcement depends on the running engine (and the host that invokes it).
-    private static void Enforce(EngineConfiguration engine, SemanticVersion? hostVersion, List<NsqlDiagnostic> diagnostics)
+    private static void Enforce(EngineConfiguration engine, SemanticVersion? hostVersion, DiagnosticCollection<NsqlDiagnostic> diagnostics)
     {
         if (engine.Version is { } engineRange && !engineRange.Satisfies(_engineVersion))
         {

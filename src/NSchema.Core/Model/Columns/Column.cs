@@ -6,8 +6,11 @@ namespace NSchema.Model.Columns;
 /// Represents a column within a database table.
 /// </summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public sealed class Column : DatabaseMember, IEquatable<Column>
+public sealed class Column : ObjectMember, IEquatable<Column>
 {
+    /// <inheritdoc/>
+    public override MemberKind Kind => MemberKind.Column;
+
     /// <summary>
     /// The SQL data type of the column.
     /// </summary>

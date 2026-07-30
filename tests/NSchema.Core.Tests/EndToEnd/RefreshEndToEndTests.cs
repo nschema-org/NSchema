@@ -54,7 +54,7 @@ public sealed class RefreshEndToEndTests : IDisposable
         // Arrange — the reported bug: an unreachable database used to escape refresh as a bare exception, leaving the
         // operator with a message and no indication of what to do about it. The provider reports it instead, carrying
         // the inner cause the way a real one does.
-        var unreachable = Diagnostic.Error("postgres",
+        var unreachable = Diagnostic.Error("postgres", "unreachable",
             "Could not read the live database: Failed to connect to 127.0.0.1:5432 -> Connection refused");
         using var app = NSchemaApplication.CreateBuilder()
             .UseStateStore(new RecordingStateStore())

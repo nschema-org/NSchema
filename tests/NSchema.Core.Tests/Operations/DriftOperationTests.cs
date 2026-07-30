@@ -70,7 +70,7 @@ public sealed class DriftOperationTests
             .Returns(Result.Success(new StoreReadResult(_serializer.Serialize(new DatabaseState(new Database { Schemas = [new Schema { Name = "app" }, new Schema { Name = "other" }] })))));
 
         // Act
-        await _sut.Execute(Args(PlanningScope.To(new SchemaAddress("app"))), TestContext.Current.CancellationToken);
+        await _sut.Execute(Args(PlanningScope.To(DatabaseAddress.Schema("app"))), TestContext.Current.CancellationToken);
 
         // Assert — live gets the scope directly; recorded is filtered to it before the comparer sees it.
         await _provider.Received(1).GetDatabase(Arg.Is<PlanningScope>(s => s!.Contains("app") && !s.IsUnscoped), Arg.Any<CancellationToken>());

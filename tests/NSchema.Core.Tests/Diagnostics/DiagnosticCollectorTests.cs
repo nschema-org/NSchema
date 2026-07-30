@@ -4,9 +4,9 @@ public sealed class DiagnosticCollectorTests
 {
     private readonly DiagnosticCollector _sut = new();
 
-    private static Diagnostic Error(string message = "boom") => Diagnostic.Error("source", message);
+    private static Diagnostic Error(string message = "boom") => Diagnostic.Error("source", "error", message);
 
-    private static Diagnostic Warning(string message = "careful") => Diagnostic.Warning("source", message);
+    private static Diagnostic Warning(string message = "careful") => Diagnostic.Warning("source", "warning", message);
 
     // -------------------------------------------------------------------------
     // Add
@@ -20,8 +20,8 @@ public sealed class DiagnosticCollectorTests
         var error = Error();
 
         // Act
-        _sut.Add(warning);
-        _sut.Add([error]);
+        _sut.AddRange(warning);
+        _sut.AddRange([error]);
 
         // Assert
         _sut.ShouldBe([warning, error]);
@@ -34,7 +34,7 @@ public sealed class DiagnosticCollectorTests
         var warning = Warning();
 
         // Act
-        _sut.Add(Result.Success("value", warning));
+        _sut.AddRange(Result.Success("value", warning));
 
         // Assert
         _sut.ShouldBe([warning]);
@@ -44,11 +44,11 @@ public sealed class DiagnosticCollectorTests
     public void HasErrors_TracksErrorSeverityOnly()
     {
         // Arrange
-        _sut.Add(Warning());
+        _sut.AddRange(Warning());
 
         // Act & Assert
         _sut.HasErrors.ShouldBeFalse();
-        _sut.Add(Error());
+        _sut.AddRange(Error());
         _sut.HasErrors.ShouldBeTrue();
     }
 
@@ -137,7 +137,7 @@ public sealed class DiagnosticCollectorTests
     {
         // Arrange
         var warning = Warning();
-        _sut.Add(warning);
+        _sut.AddRange(warning);
 
         // Act
         var result = _sut.ToResult();
@@ -152,7 +152,7 @@ public sealed class DiagnosticCollectorTests
     {
         // Arrange
         var error = Error();
-        _sut.Add(error);
+        _sut.AddRange(error);
 
         // Act
         var result = _sut.ToResult();
@@ -167,7 +167,7 @@ public sealed class DiagnosticCollectorTests
     {
         // Arrange
         var error = Error();
-        _sut.Add(error);
+        _sut.AddRange(error);
 
         // Act
         var result = _sut.ToResult("partial");
@@ -183,11 +183,11 @@ public sealed class DiagnosticCollectorTests
     {
         // Arrange
         var warning = Warning();
-        _sut.Add(warning);
+        _sut.AddRange(warning);
 
         // Act
         var result = _sut.ToResult();
-        _sut.Add(Error());
+        _sut.AddRange(Error());
 
         // Assert
         result.Diagnostics.ShouldBe([warning]);

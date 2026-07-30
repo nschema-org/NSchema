@@ -9,29 +9,29 @@ namespace NSchema.Configuration.Plugins;
 /// </summary>
 internal static class PluginDiagnostics
 {
-    private const string Source = "config";
+    internal static readonly DiagnosticSource Source = "config";
 
     /// <summary>
     /// A plugin label declared by more than one <c>PLUGIN</c> statement.
     /// </summary>
     public static NsqlDiagnostic DuplicatePluginLabel(PluginLabel label, SourcePosition position) =>
-        new(Source, $"Plugin '{label}' is declared more than once.", DiagnosticSeverity.Error, position);
+        new(Source, "duplicate-plugin-label", $"Plugin '{label}' is declared more than once.", DiagnosticSeverity.Error, position);
 
     /// <summary>
     /// A package declared by more than one <c>PLUGIN</c> statement.
     /// </summary>
     public static NsqlDiagnostic DuplicatePluginSource(PackageId source, SourcePosition position) =>
-        new(Source, $"Package '{source}' is declared by more than one PLUGIN statement; a package is declared once and referenced by its label.", DiagnosticSeverity.Error, position);
+        new(Source, "duplicate-plugin-source", $"Package '{source}' is declared by more than one PLUGIN statement; a package is declared once and referenced by its label.", DiagnosticSeverity.Error, position);
 
     /// <summary>
     /// A <c>DATABASE</c>/<c>STATE</c> label that no <c>PLUGIN</c> statement (or host built-in) declares.
     /// </summary>
     public static NsqlDiagnostic UnknownPluginLabel(string statement, PluginLabel label, SourcePosition position) =>
-        new(Source, $"{statement:text} references plugin '{label}', but no PLUGIN statement declares it.", DiagnosticSeverity.Error, position);
+        new(Source, "unknown-plugin-label", $"{statement:text} references plugin '{label}', but no PLUGIN statement declares it.", DiagnosticSeverity.Error, position);
 
     /// <summary>
     /// A plugin declared with a version range that the lockfile does not pin to a concrete version.
     /// </summary>
-    public static Diagnostic PluginNotLocked(PackageId source, VersionRange range) => Diagnostic.Error(Source,
+    public static Diagnostic PluginNotLocked(PackageId source, VersionRange range) => Diagnostic.Error(Source, "plugin-not-locked",
         $"Plugin '{source}' is declared with version range '{range}' but is not locked.");
 }

@@ -73,7 +73,7 @@ public static class LockFileManager
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return Result.From(LockFileDiagnostics.Unwritable(path, exception.Message));
+            return LockFileDiagnostics.Unwritable(path, exception.Message);
         }
     }
 }

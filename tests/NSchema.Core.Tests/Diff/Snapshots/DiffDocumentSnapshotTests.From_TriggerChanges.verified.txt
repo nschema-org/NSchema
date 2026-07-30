@@ -1,21 +1,21 @@
 ﻿{
   Lines: [
     {
-      Kind: Modify,
+      Change: Modify,
       Text: table app.users
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: trigger audit
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: trigger noted comment: "old note" → "new note"
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: trigger stale_trg
     }

@@ -37,7 +37,7 @@ public sealed class DatabaseProviderTests
         // The fake ignores its scope entirely — the provider's re-filter is what keeps scoping honest.
         var sut = Create(online: new FakeIntrospector());
 
-        var result = await sut.GetDatabase(PlanningScope.To(new SchemaAddress("other")), TestContext.Current.CancellationToken);
+        var result = await sut.GetDatabase(PlanningScope.To(DatabaseAddress.Schema("other")), TestContext.Current.CancellationToken);
 
         result.Require().Schemas.ShouldBeEmpty();
     }
@@ -59,7 +59,7 @@ public sealed class DatabaseProviderTests
     {
         // Arrange — an unreachable database is what the introspector is expected to report, not throw.
         var sut = Create(online: new FailingIntrospector(
-            Diagnostic.Error("postgres", "Could not read the live database: Failed to connect to 127.0.0.1:5432")));
+            Diagnostic.Error("postgres", "could-not-read-the", "Could not read the live database: Failed to connect to 127.0.0.1:5432")));
 
         // Act
         var result = await sut.GetDatabase(PlanningScope.All, TestContext.Current.CancellationToken);

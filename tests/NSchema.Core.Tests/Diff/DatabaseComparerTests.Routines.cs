@@ -34,7 +34,7 @@ public partial class DatabaseComparerTests
         var diff = DiffRoutines([], [Fn("f", "a int", Def)]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.RoutineKind.ShouldBe(RoutineKind.Function);
         diff.Definition!.Arguments.ShouldBe("a int");
         diff.RequiresRecreate.ShouldBeFalse();
@@ -51,7 +51,7 @@ public partial class DatabaseComparerTests
         var diff = DiffRoutines([Proc("p", "", ProcDef)], []);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Remove);
+        diff!.Change.ShouldBe(ChangeKind.Remove);
         diff.RoutineKind.ShouldBe(RoutineKind.Procedure);
     }
 
@@ -70,7 +70,7 @@ public partial class DatabaseComparerTests
             [Fn("f", "a int", "RETURNS int AS $$ SELECT 2 $$")]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Definition.ShouldNotBeNull();
         diff.Arguments.ShouldBeNull();
         diff.RequiresRecreate.ShouldBeFalse();
@@ -99,7 +99,7 @@ public partial class DatabaseComparerTests
     public void Compare_Renamed_SetsRenamedFrom()
     {
         var diff = DiffRoutines([Fn("old_f", "", Def)], [Fn("f", "", Def)],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("old_f") with { Kind = ObjectKind.Routine }, "f")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("old_f") with { Kind = SchemaObjectKind.Routine }, "f")]));
 
         diff!.RenamedFrom.ShouldBe("old_f");
         diff.Definition.ShouldBeNull(); // nothing else changed, so it is a rename only
@@ -126,7 +126,7 @@ public partial class DatabaseComparerTests
         var diff = DiffRoutines([Fn("r", "", Def)], [Proc("r", "", ProcDef)]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RoutineKind.ShouldBe(RoutineKind.Procedure);
         diff.RequiresRecreate.ShouldBeTrue();
         diff.Definition.ShouldNotBeNull();

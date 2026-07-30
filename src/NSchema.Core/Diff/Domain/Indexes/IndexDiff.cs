@@ -8,7 +8,7 @@ namespace NSchema.Diff.Domain.Indexes;
 /// <summary>
 /// Describes a change to a table index.
 /// </summary>
-public sealed record IndexDiff : INamedObjectDiff
+public sealed record IndexDiff : IObjectMemberDiff
 {
     [JsonConstructor]
     private IndexDiff() { }
@@ -16,7 +16,7 @@ public sealed record IndexDiff : INamedObjectDiff
     /// <summary>
     /// The change to the index.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The index name.
@@ -37,23 +37,23 @@ public sealed record IndexDiff : INamedObjectDiff
     /// Whether this is a index being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// An index being created, named by its own definition.
     /// </summary>
     public static IndexDiff Added(TableIndex definition) =>
-        new() { Kind = ChangeKind.Add, Name = definition.Name, Definition = definition };
+        new() { Change = ChangeKind.Add, Name = definition.Name, Definition = definition };
 
     /// <summary>
     /// An index being dropped.
     /// </summary>
     public static IndexDiff Removed(SqlIdentifier name) =>
-        new() { Kind = ChangeKind.Remove, Name = name };
+        new() { Change = ChangeKind.Remove, Name = name };
 
     /// <summary>
     /// A comment change applied in place.
     /// </summary>
     public static IndexDiff CommentChanged(SqlIdentifier name, ValueChange<string> comment) =>
-        new() { Kind = ChangeKind.Modify, Name = name, Comment = comment };
+        new() { Change = ChangeKind.Modify, Name = name, Comment = comment };
 }

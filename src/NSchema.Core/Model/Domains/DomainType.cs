@@ -8,10 +8,10 @@ namespace NSchema.Model.Domains;
 /// Represents a database domain: a schema-scoped named type built on a base type. Adopts its checks.
 /// </summary>
 [DebuggerDisplay("{Name,nq} (domain)")]
-public sealed class DomainType : DatabaseObject, IEquatable<DomainType>
+public sealed class DomainType : SchemaObject, IEquatable<DomainType>
 {
     /// <inheritdoc/>
-    public override ObjectKind Kind => ObjectKind.Domain;
+    public override SchemaObjectKind Kind => SchemaObjectKind.Domain;
 
     /// <summary>
     /// The underlying base type; a change to it is planned as a drop + recreate.
@@ -31,9 +31,9 @@ public sealed class DomainType : DatabaseObject, IEquatable<DomainType>
     /// <summary>
     /// The domain's <c>CHECK</c> constraints (their expressions reference the domain's <c>VALUE</c>); empty when none.
     /// </summary>
-    public DatabaseMemberCollection<CheckConstraint> Checks
+    public ObjectMemberCollection<CheckConstraint> Checks
     {
-        get => field ??= new DatabaseMemberCollection<CheckConstraint>(this);
+        get => field ??= new ObjectMemberCollection<CheckConstraint>(this);
         init { value.Attach(this); field = value; }
     }
 

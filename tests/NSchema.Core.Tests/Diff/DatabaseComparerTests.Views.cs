@@ -17,7 +17,7 @@ public partial class DatabaseComparerTests
         var diff = DiffViews([], [View("active", "SELECT * FROM app.users")]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition.ShouldNotBeNull();
     }
 
@@ -28,7 +28,7 @@ public partial class DatabaseComparerTests
         var diff = DiffViews([View("active", "SELECT * FROM app.users")], []);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Remove);
+        diff!.Change.ShouldBe(ChangeKind.Remove);
         diff.Definition.ShouldBeNull();
     }
 
@@ -43,7 +43,7 @@ public partial class DatabaseComparerTests
             [View("active", "SELECT id, name FROM app.users")]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Definition!.Body.ShouldBe("SELECT id, name FROM app.users"); // replace
         diff.RenamedFrom.ShouldBeNull();
     }
@@ -59,7 +59,7 @@ public partial class DatabaseComparerTests
             [View("active", "SELECT * FROM app.users", comment: "new")]);
 
         // Assert
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.Definition.ShouldBeNull(); // no body change -> no replace
         diff.Comment.ShouldBe(new ValueChange<string>("old", "new"));
     }
@@ -70,9 +70,9 @@ public partial class DatabaseComparerTests
         var diff = DiffViews(
             [View("legacy", "SELECT * FROM app.users")],
             [View("active", "SELECT * FROM app.users")],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("legacy") with { Kind = ObjectKind.View }, "active")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("legacy") with { Kind = SchemaObjectKind.View }, "active")]));
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.RenamedFrom.ShouldBe("legacy");
         diff.Name.ShouldBe("active");
         diff.Definition.ShouldBeNull(); // body unchanged, so it is a rename only
@@ -104,6 +104,6 @@ public partial class DatabaseComparerTests
     public void Compare_ViewBodyWhitespaceInsideStringLiteral_IsSignificant()
         => DiffViews(
             [View("labelled", "SELECT 'a  b' AS label FROM app.users")],
-            [View("labelled", "SELECT 'a b' AS label FROM app.users")])!.Kind.ShouldBe(ChangeKind.Modify);
+            [View("labelled", "SELECT 'a b' AS label FROM app.users")])!.Change.ShouldBe(ChangeKind.Modify);
 
 }

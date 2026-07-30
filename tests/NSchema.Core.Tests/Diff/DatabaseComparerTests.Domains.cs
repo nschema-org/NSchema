@@ -25,14 +25,14 @@ public partial class DatabaseComparerTests
     {
         var diff = DiffDomains([], [new DomainType { Name = "typeid", DataType = SqlType.Text, Default = "''", NotNull = true }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Add);
+        diff!.Change.ShouldBe(ChangeKind.Add);
         diff.Definition!.DataType.ShouldBe(SqlType.Text);
         diff.Definition.NotNull.ShouldBeTrue();
     }
 
     [Fact]
     public void Compare_RemovedDomain_IsRemove()
-        => DiffDomains([new DomainType { Name = "typeid", DataType = SqlType.Text }], [])!.Kind.ShouldBe(ChangeKind.Remove);
+        => DiffDomains([new DomainType { Name = "typeid", DataType = SqlType.Text }], [])!.Change.ShouldBe(ChangeKind.Remove);
 
     [Fact]
     public void Compare_UnchangedDomain_ProducesNoDiff()
@@ -44,7 +44,7 @@ public partial class DatabaseComparerTests
         // Postgres has no ALTER DOMAIN … TYPE, so a base-type change drops + recreates.
         var diff = DiffDomains([new DomainType { Name = "d", DataType = SqlType.Text }], [new DomainType { Name = "d", DataType = SqlType.VarChar(255) }]);
 
-        diff!.Kind.ShouldBe(ChangeKind.Modify);
+        diff!.Change.ShouldBe(ChangeKind.Modify);
         diff.DataType.ShouldBe(new ValueChange<SqlType>(SqlType.Text, SqlType.VarChar(255)));
         diff.RequiresRecreate.ShouldBeTrue();
         diff.Definition.ShouldNotBeNull(); // the desired domain rides along for the recreate
@@ -77,7 +77,7 @@ public partial class DatabaseComparerTests
             [new DomainType { Name = "d", DataType = SqlType.Text, Checks = [new CheckConstraint { Name = "new_chk", Expression = "length(VALUE) > 0" }] }]);
 
         diff!.RequiresRecreate.ShouldBeFalse();
-        diff.Checks.Select(c => (c.Kind, c.Name.Value)).ShouldBe(
+        diff.Checks.Select(c => (c.Change, c.Name.Value)).ShouldBe(
             [(ChangeKind.Remove, "old_chk"), (ChangeKind.Add, "new_chk")], ignoreOrder: true);
     }
 
@@ -85,7 +85,7 @@ public partial class DatabaseComparerTests
     public void Compare_RenamedDomain_SetsRenamedFrom()
     {
         var diff = DiffDomains([new DomainType { Name = "old_d", DataType = SqlType.Text }], [new DomainType { Name = "d", DataType = SqlType.Text }],
-            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("old_d") with { Kind = ObjectKind.Domain }, "d")]));
+            new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(App("old_d") with { Kind = SchemaObjectKind.Domain }, "d")]));
 
         diff!.RenamedFrom.ShouldBe("old_d");
         diff.RequiresRecreate.ShouldBeFalse(); // a rename is in place, not a recreate

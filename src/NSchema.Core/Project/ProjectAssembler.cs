@@ -1,4 +1,3 @@
-using NSchema.Model;
 using NSchema.Model.Scripts;
 using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
@@ -33,7 +32,7 @@ internal static class ProjectAssembler
                         // Validating the body (internal duplicates, stray-qualified declarations) at read
                         // time, whether the template is ever applied.
                         var validateResult = DocumentProjector.ValidateTemplateBody(template);
-                        diagnostics.Add(validateResult.Select(d => d with { File = document.FilePath }));
+                        diagnostics.AddRange(validateResult.Select(d => d with { File = document.FilePath }));
                         schemaTemplates.Add(template);
                         break;
                     case TableTemplateStatement template:
@@ -65,20 +64,20 @@ internal static class ProjectAssembler
 
         // Build once, now everything is together.
         var database = accumulator.Build();
-        diagnostics.Add(accumulator.Diagnostics);
+        diagnostics.AddRange(accumulator.Diagnostics);
 
         // Includes resolve over the aggregate, after expansion, so a templated table can include a template.
         var resolver = new IncludeResolver(templates);
         database = resolver.Resolve(database, accumulator.Includes);
-        diagnostics.Add(resolver.Diagnostics);
+        diagnostics.AddRange(resolver.Diagnostics);
 
         var built = directives.Build();
         var project = new ProjectDefinition(database, built);
 
         // Collisions are project errors, so validate before scoping drops any instance — all of them at once.
-        diagnostics.Add(ValidateChangeTargets(built.ChangeScripts));
-        diagnostics.Add(ValidateScriptNames(built));
-        diagnostics.Add(DirectiveValidator.Validate(project));
+        diagnostics.AddRange(ValidateChangeTargets(built.ChangeScripts));
+        diagnostics.AddRange(ValidateScriptNames(built));
+        diagnostics.AddRange(DirectiveValidator.Validate(project));
 
         return diagnostics.ToResult(project);
     }
@@ -88,8 +87,8 @@ internal static class ProjectAssembler
     /// </summary>
     private static IEnumerable<Diagnostic> ValidateScriptNames(ProjectDirectives directives)
     {
-        var addresses = new HashSet<ScopedAddress>();
-        foreach (var address in directives.ChangeScripts.Select(s => s.Address).Concat(directives.DeploymentScripts.Select(s => s.Address)))
+        var addresses = new HashSet<ScriptReference>();
+        foreach (var address in directives.ChangeScripts.Select(s => s.Reference).Concat(directives.DeploymentScripts.Select(s => s.Reference)))
         {
             if (!addresses.Add(address))
             {

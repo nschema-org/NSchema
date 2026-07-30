@@ -2,20 +2,21 @@
   version: 1,
   database: {},
   managed: {
-    schemas: [
-      app
+    databaseObjects: [
+      {
+        name: app,
+        kind: Schema
+      },
+      {
+        name: citext,
+        kind: Extension
+      }
     ],
-    objects: [
+    schemaObjects: [
       {
         schema: app,
         name: users,
         kind: Table
-      }
-    ],
-    extensions: [
-      {
-        schema: null,
-        name: citext
       }
     ]
   }

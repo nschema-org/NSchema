@@ -31,11 +31,11 @@ public static class NsqlReader
         var parser = new NsqlParser(source);
         try
         {
-            return Result<Address, NsqlDiagnostic>.Success(parser.ParseAddress());
+            return parser.ParseAddress();
         }
         catch (NsqlSyntaxException exception)
         {
-            return Result<Address, NsqlDiagnostic>.Failure(NsqlDiagnostics.Syntax(exception));
+            return NsqlDiagnostics.Syntax(exception);
         }
     }
 
@@ -54,7 +54,7 @@ public static class NsqlReader
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return Result<NsqlDocument, NsqlDiagnostic>.Failure(NsqlDiagnostics.UnreadableFile(path, exception));
+            return NsqlDiagnostics.UnreadableFile(path, exception);
         }
 
         var result = Read(source);

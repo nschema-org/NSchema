@@ -22,7 +22,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.Domain);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Domain);
 
     /// <summary>
     /// The domain name.
@@ -32,7 +32,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the domain.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous name when renamed; otherwise <see langword="null"/>.
@@ -73,7 +73,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
     /// Whether this is a domain being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A domain being created, named by its own definition.
@@ -82,7 +82,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
     };
@@ -91,7 +91,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
     /// A domain being dropped.
     /// </summary>
     public static DomainDiff Removed(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Remove };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove };
 
     /// <summary>
     /// A domain altered in place; the individual changes are set on the result.
@@ -100,7 +100,7 @@ public sealed record DomainDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = name,
-        Kind = ChangeKind.Modify
+        Change = ChangeKind.Modify
     };
 
     /// <summary>

@@ -33,7 +33,7 @@ internal sealed class MigrationWorkflow(
 
         // The findings — including any non-error advisories and findings raised while reading the DDL — are
         // returned as data for the caller to render.
-        diagnostics.Add(planner.Validate(project));
+        diagnostics.AddRange(planner.Validate(project));
         return diagnostics.ToResult();
     }
 
@@ -77,7 +77,7 @@ internal sealed class MigrationWorkflow(
         var current = new CurrentState(state.Database, state.Scripts, state.Managed);
         var plan = planner.Plan(current, project, scopeInEffect);
 
-        diagnostics.Add(plan);
+        diagnostics.AddRange(plan);
         return diagnostics.ToResult(plan.Value);
     }
 

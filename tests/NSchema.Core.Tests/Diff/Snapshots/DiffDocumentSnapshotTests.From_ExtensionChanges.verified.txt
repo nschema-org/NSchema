@@ -1,25 +1,25 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: extension postgis version 3.4 ("spatial types")
     },
     {
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: extension citext
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: extension vector
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Depth: 1,
       Text: version: 0.6.0 → 0.7.0
     },
@@ -27,14 +27,14 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: extension hstore comment: "old note" → "new note"
     },
     {
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: extension legacy_ext
     }
   ],

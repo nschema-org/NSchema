@@ -1,58 +1,58 @@
 ﻿{
   Lines: [
     {
-      Kind: Add,
+      Change: Add,
       Text: view app.active_users ("currently active users")
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: view app.daily_totals
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: view app.summary comment: "old summary" → "new summary"
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: view app.legacy_report → report
     },
     {
       Text: 
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Text: view app.stale_view
     },
     {
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: materialized view app.mv_sales ("sales rollup")
     },
     {
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: materialized view app.mv_active
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: index mv_active_ix
     },
     {
-      Kind: Remove,
+      Change: Remove,
       Depth: 1,
       Text: index mv_active_old_ix
     },
@@ -60,7 +60,7 @@
       Text: 
     },
     {
-      Kind: Modify,
+      Change: Modify,
       Text: view → materialized view app.hourly_totals
     }
   ],

@@ -35,7 +35,7 @@ internal sealed class ProjectProvider(IEnumerable<ProjectSource> sources) : IPro
         var documents = new List<NsqlDocument>();
         foreach (var file in files)
         {
-            diagnostics.Add(file);
+            diagnostics.AddRange(file);
             if (file.IsSuccess)
             {
                 documents.Add(file.Value);

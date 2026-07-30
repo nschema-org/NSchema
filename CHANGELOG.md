@@ -12,6 +12,8 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 ### Changed
 
+- **Any policy's findings can be configured, not just the built-in ones.** `WithDiagnostic(code, enforcement)` configures one finding and `WithDiagnosticsFrom(source, enforcement)` a producer's whole family, replacing `DestructiveActionOptions` and `DataHazardOptions` — a policy no longer needs its own options type and a builder method to be configurable, so a policy you register is configurable too. A policy reports at the severity it judges natural and the engine applies the override, so `WithDestructiveActions` and `WithDataHazards` remain as named shortcuts for the two built-ins.
+- **A diagnostic's `Source` is what produced it, and only that.** The differ reported findings under four topics (`scope`, `directives`, `run-once`, `data-migrations`) where the producer was the differ; those topics now live in the code, which is where a finding's identity belongs.
 - **Column alterations are unified.** Dialects now receive a single `AlterColumn` action for a column's type and nullability changes, which they can render as one or more statements.
 - **Member diffs are built by factory.** `PrimaryKeyDiff`, `ForeignKeyDiff`, `UniqueConstraintDiff`, `CheckConstraintDiff`, `ExclusionConstraintDiff`, `IndexDiff` and `TriggerDiff` expose `Added(definition)`, `Removed(name)` and `CommentChanged(name, change)` in place of a constructor.
 - **Object diffs are built by factory too.** Every schema-level diff — table, column, view, enum, domain, sequence, routine, composite type, extension and schema is constructed through `Added` / `Removed` / `Modified` and refined with `with`, replacing constructors.
@@ -25,6 +27,14 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **A slice's domain layer is `Domain`, not `Model`.**
 - **The shared primitives live in `NSchema.Diagnostics`.**
 - **The schema model is `NSchema.Model` now.** It owns the top-level domain model for databases.
+- **The model is layered by what contains what.** A `DatabaseObject` belongs to the database, a `SchemaObject` to a schema, and an `ObjectMember` to a schema object.
+- **An element's `Address` is never null.** A schema object addresses itself as an `ObjectAddress` and a member as a `MemberAddress`, so neither needs narrowing or a cast.
+- **A kind belongs to one level.** `DatabaseObjectKind`, `SchemaObjectKind` and `MemberKind` replace the single `ObjectKind`, which spanned schemas' contents and the database's own.
+- **An address is named for where it sits, not for what it names.** `DatabaseAddress` replaces `SchemaAddress` and carries the kind as data (`DatabaseAddress.Schema(name)`, `DatabaseAddress.Extension(name)`), so a new database-level kind needs no new address type. `MemberAddress` takes an optional kind, matching `ObjectAddress`.
+- **A script is identified, not addressed.** A script decorates the schema rather than living in it, so `ScriptReference` replaces the address it used to carry and `Script.Reference` replaces `Script.Address`. A script's scope is a schema name rather than an address, and the run-once ledger keys on the reference. With extensions addressed as the database objects they are, no address carries an optional schema any more.
+- **The diff interfaces name the same levels as the model.** `IDatabaseElementDiff` replaces `INamedObjectDiff` as what every diff node shares, and `IObjectMemberDiff` is the member level — so an index and a trigger diff sit with the columns and constraints rather than alongside an extension. `IMigratableDiff` narrows to a member diff that can carry a script, and `TableDiff.EnumerateMembers()` returns the member abstraction.
+- **A diff node's `Change` replaces its `Kind`.** `Kind` now means what sort of thing something is, so the diff says what happened to it instead: `diff.Change == ChangeKind.Add`.
+- **`ChangeKind.Touched` replaces a null change.** A schema in the diff only because its contents changed is `Touched` rather than carrying no change at all, so `SchemaDiff.Change` is always present and `IDatabaseObjectDiff` covers both schemas and extensions. `Touched` is the enum's default, so an unset change reads as "unchanged" rather than "create this".
 - **DataMigrations are Scripts now.** This reflects the syntax changes introduce in [4.4.0] so the model becomes consistent.
 - **Templates accept object-level directives.** A `TEMPLATE` body may now contain the object-level `RENAME` directive (table, column, view, enum, domain, type, sequence, routine) alongside its declarations and scripts.
 - **Scripts split into `ChangeScript` and `DeploymentScript`.** `Script` is now an abstract base carrying the common behavior (name, SQL, scope, hash, reference, run condition);
@@ -82,6 +92,12 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 ### Added
 
+- **Enforcement that cannot be honored says so.** Configuring a structural finding to be reported more leniently reports `cannot-be-lowered` rather than quietly doing nothing, once per finding however many times it occurs.
+- **A finding says whether it may be overruled.** `DiagnosticKind` marks a finding as `Structural` — NSchema cannot do what was asked, so silencing it would produce something wrong rather than something permitted — or `Advisory`, a judgement the caller is entitled to overrule. Enforcement can raise any finding, but can only lower an advisory one, at whatever severity it currently carries. Reporting below error severity declares a finding advisory, so a warning or an informational finding is silenceable by default and an error is not — and because the kind is fixed when the finding is created, raising one later cannot change what a caller is allowed to silence.
+- **A diagnostic's source is a `DiagnosticSource`.** The producer's name is typed rather than a bare string, and holds to the same shape as a code — a user groups and configures by it, so it has to be usable as a settings key too.
+- **A diagnostic carries a code.** `Diagnostic.Code` names a finding independently of how it is worded, so a message can be reworded without breaking anything that refers to it. A code is restricted to hyphen-separated lowercase words, so it is usable as a settings key, and an invalid one is rejected rather than rewritten. Every code is unique across NSchema — the producer is not always known at compile time, so the code alone addresses a finding.
+- **A diagnostic collection folds to a result.** `ToResult()` and `ToResult(value)` move onto `DiagnosticCollection<TDiagnostic>`, so accumulating findings and returning them needs no collector. A collection can also be built from a collection expression.
+- **A typed result lifts like a plain one.** `Result<TValue, TDiagnostic>` converts implicitly from a value and from a single diagnostic, and a value-less `Result` converts from a diagnostic — so a method returns one directly instead of naming the result type to construct it.
 - **`SqlDialect.CanAlterForeignKeys`.** A dialect states whether a foreign key can be added to, or dropped from, a table that already exists. One that cannot (SQLite) keeps every key on the `CREATE TABLE` that declares it, and the plan never separates one from its table.
 - **The comparison seam is the `SqlEquivalence` class.** A provider can register (`UseSqlEquivalence<T>()`) one equality comparer per comparison context, deciding when two spellings mean the same thing. The neutral base compares types structurally and defaults on cosmetics-normalized text.
 - **Default expressions are `SqlDefaultExpression` now.** `Column.DefaultExpression` and `DomainType.Default` graduate from `SqlText` to their own value object, so equivalence rules register against the specific context.
@@ -91,7 +107,6 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 - **Ephemeral state.** `UseEphemeralState()` registers an in-memory state store, which serves as the lock too, intended for disposable databases.
 - **Object-granular targeting.** `PlanningScope` covers a single list of `Address`es (`PlanningScope.To(addresses)` / `scope.Addresses`), mixing whole-schema and object-level targets.
 - **Address parsing.** `NsqlReader.ReadAddress` parses a `schema`, `schema.object`, or `schema.object.member` fragment into an `Address`, resolving quoted segments
-- **`SchemaAddress` completes the address taxonomy.** A schema has a first-class `Address` alongside `ObjectAddress` and `MemberAddress`.
 - **Address containment.** `Address.Covers(other)` expresses downward containment (a schema covers its objects and members; an object covers its members).
 - **Scope and identity are address-based.** `PlanningScope` is scoped when it holds any address (schema or object).
 - **`ObjectAddress` carries an optional `Kind`.** A null kind addresses every kind sharing the name (kind-free targeting); a set kind disambiguates same-named objects.
@@ -108,6 +123,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 ### Removed
 
+- `Address.SchemaName`. An address answers where it sits through its own components.
 - `PRE|POST DEPLOYMENT '<name>' AS $$…$$;` and `MIGRATION ['<name>'] FOR <event> <path> AS $$…$$;` no longer parse.
 - The `DROP` statements (`DROP SCHEMA|TABLE|VIEW|ENUM|DOMAIN|TYPE|SEQUENCE|FUNCTION|PROCEDURE|ROUTINE|EXTENSION`) no longer parse. Remove the declaration instead.
 - `CREATE PARTIAL SCHEMA` no longer parses. The managed identity set covers what it was reaching for: an object the state does not record as managed is never dropped, declared or not.

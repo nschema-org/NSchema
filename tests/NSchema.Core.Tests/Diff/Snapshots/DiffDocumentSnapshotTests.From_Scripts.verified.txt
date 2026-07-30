@@ -1,11 +1,11 @@
 ﻿{
   Lines: [
     {
-      Kind: Modify,
+      Change: Modify,
       Text: table app.users
     },
     {
-      Kind: Add,
+      Change: Add,
       Depth: 1,
       Text: email text not null (with migration backfill_emails)
     },
@@ -16,14 +16,14 @@
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: script seed_roles (on pre deployment)
     },
     {
       Text: 
     },
     {
-      Kind: Add,
+      Change: Add,
       Text: script refresh_views (on post deployment)
     }
   ],

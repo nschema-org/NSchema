@@ -11,10 +11,10 @@ public class AddressTests
 {
     public static TheoryData<Address> Addresses() =>
     [
+        DatabaseAddress.Schema("app"),
+        DatabaseAddress.Extension("citext"),
         new ObjectAddress("app", "users"),
         new MemberAddress("app", "users", "email"),
-        new ScopedAddress("app", "seed"),
-        new ScopedAddress(null, "seed"),
     ];
 
     [Theory]
@@ -38,15 +38,17 @@ public class AddressTests
     }
 
     [Fact]
-    public void Addresses_AtDifferentContainmentDepths_AreNeverEqual()
+    public void Addresses_OfTheSameNameAtDifferentKinds_AreNeverEqual()
     {
-        // Arrange — the graph keys every kind of node in one dictionary, so shapes must not collide.
-        var scoped = new ScopedAddress("app", "users");
-        var obj = new ObjectAddress("app", "users");
+        // Arrange — the graph keys every kind of node in one dictionary, so shapes must not collide. A schema
+        // and an extension have separate name spaces, so both names can be taken at once.
+        var schema = DatabaseAddress.Schema("app");
+        var extension = DatabaseAddress.Extension("app");
 
-        // Assert — both render 'app.users', but they address different things.
-        scoped.Value.ShouldBe(obj.Value);
-        ((Address)scoped).ShouldNotBe(obj);
+        // Assert — both render 'app', but they address different things.
+        schema.Value.ShouldBe(extension.Value);
+        schema.ShouldNotBe(extension);
+        schema.Covers(extension).ShouldBeFalse();
     }
 
     [Fact]

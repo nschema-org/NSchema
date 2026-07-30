@@ -61,25 +61,25 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
 
         foreach (var extension in Extensions)
         {
-            Tally(extension.Kind);
+            Tally(extension.Change);
         }
 
         foreach (var schema in Schemas)
         {
-            if (schema.Kind is { } kind)
+            if (schema.Change != ChangeKind.Touched)
             {
-                Tally(kind);
+                Tally(schema.Change);
             }
 
             // Every changed object counts once, regardless of kind; a table's members then count individually.
             foreach (var obj in schema.EnumerateObjects())
             {
-                Tally(obj.Kind);
+                Tally(obj.Change);
             }
 
             foreach (var member in schema.Tables.SelectMany(t => t.EnumerateMembers()))
             {
-                Tally(member.Kind);
+                Tally(member.Change);
             }
         }
 
@@ -192,7 +192,7 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
         .. from schema in diff.Schemas
            from table in schema.Tables
            from key in table.ForeignKeys
-           where key.Kind == ChangeKind.Add
+           where key.Change == ChangeKind.Add
                && key.Definition is { } definition
                && !scope.Contains(definition.References)
                && graph.At(definition.References).Count == 0
@@ -231,7 +231,7 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
                 {
                     foreach (var column in table.Columns)
                     {
-                        if (Named(column.Kind == ChangeKind.Add ? column.Definition?.Type : column.Type?.New) is { } type)
+                        if (Named(column.Change == ChangeKind.Add ? column.Definition?.Type : column.Type?.New) is { } type)
                         {
                             yield return (new MemberAddress(table.Schema, table.Name, column.Name), type);
                         }
@@ -241,7 +241,7 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
 
             foreach (var domain in schema.Domains)
             {
-                if (Named(domain.Kind == ChangeKind.Add ? domain.Definition?.DataType : domain.DataType?.New) is { } type)
+                if (Named(domain.Change == ChangeKind.Add ? domain.Definition?.DataType : domain.DataType?.New) is { } type)
                 {
                     yield return (new ObjectAddress(domain.Schema, domain.Name), type);
                 }
@@ -315,14 +315,23 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
                 .Concat(Removed(schema.CompositeTypes, schema.Name, DependencyKind.CompositeType)));
 
     private static IEnumerable<DependencyNode> Removed(IEnumerable<ISchemaObjectDiff> objects, SqlIdentifier schema, DependencyKind kind) =>
-        objects.Where(o => o.Kind == ChangeKind.Remove)
+        objects.Where(o => o.Change == ChangeKind.Remove)
             .Select(o => new DependencyNode(new ObjectAddress(schema, o.Name), kind));
+
+    // Every dependency node names an object or one of its members, so a severed one always sits in a schema.
+    private static SqlIdentifier SchemaOf(Address address) => address switch
+    {
+        ObjectAddress o => o.Schema,
+        MemberAddress m => m.Schema,
+        _ => throw new ArgumentOutOfRangeException(nameof(address), address, "A dependency node is not schema-scoped."),
+    };
 
     /// <summary>
     /// Folds the severed nodes back in as changes to the schemas they live in.
     /// </summary>
     /// <remarks>
-    /// A severed schema is only ever touched, never dropped, so its <see cref="SchemaDiff.Kind"/> stays null:
+    /// A severed schema is only ever touched, never dropped, so its <see cref="SchemaDiff.Change"/> stays
+    /// <see cref="ChangeKind.Touched"/>:
     /// the run is not about this schema, it just cannot avoid it. A partially-covered schema may already be
     /// in the diff, in which case the severed changes join its entry.
     /// </remarks>
@@ -330,14 +339,7 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
     {
         var schemas = diff.Schemas.ToList();
 
-        var schemaScoped = new List<(SqlIdentifier Schema, DependencyNode Node)>();
-        foreach (var node in severed)
-        {
-            if (node.Address.SchemaName is { } schemaName)
-            {
-                schemaScoped.Add((schemaName, node));
-            }
-        }
+        var schemaScoped = severed.Select(node => (Schema: SchemaOf(node.Address), Node: node));
 
         foreach (var bySchema in schemaScoped.GroupBy(x => x.Schema, x => x.Node))
         {

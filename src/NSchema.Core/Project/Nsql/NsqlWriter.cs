@@ -33,7 +33,7 @@ public static class NsqlWriter
             return Result<string, NsqlDiagnostic>.From(string.Empty, read.Diagnostics);
         }
 
-        List<NsqlDiagnostic> diagnostics = [.. read.Diagnostics];
+        DiagnosticCollection<NsqlDiagnostic> diagnostics = [.. read.Diagnostics];
         for (var i = 0; i < document.Statements.Count; i++)
         {
             var statement = document.Statements[i];
@@ -43,7 +43,7 @@ public static class NsqlWriter
             }
         }
 
-        return Result<string, NsqlDiagnostic>.From(Render(document), diagnostics);
+        return diagnostics.ToResult(Render(document));
     }
 
     /// <summary>

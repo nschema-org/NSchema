@@ -69,14 +69,14 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     {
         var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
 
-        var created = InCreationOrder([.. tables.Where(table => table.Kind != ChangeKind.Remove)], dependencies);
+        var created = InCreationOrder([.. tables.Where(table => table.Change != ChangeKind.Remove)], dependencies);
         var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
         foreach (var table in created)
         {
             EmitTable(table, actions, unfolded);
         }
 
-        var dropped = InRemovalOrder([.. tables.Where(table => table.Kind == ChangeKind.Remove)], dependencies);
+        var dropped = InRemovalOrder([.. tables.Where(table => table.Change == ChangeKind.Remove)], dependencies);
         if (capabilities.CanAlterForeignKeys)
         {
             foreach (var foreignKey in UnsatisfiedOnDrop(dropped, dependencies))
@@ -191,7 +191,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     actions.Add(new RenameView(new ObjectAddress(view.Schema, view.RenamedFrom), view.Name, view.IsMaterialized));
                 }
 
-                if (view.Kind == ChangeKind.Remove)
+                if (view.Change == ChangeKind.Remove)
                 {
                     drops.Add(view);
                 }
@@ -208,7 +208,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     creates.Add(view);
                 }
 
-                if (view.Kind != ChangeKind.Remove && view.Comment is not null)
+                if (view.Change != ChangeKind.Remove && view.Comment is not null)
                 {
                     actions.Add(new SetViewComment(new ObjectAddress(view.Schema, view.Name), view.Comment.Old, view.Comment.New, view.IsMaterialized));
                 }
@@ -249,7 +249,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     {
         foreach (var extension in diff.Extensions)
         {
-            switch (extension.Kind)
+            switch (extension.Change)
             {
                 case ChangeKind.Add when extension.IsAdd():
                     actions.Add(new CreateExtension(extension.Definition));
@@ -267,7 +267,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     break;
             }
 
-            if (extension.Kind != ChangeKind.Remove && extension.Comment is not null)
+            if (extension.Change != ChangeKind.Remove && extension.Comment is not null)
             {
                 actions.Add(new SetExtensionComment(extension.Name, extension.Comment.Old, extension.Comment.New));
             }
@@ -276,7 +276,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
     private static void EmitSchema(SchemaDiff schema, List<MigrationAction> actions)
     {
-        switch (schema.Kind)
+        switch (schema.Change)
         {
             case ChangeKind.Add:
                 actions.Add(new CreateSchema(schema.Name));
@@ -334,7 +334,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // here, so the lambda should not have to restate that it holds.
         foreach (var diff in objects)
         {
-            switch (diff.Kind)
+            switch (diff.Change)
             {
                 // An add always carries the definition to create from; one without is not a change we can emit.
                 case ChangeKind.Add when definition(diff) is { } toCreate:
@@ -357,7 +357,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     break;
             }
 
-            if (diff.Kind != ChangeKind.Remove && diff.Comment is { } changedComment)
+            if (diff.Change != ChangeKind.Remove && diff.Comment is { } changedComment)
             {
                 actions.Add(comment(diff, changedComment));
             }
@@ -413,7 +413,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 }
                 foreach (var check in d.Checks)
                 {
-                    if (check.Kind == ChangeKind.Remove)
+                    if (check.Change == ChangeKind.Remove)
                     {
                         actions.Add(new DropDomainCheck(new MemberAddress(d.Schema, d.Name, check.Name)));
                     }
@@ -439,12 +439,12 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 {
                     actions.Add(field switch
                     {
-                        { Kind: ChangeKind.Remove } => new DropCompositeField(new MemberAddress(t.Schema, t.Name, field.Name)),
-                        { Kind: ChangeKind.Modify, Type: { Old: { } oldType, New: { } newType } } =>
+                        { Change: ChangeKind.Remove } => new DropCompositeField(new MemberAddress(t.Schema, t.Name, field.Name)),
+                        { Change: ChangeKind.Modify, Type: { Old: { } oldType, New: { } newType } } =>
                             new AlterCompositeFieldType(new MemberAddress(t.Schema, t.Name, field.Name), oldType, newType),
                         { Definition: { } definition } => new AddCompositeField(new ObjectAddress(t.Schema, t.Name), definition),
                         _ => throw new NotSupportedException(
-                            $"Cannot linearize composite field change {field.Kind} on '{t.Schema}.{t.Name}'."),
+                            $"Cannot linearize composite field change {field.Change} on '{t.Schema}.{t.Name}'."),
                     });
                 }
             });
@@ -491,7 +491,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
         foreach (var grant in schema.Grants)
         {
-            actions.Add(grant.Kind == ChangeKind.Add
+            actions.Add(grant.Change == ChangeKind.Add
                 ? new GrantSchemaUsage(schema.Name, grant.Role)
                 : new RevokeSchemaUsage(schema.Name, grant.Role));
         }
@@ -507,7 +507,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// </param>
     private static void EmitTable(TableDiff table, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
     {
-        switch (table.Kind)
+        switch (table.Change)
         {
             case ChangeKind.Add when table.IsAdd():
                 // The columns and every table constraint are created inline by CREATE TABLE (carried on
@@ -557,7 +557,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
     private static void EmitColumn(TableDiff table, ColumnDiff column, List<MigrationAction> actions)
     {
-        switch (column.Kind)
+        switch (column.Change)
         {
             case ChangeKind.Add:
                 // A required column with a matched backfill migration is decomposed: added nullable, backfilled
@@ -624,7 +624,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     actions.Add(new SetColumnComment(new MemberAddress(table.Schema, table.Name, column.Name), column.Comment.Old, column.Comment.New));
                 }
                 break;
-            default: throw new NotSupportedException($"Cannot linearize column change {column.Kind}.");
+            default: throw new NotSupportedException($"Cannot linearize column change {column.Change}.");
         }
     }
 
@@ -636,7 +636,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
         // A newly-created table carries its constraints inline on CreateTable's definition, so their adds fold
         // into the CREATE TABLE and only comment changes still arrive as separate actions.
-        var foldAdds = table.Kind == ChangeKind.Add;
+        var foldAdds = table.Change == ChangeKind.Add;
 
         EmitConstraintKind(table.PrimaryKeys, actions, _ => foldAdds,
             pk => pk.Definition,
@@ -709,13 +709,13 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     {
         foreach (var constraint in constraints)
         {
-            if (constraint.Kind == ChangeKind.Add && foldAdd(constraint))
+            if (constraint.Change == ChangeKind.Add && foldAdd(constraint))
             {
                 continue;
             }
 
-            EmitConstraintMigration(constraint.Kind, constraint.MigrationScript, actions);
-            switch (constraint.Kind)
+            EmitConstraintMigration(constraint.Change, constraint.MigrationScript, actions);
+            switch (constraint.Change)
             {
                 case ChangeKind.Add when definition(constraint) is { } toAdd:
                     actions.Add(add(constraint, toAdd));
@@ -753,10 +753,10 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// </summary>
     private static MigrationAction IndexAction(SqlIdentifier schema, SqlIdentifier owner, SqlIdentifier preRenameName, IndexDiff index) => index switch
     {
-        { Kind: ChangeKind.Add, Definition: { } definition } => new CreateIndex(new ObjectAddress(schema, owner), definition),
-        { Kind: ChangeKind.Remove } => new DropIndex(new MemberAddress(schema, preRenameName, index.Name)),
+        { Change: ChangeKind.Add, Definition: { } definition } => new CreateIndex(new ObjectAddress(schema, owner), definition),
+        { Change: ChangeKind.Remove } => new DropIndex(new MemberAddress(schema, preRenameName, index.Name)),
         { Comment: { } comment } => new SetIndexComment(new MemberAddress(schema, owner, index.Name), comment.Old, comment.New),
-        _ => throw new NotSupportedException($"Cannot linearize index change {index.Kind} on '{schema}.{owner}'."),
+        _ => throw new NotSupportedException($"Cannot linearize index change {index.Change} on '{schema}.{owner}'."),
     };
 
 
@@ -766,10 +766,10 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         {
             actions.Add(trigger switch
             {
-                { Kind: ChangeKind.Add, Definition: { } definition } => new CreateTrigger(new ObjectAddress(table.Schema, table.Name), definition),
-                { Kind: ChangeKind.Remove } => new DropTrigger(new MemberAddress(table.Schema, table.RenamedFrom ?? table.Name, trigger.Name)),
+                { Change: ChangeKind.Add, Definition: { } definition } => new CreateTrigger(new ObjectAddress(table.Schema, table.Name), definition),
+                { Change: ChangeKind.Remove } => new DropTrigger(new MemberAddress(table.Schema, table.RenamedFrom ?? table.Name, trigger.Name)),
                 { Comment: { } comment } => new SetTriggerComment(new MemberAddress(table.Schema, table.Name, trigger.Name), comment.Old, comment.New),
-                _ => throw new NotSupportedException($"Cannot linearize trigger change {trigger.Kind} on '{table.Schema}.{table.Name}'."),
+                _ => throw new NotSupportedException($"Cannot linearize trigger change {trigger.Change} on '{table.Schema}.{table.Name}'."),
             });
         }
     }
@@ -783,7 +783,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 continue;
             }
 
-            actions.Add(grant.Kind == ChangeKind.Add
+            actions.Add(grant.Change == ChangeKind.Add
                 ? new GrantTablePrivileges(new ObjectAddress(table.Schema, table.Name), grant.Role, privileges)
                 : new RevokeTablePrivileges(new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name), grant.Role, privileges));
         }

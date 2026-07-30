@@ -74,7 +74,7 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
         Func<TModel, TDiff> buildRemoved,
         Func<TModel, TDiff> buildNew,
         Func<TModel, TModel, SqlIdentifier?, TDiff?> buildModified
-    ) where TModel : DatabaseElement where TDiff : class, INamedObjectDiff
+    ) where TModel : DatabaseElement where TDiff : class, IDatabaseElementDiff
     {
         var result = new List<TDiff>();
         var (forDesired, forCurrent) = NamedEntityMatcher.Match(current, desired);
@@ -248,7 +248,7 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
 
     private SchemaDiff? BuildModifiedSchema(Schema current, Schema desired, RenameLog renames)
     {
-        var renamedFrom = renames.RenamedFrom(new SchemaAddress(desired.Name));
+        var renamedFrom = renames.RenamedFrom(DatabaseAddress.Schema(desired.Name));
         if (renamedFrom is null)
         {
             LogSchemaUnchanged(desired.Name);

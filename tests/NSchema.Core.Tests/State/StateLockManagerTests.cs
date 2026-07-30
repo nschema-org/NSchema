@@ -74,7 +74,7 @@ public sealed class StateLockManagerTests
     {
         // Arrange — a lock backend that cannot be reached is the same kind of outcome as contention: the lock was not
         // taken, which is the caller's business rather than a defect in the engine.
-        _stateLock.AcquireFailure = Diagnostic.Error("lock", "Could not take the state lock: Connection refused");
+        _stateLock.AcquireFailure = Diagnostic.Error("lock", "could-not-take-the", "Could not take the state lock: Connection refused");
 
         // Act
         var result = await Acquire(_stateLock, skipLock: false);
@@ -179,7 +179,7 @@ public sealed class StateLockManagerTests
     public async Task Peek_WhenTheBackendReportsAFailure_ItPropagates()
     {
         // Arrange
-        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "could-not-reach-the", "Could not reach the lock: Connection refused");
 
         // Act
         var result = await new StateLockManager(_stateLock).Peek(TestContext.Current.CancellationToken);
@@ -193,7 +193,7 @@ public sealed class StateLockManagerTests
     public async Task Release_WhenTheBackendReportsAFailure_ItPropagates()
     {
         // Arrange
-        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "could-not-reach-the", "Could not reach the lock: Connection refused");
 
         // Act
         var result = await new StateLockManager(_stateLock).Release(TestContext.Current.CancellationToken);
@@ -207,7 +207,7 @@ public sealed class StateLockManagerTests
     public async Task SkipLock_WhenTheBackendCannotBePeeked_StillRunsUnlocked()
     {
         // Arrange — the peek only decorates the warning; --no-lock has already said to proceed regardless.
-        _stateLock.PeekFailure = Diagnostic.Error("lock", "Could not reach the lock: Connection refused");
+        _stateLock.PeekFailure = Diagnostic.Error("lock", "could-not-reach-the", "Could not reach the lock: Connection refused");
 
         // Act
         var result = await Acquire(_stateLock, skipLock: true);

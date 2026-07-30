@@ -19,12 +19,12 @@ internal sealed class MigrationSides
     public PlanDependencies Dependencies => new(_current, _desired);
 
     /// <summary>Declares an object the project has and the database does not.</summary>
-    public T Creating<T>(SqlIdentifier schema, T declared) where T : DatabaseObject => Declare(_desired, schema, declared);
+    public T Creating<T>(SqlIdentifier schema, T declared) where T : SchemaObject => Declare(_desired, schema, declared);
 
     /// <summary>Declares an object the database has and the project does not.</summary>
-    public T Dropping<T>(SqlIdentifier schema, T existing) where T : DatabaseObject => Declare(_current, schema, existing);
+    public T Dropping<T>(SqlIdentifier schema, T existing) where T : SchemaObject => Declare(_current, schema, existing);
 
-    private static T Declare<T>(Database side, SqlIdentifier schema, T declared) where T : DatabaseObject
+    private static T Declare<T>(Database side, SqlIdentifier schema, T declared) where T : SchemaObject
     {
         var target = side.Schemas.FirstOrDefault(s => s.Name == schema);
         if (target is null)

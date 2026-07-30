@@ -20,8 +20,8 @@ internal static class ShouldlyIdentifierExtensions
         public void ShouldBe(string? expected) => (actual?.ToString()).ShouldBe(expected);
     }
 
-    extension(SchemaAddress? actual)
+    extension(DatabaseAddress? actual)
     {
-        public void ShouldBe(string? expected) => (actual?.Schema.Value).ShouldBe(expected);
+        public void ShouldBe(string? expected) => (actual?.Name.Value).ShouldBe(expected);
     }
 }

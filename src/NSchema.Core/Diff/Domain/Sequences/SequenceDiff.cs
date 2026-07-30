@@ -20,7 +20,7 @@ public sealed record SequenceDiff : ISchemaObjectDiff
 
     /// <inheritdoc />
     [JsonIgnore]
-    public ObjectAddress Address => new(Schema, Name, ObjectKind.Sequence);
+    public ObjectAddress Address => new(Schema, Name, SchemaObjectKind.Sequence);
 
     /// <summary>
     /// The sequence name.
@@ -30,7 +30,7 @@ public sealed record SequenceDiff : ISchemaObjectDiff
     /// <summary>
     /// The change to the sequence.
     /// </summary>
-    public required ChangeKind Kind { get; init; }
+    public required ChangeKind Change { get; init; }
 
     /// <summary>
     /// The previous name when renamed; otherwise <see langword="null"/>.
@@ -56,7 +56,7 @@ public sealed record SequenceDiff : ISchemaObjectDiff
     /// Whether this is a sequence being created, and so carries the <see cref="Definition"/> to create it from.
     /// </summary>
     [MemberNotNullWhen(true, nameof(Definition))]
-    public bool IsAdd() => Kind == ChangeKind.Add && Definition is not null;
+    public bool IsAdd() => Change == ChangeKind.Add && Definition is not null;
 
     /// <summary>
     /// A sequence being created, named by its own definition.
@@ -65,7 +65,7 @@ public sealed record SequenceDiff : ISchemaObjectDiff
     {
         Schema = schema,
         Name = definition.Name,
-        Kind = ChangeKind.Add,
+        Change = ChangeKind.Add,
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
     };
@@ -74,11 +74,11 @@ public sealed record SequenceDiff : ISchemaObjectDiff
     /// A sequence being dropped.
     /// </summary>
     public static SequenceDiff Removed(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Remove };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove };
 
     /// <summary>
     /// A sequence altered in place; the individual changes are set on the result.
     /// </summary>
     public static SequenceDiff Modified(SqlIdentifier schema, SqlIdentifier name) =>
-        new() { Schema = schema, Name = name, Kind = ChangeKind.Modify };
+        new() { Schema = schema, Name = name, Change = ChangeKind.Modify };
 }

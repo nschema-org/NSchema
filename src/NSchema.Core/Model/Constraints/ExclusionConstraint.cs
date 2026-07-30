@@ -8,8 +8,11 @@ namespace NSchema.Model.Constraints;
 /// overlapping bookings of the same room).
 /// </summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public sealed class ExclusionConstraint : DatabaseMember, IEquatable<ExclusionConstraint>
+public sealed class ExclusionConstraint : ObjectMember, IEquatable<ExclusionConstraint>
 {
+    /// <inheritdoc/>
+    public override MemberKind Kind => MemberKind.ExclusionConstraint;
+
     /// <summary>
     /// The constrained elements, each a column or expression paired with an operator.
     /// </summary>

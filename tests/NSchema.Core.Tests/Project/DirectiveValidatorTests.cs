@@ -32,7 +32,7 @@ public sealed class DirectiveValidatorTests
     {
         // Arrange
         var project = Project(new ProjectDirectives(
-                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people")]),
+                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people")]),
 
             // Act
             AppSchema(Table("people", "id")));
@@ -46,7 +46,7 @@ public sealed class DirectiveValidatorTests
     {
         // Arrange
         var project = Project(new ProjectDirectives(
-                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people")]),
+                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people")]),
 
             // Act
             AppSchema());
@@ -61,7 +61,7 @@ public sealed class DirectiveValidatorTests
     {
         // Arrange
         var project = Project(new ProjectDirectives(
-                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people")]),
+                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people")]),
 
             // Act
             AppSchema(Table("people", "id"), Table("users", "id")));
@@ -74,7 +74,7 @@ public sealed class DirectiveValidatorTests
     [Fact]
     public void Validate_DirectiveIntoUndeclaredSchema_IsAnError()
     {
-        var rename = new ObjectRenameDirective(new ObjectAddress("ghost", "t") with { Kind = ObjectKind.Table }, "t2");
+        var rename = new ObjectRenameDirective(new ObjectAddress("ghost", "t") with { Kind = SchemaObjectKind.Table }, "t2");
         var project = Project(new ProjectDirectives(ObjectRenames: [rename]));
 
         Validate(project).ShouldHaveSingleItem()
@@ -86,7 +86,7 @@ public sealed class DirectiveValidatorTests
     {
         // Arrange
         var project = Project(new ProjectDirectives(
-                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "users")]),
+                ObjectRenames: [new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "users")]),
 
             // Act
             AppSchema(Table("users", "id")));
@@ -102,8 +102,8 @@ public sealed class DirectiveValidatorTests
         var project = Project(new ProjectDirectives(
                 ObjectRenames:
                 [
-                    new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people"),
-                    new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "members"),
+                    new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people"),
+                    new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "members"),
                 ]),
 
             // Act
@@ -120,8 +120,8 @@ public sealed class DirectiveValidatorTests
         var project = Project(new ProjectDirectives(
                 ObjectRenames:
                 [
-                    new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people"),
-                    new ObjectRenameDirective(App("members") with { Kind = ObjectKind.Table }, "people"),
+                    new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people"),
+                    new ObjectRenameDirective(App("members") with { Kind = SchemaObjectKind.Table }, "people"),
                 ]),
 
             // Act
@@ -139,8 +139,8 @@ public sealed class DirectiveValidatorTests
         var project = Project(new ProjectDirectives(
                 ObjectRenames:
                 [
-                    new ObjectRenameDirective(App("a") with { Kind = ObjectKind.Table }, "b"),
-                    new ObjectRenameDirective(App("b") with { Kind = ObjectKind.Table }, "c"),
+                    new ObjectRenameDirective(App("a") with { Kind = SchemaObjectKind.Table }, "b"),
+                    new ObjectRenameDirective(App("b") with { Kind = SchemaObjectKind.Table }, "c"),
                 ]),
 
             // Act
@@ -158,8 +158,8 @@ public sealed class DirectiveValidatorTests
         var project = new ProjectDefinition(
             new Database { Schemas = [AppSchema(Table("people", "id")), new Schema { Name = other, Tables = [Table("people", "id")] }] },
             new ProjectDirectives(ObjectRenames: [
-                new ObjectRenameDirective(App("users") with { Kind = ObjectKind.Table }, "people"),
-                new ObjectRenameDirective(new ObjectAddress(other, "users") with { Kind = ObjectKind.Table }, "people"),
+                new ObjectRenameDirective(App("users") with { Kind = SchemaObjectKind.Table }, "people"),
+                new ObjectRenameDirective(new ObjectAddress(other, "users") with { Kind = SchemaObjectKind.Table }, "people"),
             ]));
 
         Validate(project).ShouldBeEmpty();
@@ -175,8 +175,8 @@ public sealed class DirectiveValidatorTests
         var project = new ProjectDefinition(
             new Database { Schemas = [new Schema { Name = core, Tables = [Table("people", "id", "full_name")] }] },
             new ProjectDirectives(
-                SchemaRenames: [new SchemaRenameDirective(new SchemaAddress(sales), new SchemaAddress(core))],
-                ObjectRenames: [new ObjectRenameDirective(new ObjectAddress(sales, "users") with { Kind = ObjectKind.Table }, "people")],
+                SchemaRenames: [new SchemaRenameDirective(DatabaseAddress.Schema(sales), DatabaseAddress.Schema(core))],
+                ObjectRenames: [new ObjectRenameDirective(new ObjectAddress(sales, "users") with { Kind = SchemaObjectKind.Table }, "people")],
                 MemberRenames:
                 [
                     new MemberRenameDirective(new MemberAddress(sales, "users", "name"), "full_name"),
