@@ -24,7 +24,8 @@ public sealed class MarkdownConsolePresenterTests
     public MarkdownConsolePresenterTests() => _sut = new MarkdownConsolePresenter(_out);
 
     // A diff exercising every marker: an added schema and table (+), a modified table with a type change (!) and a
-    // dropped column (-), and a removed schema (-).
+    // dropped column (-), and a removed schema (-). 'app' is Touched — in the diff only because its tables changed —
+    // so it contributes its contents and no header line of its own.
     private static DatabaseDiff RichDiff() => new(
     [
         SchemaDiff.Added("reporting"),
@@ -62,6 +63,30 @@ public sealed class MarkdownConsolePresenterTests
     public Task ReportDiff_EmptyDiff()
     {
         _sut.ReportDiff(new DatabaseDiff());
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportDiff_TouchedSchema()
+    {
+        // A schema carried by its contents alone renders no header — only what actually changed inside it. Pinned on
+        // its own (RichDiff covers it among four other markers) so a regression names the case it broke.
+        var diff = new DatabaseDiff(
+        [
+            SchemaDiff.Containing("app") with
+            {
+                Tables =
+                [
+                    TableDiff.Modified("app", "orders") with
+                    {
+                        Columns = [ColumnDiff.Added(new Column { Name = "placed_at", Type = SqlType.BigInt })],
+                    },
+                ],
+            },
+        ]);
+
+        _sut.ReportDiff(diff);
 
         return Verify(_out.ToString());
     }

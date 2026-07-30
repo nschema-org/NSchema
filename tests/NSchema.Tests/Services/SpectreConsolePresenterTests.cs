@@ -60,6 +60,36 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
+    public void ReportDiff_TouchedSchema_RendersItsContentsWithoutASchemaHeader()
+    {
+        // Arrange — 'app' is Touched: in the diff only because a table inside it changed. It is not itself being
+        // created, altered or dropped, so announcing it would read as a change the plan is not making.
+        var diff = new DatabaseDiff(
+        [
+            SchemaDiff.Containing("app") with
+            {
+                Tables =
+                [
+                    TableDiff.Modified("app", "orders") with
+                    {
+                        Columns = [ColumnDiff.Added(new Column { Name = "placed_at", Type = SqlType.BigInt })],
+                    },
+                ],
+            },
+        ]);
+
+        // Act
+        _sut.ReportDiff(diff);
+
+        // Assert — the contents render, the schema itself is not announced, and nothing falls through to the
+        // unknown-change glyph.
+        _out.Output.ShouldContain("table app.orders");
+        _out.Output.ShouldContain("placed_at");
+        _out.Output.ShouldNotContain("schema app");
+        _out.Output.ShouldNotContain("?");
+    }
+
+    [Fact]
     public void ReportDiff_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
     {
         // Arrange — array types render as `text[]`, whose square brackets are Spectre markup delimiters.

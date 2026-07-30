@@ -40,6 +40,19 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
+    public void ReportDiff_TouchedSchema_CarriesTheChangeKindVerbatim()
+    {
+        // The text faces drop a touched schema's header, but --json is the structured face: it reports the schema as
+        // the diff models it, so a consumer can tell "carried by its contents" from an actual schema change. This is
+        // the only surface the kind is visible on, hence the only one that can pin its wire spelling.
+        _sut.ReportDiff(new DatabaseDiff([SchemaDiff.Containing("app")]));
+
+        var schema = StdoutEvents().ShouldHaveSingleItem().GetProperty("diff").GetProperty("schemas")[0];
+        schema.GetProperty("name").GetString().ShouldBe("app");
+        schema.GetProperty("change").GetString().ShouldBe("touched");
+    }
+
+    [Fact]
     public void ReportDiff_CarriesTheDeploymentScriptsOnTheDiff()
     {
         // The scripts are first-class on the diff now, so the diff event carries them — no separate scripts event.
