@@ -7,20 +7,13 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <RootNamespace>NSchema.Tests</RootNamespace>
+    <RootNamespace>NSchema.Analyzers.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Npgsql" />
-    <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="Testcontainers.PostgreSql" />
-    <PackageReference Include="Verify.XunitV3" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
@@ -29,16 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NSchema.Diagnostics" />
-    <Using Include="NSchema.Tests.Helpers" />
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
-    <Using Include="NSubstitute" />
-    <Using Include="VerifyXunit" />
-    <Using Include="VerifyXunit.Verifier" Static="True" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- An ordinary reference, not OutputItemType="Analyzer": the tests call the analyzers rather than run under them. -->
+    <ProjectReference Include="..\..\src\NSchema.Analyzers\NSchema.Analyzers.csproj" />
+    <!-- The engine itself, so the layering table can be checked against what it actually contains. -->
     <ProjectReference Include="..\..\src\NSchema.Core\NSchema.Core.csproj" />
   </ItemGroup>
 

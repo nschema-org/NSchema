@@ -22,7 +22,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>5.0.0-beta.7</Version>
+    <Version>5.0.0-beta.8</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -57,6 +57,17 @@
   <ItemGroup>
     <Using Include="NSchema.Diagnostics" />
     <Using Include="NSchema.Extensions" />
+  </ItemGroup>
+
+  <!--
+    The architecture rules. OutputItemType="Analyzer" hands the built assembly to the compiler instead of linking against it;
+    PrivateAssets keeps it out of the published package, which matters because this project packs.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\NSchema.Analyzers\NSchema.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

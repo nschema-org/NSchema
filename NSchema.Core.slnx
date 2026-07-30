@@ -9,4 +9,8 @@
     <Project Path="src/NSchema.Core/NSchema.Core.csproj" />
     <Project Path="tests\NSchema.Core.Tests\NSchema.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/analyzers/">
+    <Project Path="src/NSchema.Analyzers/NSchema.Analyzers.csproj" />
+    <Project Path="tests\NSchema.Analyzers.Tests\NSchema.Analyzers.Tests.csproj" />
+  </Folder>
 </Solution>
