@@ -9,7 +9,7 @@ namespace NSchema.Operations;
 public sealed record ApplyResult(MigrationPlan AppliedPlan)
 {
     /// <summary>
-    /// Whether any SQL was executed (<see langword="false"/> when the plan was empty and nothing changed).
+    /// Whether the apply changed anything.
     /// </summary>
     public bool ChangesApplied => !AppliedPlan.IsEmpty;
 

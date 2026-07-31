@@ -9,7 +9,7 @@ namespace NSchema.Operations;
 public sealed record PlanResult(MigrationPlan? Plan)
 {
     /// <summary>
-    /// Whether the plan contains any changes (a non-empty diff).
+    /// Whether applying the plan would change anything.
     /// </summary>
-    public bool HasChanges => Plan is { Diff.IsEmpty: false };
+    public bool HasChanges => Plan is { IsEmpty: false };
 }

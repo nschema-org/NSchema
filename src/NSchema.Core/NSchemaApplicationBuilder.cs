@@ -55,6 +55,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         AddPlanPolicy<DestructiveActionPolicy>();
         AddPlanPolicy<DataHazardPolicy>();
         AddPlanPolicy<EnumValueRemovalPolicy>();
+        AddPlanPolicy<AdoptionPolicy>();
     }
 
     /// <inheritdoc />

@@ -140,6 +140,7 @@ v5.0 is a Core rearchitecture, aiming for better project health, with clear sepa
 
 - **Tables are created and dropped in foreign-key order.** A table is now always created after the tables it references and dropped before them, across schemas, so a teardown no longer fails on a table another one still points at. Where tables point at each other no order can satisfy every key, so the ones it cannot are moved out of the way: on a drop the constraint goes first, and on a create it is added once both tables exist rather than riding the `CREATE TABLE`. A dialect that cannot alter foreign keys says so with `SqlDialect.CanAlterForeignKeys`, and keeps every key on the table that declares it.
 - **Schemas are no longer created implicitly.** Creating an object without also creating its schema will no-longer auto-adopt the parent schema.
+- **Adoption-only plans now count as non-empty.** Running a plan that changes nothing, and only imports objects into the managed set now correctly reports as having changed.
 
 ## [4.6.1] - 2026-07-10
 

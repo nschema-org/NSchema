@@ -64,7 +64,14 @@ internal sealed class MigrationPlanner(
         diagnostics.AddRange(Result.From(MissingSchemas(diff, current.Database)));
 
         var dependencies = new PlanDependencies(current.Database, project.Database);
-        var plan = Realize(diff, dependencies, dialect, ManagedAfterApply(current, project, scope), diagnostics);
+        var managed = ManagedAfterApply(current, project, scope);
+
+        // Find any existing identities applying this plan will take over.
+        // Even if a plan technically has no changes, it still needs to be applied
+        // if there are objects to adopt.
+        var adopted = managed.Except(current.Managed).Intersect(current.Database.Identities());
+
+        var plan = Realize(diff, dependencies, dialect, managed, adopted, diagnostics);
 
         // Validate the complete plan — post-render, so policies see exactly what an apply would execute.
         diagnostics.AddRange(Enforcement.Apply(planPolicies.SelectMany(p => p.Validate(plan))));
@@ -177,6 +184,7 @@ internal sealed class MigrationPlanner(
         PlanDependencies dependencies,
         SqlDialect sql,
         IdentitySet managed,
+        IdentitySet adopted,
         DiagnosticCollector diagnostics
     )
     {
@@ -190,6 +198,6 @@ internal sealed class MigrationPlanner(
             }
         }
 
-        return new MigrationPlan(diff, planStatements, managed);
+        return new MigrationPlan(diff, planStatements, managed, adopted);
     }
 }

@@ -274,6 +274,51 @@ public sealed class MigrationPlannerTests
     }
 
     [Fact]
+    public void Plan_Adopted_IsWhatTheApplyTakesOver()
+    {
+        // Arrange — the database already holds what the project declares, but none of it is managed yet: the
+        // apply changes nothing and adopts everything.
+        SqlIdentifier app = "app";
+        var database = new Database { Schemas = [new Schema { Name = app, Tables = [new Table { Name = "users" }] }] };
+        var plan = Sut.Plan(new CurrentState(database), new ProjectDefinition(database), PlanningScope.All).Value!;
+
+        // Assert
+        plan.Adopted.Schemas.Select(s => s.Name).ShouldBe([app]);
+        plan.Adopted.SchemaObjects.ShouldBe([ObjectAddress.Table(app, "users")]);
+    }
+
+    [Fact]
+    public void Plan_Adopted_ExcludesWhatIsAlreadyManaged_AndWhatTheApplyCreates()
+    {
+        // Arrange — `users` exists unmanaged, `orders` exists and is managed, `audit` does not exist at all.
+        SqlIdentifier app = "app";
+        var observed = new Database
+        {
+            Schemas = [new Schema { Name = app, Tables = [new Table { Name = "users" }, new Table { Name = "orders" }] }],
+        };
+        var current = new CurrentState(observed)
+        {
+            Managed = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema(app)],
+                SchemaObjects: [ObjectAddress.Table(app, "orders")]),
+        };
+        var desired = new ProjectDefinition(new Database
+        {
+            Schemas =
+            [
+                new Schema { Name = app, Tables = [new Table { Name = "users" }, new Table { Name = "orders" }, new Table { Name = "audit" }] },
+            ],
+        });
+
+        // Act
+        var plan = Sut.Plan(current, desired, PlanningScope.All).Value!;
+
+        // Assert — a created object is management the diff already shows; only the silent takeover is adoption.
+        plan.Adopted.DatabaseObjects.ShouldBeEmpty();
+        plan.Adopted.SchemaObjects.ShouldBe([ObjectAddress.Table(app, "users")]);
+    }
+
+    [Fact]
     public void Plan_MergesTheDifferDiagnosticsIntoTheResult()
     {
         // Arrange — run-once skips and dead-migration findings are diff-stage diagnostics; the planner surfaces them.

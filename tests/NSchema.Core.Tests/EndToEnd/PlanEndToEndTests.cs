@@ -102,6 +102,39 @@ public sealed class PlanEndToEndTests : IDisposable
     }
 
     [Fact]
+    public async Task Plan_AgainstAnUnmanagedDatabaseItAlreadyMatches_ReportsTheAdoption()
+    {
+        // Arrange — a refresh records the schema without managing any of it, so applying this plan executes
+        // nothing and still takes the database over. Nothing but the finding says so.
+        var schema = new Database { Schemas = [new Schema { Name = "app", Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] }] };
+
+        var desired = WriteNsql("schema.sql",
+            """
+            CREATE SCHEMA app;
+            CREATE TABLE app.users
+            (
+                id int NOT NULL
+            );
+            """);
+
+        using var app = NewBuilder(schema).AddProjectSource(Path.GetDirectoryName(desired)!, Path.GetFileName(desired)).UseSqlDialect<StubSqlDialect>().Build();
+        (await app.Operations.Refresh(new RefreshArguments(), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeTrue();
+
+        // Act
+        var result = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Project }, TestContext.Current.CancellationToken);
+
+        // Assert
+        var plan = result.Value.ShouldNotBeNull().Plan.ShouldNotBeNull();
+        plan.Adopted.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
+        result.Diagnostics.ShouldContain(d => d.Code == "objects-adopted");
+
+        // There is no SQL, but the apply is not a no-op, so the plan does not report itself empty.
+        plan.HasStatements.ShouldBeFalse();
+        plan.IsEmpty.ShouldBeFalse();
+        result.Value.HasChanges.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Plan_WithDialectRegistered_ProducesSql()
     {
         var current = new Database { Schemas = [] };

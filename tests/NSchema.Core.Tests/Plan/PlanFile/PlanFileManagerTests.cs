@@ -4,6 +4,7 @@ using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
+using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
@@ -45,7 +46,11 @@ public sealed class PlanFileManagerTests
                 new SqlStatement("INSERT INTO app.config VALUES (1)"),
                 new SqlStatement("CREATE INDEX CONCURRENTLY ...", RunOutsideTransaction: true),
                 new SqlStatement("REINDEX TABLE app.users", RunOutsideTransaction: true),
-            ]);
+            ],
+            Managed: new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+            Adopted: new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "users")]));
 
         return new PlanFileEnvelope(plan, DateTimeOffset.UnixEpoch);
     }
@@ -115,6 +120,19 @@ public sealed class PlanFileManagerTests
         // Assert
         roundTripped.Plan.Statements.ShouldBe(SampleEnvelope().Plan.Statements);
         roundTripped.Plan.Statements[1].RunOutsideTransaction.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Deserialize_RestoresWhatTheApplyManagesAndAdopts()
+    {
+        // Act
+        var roundTripped = _sut.Deserialize(_sut.Serialize(SampleEnvelope()));
+
+        // Assert — a saved plan is applied later, so what it takes over has to survive the file.
+        roundTripped.Plan.Managed.DatabaseObjects.ShouldBe([DatabaseAddress.Schema("app")]);
+        roundTripped.Plan.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
+        roundTripped.Plan.Adopted.DatabaseObjects.ShouldBeEmpty();
+        roundTripped.Plan.Adopted.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
     }
 
     [Fact]

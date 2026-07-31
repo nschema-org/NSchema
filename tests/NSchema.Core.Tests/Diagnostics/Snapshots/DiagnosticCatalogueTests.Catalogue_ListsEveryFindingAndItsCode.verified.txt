@@ -1,4 +1,5 @@
-﻿error    structural  blocked-by-policy                          ApplyDiagnostics.BlockedByPolicy
+﻿info     advisory    objects-adopted                            AdoptionDiagnostics.ObjectsAdopted
+error    structural  blocked-by-policy                          ApplyDiagnostics.BlockedByPolicy
 error    structural  execution-failed                           ApplyDiagnostics.ExecutionFailed
 error    structural  missing-executor                           ApplyDiagnostics.MissingExecutor
 error    structural  store-required                             ApplyDiagnostics.StoreRequired

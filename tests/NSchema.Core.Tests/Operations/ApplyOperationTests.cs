@@ -82,6 +82,22 @@ public sealed class ApplyOperationTests
     }
 
     [Fact]
+    public async Task Execute_AdoptionOnlyPlan_NeedsNoExecutor_ButIsStillAChange()
+    {
+        // Arrange — the database already matches, so the apply renders no SQL and only takes the objects over.
+        var adoption = _emptyPlan with { Adopted = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "users")]) };
+
+        // Act
+        var result = await BuildSut(executor: null).Execute(Args(adoption), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value!.ChangesApplied.ShouldBeTrue();
+        result.Value!.StatementsExecuted.ShouldBe(0);
+        await _workflow.Received(1).Refresh(adoption, Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Execute_Success_PassesTheAppliedPlanToTheCapture()
     {
         // Arrange — the plan carries its scripts whole; the capture derives the run-once ledger records from it.

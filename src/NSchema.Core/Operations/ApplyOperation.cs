@@ -39,8 +39,8 @@ internal sealed class ApplyOperation(
             findings.Demote(DiagnosticSeverity.Warning);
         }
 
-        // An empty plan executes nothing, but still records state.
-        if (args.Plan.IsEmpty)
+        // A plan with no SQL executes nothing, but still records state.
+        if (!args.Plan.HasStatements)
         {
             var emptyCapture = await workflow.Refresh(args.Plan, force: true, cancellationToken);
             return Result.Success(new ApplyResult(args.Plan), findings.Concat(emptyCapture.Diagnostics));

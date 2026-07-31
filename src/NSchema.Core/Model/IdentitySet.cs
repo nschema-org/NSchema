@@ -81,4 +81,11 @@ public sealed record IdentitySet(IReadOnlyList<DatabaseAddress>? DatabaseObjects
     public IdentitySet Except(IdentitySet other) => new(
         [.. DatabaseObjects.Except(other.DatabaseObjects)],
         [.. SchemaObjects.Except(other.SchemaObjects)]);
+
+    /// <summary>
+    /// The set containing the identities in both sets.
+    /// </summary>
+    public IdentitySet Intersect(IdentitySet other) => new(
+        [.. DatabaseObjects.Intersect(other.DatabaseObjects)],
+        [.. SchemaObjects.Intersect(other.SchemaObjects)]);
 }

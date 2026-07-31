@@ -213,15 +213,16 @@ public sealed class ApplyEndToEndTests : IDisposable
         (await app.Locks.Acquire(new AcquireLockArguments("apply"), cancellationToken: TestContext.Current.CancellationToken)).IsSuccess.ShouldBeTrue();
         (await app.Operations.Refresh(new RefreshArguments(), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeTrue();
         var plan = (await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Project }, TestContext.Current.CancellationToken)).Value.ShouldNotBeNull();
-        // The plan carries an empty diff/sql: there is nothing to apply.
+        // The plan carries an empty diff and no SQL; taking the matching database over is all it does.
         plan.Plan.ShouldNotBeNull().Diff.IsEmpty.ShouldBeTrue();
-        plan.Plan!.IsEmpty.ShouldBeTrue();
+        plan.Plan!.HasStatements.ShouldBeFalse();
 
         await app.Operations.Apply(new ApplyArguments { Plan = plan.Plan! }, TestContext.Current.CancellationToken);
 
-        // Nothing to apply: the empty plan never reaches the executor...
+        // Nothing to execute: the plan never reaches the executor...
         _executor.Executed.ShouldBeNull();
-        // ...but a first run against an already-matching database still initialises the store.
+        // ...but a first run against an already-matching database still initialises the store, managing what it adopted.
         _store.Written.ShouldNotBeNull().Database.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
+        _store.Written!.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
     }
 }
