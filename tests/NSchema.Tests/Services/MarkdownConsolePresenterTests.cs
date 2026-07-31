@@ -110,21 +110,54 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
-    public Task ReportSqlPlan()
+    public Task ReportPlan_AdoptionOnly()
     {
-        _sut.ReportSqlPlan(
-        [
-            new SqlStatement("CREATE TABLE app.users (\n    id bigint NOT NULL\n)", RunOutsideTransaction: false),
-            new SqlStatement("CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)", RunOutsideTransaction: true),
-        ]);
+        // The database already matches the project: no diff, no SQL, and the objects change hands.
+        var plan = new MigrationPlan(new DatabaseDiff(), [])
+        {
+            Adopted = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        _sut.ReportPlan(plan);
 
         return Verify(_out.ToString());
     }
 
     [Fact]
-    public Task ReportSqlPlan_EmptyPlan()
+    public Task ReportPlan_ChangesAndAdoptions()
     {
-        _sut.ReportSqlPlan([]);
+        // Adoption lists outside the diff block: nothing is done to those objects, so no marker fits them.
+        var plan = new MigrationPlan(RichDiff(), [])
+        {
+            Adopted = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "legacy_audit")]),
+        };
+
+        _sut.ReportPlan(plan);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_WithSql()
+    {
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+        [
+            new SqlStatement("CREATE TABLE app.users (\n    id bigint NOT NULL\n)", RunOutsideTransaction: false),
+            new SqlStatement("CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)", RunOutsideTransaction: true),
+        ]);
+
+        _sut.ReportPlan(plan);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_NoStatements()
+    {
+        // An apply that executes nothing gets no SQL section; the plan section has already said as much.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
 
         return Verify(_out.ToString());
     }

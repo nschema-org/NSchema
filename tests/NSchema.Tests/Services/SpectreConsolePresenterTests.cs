@@ -123,6 +123,38 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
+    public void ReportPlan_Adoptions_AreListedAndCounted()
+    {
+        // Arrange — nothing differs, so taking the objects over is all the apply would do.
+        var plan = new MigrationPlan(new DatabaseDiff(), [])
+        {
+            Adopted = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert — an apply is not a no-op here, so the section must not read as one.
+        _out.Output.ShouldContain("Adopting 2 existing objects into management:");
+        _out.Output.ShouldContain("= app.users");
+        _out.Output.ShouldContain("2 to adopt");
+        _out.Output.ShouldNotContain("No changes detected");
+    }
+
+    [Fact]
+    public void ReportPlan_WithoutAdoptions_ReportsOnlyTheDifference()
+    {
+        // Act
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]), []));
+
+        // Assert
+        _out.Output.ShouldContain("+ schema app");
+        _out.Output.ShouldNotContain("adopt");
+    }
+
+    [Fact]
     public void ReportSchema_FramesTheRenderedSchemaInASection()
     {
         // Arrange
@@ -170,13 +202,14 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_FramesTheRenderedSqlInAPanel()
+    public void ReportPlan_FramesTheRenderedSqlInItsOwnSection()
     {
         // Arrange
-        var statements = new[] { new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false) };
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+            [new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]);
 
         // Act
-        _sut.ReportSqlPlan(statements);
+        _sut.ReportPlan(plan);
 
         // Assert
         _out.Output.ShouldContain("SQL");
@@ -184,17 +217,17 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
+    public void ReportPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
     {
         // Arrange
-        var statements = new[]
-        {
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+        [
             new SqlStatement("CREATE INDEX CONCURRENTLY ix ON app.widgets (id)", RunOutsideTransaction: true),
             new SqlStatement("ANALYZE app.widgets", RunOutsideTransaction: false),
-        };
+        ]);
 
         // Act
-        _sut.ReportSqlPlan(statements);
+        _sut.ReportPlan(plan);
 
         // Assert — headers number each statement; only the concurrent one is flagged, read from the model.
         var output = _out.Output;
@@ -205,14 +238,14 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_EmptyPlan_ReportsNothingToExecute()
+    public void ReportPlan_NoStatements_WritesNoSqlSection()
     {
-        // Act
-        _sut.ReportSqlPlan([]);
+        // Act — an apply that executes nothing has no SQL to preview; the plan section says what it does instead.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
 
         // Assert
-        _out.Output.ShouldContain("SQL");
-        _out.Output.ShouldContain("No statements to execute");
+        _out.Output.ShouldContain("No changes detected");
+        _out.Output.ShouldNotContain("SQL");
     }
 
     [Fact]

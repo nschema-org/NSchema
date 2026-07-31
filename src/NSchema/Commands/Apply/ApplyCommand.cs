@@ -82,7 +82,7 @@ internal static class ApplyCommand
             }
 
             plan = envelope.Require().Plan;
-            app.Presenter.ReportDiff(plan.Diff);
+            app.Presenter.ReportPlan(plan);
         }
         else
         {
@@ -95,12 +95,12 @@ internal static class ApplyCommand
 
             var planResult = await app.Operations.Plan(new PlanArguments { Scope = scope.Require() }, cancellationToken);
 
-            // Show the diff first — even on a policy error, the result carries the complete plan — so the offending
-            // change is visible.
+            // Show the plan first — the difference and the SQL it would run. Even on a policy error, the result
+            // carries the complete plan.
             var computed = planResult.Value?.Plan;
             if (computed is not null)
             {
-                app.Presenter.ReportDiff(computed.Diff);
+                app.Presenter.ReportPlan(computed);
             }
 
             if (planResult.Diagnostics.Count > 0)
@@ -117,8 +117,7 @@ internal static class ApplyCommand
             plan = computed;
         }
 
-        // The database already matches the desired schema. Applying still captures state (initializing the store on a
-        // first run), but there is nothing to confirm or preview.
+        // The database already matches the desired schema, and there are no objects to adopt.
         if (plan.IsEmpty)
         {
             app.Messenger.Success($"No changes. The database already matches the desired schema.");
@@ -126,15 +125,12 @@ internal static class ApplyCommand
             return ExitCodes.NoChanges;
         }
 
-        // Preview the SQL before asking for confirmation (the scripts ride the diff shown above).
-        app.Presenter.ReportSqlPlan(plan.Statements);
-
         // Confirmation is entirely CLI-side. Declining throws, which propagates out (the lock is released by the
         // finally in Run) and is mapped to a cancellation by Program.
         ConsoleConfirmationPrompt.Require(
             AnsiConsole.Console,
             configuration.AutoApprove,
-            $"NSchema will execute [yellow]{plan.Statements.Count}[/] statement(s) against the database.",
+            ConfirmationSummary(plan),
             "Do you want to apply these changes? Only [green]yes[/] will be accepted:",
             "--auto-approve");
 
@@ -150,5 +146,18 @@ internal static class ApplyCommand
 
         app.Messenger.Success($"Apply complete. {RunSummary.Describe(plan)}.");
         return ExitCodes.NoChanges;
+    }
+
+    // What the operator is agreeing to. A plan can have nothing to execute and still take objects over, which is
+    // the whole of what an apply would do in that case.
+    private static string ConfirmationSummary(MigrationPlan plan)
+    {
+        if (!plan.HasStatements)
+        {
+            var adopted = plan.Adopted.DatabaseObjects.Count + plan.Adopted.SchemaObjects.Count;
+            return $"NSchema will bring [yellow]{adopted}[/] existing object(s) under management. No SQL will be executed.";
+        }
+
+        return $"NSchema will execute [yellow]{plan.Statements.Count}[/] statement(s) against the database.";
     }
 }

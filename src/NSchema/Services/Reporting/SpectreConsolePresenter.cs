@@ -22,19 +22,19 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
 
     public void ReportDiff(DatabaseDiff diff)
     {
-        WriteSection("Plan", RenderDiff(diff));
+        WriteSection("Plan", RenderPlan(diff, IdentitySet.Empty));
     }
 
-    public void ReportSqlPlan(IReadOnlyList<SqlStatement> statements)
+    public void ReportPlan(MigrationPlan plan)
     {
-        WriteSection("SQL", RenderSqlPlan(statements));
+        WriteSection("Plan", RenderPlan(plan.Diff, plan.Adopted));
+        if (plan.HasStatements)
+        {
+            WriteSection("SQL", RenderSqlPlan(plan.Statements));
+        }
     }
 
-    public void ReportSavedPlan(PlanFileEnvelope envelope)
-    {
-        ReportDiff(envelope.Plan.Diff);
-        ReportSqlPlan(envelope.Plan.Statements);
-    }
+    public void ReportSavedPlan(PlanFileEnvelope envelope) => ReportPlan(envelope.Plan);
 
     // A bold heading underlined to its own length
     private void WriteSection(string title, Markup body)
@@ -46,9 +46,9 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
         console.WriteLine();
     }
 
-    private static Markup RenderDiff(DatabaseDiff diff)
+    private static Markup RenderPlan(DatabaseDiff diff, IdentitySet adopted)
     {
-        if (diff.IsEmpty)
+        if (diff.IsEmpty && adopted.IsEmpty)
         {
             return new Markup("No changes detected.");
         }
@@ -70,9 +70,21 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
             }
         }
 
-        var (added, modified, removed) = document.Summary;
+        // The objects the apply takes over. Nothing is done to them, so they carry no change marker of their own.
+        var adoptions = PlanNarrative.AdoptedNames(adopted);
+        if (adoptions.Count > 0)
+        {
+            if (lines.Count > 0)
+            {
+                lines.Add(string.Empty);
+            }
+
+            lines.Add(Markup.Escape(PlanNarrative.AdoptionHeading(adoptions.Count)));
+            lines.AddRange(adoptions.Select(name => $"[blue]{Markup.Escape($"    = {name}")}[/]"));
+        }
+
         lines.Add(string.Empty);
-        lines.Add(Markup.Escape($"Plan: {added} to add, {modified} to change, {removed} to destroy."));
+        lines.Add(Markup.Escape($"Plan: {PlanNarrative.Counts(document.Summary, adoptions.Count)}"));
 
         return new Markup(string.Join('\n', lines));
     }
@@ -88,11 +100,6 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
 
     private static Markup RenderSqlPlan(IReadOnlyList<SqlStatement> statements)
     {
-        if (statements.Count == 0)
-        {
-            return new Markup("- No statements to execute");
-        }
-
         var lines = new List<string>(statements.Count * 3);
 
         for (var i = 0; i < statements.Count; i++)

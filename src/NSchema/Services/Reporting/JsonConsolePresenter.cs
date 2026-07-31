@@ -18,13 +18,22 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, new { type = "diff", diff });
 
-    public void ReportSchema(Database database) => JsonOutput.Write(_out, database);
+    public void ReportPlan(MigrationPlan plan)
+    {
+        ReportDiff(plan.Diff);
+        if (!plan.Adopted.IsEmpty)
+        {
+            JsonOutput.Write(_out, new { type = "adoptions", adopted = plan.Adopted });
+        }
+        JsonOutput.Write(_out, new { type = "sqlPlan", statements = plan.Statements });
+    }
 
-    public void ReportSqlPlan(IReadOnlyList<SqlStatement> statements) => JsonOutput.Write(_out, new { type = "sqlPlan", statements });
+    public void ReportSchema(Database database) => JsonOutput.Write(_out, database);
 
     public void ReportSavedPlan(PlanFileEnvelope envelope) => JsonOutput.Write(_out, new
     {
         diff = envelope.Plan.Diff,
+        adopted = envelope.Plan.Adopted,
         sql = envelope.Plan.Statements,
     });
 }

@@ -21,9 +21,9 @@ internal interface IConsolePresenter
     void ReportDiff(DatabaseDiff diff);
 
     /// <summary>
-    /// Presents the SQL statements a migration would run.
+    /// Presents the computed plan.
     /// </summary>
-    void ReportSqlPlan(IReadOnlyList<SqlStatement> statements);
+    void ReportPlan(MigrationPlan plan);
 
     /// <summary>
     /// Presents a saved plan file as a single combined output.

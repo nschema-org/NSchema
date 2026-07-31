@@ -76,15 +76,41 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_EmitsStatementsWithTransactionFlag()
+    public void ReportPlan_EmitsStatementsWithTransactionFlag()
     {
-        _sut.ReportSqlPlan([new SqlStatement("CREATE INDEX CONCURRENTLY i ON t (c)", RunOutsideTransaction: true)]);
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(),
+            [new SqlStatement("CREATE INDEX CONCURRENTLY i ON t (c)", RunOutsideTransaction: true)]));
 
-        var evt = StdoutEvents().ShouldHaveSingleItem();
-        evt.GetProperty("type").GetString().ShouldBe("sqlPlan");
+        var evt = StdoutEvents().Single(e => e.GetProperty("type").GetString() == "sqlPlan");
         var statement = evt.GetProperty("statements")[0];
         statement.GetProperty("sql").GetString()!.ShouldContain("CONCURRENTLY");
         statement.GetProperty("runOutsideTransaction").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ReportPlan_WithAdoptions_EmitsAnAdoptionsEventBetweenTheDiffAndTheSql()
+    {
+        // Adoption is not a change, so it rides its own event rather than being folded into the diff.
+        var plan = new MigrationPlan(new DatabaseDiff(), [])
+        {
+            Adopted = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        _sut.ReportPlan(plan);
+
+        var events = StdoutEvents();
+        events.Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "adoptions", "sqlPlan"]);
+        events[1].GetProperty("adopted").GetProperty("schemaObjects")[0].GetProperty("name").GetString().ShouldBe("users");
+    }
+
+    [Fact]
+    public void ReportPlan_WithoutAdoptions_EmitsTheSameEventsAsBefore()
+    {
+        // The structured stream is fixed: no adoption event when there is nothing to take over, and the SQL event
+        // is emitted even when the text faces would omit the section.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]), []));
+
+        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan"]);
     }
 
     [Fact]
@@ -123,9 +149,9 @@ public sealed class JsonConsolePresenterTests
     public void Output_IsNewlineDelimited_OneObjectPerLine()
     {
         // The streaming methods (used by apply/plan/destroy/drift) frame each event as its own NDJSON line.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
         _sut.ReportDiff(new DatabaseDiff());
-        _sut.ReportSqlPlan([]);
 
-        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan"]);
+        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan", "diff"]);
     }
 }

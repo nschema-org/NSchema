@@ -47,7 +47,7 @@ it against API-surface stability, not just the boundary rule.
   `ReportDiagnostics`, the lock/plugin query renderers). App-free: built straight from the `ParseResult` by
   `ReporterFactory`, so it works before/without an application (top-level error handling in `Program.cs`, the `plugin`
   commands). With an app it's reached as **`app.Messenger`**.
-- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`,
+- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportPlan`,
   plus `ReportSavedPlan` for `plan show`). It owns the core renderers directly — `DiffRenderer`/`SchemaRenderer`/
   `SqlPlanRenderer` via their `.Default` singletons, stateless utilities rather than DI services — and wraps their
   plain-text output in Spectre markup. Reached as **`app.Presenter`**.
@@ -61,8 +61,8 @@ it against API-surface stability, not just the boundary rule.
   `UseProgressReporter(new ConsoleProgress(messenger))`.
 
 The `--json` shape splits on the **nature of the command**, not the method. A *progressive operation* (`apply`, `plan`,
-`destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so `ReportDiff`/`ReportPlan`/`ReportSqlPlan`
-each carry a discriminator. A *query* (`db show`, `state show`, `plan show`, `lock status`, `script list`, `plugin …`) is one request
+`destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so every event `ReportDiff`/`ReportPlan`
+writes carries a discriminator (`diff`, `adoptions`, `sqlPlan`). A *query* (`db show`, `state show`, `plan show`, `lock status`, `script list`, `plugin …`) is one request
 for one answer, so it emits a **single bare object** on stdout (no `type` envelope): `ReportSchema` writes the schema
 directly, and `plan show` uses `ReportSavedPlan` to fold its diff + scripts + SQL into one `{diff, scripts, sql}` object
 rather than three lines. Either way, line-level narration (`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}`
