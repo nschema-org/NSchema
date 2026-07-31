@@ -163,7 +163,7 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
-    public Task ReportSchema()
+    public Task ReportDatabase()
     {
         _sut.ReportDatabase(new Database
         {
@@ -180,32 +180,68 @@ public sealed class MarkdownConsolePresenterTests
         return Verify(_out.ToString());
     }
 
+    /// <summary>A recorded schema holding one managed table and one NSchema knows nothing about.</summary>
+    private static Database PartlyManaged() => new()
+    {
+        Schemas =
+        [
+            new Schema
+            {
+                Name = "app",
+                Tables =
+                [
+                    new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                    new Table { Name = "legacy_audit", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                ],
+            },
+        ],
+    };
+
+    private static IdentitySet ManagedInApp() => new(
+        DatabaseObjects: [DatabaseAddress.Schema("app")],
+        SchemaObjects: [ObjectAddress.Table("app", "widgets")]);
+
     [Fact]
     public Task ReportState()
     {
-        // The recorded schema carries more than NSchema manages, so the rest is marked and counted.
-        var database = new Database
+        // The recorded schema carries more than NSchema manages, so the rest is marked and counted; an empty
+        // ledger still gets its section, so the report has a fixed shape.
+        _sut.ReportState(new DatabaseState(PartlyManaged(), []) { Managed = ManagedInApp() });
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportState_WithRecordedScripts()
+    {
+        var scripts = new[]
         {
-            Schemas =
-            [
-                new Schema
-                {
-                    Name = "app",
-                    Tables =
-                    [
-                        new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
-                        new Table { Name = "legacy_audit", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
-                    ],
-                },
-            ],
+            new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("def456"), DateTimeOffset.UnixEpoch.AddDays(1)),
+            new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch),
         };
 
-        _sut.ReportState(new DatabaseState(database, [])
-        {
-            Managed = new IdentitySet(
-                DatabaseObjects: [DatabaseAddress.Schema("app")],
-                SchemaObjects: [ObjectAddress.Table("app", "widgets")]),
-        });
+        _sut.ReportState(new DatabaseState(PartlyManaged(), scripts) { Managed = ManagedInApp() });
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportScripts()
+    {
+        // `script list` reports the ledger on its own — the same section the recorded state carries.
+        _sut.ReportScripts(
+        [
+            new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch),
+            new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("def456"), DateTimeOffset.UnixEpoch.AddDays(1)),
+        ]);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportScripts_NothingRecorded()
+    {
+        _sut.ReportScripts([]);
 
         return Verify(_out.ToString());
     }

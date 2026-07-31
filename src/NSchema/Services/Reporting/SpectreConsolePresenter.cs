@@ -4,6 +4,7 @@ using NSchema.Model;
 using NSchema.Plan.Domain;
 using NSchema.State.Domain;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace NSchema.Services.Reporting;
 
@@ -13,10 +14,13 @@ namespace NSchema.Services.Reporting;
 /// </summary>
 internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePresenter
 {
-    public void ReportDatabase(Database database) => WriteSection("Schema", RenderSchema(DatabaseRenderer.Render(database)));
+    public void ReportDatabase(Database database) => WriteSection("Database", RenderSchema(DatabaseRenderer.Render(database)));
 
-    public void ReportState(DatabaseState state) =>
-        WriteSection("Schema", RenderSchema(DatabaseRenderer.Render(state.Database, state.Managed)));
+    public void ReportState(DatabaseState state)
+    {
+        WriteSection("Database", RenderSchema(DatabaseRenderer.Render(state.Database, state.Managed)));
+        WriteSection("Scripts", RenderScripts(state.Scripts));
+    }
 
     public void ReportDiff(DatabaseDiff diff)
     {
@@ -32,12 +36,13 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
         }
     }
 
-    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => WriteSection("Scripts", RenderScripts(scripts));
+
+    private static IRenderable RenderScripts(IReadOnlyList<ScriptExecution> scripts)
     {
         if (scripts.Count == 0)
         {
-            console.MarkupLine("[grey]No script executions are recorded.[/]");
-            return;
+            return new Markup("[grey]No script executions are recorded.[/]");
         }
 
         var table = new Table()
@@ -46,19 +51,19 @@ internal sealed class SpectreConsolePresenter(IAnsiConsole console) : IConsolePr
             .AddColumn("Executed")
             .AddColumn("Body hash");
 
-        foreach (var script in scripts)
+        foreach (var script in ScriptLedger.InExecutionOrder(scripts))
         {
             table.AddRow(
-                new Markup(Markup.Escape(script.Script.ToString())),
-                new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
+                new Markup(Markup.Escape(ScriptLedger.Name(script))),
+                new Markup(Markup.Escape(ScriptLedger.Executed(script))),
                 new Markup($"[grey]{Markup.Escape(script.Hash.Value)}[/]"));
         }
 
-        console.Write(table);
+        return table;
     }
 
     // A bold heading underlined to its own length
-    private void WriteSection(string title, Markup body)
+    private void WriteSection(string title, IRenderable body)
     {
         console.MarkupLineInterpolated($"[bold]{title}[/]");
         console.MarkupLineInterpolated($"[grey]{new string('─', title.Length)}[/]");

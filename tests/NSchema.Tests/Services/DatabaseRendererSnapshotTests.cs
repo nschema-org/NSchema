@@ -19,7 +19,7 @@ namespace NSchema.Tests.Services;
 /// <summary>
 /// Snapshot coverage for <see cref="DatabaseRenderer"/>.
 /// </summary>
-public sealed class SchemaRendererSnapshotTests
+public sealed class DatabaseRendererSnapshotTests
 {
     /// <summary>Builds a view with its read dependencies (the schema is "app" for each), as the parser would derive them.</summary>
     private static View View(string name, string body, string? comment = null, params string[] reads) =>

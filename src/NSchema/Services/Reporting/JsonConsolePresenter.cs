@@ -30,13 +30,18 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
     {
         database = state.Database,
         managed = state.Managed,
-        scripts = state.Scripts
+        scripts = Ledger(state.Scripts)
     });
 
-    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out, scripts.Select(s => new
-    {
-        name = s.Script.ToString(),
-        hash = s.Hash.Value,
-        executedUtc = s.ExecutedUtc
-    }));
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out, Ledger(scripts));
+
+    // One shape for the ledger wherever it is reported, so a consumer reads `script list` and the scripts on a
+    // recorded state the same way.
+    private static object Ledger(IReadOnlyList<ScriptExecution> scripts) =>
+        ScriptLedger.InExecutionOrder(scripts).Select(s => new
+        {
+            name = ScriptLedger.Name(s),
+            hash = s.Hash.Value,
+            executedUtc = s.ExecutedUtc
+        });
 }

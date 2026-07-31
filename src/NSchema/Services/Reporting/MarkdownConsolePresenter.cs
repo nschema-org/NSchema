@@ -120,11 +120,12 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
             return "No script executions are recorded.";
         }
 
-        var body = new StringBuilder();
-        foreach (var script in scripts.OrderBy(s => s.ExecutedUtc))
+        var body = new StringBuilder("| Script | Executed | Body hash |\n| --- | --- | --- |\n");
+        foreach (var script in ScriptLedger.InExecutionOrder(scripts))
         {
-            body.AppendLine($"- `{script.Script}`");
+            body.AppendLine($"| `{ScriptLedger.Name(script)}` | {ScriptLedger.Executed(script)} | `{script.Hash}` |");
         }
+
         return body.ToString();
     }
 

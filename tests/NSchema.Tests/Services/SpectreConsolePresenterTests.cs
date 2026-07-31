@@ -155,7 +155,7 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSchema_FramesTheRenderedSchemaInASection()
+    public void ReportDatabase_FramesTheRenderedSchemaInASection()
     {
         // Arrange
         var database = new Database
@@ -173,8 +173,8 @@ public sealed class SpectreConsolePresenterTests
         // Act
         _sut.ReportDatabase(database);
 
-        // Assert
-        _out.Output.ShouldContain("Schema");
+        // Assert — the section is titled for what it holds, as the Markdown face titles it.
+        _out.Output.ShouldContain("Database");
         _out.Output.ShouldContain("table widgets");
     }
 
@@ -220,6 +220,34 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
+    public void ReportState_ReportsTheLedgerBesideTheSchema()
+    {
+        // Arrange — recorded state is the schema plus what has run against it, so both sections are the report.
+        var state = PartlyManagedState() with
+        {
+            Scripts = [new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)],
+        };
+
+        // Act
+        _sut.ReportState(state);
+
+        // Assert
+        _out.Output.ShouldContain("Scripts");
+        _out.Output.ShouldContain("seed-users");
+        _out.Output.ShouldContain("abc123");
+    }
+
+    [Fact]
+    public void ReportState_NothingRecorded_StillReportsTheLedgerSection()
+    {
+        // Act — an omitted section would read as "no ledger here" rather than "nothing has run".
+        _sut.ReportState(PartlyManagedState());
+
+        // Assert
+        _out.Output.ShouldContain("No script executions are recorded");
+    }
+
+    [Fact]
     public void ReportState_DimsTheWholeUnmanagedBlock()
     {
         // Arrange — a console that emits its styling, so what is dimmed can be asserted rather than inferred.
@@ -240,7 +268,39 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSchema_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
+    public void ReportScripts_WritesTheLedgerAsATable()
+    {
+        // Act
+        _sut.ReportScripts([new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
+
+        // Assert — the ledger's data as a table: name, execution time, and body hash.
+        _out.Output.ShouldContain("seed-users");
+        _out.Output.ShouldContain("1970-01-01");
+        _out.Output.ShouldContain("abc123");
+    }
+
+    [Fact]
+    public void ReportScripts_ScopedScript_NamesItByItsReference()
+    {
+        // Act
+        _sut.ReportScripts([new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
+
+        // Assert — the same `schema.name` spelling `script taint` takes.
+        _out.Output.ShouldContain("app.backfill");
+    }
+
+    [Fact]
+    public void ReportScripts_NothingRecorded_SaysSo()
+    {
+        // Act — an empty table would read as a rendering failure rather than an empty ledger.
+        _sut.ReportScripts([]);
+
+        // Assert
+        _out.Output.ShouldContain("No script executions are recorded");
+    }
+
+    [Fact]
+    public void ReportDatabase_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
     {
         // Arrange — a column whose type is an array renders `text[]`, exercising markup escaping.
         var database = new Database

@@ -12,5 +12,8 @@ Managed: 2 of 3 recorded objects.
 
 ## Scripts
 
-No script executions are recorded.
+| Script | Executed | Body hash |
+| --- | --- | --- |
+| `seed-users` | 1970-01-01 00:00:00Z | `abc123` |
+| `app.backfill` | 1970-01-02 00:00:00Z | `def456` |
 
