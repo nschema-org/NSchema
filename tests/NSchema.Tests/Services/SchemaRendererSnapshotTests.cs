@@ -17,7 +17,7 @@ using NSchema.Services.Reporting;
 namespace NSchema.Tests.Services;
 
 /// <summary>
-/// Snapshot coverage for <see cref="SchemaRenderer"/>.
+/// Snapshot coverage for <see cref="DatabaseRenderer"/>.
 /// </summary>
 public sealed class SchemaRendererSnapshotTests
 {
@@ -195,8 +195,23 @@ public sealed class SchemaRendererSnapshotTests
     }
 
     [Fact]
-    public Task Render_RichSchema() => Verify(SchemaRenderer.Render(RichSchema()));
+    public Task Render_RichSchema() => Verify(DatabaseRenderer.Render(RichSchema()));
 
     [Fact]
-    public Task Render_EmptySchema() => Verify(SchemaRenderer.Render(new Database()));
+    public Task Render_EmptySchema() => Verify(DatabaseRenderer.Render(new Database()));
+
+    /// <summary>
+    /// The same schema recorded as state, where NSchema manages the schema and a few of its objects: everything
+    /// else is marked, including an extension, and the counts follow.
+    /// </summary>
+    [Fact]
+    public Task Render_RichSchema_WithManagedSet() => Verify(DatabaseRenderer.Render(RichSchema(), new IdentitySet(
+        DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Extension("citext")],
+        SchemaObjects:
+        [
+            ObjectAddress.Table("app", "users"),
+            ObjectAddress.View("app", "active_users"),
+            ObjectAddress.Enum("app", "order_status"),
+            ObjectAddress.Sequence("app", "order_id"),
+        ])));
 }

@@ -3,7 +3,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Rendering;
 using NSchema.Model;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 
@@ -18,7 +18,14 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
 
     internal MarkdownConsolePresenter(TextWriter output) => _out = output;
 
-    public void ReportSchema(Database database) => WriteSection("Schema", Fenced(SchemaRenderer.Render(database)));
+    public void ReportDatabase(Database database) => WriteSection("Database", Fenced(DatabaseRenderer.Render(database)));
+
+    public void ReportState(DatabaseState state)
+    {
+        var database = DatabaseRenderer.Render(state.Database, state.Managed);
+        WriteSection("Database", Fenced(database));
+        WriteSection("Scripts", RenderScripts(state.Scripts));
+    }
 
     public void ReportDiff(DatabaseDiff diff) => WriteSection("Plan", RenderPlan(diff, IdentitySet.Empty));
 
@@ -31,7 +38,10 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
         }
     }
 
-    public void ReportSavedPlan(PlanFileEnvelope envelope) => ReportPlan(envelope.Plan);
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
+    {
+        WriteSection("Scripts", RenderScripts(scripts));
+    }
 
     // The diff as a ```diff fenced block. Each line keeps its marker (+ add / - remove / ! modify) at column 0 so
     // the renderer colours it — GitHub tints ! orange — with the nesting indented after the marker. Blank spacers
@@ -91,16 +101,31 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
         {
             if (i > 0)
             {
-                body.Append('\n');
+                body.AppendLine();
             }
 
             var statement = statements[i];
             var marker = statement.RunOutsideTransaction ? " (outside transaction)" : string.Empty;
-            body.Append("-- [").Append(i + 1).Append('/').Append(statements.Count).Append(']').Append(marker).Append('\n');
-            body.Append(statement.Sql.Value).Append('\n');
+            body.Append("-- [").Append(i + 1).Append('/').Append(statements.Count).Append(']').Append(marker).AppendLine();
+            body.Append(statement.Sql.Value).AppendLine();
         }
 
         return Fenced(body.ToString(), "sql");
+    }
+
+    private static string RenderScripts(IReadOnlyList<ScriptExecution> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            return "No script executions are recorded.";
+        }
+
+        var body = new StringBuilder();
+        foreach (var script in scripts.OrderBy(s => s.ExecutedUtc))
+        {
+            body.AppendLine($"- `{script.Script}`");
+        }
+        return body.ToString();
     }
 
     private static string Fenced(string content, string language = "") =>

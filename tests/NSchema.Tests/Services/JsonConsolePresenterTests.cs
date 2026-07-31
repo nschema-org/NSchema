@@ -2,10 +2,11 @@ using System.Text.Json;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Model;
+using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Services;
 
@@ -81,7 +82,7 @@ public sealed class JsonConsolePresenterTests
         _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(),
             [new SqlStatement("CREATE INDEX CONCURRENTLY i ON t (c)", RunOutsideTransaction: true)]));
 
-        var evt = StdoutEvents().Single(e => e.GetProperty("type").GetString() == "sqlPlan");
+        var evt = StdoutEvents().Single(e => e.GetProperty("type").GetString() == "sql");
         var statement = evt.GetProperty("statements")[0];
         statement.GetProperty("sql").GetString()!.ShouldContain("CONCURRENTLY");
         statement.GetProperty("runOutsideTransaction").GetBoolean().ShouldBeTrue();
@@ -99,7 +100,7 @@ public sealed class JsonConsolePresenterTests
         _sut.ReportPlan(plan);
 
         var events = StdoutEvents();
-        events.Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "adoptions", "sqlPlan"]);
+        events.Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "adoptions", "sql"]);
         events[1].GetProperty("adopted").GetProperty("schemaObjects")[0].GetProperty("name").GetString().ShouldBe("users");
     }
 
@@ -110,14 +111,31 @@ public sealed class JsonConsolePresenterTests
         // is emitted even when the text faces would omit the section.
         _sut.ReportPlan(new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]), []));
 
-        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan"]);
+        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sql"]);
+    }
+
+    [Fact]
+    public void ReportState_EmitsTheSchemaAndWhatIsManagedOfIt()
+    {
+        // `state show` is a query, so it answers with one bare object — keyed as the state payload keys them.
+        var state = new DatabaseState(new Database { Schemas = [new Schema { Name = "app" }] }, [])
+        {
+            Managed = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        _sut.ReportState(state);
+
+        var evt = StdoutEvents().ShouldHaveSingleItem();
+        evt.TryGetProperty("type", out _).ShouldBeFalse();
+        evt.GetProperty("database").GetProperty("schemas")[0].GetProperty("name").GetString().ShouldBe("app");
+        evt.GetProperty("managed").GetProperty("schemaObjects")[0].GetProperty("name").GetString().ShouldBe("users");
     }
 
     [Fact]
     public void ReportSchema_EmitsBareSchemaObject_WithNoTypeEnvelope()
     {
         // A `show` is a single query, so the schema is the whole object — no NDJSON "type" discriminator to filter past.
-        _sut.ReportSchema(new Database());
+        _sut.ReportDatabase(new Database());
 
         var evt = StdoutEvents().ShouldHaveSingleItem();
         evt.ValueKind.ShouldBe(JsonValueKind.Object);
@@ -125,24 +143,21 @@ public sealed class JsonConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSavedPlan_EmitsBareCompositeObject_WithDiffAndSql()
+    public void ReportPlan_CarriesTheScriptsOnTheDiff_AndTheStatementsOnTheSqlEvent()
     {
+        // A plan read back from a saved file is the same artifact as a freshly computed one, so `plan show`
+        // reports the same events as `plan` — there is no separate saved-plan shape to parse.
         var diff = new DatabaseDiff([SchemaDiff.Added("app")])
         {
             DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
         };
-        var envelope = new PlanFileEnvelope(
-            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
-            CreatedAt: default);
 
-        _sut.ReportSavedPlan(envelope);
+        _sut.ReportPlan(new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]));
 
-        // One bare object the whole `plan show` answer lives in — no "type" envelope, no multi-line stream to slurp.
-        var evt = StdoutEvents().ShouldHaveSingleItem();
-        evt.TryGetProperty("type", out _).ShouldBeFalse();
-        evt.GetProperty("diff").GetProperty("isEmpty").GetBoolean().ShouldBeFalse();
-        evt.GetProperty("diff").GetProperty("deploymentScripts")[0].GetProperty("name").GetString().ShouldBe("seed-roles");
-        evt.GetProperty("sql")[0].GetProperty("sql").GetString()!.ShouldContain("CREATE TABLE app.widgets");
+        var events = StdoutEvents();
+        events.Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sql"]);
+        events[0].GetProperty("diff").GetProperty("deploymentScripts")[0].GetProperty("name").GetString().ShouldBe("seed-roles");
+        events[1].GetProperty("statements")[0].GetProperty("sql").GetString()!.ShouldContain("CREATE TABLE app.widgets");
     }
 
     [Fact]
@@ -152,6 +167,6 @@ public sealed class JsonConsolePresenterTests
         _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
         _sut.ReportDiff(new DatabaseDiff());
 
-        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sqlPlan", "diff"]);
+        StdoutEvents().Select(e => e.GetProperty("type").GetString()).ShouldBe(["diff", "sql", "diff"]);
     }
 }

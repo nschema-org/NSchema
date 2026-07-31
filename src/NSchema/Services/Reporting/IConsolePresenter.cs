@@ -1,7 +1,7 @@
 using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 
@@ -11,12 +11,17 @@ namespace NSchema.Services.Reporting;
 internal interface IConsolePresenter
 {
     /// <summary>
-    /// Presents a single database schema as human-readable output (e.g. the recorded state for a show operation).
+    /// Presents a database schema.
     /// </summary>
-    void ReportSchema(Database database);
+    void ReportDatabase(Database database);
 
     /// <summary>
-    /// Presents the computed migration diff as human-readable output.
+    /// Presents the recorded state.
+    /// </summary>
+    void ReportState(DatabaseState state);
+
+    /// <summary>
+    /// Presents the computed migration diff.
     /// </summary>
     void ReportDiff(DatabaseDiff diff);
 
@@ -26,7 +31,7 @@ internal interface IConsolePresenter
     void ReportPlan(MigrationPlan plan);
 
     /// <summary>
-    /// Presents a saved plan file as a single combined output.
+    /// Presents the script executions recorded in the state ledger.
     /// </summary>
-    void ReportSavedPlan(PlanFileEnvelope envelope);
+    void ReportScripts(IReadOnlyList<ScriptExecution> scripts);
 }

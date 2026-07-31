@@ -8,8 +8,8 @@ using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Services;
 
@@ -165,7 +165,7 @@ public sealed class MarkdownConsolePresenterTests
     [Fact]
     public Task ReportSchema()
     {
-        _sut.ReportSchema(new Database
+        _sut.ReportDatabase(new Database
         {
             Schemas =
             [
@@ -181,17 +181,31 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
-    public Task ReportSavedPlan()
+    public Task ReportState()
     {
-        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
+        // The recorded schema carries more than NSchema manages, so the rest is marked and counted.
+        var database = new Database
         {
-            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
+            Schemas =
+            [
+                new Schema
+                {
+                    Name = "app",
+                    Tables =
+                    [
+                        new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                        new Table { Name = "legacy_audit", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                    ],
+                },
+            ],
         };
-        var envelope = new PlanFileEnvelope(
-            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
-            CreatedAt: default);
 
-        _sut.ReportSavedPlan(envelope);
+        _sut.ReportState(new DatabaseState(database, [])
+        {
+            Managed = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "widgets")]),
+        });
 
         return Verify(_out.ToString());
     }

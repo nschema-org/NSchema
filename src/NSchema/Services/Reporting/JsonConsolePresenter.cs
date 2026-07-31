@@ -1,7 +1,7 @@
 using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 
@@ -16,24 +16,27 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     internal JsonConsolePresenter(TextWriter output) => _out = output;
 
-    public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, new { type = "diff", diff });
+    public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, diff);
+    public void ReportDatabase(Database database) => JsonOutput.Write(_out, database);
 
-    public void ReportPlan(MigrationPlan plan)
+    public void ReportPlan(MigrationPlan plan) => JsonOutput.Write(_out, new
     {
-        ReportDiff(plan.Diff);
-        if (!plan.Adopted.IsEmpty)
-        {
-            JsonOutput.Write(_out, new { type = "adoptions", adopted = plan.Adopted });
-        }
-        JsonOutput.Write(_out, new { type = "sqlPlan", statements = plan.Statements });
-    }
-
-    public void ReportSchema(Database database) => JsonOutput.Write(_out, database);
-
-    public void ReportSavedPlan(PlanFileEnvelope envelope) => JsonOutput.Write(_out, new
-    {
-        diff = envelope.Plan.Diff,
-        adopted = envelope.Plan.Adopted,
-        sql = envelope.Plan.Statements,
+        diff = plan.Diff,
+        adopted = plan.Adopted,
+        sql = plan.Statements
     });
+
+    public void ReportState(DatabaseState state) => JsonOutput.Write(_out, new
+    {
+        database = state.Database,
+        managed = state.Managed,
+        scripts = state.Scripts
+    });
+
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out, scripts.Select(s => new
+    {
+        name = s.Script.ToString(),
+        hash = s.Hash.Value,
+        executedUtc = s.ExecutedUtc
+    }));
 }

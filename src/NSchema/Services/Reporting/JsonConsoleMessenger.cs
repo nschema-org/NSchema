@@ -55,10 +55,6 @@ internal sealed class JsonConsoleMessenger : IConsoleMessenger
         ? new LockReport(false, null, null, null, null, null)
         : new LockReport(true, info.Id.Value, info.Operation, info.Who.Value, info.CreatedUtc, info.ExpiresUtc));
 
-    // `script list` is a structured query too, so the ledger emits as a single clean array.
-    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out,
-        scripts.Select(s => new { Name = s.Script.ToString(), Hash = s.Hash.Value, s.ExecutedUtc }));
-
     public void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts) => JsonOutput.Write(_out, scripts);
 
     // The plugin inspection commands are structured queries, so they emit a single clean object/array (not the gated

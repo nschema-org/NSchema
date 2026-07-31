@@ -42,7 +42,7 @@ internal static class DatabaseShowCommand
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportSchema(database.Require());
+        app.Presenter.ReportDatabase(database.Require());
         return ExitCodes.NoChanges;
     }
 }

@@ -8,8 +8,8 @@ using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
+using NSchema.State.Domain;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
@@ -171,11 +171,72 @@ public sealed class SpectreConsolePresenterTests
         };
 
         // Act
-        _sut.ReportSchema(database);
+        _sut.ReportDatabase(database);
 
         // Assert
         _out.Output.ShouldContain("Schema");
         _out.Output.ShouldContain("table widgets");
+    }
+
+    // The ANSI escape for [dim], which a console emitting its styling writes ahead of the dimmed text.
+    private const string Dim = "\u001b[2m";
+
+    /// <summary>Recorded state whose schema holds one managed table and one NSchema knows nothing about.</summary>
+    private static DatabaseState PartlyManagedState()
+    {
+        var database = new Database
+        {
+            Schemas =
+            [
+                new Schema
+                {
+                    Name = "app",
+                    Tables =
+                    [
+                        new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                        new Table { Name = "legacy_audit", Columns = [new Column { Name = "archived_at", Type = SqlType.Text }] },
+                    ],
+                },
+            ],
+        };
+
+        return new DatabaseState(database, [])
+        {
+            Managed = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+    }
+
+    [Fact]
+    public void ReportState_MarksWhatIsNotManaged()
+    {
+        // Act
+        _sut.ReportState(PartlyManagedState());
+
+        // Assert — the marker survives markup escaping.
+        _out.Output.ShouldContain("table legacy_audit [unmanaged]");
+        _out.Output.ShouldContain("Managed: 2 of 3 recorded objects.");
+    }
+
+    [Fact]
+    public void ReportState_DimsTheWholeUnmanagedBlock()
+    {
+        // Arrange — a console that emits its styling, so what is dimmed can be asserted rather than inferred.
+        var console = new TestConsole().EmitAnsiSequences();
+        console.Profile.Width = 200;
+        var sut = new SpectreConsolePresenter(console);
+
+        // Act
+        sut.ReportState(PartlyManagedState());
+
+        // Assert — the marked object and the columns beneath it are dimmed; what NSchema manages is not.
+        var lines = console.Output.Split('\n');
+        lines.Single(line => line.Contains("table legacy_audit")).ShouldContain(Dim);
+        lines.Single(line => line.Contains("archived_at")).ShouldContain(Dim);
+        lines.Single(line => line.Contains("table users")).ShouldNotContain(Dim);
+        lines.Single(line => line.Contains("id bigint")).ShouldNotContain(Dim);
+        lines.Single(line => line.Contains("Managed:")).ShouldNotContain(Dim);
     }
 
     [Fact]
@@ -195,7 +256,7 @@ public sealed class SpectreConsolePresenterTests
         };
 
         // Act
-        _sut.ReportSchema(database);
+        _sut.ReportDatabase(database);
 
         // Assert
         _out.Output.ShouldContain("text[]");
@@ -246,28 +307,5 @@ public sealed class SpectreConsolePresenterTests
         // Assert
         _out.Output.ShouldContain("No changes detected");
         _out.Output.ShouldNotContain("SQL");
-    }
-
-    [Fact]
-    public void ReportSavedPlan_RendersDiffAndSqlSections()
-    {
-        // Arrange — the scripts ride the plan's diff; only --json collapses to a single object.
-        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
-        {
-            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
-        };
-        var envelope = new PlanFileEnvelope(
-            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]),
-            CreatedAt: default);
-
-        // Act
-        _sut.ReportSavedPlan(envelope);
-
-        // Assert
-        _out.Output.ShouldContain("Plan");
-        _out.Output.ShouldContain("schema app");
-        _out.Output.ShouldContain("script seed-roles (on pre deployment)");
-        _out.Output.ShouldContain("SQL");
-        _out.Output.ShouldContain("CREATE TABLE app.widgets");
     }
 }

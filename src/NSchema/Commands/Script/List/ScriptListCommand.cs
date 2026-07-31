@@ -33,7 +33,7 @@ internal static class ScriptListCommand
             return ExitCodes.Error;
         }
 
-        app.Messenger.ReportScripts(result.Require().State?.Scripts ?? []);
+        app.Presenter.ReportScripts(result.Require().State?.Scripts ?? []);
         return ExitCodes.NoChanges;
     }
 }
