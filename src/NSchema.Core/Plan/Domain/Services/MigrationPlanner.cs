@@ -165,7 +165,7 @@ internal sealed class MigrationPlanner(
     /// </summary>
     private static IdentitySet ManagedAfterApply(CurrentState current, ProjectDefinition project, PlanningScope scope)
     {
-        var retained = current.Managed.Except(current.Managed.CoveredBy(scope));
+        var retained = current.Managed.Except(current.Managed.ScopedTo(scope));
         var scoped = project.ScopedTo(scope).Database;
         var declared = scoped.Identities();
 

@@ -68,9 +68,9 @@ public sealed record IdentitySet(IReadOnlyList<DatabaseAddress>? DatabaseObjects
         [.. SchemaObjects.Union(other.SchemaObjects)]);
 
     /// <summary>
-    /// The subset of identities the scope covers.
+    /// The set restricted to the identities the scope covers.
     /// </summary>
-    public IdentitySet CoveredBy(PlanningScope scope) => scope.IsUnscoped ? this : new IdentitySet(
+    public IdentitySet ScopedTo(PlanningScope scope) => scope.IsUnscoped ? this : new IdentitySet(
         // Nothing contains an extension, so no schema scope excludes one.
         [.. DatabaseObjects.Where(o => o.Kind != DatabaseObjectKind.Schema || scope.Contains(o))],
         [.. SchemaObjects.Where(scope.Contains)]);

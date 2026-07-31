@@ -83,7 +83,7 @@ public sealed class Database : IEquatable<Database>
 
         // A targeted object still needs its container in the tree, even though the scope does not cover the
         // schema itself.
-        var covered = Identities().CoveredBy(scope);
+        var covered = Identities().ScopedTo(scope);
         return FilteredTo(covered with
         {
             DatabaseObjects = [.. covered.DatabaseObjects.Union(covered.SchemaObjects.Select(o => DatabaseAddress.Schema(o.Schema)))],

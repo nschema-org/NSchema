@@ -27,6 +27,17 @@ public sealed record DatabaseState(Database Database, IReadOnlyList<ScriptExecut
     public IdentitySet Managed { get; init; } = Managed ?? IdentitySet.Empty;
 
     /// <summary>
+    /// Restricts the recorded state to what the scope covers.
+    /// </summary>
+    /// <param name="scope">The scope to restrict the state to.</param>
+    public DatabaseState ScopedTo(PlanningScope scope) => scope.IsUnscoped ? this : this with
+    {
+        Database = Database.ScopedTo(scope),
+        Scripts = [.. Scripts.Where(e => e.Script.Schema is not { } schema || scope.Contains(schema))],
+        Managed = Managed.ScopedTo(scope),
+    };
+
+    /// <summary>
     /// Records the given executions into the ledger, replacing any earlier execution recorded for the same script.
     /// </summary>
     /// <param name="executions">The executions to record.</param>

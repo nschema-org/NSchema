@@ -1,5 +1,7 @@
 using NSchema.Model;
+using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
+using NSchema.Model.Tables;
 using NSchema.State.Domain;
 
 namespace NSchema.Tests.State;
@@ -113,4 +115,52 @@ public sealed class DatabaseStateTests
     [Fact]
     public void RemoveScript_NothingRecordedUnderTheName_ReturnsTheSameState()
         => DatabaseState.Empty.RemoveExecution(new ScriptReference(null, "seed")).ShouldBeSameAs(DatabaseState.Empty);
+
+    /// <summary>State across two schemas: each holds a table, one of them managed, and each has a ledger entry
+    /// alongside a database-wide one.</summary>
+    private static DatabaseState TwoSchemas() => new(
+        new Database
+        {
+            Schemas =
+            [
+                new Schema { Name = "app", Tables = [new Table { Name = "users" }] },
+                new Schema { Name = "billing", Tables = [new Table { Name = "invoices" }] },
+            ],
+        },
+        [
+            new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now),
+            new ScriptExecution(new ScriptReference("app", "backfill"), "abc", _now),
+            new ScriptExecution(new ScriptReference("billing", "backfill"), "abc", _now),
+        ])
+    {
+        Managed = new IdentitySet(
+            DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("billing")],
+            SchemaObjects: [ObjectAddress.Table("app", "users")]),
+    };
+
+    [Fact]
+    public void ScopedTo_NarrowsTheSchemaAndWhatIsManagedOfIt()
+    {
+        // Act
+        var scoped = TwoSchemas().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert
+        scoped.Database.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
+        scoped.Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
+        scoped.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
+    }
+
+    [Fact]
+    public void ScopedTo_KeepsTheLedgerEntriesTheScopeHolds_AndTheDatabaseWideOnes()
+    {
+        // Act
+        var scoped = TwoSchemas().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert — a script scoped to no schema cannot fall outside the scope.
+        scoped.Scripts.Select(e => e.Script).ShouldBe([new ScriptReference(null, "seed"), new ScriptReference("app", "backfill")]);
+    }
+
+    [Fact]
+    public void ScopedTo_Unscoped_ReturnsTheSameState()
+        => DatabaseState.Empty.ScopedTo(PlanningScope.All).ShouldBeSameAs(DatabaseState.Empty);
 }

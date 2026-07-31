@@ -121,7 +121,7 @@ public sealed class IdentitySetTests
     }
 
     [Fact]
-    public void CoveredBy_ProjectsTheCoverOntoTheSet_KeepingGlobals()
+    public void ScopedTo_ProjectsTheCoverOntoTheSet_KeepingGlobals()
     {
         // The bridge between the two surfaces: the extensional record filtered by the intensional cover.
         // Extensions are database-global, so every scope covers them.
@@ -129,7 +129,7 @@ public sealed class IdentitySetTests
             DatabaseObjects: [DatabaseAddress.Schema(_app), DatabaseAddress.Schema("other"), DatabaseAddress.Extension("citext")],
             SchemaObjects: [Table("users"), ObjectAddress.Table("other", "t")]);
 
-        var covered = set.CoveredBy(PlanningScope.To(DatabaseAddress.Schema(_app)));
+        var covered = set.ScopedTo(PlanningScope.To(DatabaseAddress.Schema(_app)));
 
         covered.Schemas.Select(s => s.Name).ShouldBe([_app]);
         covered.SchemaObjects.ShouldBe([Table("users")]);
@@ -137,7 +137,7 @@ public sealed class IdentitySetTests
     }
 
     [Fact]
-    public void CoveredBy_ObjectEntry_CoversTheObject_NotItsSchema()
+    public void ScopedTo_ObjectEntry_CoversTheObject_NotItsSchema()
     {
         // The managed-set math depends on this: targeting an object must not claim (or release) management
         // of its schema container. Extensions stay database-global, covered by every scope.
@@ -145,7 +145,7 @@ public sealed class IdentitySetTests
             DatabaseObjects: [DatabaseAddress.Schema(_app), DatabaseAddress.Extension("citext")],
             SchemaObjects: [Table("users"), Table("orders")]);
 
-        var covered = set.CoveredBy(PlanningScope.To([new ObjectAddress(_app, "users")]));
+        var covered = set.ScopedTo(PlanningScope.To([new ObjectAddress(_app, "users")]));
 
         covered.Schemas.ShouldBeEmpty();
         covered.SchemaObjects.ShouldBe([Table("users")]);
