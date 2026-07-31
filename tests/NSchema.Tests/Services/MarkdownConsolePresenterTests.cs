@@ -8,8 +8,8 @@ using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
+using NSchema.State.Domain;
 
 namespace NSchema.Tests.Services;
 
@@ -110,29 +110,62 @@ public sealed class MarkdownConsolePresenterTests
     }
 
     [Fact]
-    public Task ReportSqlPlan()
+    public Task ReportPlan_AdoptionOnly()
     {
-        _sut.ReportSqlPlan(
+        // The database already matches the project: no diff, no SQL, and the objects change hands.
+        var plan = new MigrationPlan(new DatabaseDiff(), [])
+        {
+            Adopted = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        _sut.ReportPlan(plan);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_ChangesAndAdoptions()
+    {
+        // Adoption lists outside the diff block: nothing is done to those objects, so no marker fits them.
+        var plan = new MigrationPlan(RichDiff(), [])
+        {
+            Adopted = new IdentitySet(SchemaObjects: [ObjectAddress.Table("app", "legacy_audit")]),
+        };
+
+        _sut.ReportPlan(plan);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_WithSql()
+    {
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
         [
             new SqlStatement("CREATE TABLE app.users (\n    id bigint NOT NULL\n)", RunOutsideTransaction: false),
             new SqlStatement("CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)", RunOutsideTransaction: true),
         ]);
 
-        return Verify(_out.ToString());
-    }
-
-    [Fact]
-    public Task ReportSqlPlan_EmptyPlan()
-    {
-        _sut.ReportSqlPlan([]);
+        _sut.ReportPlan(plan);
 
         return Verify(_out.ToString());
     }
 
     [Fact]
-    public Task ReportSchema()
+    public Task ReportPlan_NoStatements()
     {
-        _sut.ReportSchema(new Database
+        // An apply that executes nothing gets no SQL section; the plan section has already said as much.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportDatabase()
+    {
+        _sut.ReportDatabase(new Database
         {
             Schemas =
             [
@@ -147,18 +180,68 @@ public sealed class MarkdownConsolePresenterTests
         return Verify(_out.ToString());
     }
 
-    [Fact]
-    public Task ReportSavedPlan()
+    /// <summary>A recorded schema holding one managed table and one NSchema knows nothing about.</summary>
+    private static Database PartlyManaged() => new()
     {
-        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
-        {
-            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
-        };
-        var envelope = new PlanFileEnvelope(
-            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ()", RunOutsideTransaction: false)]),
-            CreatedAt: default);
+        Schemas =
+        [
+            new Schema
+            {
+                Name = "app",
+                Tables =
+                [
+                    new Table { Name = "widgets", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                    new Table { Name = "legacy_audit", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                ],
+            },
+        ],
+    };
 
-        _sut.ReportSavedPlan(envelope);
+    private static IdentitySet ManagedInApp() => new(
+        DatabaseObjects: [DatabaseAddress.Schema("app")],
+        SchemaObjects: [ObjectAddress.Table("app", "widgets")]);
+
+    [Fact]
+    public Task ReportState()
+    {
+        // The recorded schema carries more than NSchema manages, so the rest is marked and counted; an empty
+        // ledger still gets its section, so the report has a fixed shape.
+        _sut.ReportState(new DatabaseState(PartlyManaged(), []) { Managed = ManagedInApp() });
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportState_WithRecordedScripts()
+    {
+        var scripts = new[]
+        {
+            new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("def456"), DateTimeOffset.UnixEpoch.AddDays(1)),
+            new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch),
+        };
+
+        _sut.ReportState(new DatabaseState(PartlyManaged(), scripts) { Managed = ManagedInApp() });
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportScripts()
+    {
+        // `script list` reports the ledger on its own — the same section the recorded state carries.
+        _sut.ReportScripts(
+        [
+            new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch),
+            new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("def456"), DateTimeOffset.UnixEpoch.AddDays(1)),
+        ]);
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportScripts_NothingRecorded()
+    {
+        _sut.ReportScripts([]);
 
         return Verify(_out.ToString());
     }

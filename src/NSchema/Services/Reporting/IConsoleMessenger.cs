@@ -1,5 +1,4 @@
 using NSchema.Configuration.Plugins;
-using NSchema.State.Domain;
 using NSchema.State.Locks;
 
 namespace NSchema.Services.Reporting;
@@ -43,11 +42,6 @@ internal interface IConsoleMessenger
     /// Reports the information about a lock.
     /// </summary>
     void ReportLockInfo(StateLockInfo? info);
-
-    /// <summary>
-    /// Reports the script executions recorded in the state ledger.
-    /// </summary>
-    void ReportScripts(IReadOnlyList<ScriptExecution> scripts);
 
     /// <summary>
     /// Reports the scripts a project declares, with their body hashes.

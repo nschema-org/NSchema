@@ -1,4 +1,12 @@
-﻿## SQL
+﻿## Plan
+
+```diff
++ schema app
+```
+
+**Plan:** 1 to add, 0 to change, 0 to destroy.
+
+## SQL
 
 ```sql
 -- [1/2]

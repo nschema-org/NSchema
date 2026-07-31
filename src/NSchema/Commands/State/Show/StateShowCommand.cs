@@ -69,7 +69,7 @@ internal static class StateShowCommand
         return await ShowRecordedState(app, scope, cancellationToken);
     }
 
-    private static async Task<int> ShowRecordedState(CliApplication app, string[]? scope, CancellationToken cancellationToken)
+    private static async Task<int> ShowRecordedState(CliApplication app, string[]? scopedObjects, CancellationToken cancellationToken)
     {
         var read = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (read.IsFailure)
@@ -84,14 +84,15 @@ internal static class StateShowCommand
             return ExitCodes.Error;
         }
 
-        var planningScope = scope.ToPlanningScope();
-        if (planningScope.IsFailure)
+        var scope = scopedObjects.ToPlanningScope();
+        if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(planningScope.Diagnostics);
+            app.Messenger.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportSchema(state.Database.ScopedTo(planningScope.Require()));
+        state = state.ScopedTo(scope.Require());
+        app.Presenter.ReportState(state);
         return ExitCodes.NoChanges;
     }
 }

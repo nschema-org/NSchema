@@ -47,8 +47,9 @@ it against API-surface stability, not just the boundary rule.
   `ReportDiagnostics`, the lock/plugin query renderers). App-free: built straight from the `ParseResult` by
   `ReporterFactory`, so it works before/without an application (top-level error handling in `Program.cs`, the `plugin`
   commands). With an app it's reached as **`app.Messenger`**.
-- **`IConsolePresenter`** — an operation's structured output (`ReportDiff`/`ReportSchema`/`ReportSqlPlan`/`ReportPlan`,
-  plus `ReportSavedPlan` for `plan show`). It owns the core renderers directly — `DiffRenderer`/`SchemaRenderer`/
+- **`IConsolePresenter`** — an operation's structured output (`ReportDatabase`/`ReportState`/`ReportDiff`/
+  `ReportPlan`/`ReportScripts`; `ReportPlan` also serves `plan show`, since a saved plan is the same artifact).
+  It owns the core renderers directly — `DiffRenderer`/`DatabaseRenderer`/
   `SqlPlanRenderer` via their `.Default` singletons, stateless utilities rather than DI services — and wraps their
   plain-text output in Spectre markup. Reached as **`app.Presenter`**.
 - The messenger and presenter are **stateless console utilities the CLI owns directly, not container services**:
@@ -60,13 +61,13 @@ it against API-surface stability, not just the boundary rule.
   implemented CLI-side by `Services/Reporting/ConsoleProgress` (wrapping the messenger) and registered via the builder's
   `UseProgressReporter(new ConsoleProgress(messenger))`.
 
-The `--json` shape splits on the **nature of the command**, not the method. A *progressive operation* (`apply`, `plan`,
-`destroy`, `drift`) emits an NDJSON stream of `{"type":…}` events on stdout — so `ReportDiff`/`ReportPlan`/`ReportSqlPlan`
-each carry a discriminator. A *query* (`db show`, `state show`, `plan show`, `lock status`, `script list`, `plugin …`) is one request
-for one answer, so it emits a **single bare object** on stdout (no `type` envelope): `ReportSchema` writes the schema
-directly, and `plan show` uses `ReportSavedPlan` to fold its diff + scripts + SQL into one `{diff, scripts, sql}` object
-rather than three lines. Either way, line-level narration (`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}`
-stream — so `cmd --json | jq` only ever sees the result, never the narration.
+The `--json` shape follows **what is being reported**, not which command asked. Every presenter report writes a
+**single bare object** (or array) on one line of stdout, keyed for the artifact: `ReportDatabase` writes the schema
+directly, `ReportDiff` the diff, `ReportPlan` `{diff, adopted, sql}`, `ReportState` `{database, managed, scripts}`,
+and `ReportScripts` a bare array — so `cmd --json | jq` reads a result without unwrapping a discriminator. NDJSON
+still frames a run that reports more than once (each report is its own complete line). Line-level narration
+(`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}` stream, where the discriminator does the work —
+so `cmd --json | jq` only ever sees the result, never the narration.
 
 ## Commands
 

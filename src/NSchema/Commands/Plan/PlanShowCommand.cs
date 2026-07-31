@@ -35,7 +35,7 @@ internal static class PlanShowCommand
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportSavedPlan(envelope.Require());
+        app.Presenter.ReportPlan(envelope.Require().Plan);
         return ExitCodes.NoChanges;
     }
 }

@@ -1,0 +1,16 @@
+﻿## Database
+
+```
+schema app
+  table widgets
+    id bigint not null
+  table legacy_audit [unmanaged]
+    id bigint not null
+
+Managed: 2 of 3 recorded objects.
+```
+
+## Scripts
+
+No script executions are recorded.
+

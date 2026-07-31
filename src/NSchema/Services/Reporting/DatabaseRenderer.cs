@@ -14,14 +14,23 @@ namespace NSchema.Services.Reporting;
 /// <summary>
 /// Renders a <see cref="Database"/> as human-readable text, presenting it as an indented tree.
 /// </summary>
-internal static class SchemaRenderer
+internal static class DatabaseRenderer
 {
+    /// <summary>
+    /// The mark on anything the recorded schema holds that NSchema does not manage. Ends the line it is on, so a
+    /// renderer can style what it marks.
+    /// </summary>
+    public const string UnmanagedMarker = " [unmanaged]";
+
     private const string Indent = "  ";
 
     /// <summary>
     /// Renders the given database as human-readable text.
     /// </summary>
-    public static string Render(Database database)
+    /// <param name="database">The database to render.</param>
+    /// <param name="managed">What NSchema manages, marking everything else as unmanaged; omitted where
+    /// management is not known (a live database has no managed set of its own).</param>
+    public static string Render(Database database, IdentitySet? managed = null)
     {
         if (database.Schemas.Count == 0 && database.Extensions.Count == 0)
         {
@@ -39,21 +48,28 @@ internal static class SchemaRenderer
             {
                 sb.Append(" (version ").Append(version).Append(')');
             }
-            sb.AppendLine(CommentSuffix(extension.Comment));
+            sb.Append(CommentSuffix(extension.Comment))
+                .AppendLine(ManagementSuffix(managed?.ContainsExtension(extension.Name)));
         }
 
         foreach (var definition in database.Schemas)
         {
-            RenderSchema(sb, definition);
+            RenderSchema(sb, definition, managed);
+        }
+
+        if (managed is not null)
+        {
+            sb.AppendLine().AppendLine(ManagementSummary(database, managed));
         }
 
         return sb.ToString().Trim();
     }
 
-    private static void RenderSchema(StringBuilder sb, Schema schema)
+    private static void RenderSchema(StringBuilder sb, Schema schema, IdentitySet? managed)
     {
         sb.AppendLine();
-        sb.Append("schema ").Append(schema.Name).AppendLine(CommentSuffix(schema.Comment));
+        sb.Append("schema ").Append(schema.Name).Append(CommentSuffix(schema.Comment))
+            .AppendLine(ManagementSuffix(managed?.ContainsSchema(schema.Name)));
 
         foreach (var grant in schema.Grants)
         {
@@ -62,19 +78,20 @@ internal static class SchemaRenderer
 
         foreach (var table in schema.Tables)
         {
-            RenderTable(sb, table);
+            RenderTable(sb, table, ManagementSuffix(managed?.Contains(table)));
         }
 
         foreach (var view in schema.Views)
         {
-            RenderView(sb, view);
+            RenderView(sb, view, ManagementSuffix(managed?.Contains(view)));
         }
 
         foreach (var enumType in schema.Enums)
         {
             sb.Append(Indent).Append("enum ").Append(enumType.Name)
                 .Append(" (").Append(string.Join(", ", enumType.Values)).Append(')')
-                .AppendLine(CommentSuffix(enumType.Comment));
+                .Append(CommentSuffix(enumType.Comment))
+                .AppendLine(ManagementSuffix(managed?.Contains(enumType)));
         }
 
         foreach (var domain in schema.Domains)
@@ -89,7 +106,8 @@ internal static class SchemaRenderer
             {
                 sb.Append(" default ").Append(@default);
             }
-            sb.Append(')').AppendLine(CommentSuffix(domain.Comment));
+            sb.Append(')').Append(CommentSuffix(domain.Comment))
+                .AppendLine(ManagementSuffix(managed?.Contains(domain)));
             foreach (var check in domain.Checks)
             {
                 sb.Append(Indent).Append(Indent).Append("check ").Append(check.Name)
@@ -101,7 +119,8 @@ internal static class SchemaRenderer
         {
             sb.Append(Indent).Append("type ").Append(compositeType.Name)
                 .Append(" (").Append(string.Join(", ", compositeType.Fields.Select(f => $"{f.Name} {f.DataType}"))).Append(')')
-                .AppendLine(CommentSuffix(compositeType.Comment));
+                .Append(CommentSuffix(compositeType.Comment))
+                .AppendLine(ManagementSuffix(managed?.Contains(compositeType)));
         }
 
         foreach (var sequence in schema.Sequences)
@@ -111,7 +130,8 @@ internal static class SchemaRenderer
             {
                 sb.Append(" (").Append(options).Append(')');
             }
-            sb.AppendLine(CommentSuffix(sequence.Comment));
+            sb.Append(CommentSuffix(sequence.Comment))
+                .AppendLine(ManagementSuffix(managed?.Contains(sequence)));
         }
 
         // Routines render as kind + name + arguments only; the definition is opaque and arbitrarily long.
@@ -120,8 +140,22 @@ internal static class SchemaRenderer
             var label = routine.RoutineKind == RoutineKind.Procedure ? "procedure" : "function";
             sb.Append(Indent).Append(label).Append(' ').Append(routine.Name)
                 .Append('(').Append(routine.Arguments).Append(')')
-                .AppendLine(CommentSuffix(routine.Comment));
+                .Append(CommentSuffix(routine.Comment))
+                .AppendLine(ManagementSuffix(managed?.Contains(routine)));
         }
+    }
+
+    // Management is object-granular, so only a schema, an extension, or a schema-level object carries a mark —
+    // never a column or a constraint. Nothing is marked at all when the caller has no managed set to compare with.
+    private static string ManagementSuffix(bool? isManaged) => isManaged == false ? UnmanagedMarker : string.Empty;
+
+    private static string ManagementSummary(Database database, IdentitySet managed)
+    {
+        var identities = database.Identities();
+        var total = identities.DatabaseObjects.Count + identities.SchemaObjects.Count;
+        var count = identities.Intersect(managed);
+
+        return $"Managed: {count.DatabaseObjects.Count + count.SchemaObjects.Count} of {total} recorded objects.";
     }
 
     private static string? FormatSequenceOptions(SequenceOptions options)
@@ -165,10 +199,11 @@ internal static class SchemaRenderer
         return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
-    private static void RenderView(StringBuilder sb, View view)
+    private static void RenderView(StringBuilder sb, View view, string management)
     {
         var label = view.IsMaterialized ? "materialized view" : "view";
-        sb.Append(Indent).Append(label).Append(' ').Append(view.Name).AppendLine(CommentSuffix(view.Comment));
+        sb.Append(Indent).Append(label).Append(' ').Append(view.Name)
+            .Append(CommentSuffix(view.Comment)).AppendLine(management);
         foreach (var dependency in view.DependsOn)
         {
             sb.Append(Indent).Append(Indent).Append("reads ").AppendLine(dependency.Value);
@@ -179,9 +214,10 @@ internal static class SchemaRenderer
         }
     }
 
-    private static void RenderTable(StringBuilder sb, Table table)
+    private static void RenderTable(StringBuilder sb, Table table, string management)
     {
-        sb.Append(Indent).Append("table ").Append(table.Name).AppendLine(CommentSuffix(table.Comment));
+        sb.Append(Indent).Append("table ").Append(table.Name)
+            .Append(CommentSuffix(table.Comment)).AppendLine(management);
 
         foreach (var column in table.Columns)
         {

@@ -84,8 +84,7 @@ internal static class PlanCommand
         // A policy-blocked result still carries the complete plan, so the offending change stays visible.
         if (result.Value?.Plan is { } plan)
         {
-            presenter.ReportDiff(plan.Diff);
-            presenter.ReportSqlPlan(plan.Statements);
+            presenter.ReportPlan(plan);
         }
 
         if (result.Diagnostics.Count > 0)

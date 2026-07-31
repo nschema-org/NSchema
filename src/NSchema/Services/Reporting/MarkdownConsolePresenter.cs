@@ -3,7 +3,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Rendering;
 using NSchema.Model;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 
@@ -18,24 +18,37 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
 
     internal MarkdownConsolePresenter(TextWriter output) => _out = output;
 
-    public void ReportSchema(Database database) => WriteSection("Schema", Fenced(SchemaRenderer.Render(database)));
+    public void ReportDatabase(Database database) => WriteSection("Database", Fenced(DatabaseRenderer.Render(database)));
 
-    public void ReportDiff(DatabaseDiff diff) => WriteSection("Plan", RenderDiff(diff));
-
-    public void ReportSqlPlan(IReadOnlyList<SqlStatement> statements) => WriteSection("SQL", RenderSqlPlan(statements));
-
-    public void ReportSavedPlan(PlanFileEnvelope envelope)
+    public void ReportState(DatabaseState state)
     {
-        ReportDiff(envelope.Plan.Diff);
-        ReportSqlPlan(envelope.Plan.Statements);
+        var database = DatabaseRenderer.Render(state.Database, state.Managed);
+        WriteSection("Database", Fenced(database));
+        WriteSection("Scripts", RenderScripts(state.Scripts));
+    }
+
+    public void ReportDiff(DatabaseDiff diff) => WriteSection("Plan", RenderPlan(diff, IdentitySet.Empty));
+
+    public void ReportPlan(MigrationPlan plan)
+    {
+        WriteSection("Plan", RenderPlan(plan.Diff, plan.Adopted));
+        if (plan.HasStatements)
+        {
+            WriteSection("SQL", RenderSqlPlan(plan.Statements));
+        }
+    }
+
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
+    {
+        WriteSection("Scripts", RenderScripts(scripts));
     }
 
     // The diff as a ```diff fenced block. Each line keeps its marker (+ add / - remove / ! modify) at column 0 so
     // the renderer colours it — GitHub tints ! orange — with the nesting indented after the marker. Blank spacers
     // between blocks are preserved; the summary follows.
-    private static string RenderDiff(DatabaseDiff diff)
+    private static string RenderPlan(DatabaseDiff diff, IdentitySet adopted)
     {
-        if (diff.IsEmpty)
+        if (diff.IsEmpty && adopted.IsEmpty)
         {
             return "No changes detected.";
         }
@@ -55,8 +68,16 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
             }
         }
 
-        var (added, modified, removed) = document.Summary;
-        return $"{Fenced(body.ToString(), "diff")}\n\n**Plan:** {added} to add, {modified} to change, {removed} to destroy.";
+        // The objects the apply takes over. Nothing is done to them, so they list outside the diff block rather
+        // than inside it wearing a marker that would misread as a change.
+        var adoptions = PlanNarrative.AdoptedNames(adopted);
+        var takeover = adoptions.Count == 0
+            ? string.Empty
+            : $"**{PlanNarrative.AdoptionHeading(adoptions.Count)}**\n\n"
+                + string.Join('\n', adoptions.Select(name => $"- `{name}`")) + "\n\n";
+
+        var block = document.Lines.Count > 0 ? $"{Fenced(body.ToString(), "diff")}\n\n" : string.Empty;
+        return $"{block}{takeover}**Plan:** {PlanNarrative.Counts(document.Summary, adoptions.Count)}";
     }
 
     // Touched marks an element carried only by what it owns. The core's renderer emits no line for one today (a
@@ -75,26 +96,37 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
     // outside the migration transaction.
     private static string RenderSqlPlan(IReadOnlyList<SqlStatement> statements)
     {
-        if (statements.Count == 0)
-        {
-            return "_No statements to execute._";
-        }
-
         var body = new StringBuilder();
         for (var i = 0; i < statements.Count; i++)
         {
             if (i > 0)
             {
-                body.Append('\n');
+                body.AppendLine();
             }
 
             var statement = statements[i];
             var marker = statement.RunOutsideTransaction ? " (outside transaction)" : string.Empty;
-            body.Append("-- [").Append(i + 1).Append('/').Append(statements.Count).Append(']').Append(marker).Append('\n');
-            body.Append(statement.Sql.Value).Append('\n');
+            body.Append("-- [").Append(i + 1).Append('/').Append(statements.Count).Append(']').Append(marker).AppendLine();
+            body.Append(statement.Sql.Value).AppendLine();
         }
 
         return Fenced(body.ToString(), "sql");
+    }
+
+    private static string RenderScripts(IReadOnlyList<ScriptExecution> scripts)
+    {
+        if (scripts.Count == 0)
+        {
+            return "No script executions are recorded.";
+        }
+
+        var body = new StringBuilder("| Script | Executed | Body hash |\n| --- | --- | --- |\n");
+        foreach (var script in ScriptLedger.InExecutionOrder(scripts))
+        {
+            body.AppendLine($"| `{ScriptLedger.Name(script)}` | {ScriptLedger.Executed(script)} | `{script.Hash}` |");
+        }
+
+        return body.ToString();
     }
 
     private static string Fenced(string content, string language = "") =>

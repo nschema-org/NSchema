@@ -67,11 +67,11 @@ internal static class DestroyCommand
     {
         var planResult = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Empty }, cancellationToken);
 
-        // Show the diff so the operator can see what will be dropped — even on a failure the result carries the plan.
+        // Show the plan so the operator can see what will be dropped — even on a failure the result carries it.
         var plan = planResult.Value?.Plan;
         if (plan is not null)
         {
-            app.Presenter.ReportDiff(plan.Diff);
+            app.Presenter.ReportPlan(plan);
         }
 
         if (planResult.Diagnostics.Count > 0)
@@ -91,8 +91,6 @@ internal static class DestroyCommand
             await app.Operations.Apply(new ApplyArguments { Plan = plan }, cancellationToken);
             return ExitCodes.NoChanges;
         }
-
-        app.Presenter.ReportSqlPlan(plan.Statements);
 
         // Confirmation is entirely CLI-side: the engine never prompts. Declining throws, which propagates out (the lock
         // is released by the finally in Run) and is mapped to a cancellation by Program.

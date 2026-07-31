@@ -79,31 +79,6 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         }
     }
 
-    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
-    {
-        if (scripts.Count == 0)
-        {
-            _out.MarkupLine("[grey]No script executions are recorded.[/]");
-            return;
-        }
-
-        var table = new Table()
-            .RoundedBorder()
-            .AddColumn("Script")
-            .AddColumn("Executed")
-            .AddColumn("Body hash");
-
-        foreach (var script in scripts)
-        {
-            table.AddRow(
-                new Markup(Markup.Escape(script.Script.ToString())),
-                new Markup(Markup.Escape($"{script.ExecutedUtc:u}")),
-                new Markup($"[grey]{Markup.Escape(script.Hash.Value)}[/]"));
-        }
-
-        _out.Write(table);
-    }
-
     public void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts)
     {
         if (scripts.Count == 0)

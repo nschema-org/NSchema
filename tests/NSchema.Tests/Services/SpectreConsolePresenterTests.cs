@@ -8,8 +8,8 @@ using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
 using NSchema.Services.Reporting;
+using NSchema.State.Domain;
 using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
@@ -123,7 +123,39 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSchema_FramesTheRenderedSchemaInASection()
+    public void ReportPlan_Adoptions_AreListedAndCounted()
+    {
+        // Arrange — nothing differs, so taking the objects over is all the apply would do.
+        var plan = new MigrationPlan(new DatabaseDiff(), [])
+        {
+            Adopted = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+
+        // Act
+        _sut.ReportPlan(plan);
+
+        // Assert — an apply is not a no-op here, so the section must not read as one.
+        _out.Output.ShouldContain("Adopting 2 existing objects into management:");
+        _out.Output.ShouldContain("= app.users");
+        _out.Output.ShouldContain("2 to adopt");
+        _out.Output.ShouldNotContain("No changes detected");
+    }
+
+    [Fact]
+    public void ReportPlan_WithoutAdoptions_ReportsOnlyTheDifference()
+    {
+        // Act
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]), []));
+
+        // Assert
+        _out.Output.ShouldContain("+ schema app");
+        _out.Output.ShouldNotContain("adopt");
+    }
+
+    [Fact]
+    public void ReportDatabase_FramesTheRenderedSchemaInASection()
     {
         // Arrange
         var database = new Database
@@ -139,15 +171,136 @@ public sealed class SpectreConsolePresenterTests
         };
 
         // Act
-        _sut.ReportSchema(database);
+        _sut.ReportDatabase(database);
 
-        // Assert
-        _out.Output.ShouldContain("Schema");
+        // Assert — the section is titled for what it holds, as the Markdown face titles it.
+        _out.Output.ShouldContain("Database");
         _out.Output.ShouldContain("table widgets");
     }
 
+    // The ANSI escape for [dim], which a console emitting its styling writes ahead of the dimmed text.
+    private const string Dim = "\u001b[2m";
+
+    /// <summary>Recorded state whose schema holds one managed table and one NSchema knows nothing about.</summary>
+    private static DatabaseState PartlyManagedState()
+    {
+        var database = new Database
+        {
+            Schemas =
+            [
+                new Schema
+                {
+                    Name = "app",
+                    Tables =
+                    [
+                        new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.BigInt }] },
+                        new Table { Name = "legacy_audit", Columns = [new Column { Name = "archived_at", Type = SqlType.Text }] },
+                    ],
+                },
+            ],
+        };
+
+        return new DatabaseState(database, [])
+        {
+            Managed = new IdentitySet(
+                DatabaseObjects: [DatabaseAddress.Schema("app")],
+                SchemaObjects: [ObjectAddress.Table("app", "users")]),
+        };
+    }
+
     [Fact]
-    public void ReportSchema_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
+    public void ReportState_MarksWhatIsNotManaged()
+    {
+        // Act
+        _sut.ReportState(PartlyManagedState());
+
+        // Assert — the marker survives markup escaping.
+        _out.Output.ShouldContain("table legacy_audit [unmanaged]");
+        _out.Output.ShouldContain("Managed: 2 of 3 recorded objects.");
+    }
+
+    [Fact]
+    public void ReportState_ReportsTheLedgerBesideTheSchema()
+    {
+        // Arrange — recorded state is the schema plus what has run against it, so both sections are the report.
+        var state = PartlyManagedState() with
+        {
+            Scripts = [new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)],
+        };
+
+        // Act
+        _sut.ReportState(state);
+
+        // Assert
+        _out.Output.ShouldContain("Scripts");
+        _out.Output.ShouldContain("seed-users");
+        _out.Output.ShouldContain("abc123");
+    }
+
+    [Fact]
+    public void ReportState_NothingRecorded_StillReportsTheLedgerSection()
+    {
+        // Act — an omitted section would read as "no ledger here" rather than "nothing has run".
+        _sut.ReportState(PartlyManagedState());
+
+        // Assert
+        _out.Output.ShouldContain("No script executions are recorded");
+    }
+
+    [Fact]
+    public void ReportState_DimsTheWholeUnmanagedBlock()
+    {
+        // Arrange — a console that emits its styling, so what is dimmed can be asserted rather than inferred.
+        var console = new TestConsole().EmitAnsiSequences();
+        console.Profile.Width = 200;
+        var sut = new SpectreConsolePresenter(console);
+
+        // Act
+        sut.ReportState(PartlyManagedState());
+
+        // Assert — the marked object and the columns beneath it are dimmed; what NSchema manages is not.
+        var lines = console.Output.Split('\n');
+        lines.Single(line => line.Contains("table legacy_audit")).ShouldContain(Dim);
+        lines.Single(line => line.Contains("archived_at")).ShouldContain(Dim);
+        lines.Single(line => line.Contains("table users")).ShouldNotContain(Dim);
+        lines.Single(line => line.Contains("id bigint")).ShouldNotContain(Dim);
+        lines.Single(line => line.Contains("Managed:")).ShouldNotContain(Dim);
+    }
+
+    [Fact]
+    public void ReportScripts_WritesTheLedgerAsATable()
+    {
+        // Act
+        _sut.ReportScripts([new ScriptExecution(new ScriptReference(null, "seed-users"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
+
+        // Assert — the ledger's data as a table: name, execution time, and body hash.
+        _out.Output.ShouldContain("seed-users");
+        _out.Output.ShouldContain("1970-01-01");
+        _out.Output.ShouldContain("abc123");
+    }
+
+    [Fact]
+    public void ReportScripts_ScopedScript_NamesItByItsReference()
+    {
+        // Act
+        _sut.ReportScripts([new ScriptExecution(new ScriptReference("app", "backfill"), new ScriptHash("abc123"), DateTimeOffset.UnixEpoch)]);
+
+        // Assert — the same `schema.name` spelling `script taint` takes.
+        _out.Output.ShouldContain("app.backfill");
+    }
+
+    [Fact]
+    public void ReportScripts_NothingRecorded_SaysSo()
+    {
+        // Act — an empty table would read as a rendering failure rather than an empty ledger.
+        _sut.ReportScripts([]);
+
+        // Assert
+        _out.Output.ShouldContain("No script executions are recorded");
+    }
+
+    [Fact]
+    public void ReportDatabase_DoesNotThrow_WhenRenderedTextContainsMarkupCharacters()
     {
         // Arrange — a column whose type is an array renders `text[]`, exercising markup escaping.
         var database = new Database
@@ -163,20 +316,21 @@ public sealed class SpectreConsolePresenterTests
         };
 
         // Act
-        _sut.ReportSchema(database);
+        _sut.ReportDatabase(database);
 
         // Assert
         _out.Output.ShouldContain("text[]");
     }
 
     [Fact]
-    public void ReportSqlPlan_FramesTheRenderedSqlInAPanel()
+    public void ReportPlan_FramesTheRenderedSqlInItsOwnSection()
     {
         // Arrange
-        var statements = new[] { new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false) };
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+            [new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]);
 
         // Act
-        _sut.ReportSqlPlan(statements);
+        _sut.ReportPlan(plan);
 
         // Assert
         _out.Output.ShouldContain("SQL");
@@ -184,17 +338,17 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
+    public void ReportPlan_NumbersStatementsAndFlagsTheOnesOutsideATransaction()
     {
         // Arrange
-        var statements = new[]
-        {
+        var plan = new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+        [
             new SqlStatement("CREATE INDEX CONCURRENTLY ix ON app.widgets (id)", RunOutsideTransaction: true),
             new SqlStatement("ANALYZE app.widgets", RunOutsideTransaction: false),
-        };
+        ]);
 
         // Act
-        _sut.ReportSqlPlan(statements);
+        _sut.ReportPlan(plan);
 
         // Assert — headers number each statement; only the concurrent one is flagged, read from the model.
         var output = _out.Output;
@@ -205,36 +359,13 @@ public sealed class SpectreConsolePresenterTests
     }
 
     [Fact]
-    public void ReportSqlPlan_EmptyPlan_ReportsNothingToExecute()
+    public void ReportPlan_NoStatements_WritesNoSqlSection()
     {
-        // Act
-        _sut.ReportSqlPlan([]);
+        // Act — an apply that executes nothing has no SQL to preview; the plan section says what it does instead.
+        _sut.ReportPlan(new MigrationPlan(new DatabaseDiff(), []));
 
         // Assert
-        _out.Output.ShouldContain("SQL");
-        _out.Output.ShouldContain("No statements to execute");
-    }
-
-    [Fact]
-    public void ReportSavedPlan_RendersDiffAndSqlSections()
-    {
-        // Arrange — the scripts ride the plan's diff; only --json collapses to a single object.
-        var diff = new DatabaseDiff([SchemaDiff.Added("app")])
-        {
-            DeploymentScripts = [new DeploymentScript("seed-roles", "INSERT INTO app.roles VALUES ('admin');", ScopeSchema: null, DeploymentPhase.Pre)],
-        };
-        var envelope = new PlanFileEnvelope(
-            new MigrationPlan(diff, [new SqlStatement("CREATE TABLE app.widgets ();", RunOutsideTransaction: false)]),
-            CreatedAt: default);
-
-        // Act
-        _sut.ReportSavedPlan(envelope);
-
-        // Assert
-        _out.Output.ShouldContain("Plan");
-        _out.Output.ShouldContain("schema app");
-        _out.Output.ShouldContain("script seed-roles (on pre deployment)");
-        _out.Output.ShouldContain("SQL");
-        _out.Output.ShouldContain("CREATE TABLE app.widgets");
+        _out.Output.ShouldContain("No changes detected");
+        _out.Output.ShouldNotContain("SQL");
     }
 }

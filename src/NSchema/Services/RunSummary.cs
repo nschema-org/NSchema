@@ -41,6 +41,10 @@ internal static class RunSummary
     {
         var count = plan.Statements.Count;
         var statements = count == 1 ? "1 statement" : $"{count} statements";
-        return $"{Describe(plan.Diff)} ({statements})";
+
+        var adopted = plan.Adopted.DatabaseObjects.Count + plan.Adopted.SchemaObjects.Count;
+        var takeover = adopted > 0 ? $", {adopted} adopted" : string.Empty;
+
+        return $"{Describe(plan.Diff)}{takeover} ({statements})";
     }
 }

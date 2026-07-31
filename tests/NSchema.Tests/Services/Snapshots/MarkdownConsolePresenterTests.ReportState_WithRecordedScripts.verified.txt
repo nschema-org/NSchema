@@ -1,0 +1,19 @@
+﻿## Database
+
+```
+schema app
+  table widgets
+    id bigint not null
+  table legacy_audit [unmanaged]
+    id bigint not null
+
+Managed: 2 of 3 recorded objects.
+```
+
+## Scripts
+
+| Script | Executed | Body hash |
+| --- | --- | --- |
+| `seed-users` | 1970-01-01 00:00:00Z | `abc123` |
+| `app.backfill` | 1970-01-02 00:00:00Z | `def456` |
+

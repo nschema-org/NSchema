@@ -1,7 +1,7 @@
 using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Plan.Domain;
-using NSchema.Plan.PlanFile;
+using NSchema.State.Domain;
 
 namespace NSchema.Services.Reporting;
 
@@ -16,15 +16,32 @@ internal sealed class JsonConsolePresenter : IConsolePresenter
 
     internal JsonConsolePresenter(TextWriter output) => _out = output;
 
-    public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, new { type = "diff", diff });
+    public void ReportDiff(DatabaseDiff diff) => JsonOutput.Write(_out, diff);
+    public void ReportDatabase(Database database) => JsonOutput.Write(_out, database);
 
-    public void ReportSchema(Database database) => JsonOutput.Write(_out, database);
-
-    public void ReportSqlPlan(IReadOnlyList<SqlStatement> statements) => JsonOutput.Write(_out, new { type = "sqlPlan", statements });
-
-    public void ReportSavedPlan(PlanFileEnvelope envelope) => JsonOutput.Write(_out, new
+    public void ReportPlan(MigrationPlan plan) => JsonOutput.Write(_out, new
     {
-        diff = envelope.Plan.Diff,
-        sql = envelope.Plan.Statements,
+        diff = plan.Diff,
+        adopted = plan.Adopted,
+        sql = plan.Statements
     });
+
+    public void ReportState(DatabaseState state) => JsonOutput.Write(_out, new
+    {
+        database = state.Database,
+        managed = state.Managed,
+        scripts = Ledger(state.Scripts)
+    });
+
+    public void ReportScripts(IReadOnlyList<ScriptExecution> scripts) => JsonOutput.Write(_out, Ledger(scripts));
+
+    // One shape for the ledger wherever it is reported, so a consumer reads `script list` and the scripts on a
+    // recorded state the same way.
+    private static object Ledger(IReadOnlyList<ScriptExecution> scripts) =>
+        ScriptLedger.InExecutionOrder(scripts).Select(s => new
+        {
+            name = ScriptLedger.Name(s),
+            hash = s.Hash.Value,
+            executedUtc = s.ExecutedUtc
+        });
 }
