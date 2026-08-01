@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Apply;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
@@ -11,6 +12,7 @@ namespace NSchema.Operations;
 /// Applies a computed plan.
 /// </summary>
 internal sealed class ApplyOperation(
+    IOptions<DiagnosticOptions> options,
     IMigrationWorkflow workflow,
     IProgress<OperationProgress> progress,
     IEnumerable<IPlanPolicy> planPolicies,
@@ -27,8 +29,8 @@ internal sealed class ApplyOperation(
             return Result.Failure<ApplyResult>(ApplyDiagnostics.StoreRequired);
         }
 
-        // Make sure policies are enforced at the point of execution.
-        var findings = new DiagnosticCollection(planPolicies.SelectMany(p => p.Validate(args.Plan)));
+        // Make sure policies are enforced at the point of execution — under the same configured enforcement the planner applied,
+        var findings = new DiagnosticCollection(options.Value.Apply(planPolicies.SelectMany(p => p.Validate(args.Plan))));
         if (findings.HasErrors)
         {
             // Demote errors to warnings if the apply is forced.

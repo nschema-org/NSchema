@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NSchema.Apply;
 using NSchema.Diff.Domain;
 using NSchema.Model;
@@ -23,7 +24,10 @@ public sealed class ApplyOperationTests
     private readonly MigrationPlan _plan = new(new DatabaseDiff([]), [new SqlStatement("CREATE SCHEMA app")]);
     private static readonly MigrationPlan _emptyPlan = new(new DatabaseDiff([]), []);
 
-    private ApplyOperation BuildSut(ISqlExecutor? executor) => new(_workflow, _progress, _planPolicies, _stateManager, executor);
+    private readonly DiagnosticOptions _options = new();
+
+    private ApplyOperation BuildSut(ISqlExecutor? executor) =>
+        new(Options.Create(_options), _workflow, _progress, _planPolicies, _stateManager, executor);
 
     private readonly ApplyOperation _sut;
 
@@ -201,6 +205,49 @@ public sealed class ApplyOperationTests
         result.Errors.ShouldContain(d => d.Message.Contains("blocked by policy"));
         await _executor.DidNotReceive().Execute(Arg.Any<IReadOnlyList<SqlStatement>>(), Arg.Any<CancellationToken>());
         await _workflow.DidNotReceive().Refresh(Arg.Any<MigrationPlan?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Execute_PolicyFindingIgnoredByConfiguration_IsNotReportedAndDoesNotBlock()
+    {
+        // Arrange — the re-check at execution runs under the configured enforcement, so a finding the operator
+        // silenced (e.g. --destructive-actions ignore) must not block the apply the planner already cleared.
+        _planPolicies.Add(AdvisoryPolicy());
+        _options.BySource["destructive-actions"] = PolicyEnforcement.Ignore;
+
+        // Act
+        var result = await _sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Diagnostics.ShouldBeEmpty();
+        await _executor.Received(1).Execute(_plan.Statements, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Execute_PolicyFindingLoweredByConfiguration_IsReportedAtTheConfiguredSeverity()
+    {
+        // Arrange
+        _planPolicies.Add(AdvisoryPolicy());
+        _options.BySource["destructive-actions"] = PolicyEnforcement.Warn;
+
+        // Act
+        var result = await _sut.Execute(Args(_plan), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Diagnostics.ShouldContain(d => d.Message == "drops table" && d.Severity == DiagnosticSeverity.Warning);
+        await _executor.Received(1).Execute(_plan.Statements, Arg.Any<CancellationToken>());
+    }
+
+    // A policy reporting a finding the configuration is allowed to lower — the shape of the real destructive-action one.
+    private IPlanPolicy AdvisoryPolicy()
+    {
+        var policy = Substitute.For<IPlanPolicy>();
+        policy.Validate(_plan).Returns([
+            Diagnostic.Error("destructive-actions", "drops-table", "drops table") with { Kind = DiagnosticKind.Advisory },
+        ]);
+        return policy;
     }
 
     [Fact]
