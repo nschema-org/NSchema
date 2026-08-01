@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [Unreleased]
+## [5.0.0] - 2026-08-01
 
 v5.0 is a Core rearchitecture, aiming for better project health, with clear separation between layers and a better separation of concerns.
 
