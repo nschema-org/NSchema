@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.0.1] - 2026-08-01
+
+### Fixed
+
+- **`--destructive-actions` argument is ignored.** Policy enforcement overrides like `--destructive-actions` and `--data-hazards` weren't being respected due to a bug in Core. This is fixed after updating to 5.0.1.
+
 ## [5.0.0] - 2026-08-01
 
 v5.0 moves the CLI onto `NSchema.Core 5.0`, whose rearchitecture reshapes configuration, plugins, and planning. Changes below are relative to 4.5.1.
