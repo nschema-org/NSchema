@@ -93,7 +93,7 @@ internal static class SyntaxBuilder
 
     private static void AddSchema(List<NsqlStatement> statements, Schema schema, bool declare)
     {
-        if (declare)
+        if (declare && !schema.IsImplicit)
         {
             statements.Add(new Syn.Schemas.CreateSchemaStatement(Name(schema.Name))
             {

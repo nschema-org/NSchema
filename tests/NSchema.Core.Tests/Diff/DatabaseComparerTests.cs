@@ -306,6 +306,44 @@ public partial class DatabaseComparerTests
     }
 
     [Fact]
+    public void Compare_NewImplicitSchema_DoesNotApplyItsCommentOrGrants()
+    {
+        // Arrange — a container the run does not own, carrying settings of its own.
+        var app = new Schema
+        {
+            Name = "app",
+            IsImplicit = true,
+            Comment = "the database's own comment",
+            Grants = [new SchemaGrant("reader")],
+            Tables = [new Table { Name = "users" }],
+        };
+
+        // Act
+        var schema = Compare(Db(), Db(app)).Schemas.ShouldHaveSingleItem();
+
+        // Assert
+        schema.Change.ShouldBe(ChangeKind.Touched);
+        schema.Comment.ShouldBeNull();
+        schema.Grants.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Compare_ImplicitSchema_DoesNotReportTheDatabasesOwnCommentAsDrift()
+    {
+        // Arrange — the engine comments its own schema; the project never declared one, so there is nothing to
+        // reconcile. Reporting it would plan to strip a comment the database owns.
+        var current = new Schema { Name = "public", IsImplicit = true, Comment = "standard public schema", Tables = [new Table { Name = "users" }] };
+        var desired = new Schema { Name = "public", IsImplicit = true, Tables = [new Table { Name = "users" }, new Table { Name = "orders" }] };
+
+        // Act
+        var schema = Compare(Db(current), Db(desired)).Schemas.ShouldHaveSingleItem();
+
+        // Assert
+        schema.Change.ShouldBe(ChangeKind.Touched);
+        schema.Comment.ShouldBeNull();
+    }
+
+    [Fact]
     public void Compare_NewSchema_FoldsCommentGrantsAndTablesWithDefinition()
     {
         var current = Db();

@@ -67,8 +67,7 @@ public sealed class Database : IEquatable<Database>
         }
 
         // Held on to for its contents alone, which is what an implicit schema is: somewhere to put them.
-        filtered.IsImplicit = true;
-        return filtered;
+        return filtered.AsImplicit();
     }
 
     /// <summary>

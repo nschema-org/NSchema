@@ -1,6 +1,8 @@
 using System.Text;
 using NSchema.Model;
+using NSchema.Model.Columns;
 using NSchema.Model.Schemas;
+using NSchema.Model.Tables;
 using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql;
 using NSchema.State;
@@ -173,5 +175,33 @@ public sealed class ProjectedDocumentWriterTests
 
         ddl.ShouldNotContain("DEPLOYMENT");
         ddl.ShouldBe("CREATE SCHEMA app;\n");
+    }
+
+    [Fact]
+    public void Write_ImplicitSchema_IsNotDeclared()
+    {
+        // Arrange — a schema the database owns, carrying settings of its own.
+        var database = new Database
+        {
+            Schemas =
+            [
+                new Schema
+                {
+                    Name = "public",
+                    IsImplicit = true,
+                    Comment = "standard public schema",
+                    Grants = [new SchemaGrant("api")],
+                    Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }],
+                },
+            ],
+        };
+
+        // Act
+        var ddl = NsqlWriter.Write(database);
+
+        // Assert — writing the declaration would produce a project a provider then rejects.
+        ddl.ShouldNotContain("CREATE SCHEMA");
+        ddl.ShouldNotContain("GRANT USAGE");
+        ddl.ShouldContain("CREATE TABLE public.users");
     }
 }

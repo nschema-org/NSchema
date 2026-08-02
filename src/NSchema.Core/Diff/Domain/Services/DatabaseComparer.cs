@@ -200,18 +200,16 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             .OrderBy(type => type.Name)
             .ToList();
 
-        var comment = desired.Comment is not null ? new ValueChange<string>(null, desired.Comment) : null;
-        var grants = desired.Grants.Select(grant => new GrantChange(ChangeKind.Add, grant.Role, null)).ToList();
-
-        // Don't create an implicit schema.
         var schema = desired.IsImplicit
             ? SchemaDiff.Containing(desired.Name)
-            : SchemaDiff.Added(desired.Name);
+            : SchemaDiff.Added(desired.Name) with
+            {
+                Comment = desired.Comment is not null ? new ValueChange<string>(null, desired.Comment) : null,
+                Grants = [.. desired.Grants.Select(grant => new GrantChange(ChangeKind.Add, grant.Role, null))],
+            };
 
         return schema with
         {
-            Comment = comment,
-            Grants = grants,
             Tables = tables,
             Views = views,
             Enums = enums,
@@ -258,14 +256,18 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             LogSchemaRenamed(renamedFrom, desired.Name);
         }
 
+        var managed = !desired.IsImplicit && !current.IsImplicit;
+
         ValueChange<string>? comment = null;
-        if (current.Comment != desired.Comment)
+        if (managed && current.Comment != desired.Comment)
         {
             LogSchemaCommentChanged(desired.Name);
             comment = new ValueChange<string>(current.Comment, desired.Comment);
         }
 
-        var grants = CompareSchemaGrants(desired.Name, current.Grants, desired.Grants);
+        var grants = managed
+            ? CompareSchemaGrants(desired.Name, current.Grants, desired.Grants)
+            : [];
         var tables = CompareTables(desired.Name, current.Tables, desired, renames);
         var views = CompareViews(desired.Name, current.Views, desired, renames);
         var enums = CompareEnums(desired.Name, current.Enums, desired, renames);

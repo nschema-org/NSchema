@@ -23,10 +23,14 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
     public override DatabaseAddress Address => DatabaseAddress.Schema(Name);
 
     /// <summary>
-    /// Whether the schema is here only because something inside it named it, rather than being declared in its own right.
+    /// Whether the schema is here a container only, rather than something NSchema manages.
     /// </summary>
-    [JsonIgnore]
-    public bool IsImplicit { get; internal set; }
+    /// <remarks>
+    /// A schema is implicit either because nothing declared it (someone referenced <c>dbo.x</c>),
+    /// or because the database owns it (Postgres' <c>public</c>, SQL Server's <c>dbo</c>).
+    /// </remarks>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsImplicit { get; init; }
 
     /// <summary>
     /// A list of tables that are part of the schema.
@@ -110,10 +114,17 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         .Concat(CompositeTypes);
 
     /// <inheritdoc/>
-    public override Schema Clone() => new()
+    public override Schema Clone() => Copy(IsImplicit);
+
+    /// <summary>
+    /// A copy held on to for its contents alone.
+    /// </summary>
+    internal Schema AsImplicit() => Copy(isImplicit: true);
+
+    private Schema Copy(bool isImplicit) => new()
     {
         Name = Name,
-        IsImplicit = IsImplicit,
+        IsImplicit = isImplicit,
         Tables = [.. Tables.Select(t => t.Clone())],
         Grants = [.. Grants],
         Views = [.. Views.Select(v => v.Clone())],

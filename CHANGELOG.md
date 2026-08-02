@@ -6,11 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.1.0]
+
+### Changed
+
+- **`Schema.IsImplicit` is now part of the provider contract.** Each introspector should set it to report the schemas its engine provides. It's also now recorded in the state payload.
+
 ## [5.0.1] - 2026-08-01
 
 ### Fixed
 
 - **Policy enforcement ignored on apply/destroy.** Running a plan or apply will now correctly respect policy enforcement adjustments, so destructive actions can be made allowed.
+- **Implicit schemas are created/dropped during plans.** Implicit schemas (like `public` or `dbo`) are now correctly ignored while planning.
+- **Implicit schemas are included in imports.** Implicit schemas are now correctly ignored while importing.
 
 ## [5.0.0] - 2026-08-01
 
