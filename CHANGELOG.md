@@ -12,6 +12,16 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.1.0] - 2026-08-02
+
+### Changed
+
+- **Implicit schemas are now ignored.** Schemas owned by the database (`dbo`, `public`, `main`, etc.) will now be ignored during import and planning.
+
+### Fixed
+
+- **Plugin dependencies are not shared correctly.** All plugin dependencies will now be correctly loaded from their own dependency closure where the CLI does not have its own version of an assembly.
+
 ## [5.0.1] - 2026-08-01
 
 ### Fixed

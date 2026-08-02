@@ -6,10 +6,10 @@ using NSchema.Plugins;
 namespace NSchema.Tests.Configuration.Plugins;
 
 /// <summary>
-/// The keystone end-to-end proof of the plugin architecture: restores the real published <c>NSchema.Postgres</c>
-/// plugin from nuget.org, loads it into an isolated <see cref="System.Runtime.Loader.AssemblyLoadContext"/>, and
-/// drives it through the contract. Requires the .NET SDK and network access (it runs <c>dotnet publish</c>) — slow
-/// on first run while the closure is restored, cached thereafter.
+/// The keystone end-to-end proof of the plugin architecture: restores each real published database plugin from
+/// nuget.org, loads it into an isolated <see cref="System.Runtime.Loader.AssemblyLoadContext"/>, and drives it
+/// through the contract. Requires the .NET SDK and network access (it runs <c>dotnet publish</c>) — slow on first
+/// run while the closure is restored, cached thereafter.
 /// </summary>
 public sealed class PluginLoaderTests : IDisposable
 {
@@ -17,6 +17,16 @@ public sealed class PluginLoaderTests : IDisposable
     private static SemanticVersion Version => PublishedPlugins.Postgres;
 
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
+
+    /// <summary>
+    /// Every published database plugin, so that one whose closure differs from Postgres' cannot go unloaded.
+    /// </summary>
+    public static TheoryData<string, string> DatabasePlugins => new()
+    {
+        { "NSchema.Postgres", "Host=localhost;Database=app" },
+        { "NSchema.SqlServer", "Server=localhost;Database=app" },
+        { "NSchema.Sqlite", "Data Source=app.db" },
+    };
 
     public void Dispose()
     {
@@ -26,23 +36,25 @@ public sealed class PluginLoaderTests : IDisposable
         }
     }
 
-    [Fact]
-    public void Load_RealPostgresPlugin_DiscoversDatabasePluginAndConfiguresHost()
+    [Theory]
+    [MemberData(nameof(DatabasePlugins))]
+    public void Load_RealDatabasePlugin_DiscoversDatabasePluginAndConfiguresHost(string package, string connectionString)
     {
         // Arrange
         var loader = new PluginLoader(_cacheRoot);
 
         // Act — restore + load + discover by capability (a plugin has no name of its own).
-        var plugin = loader.Load(Package, Version)
+        var plugin = loader.Load(new PackageId(package), PublishedPlugins.Of(package))
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();
 
-        // Act — drive the plugin (in its own ALC) against the host's builder
+        // Act — drive the plugin (in its own ALC) against the host's builder. Configure is where a plugin first
+        // touches its own dependency closure, so a package the host cannot supply fails here and nowhere earlier.
         var builder = NSchemaApplication.CreateBuilder();
-        var config = new PluginSettings(new PluginLabel("postgres"), new Dictionary<string, string?>
+        var config = new PluginSettings(new PluginLabel("database"), new Dictionary<string, string?>
         {
-            ["connection_string"] = "Host=localhost;Database=app",
+            ["connection_string"] = connectionString,
         });
         var result = plugin.Configure(builder, config);
 
