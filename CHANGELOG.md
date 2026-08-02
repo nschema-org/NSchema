@@ -12,7 +12,11 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [5.0.2] - 2026-08-02
+## [5.1.0] - 2026-08-02
+
+### Changed
+
+- **Implicit schemas are now ignored.** Schemas owned by the database (`dbo`, `public`, `main`, etc.) will now be ignored during import and planning.
 
 ### Fixed
 
