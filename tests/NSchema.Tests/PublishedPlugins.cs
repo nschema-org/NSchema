@@ -10,11 +10,25 @@ internal static class PublishedPlugins
 {
     // Resolved once per run: the lookup shells out to `dotnet package search`, far too slow to repeat per test.
     private static readonly Lazy<SemanticVersion> _postgres = new(() => Latest("NSchema.Postgres"));
+    private static readonly Lazy<SemanticVersion> _sqlServer = new(() => Latest("NSchema.SqlServer"));
     private static readonly Lazy<SemanticVersion> _sqlite = new(() => Latest("NSchema.Sqlite"));
 
     public static SemanticVersion Postgres => _postgres.Value;
 
+    public static SemanticVersion SqlServer => _sqlServer.Value;
+
     public static SemanticVersion Sqlite => _sqlite.Value;
+
+    /// <summary>
+    /// The published version of a package by name, resolved once however many tests ask for it.
+    /// </summary>
+    public static SemanticVersion Of(string package) => package switch
+    {
+        "NSchema.Postgres" => Postgres,
+        "NSchema.SqlServer" => SqlServer,
+        "NSchema.Sqlite" => Sqlite,
+        _ => throw new InvalidOperationException($"No published version is tracked for '{package}'."),
+    };
 
     private static SemanticVersion Latest(string package)
     {

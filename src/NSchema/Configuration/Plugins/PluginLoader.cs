@@ -283,16 +283,29 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            // Defer the shared contract and framework assemblies to the host's (default) context so that types such
-            // as ISchemaProvider are the SAME Type on both sides of the boundary; isolate everything else (Npgsql,
-            // the AWS SDK, ...) within this context.
-            if (IsSharedWithHost(assemblyName.Name))
+            // Defer the shared contract and framework assemblies to the host's (default) context,
+            // so that types such as IDatabaseIntrospector are the SAME Type on both sides of the boundary;
+            // isolate everything else (Npgsql, the AWS SDK, ...) within this context.
+            if (IsSharedWithHost(assemblyName.Name) && FromHost(assemblyName) is { } shared)
             {
-                return null;
+                return shared;
             }
 
             var path = _resolver.ResolveAssemblyToPath(assemblyName);
             return path is null ? null : LoadFromAssemblyPath(path);
+        }
+
+        private static Assembly? FromHost(AssemblyName assemblyName)
+        {
+            try
+            {
+                return Default.LoadFromAssemblyName(assemblyName);
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or FileLoadException)
+            {
+                // The host does not carry it, so the plugin's own closure has to.
+                return null;
+            }
         }
 
         // A plugin's dependency closure can carry native libraries (e.g. SQLite's e_sqlite3); resolve them from the
