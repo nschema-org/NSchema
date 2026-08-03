@@ -254,7 +254,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
     private async Task<ProjectConfiguration> Refresh(LockFile existing) =>
         (await ProjectConfigurationReader.Refresh(
-            _directory, environment: null, existing, new PluginLoader(), refresh: null,
+            _directory, environment: null, existing, new PluginLoader(_directory), refresh: null,
             TestContext.Current.CancellationToken)).Require();
 
     [Fact]

@@ -14,6 +14,10 @@ a major one, and called out explicitly in this changelog.
 
 ## [5.4.0] - 2026-08-03
 
+### Added
+
+- **Plugin restore honors your project's NuGet configuration.** Plugin resolution and restore now run under the project directory, so a `NuGet.Config` beside the project applies as expected.
+
 ### Fixed
 
 - **Functions that call each other now apply in the right order.** Inherited from NSchema.Core 5.4: a routine's definition is scanned for the routines it calls and the objects it reads, and creates are ordered so a callee precedes its caller.

@@ -28,7 +28,7 @@ internal static class PluginOutdatedCommand
             return ExitCodes.Error;
         }
 
-        var outdated = Inspect(configuration.Require(), new PluginLoader());
+        var outdated = Inspect(configuration.Require(), new PluginLoader(root));
         if (outdated.ReportFailure(messenger))
         {
             return ExitCodes.Error;

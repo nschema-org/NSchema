@@ -52,7 +52,7 @@ public sealed class EphemeralEndToEndTests : IDisposable
     public async Task PlanAndApply_WithEphemeral_BootstrapADisposableDatabase()
     {
         // Arrange — a project declaring a DATABASE but no STATE; the schema is the plugin's own sample.
-        var plugin = new PluginLoader().Load(new PackageId("NSchema.Sqlite"), SqliteVersion)
+        var plugin = new PluginLoader(Directory.GetCurrentDirectory()).Load(new PackageId("NSchema.Sqlite"), SqliteVersion)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();

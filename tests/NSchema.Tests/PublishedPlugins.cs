@@ -32,7 +32,7 @@ internal static class PublishedPlugins
 
     private static SemanticVersion Latest(string package)
     {
-        var resolved = new PluginLoader().ResolveLatestVersion(new PackageId(package));
+        var resolved = new PluginLoader(Directory.GetCurrentDirectory()).ResolveLatestVersion(new PackageId(package));
         if (resolved.IsSuccess)
         {
             return resolved.Require();

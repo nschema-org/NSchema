@@ -10,7 +10,6 @@ namespace NSchema;
 internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder;
-    private readonly PluginLoader _plugins = new();
     private readonly bool _allowRestore;
     private readonly IConsoleMessenger _messenger;
     private readonly IConsolePresenter _presenter;
@@ -28,6 +27,9 @@ internal sealed class CliApplicationBuilder
         _presenter = ReporterFactory.CreatePresenter(format);
         _builder.UseProgressReporter(new ConsoleProgress(_messenger));
     }
+
+    // Lazy: the loader anchors at the project directory, which --directory establishes before first use.
+    private PluginLoader Plugins => field ??= new PluginLoader(Directory.GetCurrentDirectory());
 
     public CliApplicationBuilder ConfigurePolicies(PolicyEnforcement? destructiveActions, PolicyEnforcement? dataHazards)
     {
@@ -138,7 +140,7 @@ internal sealed class CliApplicationBuilder
 
     private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var loaded = _plugins.Load(reference.PackageId, reference.Version, _allowRestore);
+        var loaded = Plugins.Load(reference.PackageId, reference.Version, _allowRestore);
         if (loaded.IsFailure)
         {
             return Result.Failure<TPlugin>(loaded.Diagnostics);

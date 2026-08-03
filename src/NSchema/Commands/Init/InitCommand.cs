@@ -21,7 +21,7 @@ internal static class InitCommand
 
         using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
 
-        var initialized = await ProjectInitializer.Initialize(root, environment, new PluginLoader(), app.Messenger, cancellationToken);
+        var initialized = await ProjectInitializer.Initialize(root, environment, new PluginLoader(root), app.Messenger, cancellationToken);
         return initialized.ReportFailure(app.Messenger) ? ExitCodes.Error : ExitCodes.NoChanges;
     }
 }

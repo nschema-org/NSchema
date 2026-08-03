@@ -29,7 +29,7 @@ internal static class PluginUpdateCommand
         var label = parseResult.GetValue(_labelArgument);
 
         var messenger = ReporterFactory.CreateMessenger(parseResult);
-        var loader = new PluginLoader();
+        var loader = new PluginLoader(root);
 
         // A named plugin resolves to the one package that label declares; only that package is re-resolved, so the
         // other pins stay exactly as the lockfile records them.
