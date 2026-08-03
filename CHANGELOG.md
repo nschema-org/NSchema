@@ -12,6 +12,16 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.2.0] - 2026-08-03
+
+### Changed
+
+- **Plans verify type references.** Inherited from NSchema.Core 5.2.0, a plan now checks that every type the project references will exist once it applies.
+
+### Fixed
+
+- **Schema-qualified engine types no longer block planning.** Applying an imported project that referenced engine types (e.g. Postgres's `pg_catalog.tsvector`) previously failed with an error demanding a declaration nobody could write.
+
 ## [5.1.0] - 2026-08-02
 
 ### Changed
