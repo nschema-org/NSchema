@@ -95,11 +95,13 @@ public abstract partial class SqlDialect
 
         // Triggers
         CreateTrigger x => CreateTrigger(x),
+        ReplaceTrigger x => ReplaceTrigger(x),
         DropTrigger x => DropTrigger(x),
         SetTriggerComment x => SetTriggerComment(x),
 
         // Views
         CreateView x => CreateView(x),
+        ReplaceView x => ReplaceView(x),
         DropView x => DropView(x),
         RenameView x => RenameView(x),
         SetViewComment x => SetViewComment(x),
@@ -140,6 +142,7 @@ public abstract partial class SqlDialect
 
         // Routines
         CreateRoutine x => CreateRoutine(x),
+        ReplaceRoutine x => ReplaceRoutine(x),
         DropRoutine x => DropRoutine(x),
         RenameRoutine x => RenameRoutine(x),
         RecreateRoutine x => RecreateRoutine(x),

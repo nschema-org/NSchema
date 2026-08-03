@@ -134,11 +134,19 @@ public sealed class SqlDialectTests
             Events = TriggerEvent.Insert,
             Body = "INSERT INTO app.audit VALUES (1)",
         }),
+        new ReplaceTrigger(new ObjectAddress(N("app"), N("users")), new Trigger
+        {
+            Name = N("trg_audit"),
+            Timing = TriggerTiming.After,
+            Events = TriggerEvent.Insert | TriggerEvent.Update,
+            Body = "INSERT INTO app.audit VALUES (2)",
+        }),
         new DropTrigger(new MemberAddress(N("app"), N("users"), N("trg_audit"))),
         new SetTriggerComment(new MemberAddress(N("app"), N("users"), N("trg_audit")), null, "Audit trail"),
 
         // Views
         new CreateView(N("app"), new View { Name = N("active_users"), Body = "SELECT * FROM app.users" }),
+        new ReplaceView(N("app"), new View { Name = N("active_users"), Body = "SELECT * FROM app.users WHERE active" }),
         new DropView(new ObjectAddress(N("app"), N("active_users"))),
         new DropView(new ObjectAddress(N("app"), N("user_stats")), IsMaterialized: true),
         new RenameView(new ObjectAddress(N("app"), N("active_users")), N("current_users")),
@@ -186,6 +194,13 @@ public sealed class SqlDialectTests
             RoutineKind = RoutineKind.Function,
             Arguments = "amount numeric",
             Definition = "RETURN amount * 1.2;",
+        }),
+        new ReplaceRoutine(N("app"), new Routine
+        {
+            Name = N("add_tax"),
+            RoutineKind = RoutineKind.Function,
+            Arguments = "amount numeric",
+            Definition = "RETURN amount * 1.25;",
         }),
         new DropRoutine(new ObjectAddress(N("app"), N("add_tax")), RoutineKind.Function),
         new RenameRoutine(new ObjectAddress(N("app"), N("add_tax")), N("apply_tax"), RoutineKind.Function),

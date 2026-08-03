@@ -222,6 +222,13 @@
     ]
   },
   {
+    Action: ReplaceTrigger,
+    Statements: [
+      -- engine-specific DropTrigger,
+      -- engine-specific CreateTrigger
+    ]
+  },
+  {
     Action: DropTrigger,
     Statements: [
       -- engine-specific DropTrigger
@@ -237,6 +244,12 @@
     Action: CreateView,
     Statements: [
       -- engine-specific CreateView
+    ]
+  },
+  {
+    Action: ReplaceView,
+    Diagnostics: [
+      Error: TestDialect does not support the 'replace view' action.
     ]
   },
   {
@@ -429,6 +442,12 @@
     Action: CreateRoutine,
     Diagnostics: [
       Error: TestDialect does not support the 'create routine' action.
+    ]
+  },
+  {
+    Action: ReplaceRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'replace routine' action.
     ]
   },
   {

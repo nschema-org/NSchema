@@ -6,9 +6,20 @@ namespace NSchema.Plan.Plugins;
 public abstract partial class SqlDialect
 {
     /// <summary>
-    /// Renders the creation (or in-place body replacement) of a routine.
+    /// Renders the creation of a routine that does not yet exist.
     /// </summary>
     protected virtual Result<IReadOnlyList<SqlStatement>> CreateRoutine(CreateRoutine action) =>
+        Unsupported(action);
+
+    /// <summary>
+    /// Renders the in-place body replacement of an existing routine.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately no drop-and-create default: dropping a routine is not equivalent to replacing it — an
+    /// engine may block the drop for dependents, or shed grants and comments the in-place form preserves —
+    /// so the dialect opts in with its engine's rules in view.
+    /// </remarks>
+    protected virtual Result<IReadOnlyList<SqlStatement>> ReplaceRoutine(ReplaceRoutine action) =>
         Unsupported(action);
 
     /// <summary>

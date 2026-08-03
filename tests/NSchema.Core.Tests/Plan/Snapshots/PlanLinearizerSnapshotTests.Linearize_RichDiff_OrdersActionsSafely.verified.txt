@@ -165,87 +165,6 @@
     }
   },
   {
-    Type: RenameRoutine,
-    Action: {
-      Routine: {
-        Schema: {
-          Value: app
-        },
-        Name: {
-          Value: old_score
-        },
-        Value: app.old_score
-      },
-      NewName: {
-        Value: score
-      }
-    }
-  },
-  {
-    Type: CreateRoutine,
-    Action: {
-      SchemaName: {
-        Value: app
-      },
-      Routine: {
-        Kind: Routine,
-        Arguments: {
-          Value: amount numeric
-        },
-        Definition: {
-          Value: RETURNS numeric AS $$ SELECT amount $$
-        },
-        Name: {
-          Value: add_tax
-        },
-        IsImplicit: false
-      }
-    }
-  },
-  {
-    Type: CreateRoutine,
-    Action: {
-      SchemaName: {
-        Value: app
-      },
-      Routine: {
-        Kind: Routine,
-        RoutineKind: Procedure,
-        Arguments: {
-          Value: before date
-        },
-        Definition: {
-          Value: LANGUAGE sql AS $$ DELETE $$
-        },
-        Name: {
-          Value: archive
-        },
-        IsImplicit: false
-      }
-    }
-  },
-  {
-    Type: RecreateRoutine,
-    Action: {
-      SchemaName: {
-        Value: app
-      },
-      Routine: {
-        Kind: Routine,
-        Arguments: {
-          Value: user_id bigint, weight numeric
-        },
-        Definition: {
-          Value: RETURNS numeric AS $$ SELECT 1 $$
-        },
-        Name: {
-          Value: score
-        },
-        IsImplicit: false
-      }
-    }
-  },
-  {
     Type: RenameTable,
     Action: {
       Table: {
@@ -480,6 +399,87 @@
       },
       NewExpression: {
         Value: total::text
+      }
+    }
+  },
+  {
+    Type: RenameRoutine,
+    Action: {
+      Routine: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: old_score
+        },
+        Value: app.old_score
+      },
+      NewName: {
+        Value: score
+      }
+    }
+  },
+  {
+    Type: CreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        Arguments: {
+          Value: amount numeric
+        },
+        Definition: {
+          Value: RETURNS numeric AS $$ SELECT amount $$
+        },
+        Name: {
+          Value: add_tax
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: CreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        RoutineKind: Procedure,
+        Arguments: {
+          Value: before date
+        },
+        Definition: {
+          Value: LANGUAGE sql AS $$ DELETE $$
+        },
+        Name: {
+          Value: archive
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: RecreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        Arguments: {
+          Value: user_id bigint, weight numeric
+        },
+        Definition: {
+          Value: RETURNS numeric AS $$ SELECT 1 $$
+        },
+        Name: {
+          Value: score
+        },
+        IsImplicit: false
       }
     }
   },

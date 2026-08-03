@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.3.0] - 2026-08-03
+
+### Changed
+
+- **A create is a create; a replacement says so.** A definition-only change to a routine or view now emits the new `ReplaceRoutine`/`ReplaceView` actions instead of reusing `CreateRoutine`/`CreateView`.
+- **Routines are created after the tables they may reference.** Routine actions now order after table creation and before constraints, triggers, and views.
+
 ## [5.2.0] - 2026-08-03
 
 ### Added

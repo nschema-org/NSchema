@@ -204,7 +204,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 }
                 else if (view.Definition is not null)
                 {
-                    // A plain view's body change, applied as CREATE OR REPLACE.
+                    // A plain view's body change, replaced in place.
                     creates.Add(view);
                 }
 
@@ -227,7 +227,11 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         {
             if (view.Definition is { } definition)
             {
-                actions.Add(new CreateView(view.Schema, definition));
+                // A recreate's drop precedes it, so its create is a genuine create; only an in-place body
+                // change on a surviving view is a replacement.
+                actions.Add(view.Change == ChangeKind.Add || view.RequiresRecreate
+                    ? new CreateView(view.Schema, definition)
+                    : new ReplaceView(view.Schema, definition));
             }
         }
 
@@ -379,7 +383,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 {
                     actions.Add(r.RequiresRecreate
                         ? new RecreateRoutine(r.Schema, definition)
-                        : new CreateRoutine(r.Schema, definition));
+                        : new ReplaceRoutine(r.Schema, definition));
                 }
             });
 
@@ -762,15 +766,33 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
     private static void EmitTriggers(TableDiff table, List<MigrationAction> actions)
     {
+        // A structural change diffs as a remove and an add under one name; the pair folds into a single
+        // replacement, leaving the mechanism — in place, or drop and create — to the dialect.
+        var replaced = table.Triggers.Where(t => t.Change == ChangeKind.Add).Select(t => t.Name)
+            .Intersect(table.Triggers.Where(t => t.Change == ChangeKind.Remove).Select(t => t.Name))
+            .ToHashSet();
+
         foreach (var trigger in table.Triggers)
         {
-            actions.Add(trigger switch
+            switch (trigger)
             {
-                { Change: ChangeKind.Add, Definition: { } definition } => new CreateTrigger(new ObjectAddress(table.Schema, table.Name), definition),
-                { Change: ChangeKind.Remove } => new DropTrigger(new MemberAddress(table.Schema, table.RenamedFrom ?? table.Name, trigger.Name)),
-                { Comment: { } comment } => new SetTriggerComment(new MemberAddress(table.Schema, table.Name, trigger.Name), comment.Old, comment.New),
-                _ => throw new NotSupportedException($"Cannot linearize trigger change {trigger.Change} on '{table.Schema}.{table.Name}'."),
-            });
+                case { Change: ChangeKind.Add, Definition: { } definition } when replaced.Contains(trigger.Name):
+                    actions.Add(new ReplaceTrigger(new ObjectAddress(table.Schema, table.Name), definition));
+                    break;
+                case { Change: ChangeKind.Add, Definition: { } definition }:
+                    actions.Add(new CreateTrigger(new ObjectAddress(table.Schema, table.Name), definition));
+                    break;
+                case { Change: ChangeKind.Remove } when replaced.Contains(trigger.Name):
+                    break; // folded into the replacement
+                case { Change: ChangeKind.Remove }:
+                    actions.Add(new DropTrigger(new MemberAddress(table.Schema, table.RenamedFrom ?? table.Name, trigger.Name)));
+                    break;
+                case { Comment: { } comment }:
+                    actions.Add(new SetTriggerComment(new MemberAddress(table.Schema, table.Name, trigger.Name), comment.Old, comment.New));
+                    break;
+                default:
+                    throw new NotSupportedException($"Cannot linearize trigger change {trigger.Change} on '{table.Schema}.{table.Name}'.");
+            }
         }
     }
 

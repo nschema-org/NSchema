@@ -17,6 +17,7 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
+using NSchema.Model.Triggers;
 using NSchema.Model.Views;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Columns;
@@ -179,6 +180,38 @@ public sealed class PlanLinearizerTests
 
     /// <summary>Wraps a single table under a null-kind <c>app</c> schema (the common "only tables changed" case).</summary>
     private IReadOnlyList<MigrationAction> LinearizeTable(TableDiff table) => Linearize(SchemaNode("app", tables: [table]));
+
+    [Fact]
+    public void Linearize_TriggerRemoveAndAddUnderOneName_FoldsIntoReplace()
+    {
+        // Arrange — a structural change diffs as remove + add under one name; the plan states the intent
+        // and leaves the mechanism to the dialect.
+        var trigger = new Trigger { Name = "users_audit_trg", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "BODY" };
+        var plan = LinearizeTable(TableNode("users", ChangeKind.Modify, triggers:
+        [
+            TriggerDiff.Removed("users_audit_trg"),
+            TriggerDiff.Added(trigger),
+        ]));
+
+        // Assert
+        plan.ShouldHaveSingleItem().ShouldBeOfType<ReplaceTrigger>().Trigger.ShouldBe(trigger);
+    }
+
+    [Fact]
+    public void Linearize_TriggerAddAndRemoveOfDifferentNames_StayDistinct()
+    {
+        // Arrange — only a same-named pair is a replacement.
+        var plan = LinearizeTable(TableNode("users", ChangeKind.Modify, triggers:
+        [
+            TriggerDiff.Removed("old_trg"),
+            TriggerDiff.Added(new Trigger { Name = "new_trg", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "BODY" }),
+        ]));
+
+        // Assert
+        plan.OfType<DropTrigger>().ShouldHaveSingleItem().Trigger.Member.ShouldBe("old_trg");
+        plan.OfType<CreateTrigger>().ShouldHaveSingleItem().Trigger.Name.ShouldBe("new_trg");
+        plan.OfType<ReplaceTrigger>().ShouldBeEmpty();
+    }
 
     private static int IndexOf<T>(IReadOnlyList<MigrationAction> plan) where T : MigrationAction
     {
@@ -1211,17 +1244,17 @@ public sealed class PlanLinearizerTests
             .ShouldHaveSingleItem().ShouldBeOfType<DropRoutine>().Routine.Name.ShouldBe("f");
 
     [Fact]
-    public void Linearize_RoutineBodyChange_EmitsCreateRoutine_NotRecreate()
+    public void Linearize_RoutineBodyChange_EmitsReplaceRoutine_NotRecreate()
     {
         // Arrange
-        // A definition-only change replaces in place (CREATE OR REPLACE semantics, like a view body change).
+        // A definition-only change replaces in place, and never masquerades as a create.
         var plan = Linearize(SchemaNode("app", routines:
 
             // Act
             [RoutineDiff.Modified("app", "f", RoutineKind.Function) with { Definition = _fn }]));
 
         // Assert
-        plan.ShouldHaveSingleItem().ShouldBeOfType<CreateRoutine>();
+        plan.ShouldHaveSingleItem().ShouldBeOfType<ReplaceRoutine>();
         plan.OfType<RecreateRoutine>().ShouldBeEmpty();
     }
 
@@ -1289,12 +1322,14 @@ public sealed class PlanLinearizerTests
     }
 
     [Fact]
-    public void Linearize_OrdersRoutineCreatesBeforeCreateTable_AndAfterEnums()
+    public void Linearize_OrdersRoutineCreatesAfterCreateTable_AndBeforeConstraintsAndViews()
     {
-        // Column DEFAULTs and CHECKs may call routines, and routine args may use enum types.
+        // A routine's signature and body may reference the tables it follows (a rowtype return, a query the
+        // engine validates at creation); the constraints, triggers, and views that may call it come after.
         var plan = Linearize(SchemaNode("app", ChangeKind.Add,
             tables: [TableNode("users", ChangeKind.Add, definition: new Table { Name = "users" })],
             enums: [EnumDiff.Added("app", new EnumType { Name = "status", Values = ["a"] })],
+            views: [ViewDiff.Added("app", new View { Name = "v", Body = "SELECT 1" })],
             routines:
             [
                 RoutineDiff.Added("app", _fn),
@@ -1302,7 +1337,8 @@ public sealed class PlanLinearizerTests
             ]));
 
         IndexOf<CreateEnum>(plan).ShouldBeLessThan(IndexOf<CreateRoutine>(plan));
-        IndexOf<CreateRoutine>(plan).ShouldBeLessThan(IndexOf<CreateTable>(plan));
+        IndexOf<CreateTable>(plan).ShouldBeLessThan(IndexOf<CreateRoutine>(plan));
+        IndexOf<CreateRoutine>(plan).ShouldBeLessThan(IndexOf<CreateView>(plan));
     }
 
     [Fact]

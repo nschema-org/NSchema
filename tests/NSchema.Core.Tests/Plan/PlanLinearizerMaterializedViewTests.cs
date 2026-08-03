@@ -155,13 +155,14 @@ public sealed class PlanLinearizerMaterializedViewTests
     }
 
     [Fact]
-    public void PlainViewBodyChange_EmitsOnlyCreateNoDrop()
+    public void PlainViewBodyChange_EmitsOnlyReplaceNoDrop()
     {
         var actions = Linearize(ViewDiff.Modified("app", "v")
             with
         { Definition = new View { Name = "v", Body = "SELECT 2" } });
 
-        actions.OfType<CreateView>().ShouldHaveSingleItem();
+        actions.OfType<ReplaceView>().ShouldHaveSingleItem();
+        actions.OfType<CreateView>().ShouldBeEmpty();
         actions.OfType<DropView>().ShouldBeEmpty();
     }
 }
