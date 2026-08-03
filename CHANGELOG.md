@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.4.0] - 2026-08-03
+
+### Fixed
+
+- **Functions that call each other now apply in the right order.** Inherited from NSchema.Core 5.4: a routine's definition is scanned for the routines it calls and the objects it reads, and creates are ordered so a callee precedes its caller.
+
 ## [5.3.0] - 2026-08-03
 
 ### Changed
