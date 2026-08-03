@@ -44,15 +44,14 @@ internal static class ModelSerialization
         }
     }
 
-    // GetCustomAttribute does not follow overridden properties (attribute inheritance is a no-op for
-    // properties), so walk the declaring-type chain for a [JsonIgnore] on a same-named property — e.g. an
-    // abstract base whose overrides omit it.
+    // GetCustomAttribute does not follow overridden properties so walk the declaring-type chain for a [JsonIgnore].
+    // Only an unconditional ignore removes the property: a conditional one (e.g. WhenWritingDefault) keeps its own semantics.
     private static bool IsJsonIgnored(PropertyInfo property)
     {
         for (var type = property.DeclaringType; type is not null; type = type.BaseType)
         {
-            if (type.GetProperty(property.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                    ?.GetCustomAttribute<JsonIgnoreAttribute>(inherit: false) is not null)
+            var prop = type.GetProperty(property.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop?.GetCustomAttribute<JsonIgnoreAttribute>(inherit: false) is { Condition: JsonIgnoreCondition.Always })
             {
                 return true;
             }

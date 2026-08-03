@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Services;
+using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Plan.Plugins;
 using NSchema.Plan.Policies;
@@ -16,21 +17,21 @@ namespace NSchema.Plan.Domain.Services;
 /// <param name="linearizer">Derives the ordered actions from the diff, weaving its scripts in.</param>
 /// <param name="projectPolicies">Policies that validate the declared project.</param>
 /// <param name="planPolicies">Policies that validate the complete plan (e.g. destructive-change checks).</param>
+/// <param name="equivalence">The provider's comparison-side vocabulary, for resolving type references.</param>
 /// <param name="dialect">The SQL dialect the plan's statements are rendered with. Required for planning.</param>
 /// <param name="options">How the findings the policies report are enforced.</param>
 internal sealed class MigrationPlanner(
+    IOptions<DiagnosticOptions> options,
     IProjectComparer comparer,
     IPlanLinearizer linearizer,
     IEnumerable<IProjectPolicy> projectPolicies,
     IEnumerable<IPlanPolicy> planPolicies,
-    IOptions<DiagnosticOptions>? options = null,
+    SqlEquivalence equivalence,
     SqlDialect? dialect = null
 ) : IMigrationPlanner
 {
-    private DiagnosticOptions Enforcement => options?.Value ?? new DiagnosticOptions();
-
     public Result Validate(ProjectDefinition project) =>
-        Result.From(Enforcement.Apply(projectPolicies.SelectMany(p => p.Validate(project))));
+        Result.From(options.Value.Apply(projectPolicies.SelectMany(p => p.Validate(project))));
 
     public Result<MigrationPlan> Plan(CurrentState current, ProjectDefinition project, PlanningScope scope)
     {
@@ -63,6 +64,9 @@ internal sealed class MigrationPlanner(
         // Checked after scoping: a container out of scope holds nothing this run creates.
         diagnostics.AddRange(Result.From(MissingSchemas(diff, current.Database)));
 
+        // Every type the desired database references must exist once the plan applies.
+        diagnostics.AddRange(Result.From(TypeReachability.Check(diff, project.ScopedTo(scope).Database, current.Database, equivalence)));
+
         var dependencies = new PlanDependencies(current.Database, project.Database);
         var managed = ManagedAfterApply(current, project, scope);
 
@@ -74,7 +78,7 @@ internal sealed class MigrationPlanner(
         var plan = Realize(diff, dependencies, dialect, managed, adopted, diagnostics);
 
         // Validate the complete plan — post-render, so policies see exactly what an apply would execute.
-        diagnostics.AddRange(Enforcement.Apply(planPolicies.SelectMany(p => p.Validate(plan))));
+        diagnostics.AddRange(options.Value.Apply(planPolicies.SelectMany(p => p.Validate(plan))));
 
         return diagnostics.ToResult(plan);
     }
@@ -169,10 +173,17 @@ internal sealed class MigrationPlanner(
         var scoped = project.ScopedTo(scope).Database;
         var declared = scoped.Identities();
 
+        // An implicit object is never managed: it is here for reference, not for this project to own.
+        var implicitObjects = scoped.Schemas
+            .SelectMany(s => s.Objects().Where(o => o.IsImplicit).Select(o => o.Address))
+            .ToHashSet();
         var implicitSchemas = scoped.Schemas.Where(s => s.IsImplicit).Select(s => s.Address).ToHashSet();
 
-        return (declared with { DatabaseObjects = [.. declared.DatabaseObjects.Where(o => !implicitSchemas.Contains(o))] })
-            .Union(retained);
+        return (declared with
+        {
+            DatabaseObjects = [.. declared.DatabaseObjects.Where(o => !implicitSchemas.Contains(o))],
+            SchemaObjects = [.. declared.SchemaObjects.Where(o => !implicitObjects.Contains(o))],
+        }).Union(retained);
     }
 
     /// <summary>

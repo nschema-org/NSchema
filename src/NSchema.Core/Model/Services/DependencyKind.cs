@@ -38,5 +38,15 @@ internal enum DependencyKind
     /// <summary>
     /// A column on a table.
     /// </summary>
-    Column
+    Column,
+
+    /// <summary>
+    /// A captured native type.
+    /// </summary>
+    NativeType,
+
+    /// <summary>
+    /// A database-global extension.
+    /// </summary>
+    Extension
 }

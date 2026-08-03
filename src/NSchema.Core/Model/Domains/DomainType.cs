@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
+using NSchema.Model.Types;
 
 namespace NSchema.Model.Domains;
 
@@ -8,7 +9,7 @@ namespace NSchema.Model.Domains;
 /// Represents a database domain: a schema-scoped named type built on a base type. Adopts its checks.
 /// </summary>
 [DebuggerDisplay("{Name,nq} (domain)")]
-public sealed class DomainType : SchemaObject, IEquatable<DomainType>
+public sealed class DomainType : TypeObject, IEquatable<DomainType>
 {
     /// <inheritdoc/>
     public override SchemaObjectKind Kind => SchemaObjectKind.Domain;
@@ -45,6 +46,7 @@ public sealed class DomainType : SchemaObject, IEquatable<DomainType>
         Default = Default,
         NotNull = NotNull,
         Checks = [.. Checks.Select(c => c.Clone())],
+        ProvidedBy = ProvidedBy,
         Comment = Comment,
     };
 

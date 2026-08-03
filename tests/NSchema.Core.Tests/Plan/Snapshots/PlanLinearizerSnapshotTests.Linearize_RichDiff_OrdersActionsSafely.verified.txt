@@ -98,7 +98,8 @@
         ],
         Name: {
           Value: order_status
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -116,7 +117,8 @@
         },
         Name: {
           Value: order_id
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -195,7 +197,8 @@
         },
         Name: {
           Value: add_tax
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -216,7 +219,8 @@
         },
         Name: {
           Value: archive
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -236,7 +240,8 @@
         },
         Name: {
           Value: score
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -291,7 +296,8 @@
           ],
           Name: {
             Value: users_pkey
-          }
+          },
+          IsImplicit: false
         },
         Columns: [
           {
@@ -309,7 +315,8 @@
             },
             Name: {
               Value: id
-            }
+            },
+            IsImplicit: false
           },
           {
             Type: {
@@ -322,7 +329,8 @@
             IsIdentity: false,
             Name: {
               Value: name
-            }
+            },
+            IsImplicit: false
           }
         ],
         UniqueConstraints: [
@@ -335,12 +343,14 @@
             ],
             Name: {
               Value: users_email_uq
-            }
+            },
+            IsImplicit: false
           }
         ],
         Name: {
           Value: users
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -366,7 +376,8 @@
         IsIdentity: false,
         Name: {
           Value: legacy_flag
-        }
+        },
+        IsImplicit: false
       },
       ColumnName: {
         Value: legacy_flag
@@ -395,7 +406,8 @@
         IsIdentity: false,
         Name: {
           Value: notes
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -421,7 +433,8 @@
         IsIdentity: false,
         Name: {
           Value: total
-        }
+        },
+        IsImplicit: false
       },
       Type: {
         Old: {
@@ -491,7 +504,8 @@
         ],
         Name: {
           Value: orders_code_uq
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -514,7 +528,8 @@
         },
         Name: {
           Value: orders_total_chk
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -545,7 +560,8 @@
         },
         Name: {
           Value: orders_slot_excl
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -573,7 +589,8 @@
         IsUnique: true,
         Name: {
           Value: users_name_ix
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -610,7 +627,8 @@
         ],
         Name: {
           Value: orders_total_ix
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -649,7 +667,8 @@
         },
         Name: {
           Value: active_users
-        }
+        },
+        IsImplicit: false
       }
     }
   },
@@ -688,7 +707,8 @@
         },
         Name: {
           Value: user_summary
-        }
+        },
+        IsImplicit: false
       }
     }
   },

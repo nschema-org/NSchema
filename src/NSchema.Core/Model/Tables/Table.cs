@@ -190,6 +190,7 @@ public sealed class Table : SchemaObject, IEquatable<Table>
         Indexes = [.. Indexes.Select(i => i.Clone())],
         Grants = [.. Grants],
         Triggers = [.. Triggers.Select(t => t.Clone())],
+        ProvidedBy = ProvidedBy,
         Comment = Comment,
     };
 

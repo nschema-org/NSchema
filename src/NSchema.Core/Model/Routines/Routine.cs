@@ -27,7 +27,15 @@ public sealed class Routine : SchemaObject, IEquatable<Routine>
     public required SqlText Definition { get; set; }
 
     /// <inheritdoc/>
-    public override Routine Clone() => new() { Name = Name, RoutineKind = RoutineKind, Arguments = Arguments, Definition = Definition, Comment = Comment };
+    public override Routine Clone() => new()
+    {
+        Name = Name,
+        RoutineKind = RoutineKind,
+        Arguments = Arguments,
+        Definition = Definition,
+        ProvidedBy = ProvidedBy,
+        Comment = Comment
+    };
 
     /// <summary>
     /// Structural equality over the declared definition; the schema and the comment are excluded.

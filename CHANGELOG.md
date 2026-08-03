@@ -6,7 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [5.1.0]
+## [5.2.0] - 2026-08-03
+
+### Added
+
+- **Type references resolve against the database.** A plan now verifies that every type the project references will exist once it applies.
+- **The type vocabulary is part of the provider contract.** An introspector can capture the types the engine and its extensions provide (`NativeType`) and record which extension provides an object (`ProvidedBy`).
+- **Extensions now include their types.** A plan that drops an extension now blocks when data still depends on its types.
+- **Types are a category.** `TypeObject` is the common base of everything a type reference can resolve to: `EnumType`, `DomainType`, `CompositeType`, and now `NativeType`.
+
+### Changed
+
+- **`IsImplicit` and `ProvidedBy` live on every database element.** An implicit object, like a container-only schema, or a native type, is never created, dropped, managed, or imported, whatever its kind.
+
+### Fixed
+
+- **Schema-qualified engine types no longer block planning.** A reference like `pg_catalog.tsvector` on an imported column previously demanded a declaration nobody could write.
+
+## [5.1.0] - 2026-08-02
 
 ### Changed
 
@@ -444,7 +461,11 @@ First stable release. The public API is now covered by semantic versioning. Brea
 - Pre- and post-deployment script support via `IScriptProvider`, `AddScriptFromFile(...)`, and `AddScriptsFromEmbeddedResources(...)`.
 - SourceLink and symbol packages (`.snupkg`) published alongside the main package for source-level debugging.
 
-[Unreleased]: https://github.com/nschema-org/NSchema.Core/compare/v4.6.1...HEAD
+[Unreleased]: https://github.com/nschema-org/NSchema.Core/compare/v5.2.0...HEAD
+[5.2.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.1.0...v5.2.0
+[5.1.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.0.1...v5.1.0
+[5.0.1]: https://github.com/nschema-org/NSchema.Core/compare/v5.0.0...v5.0.1
+[5.0.0]: https://github.com/nschema-org/NSchema.Core/compare/v4.6.1...v5.0.0
 [4.6.1]: https://github.com/nschema-org/NSchema.Core/compare/v4.6.0...v4.6.1
 [4.6.0]: https://github.com/nschema-org/NSchema.Core/compare/v4.5.0...v4.6.0
 [4.5.0]: https://github.com/nschema-org/NSchema.Core/compare/v4.4.0...v4.5.0

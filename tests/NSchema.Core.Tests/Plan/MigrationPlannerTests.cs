@@ -3,6 +3,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
@@ -35,7 +36,7 @@ public sealed class MigrationPlannerTests
 
     private readonly DiagnosticOptions _diagnosticOptions = new();
 
-    private MigrationPlanner Sut => new(_differ, _linearizer, _projectPolicies, _planPolicies, Options.Create(_diagnosticOptions), new StubSqlDialect());
+    private MigrationPlanner Sut => new(Options.Create(_diagnosticOptions), _differ, _linearizer, _projectPolicies, _planPolicies, new SqlEquivalence(), new StubSqlDialect());
 
     public MigrationPlannerTests()
     {
@@ -405,7 +406,7 @@ public sealed class MigrationPlannerTests
     public void Plan_WithoutADialect_Fails()
     {
         // Arrange
-        var sut = new MigrationPlanner(_differ, _linearizer, _projectPolicies, _planPolicies, dialect: null);
+        var sut = new MigrationPlanner(Options.Create(new DiagnosticOptions()), _differ, _linearizer, _projectPolicies, _planPolicies, new SqlEquivalence(), dialect: null);
 
         // Act
         var result = sut.Plan(_current, _desired, PlanningScope.All);

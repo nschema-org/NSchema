@@ -67,7 +67,8 @@
                 },
                 Name: {
                   Value: legacy_flag
-                }
+                },
+                IsImplicit: false
               }
             },
             {
@@ -107,7 +108,8 @@
                 },
                 Name: {
                   Value: id
-                }
+                },
+                IsImplicit: false
               },
               Type: {
                 Old: {
@@ -159,7 +161,8 @@
                 },
                 Name: {
                   Value: email_address
-                }
+                },
+                IsImplicit: false
               },
               RenamedFrom: {
                 Value: email
@@ -218,7 +221,8 @@
                 },
                 Name: {
                   Value: email_upper
-                }
+                },
+                IsImplicit: false
               }
             }
           ],
@@ -277,7 +281,8 @@
                 },
                 Name: {
                   Value: users_email_ix
-                }
+                },
+                IsImplicit: false
               }
             }
           ],
@@ -318,7 +323,8 @@
                 },
                 Name: {
                   Value: users_email_uq
-                }
+                },
+                IsImplicit: false
               }
             }
           ],
@@ -357,7 +363,8 @@
                 },
                 Name: {
                   Value: users_id_chk
-                }
+                },
+                IsImplicit: false
               }
             }
           ],
@@ -404,7 +411,8 @@
                 },
                 Name: {
                   Value: users_span_excl
-                }
+                },
+                IsImplicit: false
               }
             }
           ]
@@ -458,7 +466,8 @@
             },
             Name: {
               Value: active_users
-            }
+            },
+            IsImplicit: false
           },
           IsMaterialized: false,
           RequiresRecreate: false
@@ -555,7 +564,8 @@
             },
             Name: {
               Value: user_emails
-            }
+            },
+            IsImplicit: false
           },
           IsMaterialized: false,
           RequiresRecreate: false
@@ -676,7 +686,8 @@
             },
             Name: {
               Value: severity
-            }
+            },
+            IsImplicit: false
           },
           RequiresRecreate: false
         },
@@ -737,7 +748,8 @@
             },
             Name: {
               Value: batch_id
-            }
+            },
+            IsImplicit: false
           }
         },
         {
@@ -830,7 +842,8 @@
             },
             Name: {
               Value: add_tax
-            }
+            },
+            IsImplicit: false
           },
           RequiresRecreate: false
         },
@@ -874,7 +887,8 @@
             },
             Name: {
               Value: archive
-            }
+            },
+            IsImplicit: false
           },
           RequiresRecreate: false
         },
@@ -916,7 +930,8 @@
             },
             Name: {
               Value: brand_new
-            }
+            },
+            IsImplicit: false
           },
           RequiresRecreate: false
         },
@@ -958,7 +973,8 @@
             },
             Name: {
               Value: score
-            }
+            },
+            IsImplicit: false
           },
           Arguments: {
             Old: {
@@ -1031,7 +1047,8 @@
             },
             Name: {
               Value: code
-            }
+            },
+            IsImplicit: false
           },
           DataType: {
             Old: {
@@ -1086,7 +1103,8 @@
             },
             Name: {
               Value: postal_code
-            }
+            },
+            IsImplicit: false
           },
           RequiresRecreate: false
         },
@@ -1232,7 +1250,8 @@
             },
             Name: {
               Value: coords
-            }
+            },
+            IsImplicit: false
           }
         },
         {
@@ -1426,7 +1445,8 @@
         Name: {
           Value: vector
         },
-        Comment: embeddings
+        Comment: embeddings,
+        IsImplicit: false
       },
       Comment: {
         New: embeddings

@@ -22,8 +22,11 @@ info     advisory    dead-migration                             DiffDiagnostics.
 warning  advisory    foreign-key-target-out-of-scope            DiffDiagnostics.ForeignKeyTargetOutOfScope
 warning  advisory    inferred-column-may-block-removal          DiffDiagnostics.InferredColumnMayBlockRemoval
 warning  advisory    inferred-severed-out-of-scope              DiffDiagnostics.InferredSeveredOutOfScope
+error    structural  removed-type-still-referenced              DiffDiagnostics.RemovedTypeStillReferenced
 warning  advisory    severed-out-of-scope                       DiffDiagnostics.SeveredOutOfScope
-error    structural  type-target-out-of-scope                   DiffDiagnostics.TypeTargetOutOfScope
+warning  advisory    unresolved-type-extension-installing       DiffDiagnostics.TypeMayComeFromExtension
+error    structural  unresolved-type                            DiffDiagnostics.UnresolvedTypes
+warning  advisory    unverified-type                            DiffDiagnostics.UnverifiedTypes
 info     advisory    database-connected                         DoctorDiagnostics.DatabaseConnected
 info     advisory    database-not-configured                    DoctorDiagnostics.DatabaseNotConfigured
 error    structural  database-unreachable                       DoctorDiagnostics.DatabaseUnreachable

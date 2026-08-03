@@ -2,6 +2,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Enums;
+using NSchema.Diff.Domain.Extensions;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Domain.Tables;
@@ -10,9 +11,11 @@ using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
+using NSchema.Model.Extensions;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
+using NSchema.Model.Types;
 using NSchema.Model.Views;
 
 namespace NSchema.Tests.Diff.Model;
@@ -370,62 +373,101 @@ public sealed class DatabaseDiffTests
         result.Diagnostics.ShouldBeEmpty();
     }
 
-    private static DatabaseDiff AddsColumnTyped(SqlType type) => new(
-    [
-        SchemaDiff.Containing("billing") with
-        {
-            Tables = [
-            TableDiff.Modified("billing", "orders") with
-            {
-                Columns = [
-                ColumnDiff.Added(new Column { Name = "state", Type = type }),
-            ],
-            },
-        ],
-        },
-    ]);
+    /// <summary>
+    /// The citext extension with its captured type at ext.citext, and billing.orders.state declared against
+    /// it — qualified or bare.
+    /// </summary>
+    private static Database DatabaseWithExtensionTypedColumn(SqlType columnType) => new()
+    {
+        Extensions = [new Extension { Name = "citext" }],
+        Schemas = [
+        new Schema { Name = "ext", IsImplicit = true,
+            NativeTypes = [new NativeType { Name = "citext", ProvidedBy = new ExtensionReference("citext") }] },
+        new Schema { Name = "billing",
+            Tables = [new Table { Name = "orders", Columns = [new Column { Name = "state", Type = columnType }] }] },
+    ],
+    };
 
     [Fact]
-    public void ScopedTo_AdditionTypedByAnOutOfScopeAbsentType_Blocks()
+    public void ScopedTo_ExtensionRemovalAnOutOfScopeColumnDependsOn_Blocks()
     {
-        // Arrange — the column names app.status, which this run will neither create (out of scope) nor find.
-        // A type is part of the column's shape, so unlike a constraint there is nothing to leave out.
-        var diff = AddsColumnTyped(SqlType.Custom("app", "status"));
+        // Arrange — dropping citext takes ext.citext with it, and through it the column's type. The native type
+        // is a conduit: the closure flows through it to the column, and only the column is reported.
+        var current = DatabaseWithExtensionTypedColumn(SqlType.Custom("ext", "citext"));
+        var diff = new DatabaseDiff(null, [ExtensionDiff.Removed("citext")]);
 
         // Act
-        var result = diff.ScopedTo(PlanningScope.To([Target("billing", "orders")]), CurrentDatabase());
+        var result = diff.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
-        // Assert — blocked, with the plan still carried for review.
+        // Assert
         result.IsFailure.ShouldBeTrue();
-        result.Value.ShouldNotBeNull();
         result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
-            DiffDiagnostics.TypeTargetOutOfScope(
-                [new MemberAddress("billing", "orders", "state")],
-                [new ObjectAddress("app", "status")]));
+            DiffDiagnostics.ColumnBlocksRemoval([new MemberAddress("billing", "orders", "state")]));
     }
 
     [Fact]
-    public void ScopedTo_AdditionTypedByAnOutOfScopeTypeThatExists_IsAllowed()
+    public void ScopedTo_ExtensionRemovalABareTypedColumnAppearsToDependOn_Hedges()
     {
-        // Arrange — app.status is already in the database, so the column applies cleanly even unscoped.
-        var current = DatabaseWithEnumTypedColumn(SqlType.Custom("app", "status"));
+        // Arrange — the column's edge to ext.citext was bound by name alone, so the block is a hedge.
+        var current = DatabaseWithExtensionTypedColumn(SqlType.Custom("citext"));
+        var diff = new DatabaseDiff(null, [ExtensionDiff.Removed("citext")]);
 
         // Act
-        var result = AddsColumnTyped(SqlType.Custom("app", "status"))
-            .ScopedTo(PlanningScope.To([Target("billing", "orders")]), current);
+        var result = diff.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Diagnostics.ShouldBeEmpty();
+        result.Diagnostics.ShouldHaveSingleItem().ShouldBe(
+            DiffDiagnostics.InferredColumnMayBlockRemoval([new MemberAddress("billing", "orders", "state")]));
     }
 
     [Fact]
-    public void ScopedTo_AdditionTypedByABareName_IsNotBlocked()
+    public void ScopedTo_ExtensionRemoval_SeversThroughAnyProvidedObject_NotJustTypes()
     {
-        // Arrange — a bare name is resolved against what already exists, so it can only ever reach something
-        // present. Nothing to block on, and a guess must not block a plan that need not be.
-        var result = AddsColumnTyped(SqlType.Custom("status"))
-            .ScopedTo(PlanningScope.To([Target("billing", "orders")]), CurrentDatabase());
+        // Arrange — postgis provides a table, and dropping the extension takes it along: the out-of-scope
+        // foreign key aimed at it must go too, exactly as if the table were dropped directly.
+        var current = new Database
+        {
+            Extensions = [new Extension { Name = "postgis" }],
+            Schemas = [
+            new Schema { Name = "gis", IsImplicit = true,
+                Tables = [new Table { Name = "spatial_ref_sys", ProvidedBy = new ExtensionReference("postgis") }] },
+            new Schema { Name = "billing",
+                Tables = [new Table { Name = "maps", Columns = [new Column { Name = "srid", Type = SqlType.Int }],
+                    ForeignKeys = [new ForeignKey { Name = "fk_maps_srid", ColumnNames = ["srid"], References = new ObjectAddress("gis", "spatial_ref_sys"), ReferencedColumnNames = ["srid"] }] }] },
+        ],
+        };
+        var diff = new DatabaseDiff(null, [ExtensionDiff.Removed("postgis")]);
+
+        // Act
+        var result = diff.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
+
+        // Assert — the constraint is widened in as a removal, and the announcement covers what goes.
+        result.IsSuccess.ShouldBeTrue();
+        var billing = result.Value!.Schemas.Single(s => s.Name == "billing");
+        billing.Tables.ShouldHaveSingleItem().ForeignKeys.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            f => f.Name.ShouldBe("fk_maps_srid"),
+            f => f.Change.ShouldBe(ChangeKind.Remove));
+        result.Diagnostics.ShouldHaveSingleItem().ShouldBe(DiffDiagnostics.SeveredOutOfScope(
+            [new ObjectAddress("gis", "spatial_ref_sys"), new MemberAddress("billing", "maps", "fk_maps_srid")]));
+    }
+
+    [Fact]
+    public void ScopedTo_ExtensionRemovalNothingDependsOn_IsClean()
+    {
+        // Arrange — the extension's types are unused, so they go silently with it.
+        var current = new Database
+        {
+            Extensions = [new Extension { Name = "citext" }],
+            Schemas = [
+            new Schema { Name = "ext", IsImplicit = true,
+                NativeTypes = [new NativeType { Name = "citext", ProvidedBy = new ExtensionReference("citext") }] },
+        ],
+        };
+        var diff = new DatabaseDiff(null, [ExtensionDiff.Removed("citext")]);
+
+        // Act
+        var result = diff.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")), current);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();

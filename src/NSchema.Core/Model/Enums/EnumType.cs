@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NSchema.Model.Types;
 
 namespace NSchema.Model.Enums;
 
@@ -6,7 +7,7 @@ namespace NSchema.Model.Enums;
 /// Represents an enum type: a named, ordered set of string values.
 /// </summary>
 [DebuggerDisplay("{Name,nq} ({Values.Count} values)")]
-public sealed class EnumType : SchemaObject, IEquatable<EnumType>
+public sealed class EnumType : TypeObject, IEquatable<EnumType>
 {
     /// <inheritdoc/>
     public override SchemaObjectKind Kind => SchemaObjectKind.Enum;
@@ -17,7 +18,13 @@ public sealed class EnumType : SchemaObject, IEquatable<EnumType>
     public List<EnumLabel> Values { get; init; } = [];
 
     /// <inheritdoc/>
-    public override EnumType Clone() => new() { Name = Name, Values = [.. Values], Comment = Comment };
+    public override EnumType Clone() => new()
+    {
+        Name = Name,
+        Values = [.. Values],
+        ProvidedBy = ProvidedBy,
+        Comment = Comment
+    };
 
     /// <summary>
     /// Structural equality over the declared definition; the schema and the comment are excluded.

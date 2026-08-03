@@ -64,6 +64,14 @@ public sealed record ObjectAddress(SqlIdentifier Schema, SqlIdentifier Name, Sch
     public static ObjectAddress CompositeType(SqlIdentifier schema, SqlIdentifier name) =>
         new(schema, name, SchemaObjectKind.CompositeType);
 
+    /// <summary>
+    /// The address of the named native type.
+    /// </summary>
+    /// <param name="schema">The schema containing the native type.</param>
+    /// <param name="name">The native type's name.</param>
+    public static ObjectAddress NativeType(SqlIdentifier schema, SqlIdentifier name) =>
+        new(schema, name, SchemaObjectKind.NativeType);
+
     /// <inheritdoc />
     protected override IReadOnlyList<SqlIdentifier> Path => [Schema, Name];
 

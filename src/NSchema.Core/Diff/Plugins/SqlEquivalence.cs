@@ -19,6 +19,12 @@ public class SqlEquivalence
     public virtual IEqualityComparer<SqlType> Types => EqualityComparer<SqlType>.Default;
 
     /// <summary>
+    /// Whether the engine validates type names.
+    /// When <see langword="false"/> (SQLite), any name is a valid type, so every reference resolves.
+    /// </summary>
+    public virtual bool ValidatesTypeNames => true;
+
+    /// <summary>
     /// Decides whether two default expressions mean the same default, e.g. folding a literal cast the
     /// database adds when it stores one.
     /// </summary>

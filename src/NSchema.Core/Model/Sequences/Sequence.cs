@@ -17,7 +17,13 @@ public sealed class Sequence : SchemaObject, IEquatable<Sequence>
     public SequenceOptions Options { get; set; } = new();
 
     /// <inheritdoc/>
-    public override Sequence Clone() => new() { Name = Name, Options = Options, Comment = Comment };
+    public override Sequence Clone() => new()
+    {
+        Name = Name,
+        Options = Options,
+        ProvidedBy = ProvidedBy,
+        Comment = Comment
+    };
 
     /// <summary>
     /// Structural equality over the declared definition.

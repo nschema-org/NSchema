@@ -1,8 +1,8 @@
 using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
-using NSchema.Model.Enums;
 using NSchema.Model.Tables;
+using NSchema.Model.Types;
 using NSchema.Model.Views;
 
 namespace NSchema.Model.Services;
@@ -16,6 +16,9 @@ namespace NSchema.Model.Services;
 /// </remarks>
 internal sealed class DependencyGraph
 {
+    // The graph keys on kind-free locations, not the model's kinded Address properties: an edge arrives as
+    // a reference (a foreign key target, a scanned view body, a type name), and a reference does not know
+    // the kind of what it names. A kinded key would never meet it. The kind rides on the node instead.
     private readonly Dictionary<Address, List<DependencyNode>> _byAddress = [];
     private readonly Dictionary<ObjectAddress, List<DependencyNode>> _byOwner = [];
     private readonly Dictionary<DependencyNode, List<Edge>> _requires = [];
@@ -31,12 +34,9 @@ internal sealed class DependencyGraph
     {
         var allTables = database.Objects<Table>().ToList();
         var allViews = database.Objects<View>().ToList();
-        var allTypes = database.Objects<EnumType>().Select(x => (x.Schema, x.Object.Name, Kind: DependencyKind.Enum))
-            .Concat(database.Objects<DomainType>().Select(x => (x.Schema, x.Object.Name, Kind: DependencyKind.Domain)))
-            .Concat(database.Objects<CompositeType>().Select(x => (x.Schema, x.Object.Name, Kind: DependencyKind.CompositeType)))
-            .ToList();
+        var allTypes = database.Objects<TypeObject>().ToList();
 
-        _typesByName = allTypes.ToLookup(t => t.Name, t => new ObjectAddress(t.Schema, t.Name));
+        _typesByName = allTypes.ToLookup(t => t.Object.Name, t => new ObjectAddress(t.Schema, t.Object.Name));
 
         // Nodes first: an edge can point at anything, including something declared later.
         foreach (var (schema, table) in allTables)
@@ -53,9 +53,28 @@ internal sealed class DependencyGraph
             Add(new DependencyNode(new ObjectAddress(schema, view.Name), DependencyKind.View));
         }
 
-        foreach (var (schema, name, kind) in allTypes)
+        foreach (var (schema, type) in allTypes)
         {
-            Add(new DependencyNode(new ObjectAddress(schema, name), kind));
+            Add(new DependencyNode(new ObjectAddress(schema, type.Name), TypeKind(type)));
+        }
+
+        foreach (var extension in database.Extensions)
+        {
+            Add(new DependencyNode(DatabaseAddress.Extension(extension.Name), DependencyKind.Extension));
+        }
+
+        // An object an extension provides, requires it.
+        foreach (var (schema, provided) in database.Objects<SchemaObject>())
+        {
+            if (provided.ProvidedBy is not { } provider)
+            {
+                continue;
+            }
+
+            foreach (var node in At(new ObjectAddress(schema, provided.Name)))
+            {
+                Connect(node, DatabaseAddress.Extension(provider.Name), DependencyCertainty.Stated);
+            }
         }
 
         foreach (var (schema, table) in allTables)
@@ -197,6 +216,15 @@ internal sealed class DependencyGraph
 
     private static DependencyNode ConstraintNode(SqlIdentifier schema, SqlIdentifier table, ForeignKey foreignKey) =>
         new(new MemberAddress(schema, table, foreignKey.Name), DependencyKind.ForeignKey);
+
+    private static DependencyKind TypeKind(TypeObject type) => type.Kind switch
+    {
+        SchemaObjectKind.Enum => DependencyKind.Enum,
+        SchemaObjectKind.Domain => DependencyKind.Domain,
+        SchemaObjectKind.CompositeType => DependencyKind.CompositeType,
+        SchemaObjectKind.NativeType => DependencyKind.NativeType,
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type.Kind, "Not a type kind."),
+    };
 
     private void ConnectToType(DependencyNode dependent, SqlType type)
     {

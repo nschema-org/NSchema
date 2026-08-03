@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NSchema.Model.Types;
 
 namespace NSchema.Model.CompositeTypes;
 
@@ -6,7 +7,7 @@ namespace NSchema.Model.CompositeTypes;
 /// Represents a database composite type: a schema-scoped named tuple of typed <see cref="Fields"/>.
 /// </summary>
 [DebuggerDisplay("{Name,nq} (composite type, {Fields.Count} fields)")]
-public sealed class CompositeType : SchemaObject, IEquatable<CompositeType>
+public sealed class CompositeType : TypeObject, IEquatable<CompositeType>
 {
     /// <inheritdoc/>
     public override SchemaObjectKind Kind => SchemaObjectKind.CompositeType;
@@ -17,7 +18,13 @@ public sealed class CompositeType : SchemaObject, IEquatable<CompositeType>
     public List<CompositeField> Fields { get; init; } = [];
 
     /// <inheritdoc/>
-    public override CompositeType Clone() => new() { Name = Name, Fields = [.. Fields], Comment = Comment };
+    public override CompositeType Clone() => new()
+    {
+        Name = Name,
+        Fields = [.. Fields],
+        ProvidedBy = ProvidedBy,
+        Comment = Comment
+    };
 
     /// <summary>
     /// Structural equality over the declared definition.

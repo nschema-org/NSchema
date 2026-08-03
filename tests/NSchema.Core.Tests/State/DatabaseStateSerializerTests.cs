@@ -1,9 +1,11 @@
 using System.Text;
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Extensions;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
+using NSchema.Model.Types;
 using NSchema.State;
 using NSchema.State.Domain;
 
@@ -99,6 +101,29 @@ public sealed class DatabaseStateSerializerTests
         json.ShouldContain("\"isNullable\": false");
         json.ShouldContain("\"isIdentity\": false");
         json.ShouldContain("\"defaultExpression\": null");
+    }
+
+    [Fact]
+    public void RoundTrip_PreservesNativeTypesAndProvenance()
+    {
+        // Arrange — the captured type vocabulary: a built-in, and an extension-provided type.
+        var schema = new Database
+        {
+            Extensions = [new Extension { Name = "citext" }],
+            Schemas = [
+            new Schema { Name = "pg_catalog", IsImplicit = true, NativeTypes = [new NativeType { Name = "tsvector" }] },
+            new Schema { Name = "ext", IsImplicit = true,
+                NativeTypes = [new NativeType { Name = "citext", ProvidedBy = new ExtensionReference("citext") }] },
+        ],
+        };
+
+        // Act
+        var roundTripped = _sut.Deserialize(_sut.Serialize(new DatabaseState(schema))).Database;
+
+        // Assert
+        roundTripped.Schemas[0].IsImplicit.ShouldBeTrue();
+        roundTripped.Schemas[0].NativeTypes.ShouldHaveSingleItem().ProvidedBy.ShouldBeNull();
+        roundTripped.Schemas[1].NativeTypes.ShouldHaveSingleItem().ProvidedBy.ShouldBe(new ExtensionReference("citext"));
     }
 
     [Fact]

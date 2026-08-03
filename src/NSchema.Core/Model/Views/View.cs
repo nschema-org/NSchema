@@ -44,6 +44,7 @@ public sealed class View : SchemaObject, IEquatable<View>
         DependsOn = [.. DependsOn],
         IsMaterialized = IsMaterialized,
         Indexes = [.. Indexes.Select(i => i.Clone())],
+        ProvidedBy = ProvidedBy,
         Comment = Comment,
     };
 

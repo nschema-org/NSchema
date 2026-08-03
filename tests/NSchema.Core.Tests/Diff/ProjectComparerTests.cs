@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Plugins;

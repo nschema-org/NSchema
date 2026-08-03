@@ -1,11 +1,11 @@
 using System.Diagnostics;
-using System.Text.Json.Serialization;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Routines;
 using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
+using NSchema.Model.Types;
 using NSchema.Model.Views;
 
 namespace NSchema.Model.Schemas;
@@ -21,16 +21,6 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
 
     /// <inheritdoc/>
     public override DatabaseAddress Address => DatabaseAddress.Schema(Name);
-
-    /// <summary>
-    /// Whether the schema is here a container only, rather than something NSchema manages.
-    /// </summary>
-    /// <remarks>
-    /// A schema is implicit either because nothing declared it (someone referenced <c>dbo.x</c>),
-    /// or because the database owns it (Postgres' <c>public</c>, SQL Server's <c>dbo</c>).
-    /// </remarks>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool IsImplicit { get; init; }
 
     /// <summary>
     /// A list of tables that are part of the schema.
@@ -97,6 +87,15 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
     }
 
     /// <summary>
+    /// A list of captured native types that live in the schema.
+    /// </summary>
+    public SchemaObjectCollection<NativeType> NativeTypes
+    {
+        get => field ??= new SchemaObjectCollection<NativeType>(this);
+        init { value.Attach(this); field = value; }
+    }
+
+    /// <summary>
     /// A list of grants that define the permissions associated with the schema.
     /// </summary>
     public List<SchemaGrant> Grants { get; init; } = [];
@@ -111,7 +110,8 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         .Concat(Sequences)
         .Concat(Routines)
         .Concat(Domains)
-        .Concat(CompositeTypes);
+        .Concat(CompositeTypes)
+        .Concat(NativeTypes);
 
     /// <inheritdoc/>
     public override Schema Clone() => Copy(IsImplicit);
@@ -125,6 +125,7 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
     {
         Name = Name,
         IsImplicit = isImplicit,
+        ProvidedBy = ProvidedBy,
         Tables = [.. Tables.Select(t => t.Clone())],
         Grants = [.. Grants],
         Views = [.. Views.Select(v => v.Clone())],
@@ -133,6 +134,7 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         Routines = [.. Routines.Select(r => r.Clone())],
         Domains = [.. Domains.Select(d => d.Clone())],
         CompositeTypes = [.. CompositeTypes.Select(t => t.Clone())],
+        NativeTypes = [.. NativeTypes.Select(t => t.Clone())],
         Comment = Comment,
     };
 
@@ -150,6 +152,7 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         copy.Routines.RemoveWhere(r => !identities.Contains(r));
         copy.Domains.RemoveWhere(d => !identities.Contains(d));
         copy.CompositeTypes.RemoveWhere(t => !identities.Contains(t));
+        copy.NativeTypes.RemoveWhere(t => !identities.Contains(t));
         return copy;
     }
 
@@ -166,7 +169,8 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         && Sequences.SequenceEqual(other.Sequences)
         && Routines.SequenceEqual(other.Routines)
         && Domains.SequenceEqual(other.Domains)
-        && CompositeTypes.SequenceEqual(other.CompositeTypes);
+        && CompositeTypes.SequenceEqual(other.CompositeTypes)
+        && NativeTypes.SequenceEqual(other.NativeTypes);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Schema other && Equals(other);

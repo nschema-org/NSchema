@@ -7,7 +7,6 @@
         },
         Value: app
       },
-      IsImplicit: false,
       Tables: [
         {
           PrimaryKey: {
@@ -41,7 +40,8 @@
             },
             Name: {
               Value: users_pkey
-            }
+            },
+            IsImplicit: false
           },
           Columns: [
             {
@@ -76,7 +76,8 @@
               },
               Name: {
                 Value: id
-              }
+              },
+              IsImplicit: false
             },
             {
               Type: {
@@ -111,7 +112,8 @@
               },
               Name: {
                 Value: name
-              }
+              },
+              IsImplicit: false
             }
           ],
           Address: {
@@ -126,7 +128,8 @@
           },
           Name: {
             Value: users
-          }
+          },
+          IsImplicit: false
         },
         {
           Columns: [
@@ -162,7 +165,8 @@
               },
               Name: {
                 Value: id
-              }
+              },
+              IsImplicit: false
             },
             {
               Type: {
@@ -198,7 +202,8 @@
               },
               Name: {
                 Value: amount
-              }
+              },
+              IsImplicit: false
             }
           ],
           Address: {
@@ -213,7 +218,8 @@
           },
           Name: {
             Value: invoices
-          }
+          },
+          IsImplicit: false
         }
       ],
       Views: [
@@ -247,7 +253,8 @@
           Name: {
             Value: active_users
           },
-          Comment: currently active users
+          Comment: currently active users,
+          IsImplicit: false
         },
         {
           Kind: View,
@@ -278,13 +285,15 @@
           },
           Name: {
             Value: invoice_totals
-          }
+          },
+          IsImplicit: false
         }
       ],
       Name: {
         Value: app
       },
-      Comment: application schema
+      Comment: application schema,
+      IsImplicit: false
     },
     {
       Address: {
@@ -293,7 +302,6 @@
         },
         Value: reporting
       },
-      IsImplicit: false,
       Tables: [
         {
           Columns: [
@@ -329,7 +337,8 @@
               },
               Name: {
                 Value: day
-              }
+              },
+              IsImplicit: false
             }
           ],
           Address: {
@@ -344,7 +353,8 @@
           },
           Name: {
             Value: daily_totals
-          }
+          },
+          IsImplicit: false
         }
       ],
       Views: [
@@ -377,13 +387,15 @@
           },
           Name: {
             Value: weekly_rollup
-          }
+          },
+          IsImplicit: false
         }
       ],
       Name: {
         Value: reporting
       },
-      Comment: analytics
+      Comment: analytics,
+      IsImplicit: false
     }
   ]
 }

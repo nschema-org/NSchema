@@ -38,7 +38,12 @@ public enum SchemaObjectKind
     /// <summary>
     /// A composite type.
     /// </summary>
-    CompositeType
+    CompositeType,
+
+    /// <summary>
+    /// A type provided by the engine or an extension.
+    /// </summary>
+    NativeType
 }
 
 /// <summary>
@@ -58,6 +63,7 @@ internal static class SchemaObjectKindExtensions
         SchemaObjectKind.Routine => "routine",
         SchemaObjectKind.Domain => "domain",
         SchemaObjectKind.CompositeType => "composite type",
+        SchemaObjectKind.NativeType => "native type",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }
