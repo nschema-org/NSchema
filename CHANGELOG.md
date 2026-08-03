@@ -12,6 +12,16 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.3.0] - 2026-08-03
+
+### Changed
+
+- **A create is a create.** Built on NSchema.Core 5.3: a plan that believes it is creating a routine or view now renders a plain `CREATE`, so colliding with an object the plan didn't know about fails loudly instead of being silently overwritten; the in-place forms render only when the plan knows it is replacing.
+
+### Fixed
+
+- **Rebuilding a schema whose functions reference its tables.** Routines are now created after the tables they may reference, so applying an imported schema with SQL-language functions (e.g. Pagila) no longer fails with a missing relation.
+
 ## [5.2.0] - 2026-08-03
 
 ### Changed
