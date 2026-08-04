@@ -22,6 +22,7 @@ a major one, and called out explicitly in this changelog.
 ### Fixed
 
 - **Functions that call each other now apply in the right order.** Inherited from NSchema.Core 5.4: a routine's definition is scanned for the routines it calls and the objects it reads, and creates are ordered so a callee precedes its caller.
+- **Plugin restore works inside a repository using central package management.** Only your NuGet configuration reaches the restore now; a `Directory.Packages.props` (or `Directory.Build.props`) further up the tree no longer breaks it with NU1008.
 
 ## [5.3.0] - 2026-08-03
 

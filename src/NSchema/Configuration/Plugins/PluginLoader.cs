@@ -200,6 +200,14 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
         Directory.CreateDirectory(projectDir);
         File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId.Value, restoreVersion));
 
+        // NuGet configuration is the only thing the synth build should inherit from its surroundings. MSBuild
+        // walks the same tree for its directory files — a repo using central package management would reject
+        // the inline version (NU1008) — so empty stoppers end that search here.
+        foreach (var stopper in (string[])["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"])
+        {
+            File.WriteAllText(Path.Combine(projectDir, stopper), "<Project />");
+        }
+
         // Publish into a staging dir and atomically rename it onto the publish dir, so the lock-free fast path above
         // never sees a partially-populated closure.
         var staging = Cache.StagingDirectory(packageId, version);

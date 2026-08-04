@@ -107,6 +107,38 @@ public sealed class PluginLoaderTests : IDisposable
     }
 
     [Fact]
+    public void Load_ProjectInsideARepoWithCentralPackageManagement_StillRestores()
+    {
+        // Arrange — the project sits inside a repo whose root manages package versions centrally. The synth
+        // restore project must not inherit that context, or its inline version is rejected (NU1008).
+        var repoRoot = Directory.CreateTempSubdirectory("nschema-cpm-repo-");
+        File.WriteAllText(Path.Combine(repoRoot.FullName, "Directory.Packages.props"),
+            """
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+              </PropertyGroup>
+            </Project>
+            """);
+        var project = Directory.CreateDirectory(Path.Combine(repoRoot.FullName, "db"));
+
+        try
+        {
+            // Act
+            var plugins = new PluginLoader(project.FullName, _cacheRoot)
+                .Load(new PackageId("NSchema.Sqlite"), PublishedPlugins.Sqlite)
+                .Require();
+
+            // Assert
+            plugins.OfType<INSchemaDatabasePlugin>().ShouldHaveSingleItem();
+        }
+        finally
+        {
+            repoRoot.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public void Load_WithoutRestore_WhenNotCached_FailsWithDiagnostic()
     {
         // Arrange — a fresh cache, so the plugin is not present.
