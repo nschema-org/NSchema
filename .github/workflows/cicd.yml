@@ -12,10 +12,10 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Check out build pipeline
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: 'nschema-org/NSchema.Build'
           path: 'build'
@@ -35,10 +35,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Check out build pipeline
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: 'nschema-org/NSchema.Build'
           path: 'build'
