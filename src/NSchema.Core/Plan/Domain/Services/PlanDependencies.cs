@@ -1,5 +1,6 @@
 using NSchema.Model;
 using NSchema.Model.Services;
+using NSchema.Model.Tables;
 
 namespace NSchema.Plan.Domain.Services;
 
@@ -35,4 +36,12 @@ internal sealed class PlanDependencies(Database current, Database desired)
     /// The foreign keys the current database points at <paramref name="address"/> with.
     /// </summary>
     public IReadOnlyCollection<MemberAddress> ForeignKeysInto(ObjectAddress address) => _current.ForeignKeysInto(address);
+
+    /// <summary>
+    /// The triggers the current database carries on the table at <paramref name="address"/>.
+    /// </summary>
+    public IReadOnlyCollection<MemberAddress> TriggersOn(ObjectAddress address) =>
+        [.. current.Objects<Table>()
+            .Where(t => t.Schema == address.Schema && t.Object.Name == address.Name)
+            .SelectMany(t => t.Object.Triggers.Select(trigger => new MemberAddress(t.Schema, t.Object.Name, trigger.Name)))];
 }

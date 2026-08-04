@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.4.0] - 2026-08-04
+
+### Added
+
+- **Aggregates.** `CREATE AGGREGATE name(args) (…)` is now supported as a kind of routine.
+- **Routine actions include signatures.** Routine-based actions now include the routine signature in their arguments for engines that require a signature to drop a routine.
+
+### Changed
+
+- **Routines are created in dependency order.** A routine's definition is scanned at projection for the objects it references — the tables and views its queries read, and the routines it calls — and creates are ordered so a callee precedes its caller, across schemas. The scan is deliberately shallow and errs wide: a reference only matters when it names an object in the same plan.
+
+### Fixed
+
+- **Teardown mirrors creation.** Routines now drop before the tables they may reference, an aggregate drops before the functions it is assembled from, and a dropped table sheds its triggers explicitly first.
+
 ## [5.3.0] - 2026-08-03
 
 ### Changed

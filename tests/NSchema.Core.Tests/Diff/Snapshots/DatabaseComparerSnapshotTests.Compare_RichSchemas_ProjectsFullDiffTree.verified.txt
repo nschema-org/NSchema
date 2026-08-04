@@ -845,6 +845,9 @@
             },
             IsImplicit: false
           },
+          Signature: {
+            Value: amount numeric
+          },
           RequiresRecreate: false
         },
         {
@@ -984,6 +987,9 @@
               Value: user_id bigint, weight numeric
             }
           },
+          Signature: {
+            Value: user_id bigint, weight numeric
+          },
           RequiresRecreate: true
         },
         {
@@ -1004,6 +1010,9 @@
             Value: stale_fn
           },
           Change: Remove,
+          Signature: {
+            Value: 
+          },
           RequiresRecreate: false
         }
       ],

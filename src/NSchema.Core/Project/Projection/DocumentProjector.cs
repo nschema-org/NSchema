@@ -13,6 +13,7 @@ using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
 using NSchema.Project.Nsql;
+using NSchema.Project.Nsql.Syntax.Routines;
 using Syn = NSchema.Project.Nsql.Syntax;
 
 namespace NSchema.Project.Projection;
@@ -52,7 +53,9 @@ internal static class DocumentProjector
             case Syn.Routines.CreateRoutineStatement s:
                 {
                     var (schema, name) = Bind(s.Name, context);
-                    schemas.AddRoutine(schema, new Routine { Name = name, RoutineKind = Map(s.Kind), Arguments = s.Arguments, Definition = s.Definition, Comment = s.Doc }, s.Name.Position);
+                    var kind = s.Kind.ToModel();
+                    var dependsOn = RoutineDependencyExtractor.Extract(s.Definition, schema, kind);
+                    schemas.AddRoutine(schema, new Routine { Name = name, RoutineKind = kind, Arguments = s.Arguments, Definition = s.Definition, DependsOn = dependsOn, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
             case Syn.Enums.CreateEnumStatement s:
@@ -344,9 +347,6 @@ internal static class DocumentProjector
             ? null
             : new SequenceOptions(options.As is { } dataType ? SqlType.Parse(dataType.Name.Value) : null,
                 options.Start, options.Increment, options.MinValue, options.MaxValue, options.Cache, options.Cycle);
-
-    private static RoutineKind Map(Syn.Routines.RoutineKind kind) =>
-        kind == Syn.Routines.RoutineKind.Procedure ? RoutineKind.Procedure : RoutineKind.Function;
 
     private static ReferentialAction Map(Syn.Constraints.ReferentialAction action) => action switch
     {

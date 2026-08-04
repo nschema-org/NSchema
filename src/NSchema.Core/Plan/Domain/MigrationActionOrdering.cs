@@ -42,7 +42,7 @@ internal static class MigrationActionOrdering
         typeof(GrantTablePrivileges), typeof(SetSchemaComment), typeof(SetTableComment), typeof(SetColumnComment),
         typeof(SetIndexComment), typeof(SetTriggerComment), typeof(SetConstraintComment), typeof(SetViewComment),
         typeof(SetEnumComment), typeof(SetSequenceComment), typeof(SetRoutineComment), typeof(SetDomainComment),
-        typeof(SetCompositeTypeComment), typeof(SetExtensionComment), typeof(DropTable), typeof(DropRoutine),
+        typeof(SetCompositeTypeComment), typeof(SetExtensionComment), typeof(DropRoutine), typeof(DropTable),
         typeof(DropDomain), typeof(DropCompositeType), typeof(DropEnum), typeof(DropSequence), typeof(DropSchema),
         typeof(DropExtension),
     }.Index().ToFrozenDictionary(item => item.Item, item => item.Index);

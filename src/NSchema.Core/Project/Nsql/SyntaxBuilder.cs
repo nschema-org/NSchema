@@ -13,6 +13,7 @@ using NSchema.Model.Triggers;
 using NSchema.Model.Views;
 using NSchema.Project.Domain.Directives;
 using NSchema.Project.Nsql.Syntax;
+using NSchema.Project.Nsql.Syntax.Routines;
 using NSchema.Project.Nsql.Tokens;
 using Syn = NSchema.Project.Nsql.Syntax;
 
@@ -153,8 +154,7 @@ internal static class SyntaxBuilder
         foreach (var routine in schema.Routines)
         {
             statements.Add(new Syn.Routines.CreateRoutineStatement(Qualified(schema.Name, routine.Name),
-                routine.RoutineKind == RoutineKind.Procedure ? Syn.Routines.RoutineKind.Procedure : Syn.Routines.RoutineKind.Function,
-                routine.Arguments, routine.Definition)
+                routine.RoutineKind.ToSyntax(), routine.Arguments, routine.Definition)
             {
                 Doc = routine.Comment,
                 DocComment = DocToken(routine.Comment),

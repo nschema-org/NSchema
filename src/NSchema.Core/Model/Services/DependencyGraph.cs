@@ -1,6 +1,7 @@
 using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
+using NSchema.Model.Routines;
 using NSchema.Model.Tables;
 using NSchema.Model.Types;
 using NSchema.Model.Views;
@@ -53,6 +54,11 @@ internal sealed class DependencyGraph
             Add(new DependencyNode(new ObjectAddress(schema, view.Name), DependencyKind.View));
         }
 
+        foreach (var (schema, routine) in database.Objects<Routine>())
+        {
+            Add(new DependencyNode(new ObjectAddress(schema, routine.Name), DependencyKind.Routine));
+        }
+
         foreach (var (schema, type) in allTypes)
         {
             Add(new DependencyNode(new ObjectAddress(schema, type.Name), TypeKind(type)));
@@ -98,6 +104,17 @@ internal sealed class DependencyGraph
                 // A view's dependency is embedded in its body: there is nothing to sever but the view itself.
                 // What it reads was scanned out of SQL nobody parsed, so the edge is a guess — a good one for
                 // ordering two things already in a plan, not good enough to drag a third into it unannounced.
+                Connect(node, dependency, DependencyCertainty.Inferred);
+            }
+        }
+
+        // A routine's references are the same kind of guess, scanned out of its body: what it reads, and the
+        // routines it calls.
+        foreach (var (schema, routine) in database.Objects<Routine>())
+        {
+            var node = new DependencyNode(new ObjectAddress(schema, routine.Name), DependencyKind.Routine);
+            foreach (var dependency in routine.DependsOn.Where(d => d != node.Address))
+            {
                 Connect(node, dependency, DependencyCertainty.Inferred);
             }
         }

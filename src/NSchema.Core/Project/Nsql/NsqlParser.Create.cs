@@ -79,6 +79,10 @@ internal sealed partial class NsqlParser
         {
             return ParseCreateRoutine(create, doc, RoutineKind.Procedure);
         }
+        if (_current.IsKeyword(NsqlKeywords.Aggregate))
+        {
+            return ParseCreateRoutine(create, doc, RoutineKind.Aggregate);
+        }
         if (_current.IsKeyword(NsqlKeywords.Extension))
         {
             if (_inTemplateBody)
@@ -100,7 +104,7 @@ internal sealed partial class NsqlParser
             var unique = Advance(); // UNIQUE
             return ParseCreateIndex(create, unique, doc);
         }
-        throw Error($"Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, EXTENSION, TRIGGER or INDEX after CREATE, found '{_current.Text}'.");
+        throw Error($"Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, TRIGGER or INDEX after CREATE, found '{_current.Text}'.");
     }
 
     private CreateSchemaStatement ParseCreateSchema(Token create, Token? doc)

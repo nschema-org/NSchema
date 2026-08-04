@@ -40,6 +40,7 @@ internal static class NsqlKeywords
     public const string First = "FIRST";
     public const string For = "FOR";
     public const string Foreign = "FOREIGN";
+    public const string Aggregate = "AGGREGATE";
     public const string Function = "FUNCTION";
     public const string Generated = "GENERATED";
     public const string Grant = "GRANT";

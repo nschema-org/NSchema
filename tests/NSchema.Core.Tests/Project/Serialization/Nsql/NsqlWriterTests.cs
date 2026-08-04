@@ -612,4 +612,13 @@ public sealed class NsqlWriterTests
         ],
         }).ShouldContain("CREATE PROCEDURE app.archive(before date) LANGUAGE sql AS $$ DELETE $$;");
 
+    [Fact]
+    public void Write_Aggregate_IsEmitted()
+        => NsqlWriter.Write(new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Routines = [new Routine { Name = "group_concat", RoutineKind = RoutineKind.Aggregate, Arguments = "text", Definition = "(SFUNC = _group_concat, STYPE = text)" }] },
+        ],
+        }).ShouldContain("CREATE AGGREGATE app.group_concat(text) (SFUNC = _group_concat, STYPE = text);");
+
 }

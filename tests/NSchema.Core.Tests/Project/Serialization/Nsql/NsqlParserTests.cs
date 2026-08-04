@@ -1,5 +1,6 @@
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
 using NSchema.Project.Domain.Directives;
@@ -148,8 +149,22 @@ public sealed class NsqlParserTests
             .Message.ShouldContain("already declared");
 
     [Fact]
+    public void Parse_CreateAggregate_YieldsAnAggregateRoutine()
+    {
+        // Act — CREATE AGGREGATE is CREATE FUNCTION's sibling: name, arguments, opaque tail.
+        var routine = ParseSingleSchema("CREATE AGGREGATE app.group_concat(text) (SFUNC = _group_concat, STYPE = text);")
+            .Routines.ShouldHaveSingleItem();
+
+        // Assert
+        routine.RoutineKind.ShouldBe(RoutineKind.Aggregate);
+        routine.Arguments.Value.ShouldBe("text");
+        routine.Definition.Value.ShouldBe("(SFUNC = _group_concat, STYPE = text)");
+        routine.DependsOn.ShouldContain(new ObjectAddress("app", "_group_concat"));
+    }
+
+    [Fact]
     public void Parse_UnknownAfterCreate_Throws()
-        => Should.Throw<NsqlSyntaxException>(() => Parse("CREATE THING app;")).Message.ShouldContain("Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, EXTENSION, TRIGGER or INDEX");
+        => Should.Throw<NsqlSyntaxException>(() => Parse("CREATE THING app;")).Message.ShouldContain("Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, TRIGGER or INDEX");
 
     [Fact]
     public void Parse_PartialTable_Throws()

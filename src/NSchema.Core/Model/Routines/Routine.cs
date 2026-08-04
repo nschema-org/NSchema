@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace NSchema.Model.Routines;
 
@@ -26,6 +27,12 @@ public sealed class Routine : SchemaObject, IEquatable<Routine>
     /// </summary>
     public required SqlText Definition { get; set; }
 
+    /// <summary>
+    /// The objects the definition references, scanned at projection.
+    /// </summary>
+    [JsonIgnore]
+    public List<ObjectAddress> DependsOn { get; init; } = [];
+
     /// <inheritdoc/>
     public override Routine Clone() => new()
     {
@@ -33,6 +40,7 @@ public sealed class Routine : SchemaObject, IEquatable<Routine>
         RoutineKind = RoutineKind,
         Arguments = Arguments,
         Definition = Definition,
+        DependsOn = [.. DependsOn],
         ProvidedBy = ProvidedBy,
         Comment = Comment
     };

@@ -13,5 +13,10 @@ public enum RoutineKind
     /// <summary>
     /// <c>PROCEDURE</c>.
     /// </summary>
-    Procedure
+    Procedure,
+
+    /// <summary>
+    /// <c>AGGREGATE</c>.
+    /// </summary>
+    Aggregate
 }

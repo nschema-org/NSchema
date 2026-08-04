@@ -9,5 +9,6 @@ namespace NSchema.Plan.Domain.Routines;
 /// <param name="Routine">The address of the routine.</param>
 /// <param name="OldComment">The previous comment, if any.</param>
 /// <param name="NewComment">The new comment, if any.</param>
-/// <param name="Kind">Whether the routine is a function or a procedure.</param>
-public sealed record SetRoutineComment(ObjectAddress Routine, string? OldComment, string? NewComment, RoutineKind Kind) : MigrationAction;
+/// <param name="Kind">The kind of routine being commented.</param>
+/// <param name="Arguments">The declared argument list.</param>
+public sealed record SetRoutineComment(ObjectAddress Routine, string? OldComment, string? NewComment, RoutineKind Kind, SqlText? Arguments = null) : MigrationAction;

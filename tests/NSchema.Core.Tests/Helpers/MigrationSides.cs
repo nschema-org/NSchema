@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
@@ -37,6 +38,7 @@ internal sealed class MigrationSides
         {
             case Table table: target.Tables.Add(table); break;
             case View view: target.Views.Add(view); break;
+            case Routine routine: target.Routines.Add(routine); break;
             default: throw new NotSupportedException($"Nothing declares a {declared.GetType().Name} yet.");
         }
 

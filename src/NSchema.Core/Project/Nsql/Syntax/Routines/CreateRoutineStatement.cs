@@ -25,7 +25,12 @@ public sealed record CreateRoutineStatement(
     /// <summary>
     /// The <c>FUNCTION</c>/<c>PROCEDURE</c> keyword token.
     /// </summary>
-    public Token KindKeyword { get; init; } = Token.Keyword(Kind == RoutineKind.Procedure ? NsqlKeywords.Procedure : NsqlKeywords.Function);
+    public Token KindKeyword { get; init; } = Token.Keyword(Kind switch
+    {
+        RoutineKind.Procedure => NsqlKeywords.Procedure,
+        RoutineKind.Aggregate => NsqlKeywords.Aggregate,
+        _ => NsqlKeywords.Function,
+    });
 
     /// <summary>
     /// The <c>(</c> token opening the arguments.

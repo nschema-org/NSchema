@@ -182,6 +182,39 @@ public sealed class PlanLinearizerTests
     private IReadOnlyList<MigrationAction> LinearizeTable(TableDiff table) => Linearize(SchemaNode("app", tables: [table]));
 
     [Fact]
+    public void Linearize_OrdersRoutineCallsWithinThePlan()
+    {
+        // Arrange — film_in_stock calls inventory_in_stock; the callee is created first, whatever the
+        // alphabet says. The edge comes from the desired model's scanned DependsOn.
+        var caller = _sides.Creating("app", new Routine
+        {
+            Name = "film_in_stock",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "p integer",
+            Definition = "RETURNS boolean LANGUAGE sql AS $$ SELECT inventory_in_stock(p) $$",
+            DependsOn = [new ObjectAddress("app", "inventory_in_stock")],
+        });
+        var callee = _sides.Creating("app", new Routine
+        {
+            Name = "inventory_in_stock",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "p integer",
+            Definition = "RETURNS boolean LANGUAGE sql AS $$ SELECT true $$",
+        });
+
+        // Act
+        var plan = Linearize(SchemaNode("app", routines:
+        [
+            RoutineDiff.Added("app", caller),
+            RoutineDiff.Added("app", callee),
+        ]));
+
+        // Assert
+        var creates = plan.OfType<CreateRoutine>().Select(c => c.Routine.Name.Value).ToList();
+        creates.ShouldBe(["inventory_in_stock", "film_in_stock"]);
+    }
+
+    [Fact]
     public void Linearize_TriggerRemoveAndAddUnderOneName_FoldsIntoReplace()
     {
         // Arrange — a structural change diffs as remove + add under one name; the plan states the intent
@@ -1342,19 +1375,54 @@ public sealed class PlanLinearizerTests
     }
 
     [Fact]
-    public void Linearize_OrdersRoutineDropsAfterDropTable_BeforeDropEnum()
+    public void Linearize_OrdersRoutineDropsBeforeDropTable_AndDropEnum()
     {
-        // Arrange
+        // The mirror of creation: a routine may reference the tables it was created after (a rowtype
+        // return, a validated query), so it drops before them.
         var plan = Linearize(SchemaNode("app",
             tables: [TableNode("users", ChangeKind.Remove)],
             enums: [EnumDiff.Removed("app", "status")],
-
-            // Act
             routines: [RoutineDiff.Removed("app", "f", RoutineKind.Function)]));
 
-        // Assert
-        IndexOf<DropTable>(plan).ShouldBeLessThan(IndexOf<DropRoutine>(plan));
+        IndexOf<DropRoutine>(plan).ShouldBeLessThan(IndexOf<DropTable>(plan));
         IndexOf<DropRoutine>(plan).ShouldBeLessThan(IndexOf<DropEnum>(plan));
+    }
+
+    [Fact]
+    public void Linearize_RemovedTable_ShedsItsTriggersBeforeTheRoutineDrops()
+    {
+        // Arrange — the table's trigger binds a routine dropped in the same plan; routines drop before
+        // tables, so the trigger must go before either.
+        _sides.Dropping("app", new Table
+        {
+            Name = "users",
+            Triggers = [new Trigger { Name = "users_touch", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "BODY" }],
+        });
+
+        // Act
+        var plan = Linearize(SchemaNode("app",
+            tables: [TableNode("users", ChangeKind.Remove)],
+            routines: [RoutineDiff.Removed("app", "touch", RoutineKind.Function)]));
+
+        // Assert
+        IndexOf<DropTrigger>(plan).ShouldBeLessThan(IndexOf<DropRoutine>(plan));
+        IndexOf<DropRoutine>(plan).ShouldBeLessThan(IndexOf<DropTable>(plan));
+    }
+
+    [Fact]
+    public void Linearize_OrdersAggregateDropsBeforeFunctionDrops()
+    {
+        // A snapshot records no routine edges, so the shape orders the band: an aggregate is assembled
+        // from functions and must drop before them.
+        var plan = Linearize(SchemaNode("app",
+            routines:
+            [
+                RoutineDiff.Removed("app", "_concat", RoutineKind.Function),
+                RoutineDiff.Removed("app", "concat_all", RoutineKind.Aggregate),
+            ]));
+
+        var drops = plan.OfType<DropRoutine>().Select(d => d.Routine.Name).ToList();
+        drops.ShouldBe([new SqlIdentifier("concat_all"), new SqlIdentifier("_concat")]);
     }
 
     [Fact]

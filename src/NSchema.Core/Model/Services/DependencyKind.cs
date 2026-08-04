@@ -41,6 +41,11 @@ internal enum DependencyKind
     Column,
 
     /// <summary>
+    /// A routine.
+    /// </summary>
+    Routine,
+
+    /// <summary>
     /// A captured native type.
     /// </summary>
     NativeType,

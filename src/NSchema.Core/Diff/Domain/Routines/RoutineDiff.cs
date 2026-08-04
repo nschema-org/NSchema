@@ -53,6 +53,11 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     public ValueChange<SqlText>? Arguments { get; init; }
 
     /// <summary>
+    /// The routine's declared argument list.
+    /// </summary>
+    public SqlText? Signature { get; init; }
+
+    /// <summary>
     /// The change to the routine's comment, if any.
     /// </summary>
     public ValueChange<string>? Comment { get; init; }
@@ -79,8 +84,8 @@ public sealed record RoutineDiff : ISchemaObjectDiff
     /// <summary>
     /// A routine being dropped.
     /// </summary>
-    public static RoutineDiff Removed(SqlIdentifier schema, SqlIdentifier name, RoutineKind routineKind) =>
-        new() { Schema = schema, Name = name, Change = ChangeKind.Remove, RoutineKind = routineKind };
+    public static RoutineDiff Removed(SqlIdentifier schema, SqlIdentifier name, RoutineKind routineKind, SqlText? signature = null) =>
+        new() { Schema = schema, Name = name, Change = ChangeKind.Remove, RoutineKind = routineKind, Signature = signature };
 
     /// <summary>
     /// A routine altered in place; the individual changes are set on the result.

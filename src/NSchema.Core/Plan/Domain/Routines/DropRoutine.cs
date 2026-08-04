@@ -7,5 +7,6 @@ namespace NSchema.Plan.Domain.Routines;
 /// Represents the removal of an existing routine.
 /// </summary>
 /// <param name="Routine">The address of the routine.</param>
-/// <param name="Kind">Whether the routine is a function or a procedure.</param>
-public sealed record DropRoutine(ObjectAddress Routine, RoutineKind Kind) : MigrationAction;
+/// <param name="Kind">The kind of routine being dropped.</param>
+/// <param name="Arguments">The declared argument list.</param>
+public sealed record DropRoutine(ObjectAddress Routine, RoutineKind Kind, SqlText? Arguments = null) : MigrationAction;

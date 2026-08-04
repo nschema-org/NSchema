@@ -7,6 +7,7 @@ using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
 using NSchema.Model;
+using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain.Columns;
@@ -40,11 +41,13 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             EmitSchema(schema, actions);
         }
 
-        // Tables and views are each emitted in one cross-schema pass: their create/drop order is governed by a
-        // dependency sort (created after what they need, dropped before it), which the per-schema walk above
-        // cannot express — a foreign key or a view body may reach into another schema.
+        // Tables, views, and routines are each emitted in one cross-schema pass: their create/drop order is
+        // governed by a dependency sort (created after what they need, dropped before it), which the per-schema
+        // walk above cannot express — a foreign key, a view body, or a routine's calls may reach into another
+        // schema.
         EmitTables(diff, dependencies, capabilities, actions);
         EmitViews(diff, dependencies, actions);
+        EmitRoutines(diff, dependencies, actions);
 
         actions = [.. MigrationActionOrdering.Order(actions)];
 
@@ -73,7 +76,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
         foreach (var table in created)
         {
-            EmitTable(table, actions, unfolded);
+            EmitTable(table, dependencies, actions, unfolded);
         }
 
         var dropped = InRemovalOrder([.. tables.Where(table => table.Change == ChangeKind.Remove)], dependencies);
@@ -86,7 +89,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
         foreach (var table in dropped)
         {
-            EmitTable(table, actions, FrozenSet<MemberAddress>.Empty);
+            EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
         }
     }
 
@@ -287,7 +290,6 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitSchemaAttributes(schema, actions);
                 EmitEnums(schema, actions);
                 EmitSequences(schema, actions);
-                EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
                 break;
@@ -298,7 +300,6 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 // the DropSchema, and tables and views are emitted by their own cross-schema passes.
                 EmitEnums(schema, actions);
                 EmitSequences(schema, actions);
-                EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
                 actions.Add(new DropSchema(schema.Name));
@@ -312,7 +313,6 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitSchemaAttributes(schema, actions);
                 EmitEnums(schema, actions);
                 EmitSequences(schema, actions);
-                EmitRoutines(schema, actions);
                 EmitDomains(schema, actions);
                 EmitCompositeTypes(schema, actions);
                 break;
@@ -368,24 +368,50 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
     }
 
-    private static void EmitRoutines(SchemaDiff schema, List<MigrationAction> actions) =>
-        EmitObjects(schema.Routines, actions,
-            r => r.Definition,
-            (r, definition) => new CreateRoutine(r.Schema, definition),
-            r => new DropRoutine(new ObjectAddress(r.Schema, r.Name), r.RoutineKind),
-            (r, renamedFrom) => new RenameRoutine(new ObjectAddress(r.Schema, renamedFrom), r.Name, r.RoutineKind),
-            (r, comment) => new SetRoutineComment(new ObjectAddress(r.Schema, r.Name), comment.Old, comment.New, r.RoutineKind),
-            r =>
+    /// <summary>
+    /// Emits the routine actions across every schema: creates in dependency order — a body may call a routine
+    /// created in the same plan — and drops in the reverse.
+    /// </summary>
+    private static void EmitRoutines(DatabaseDiff diff, PlanDependencies dependencies, List<MigrationAction> actions)
+    {
+        var routines = diff.Schemas.SelectMany(schema => schema.Routines).ToList();
+
+        foreach (var routine in routines)
+        {
+            if (routine.Change is not (ChangeKind.Add or ChangeKind.Remove) && routine.RenamedFrom is { } renamedFrom)
             {
+                actions.Add(new RenameRoutine(new ObjectAddress(routine.Schema, renamedFrom), routine.Name, routine.RoutineKind, routine.Arguments?.Old ?? routine.Signature));
+            }
+            if (routine.Change != ChangeKind.Remove && routine.Comment is { } comment)
+            {
+                actions.Add(new SetRoutineComment(new ObjectAddress(routine.Schema, routine.Name), comment.Old, comment.New, routine.RoutineKind, routine.Signature ?? routine.Definition?.Arguments));
+            }
+        }
+
+        foreach (var routine in InCreationOrder([.. routines.Where(r => r.Change != ChangeKind.Remove)], dependencies))
+        {
+            if (routine.Definition is not { } definition)
+            {
+                continue;
+            }
+
+            actions.Add(routine.Change == ChangeKind.Add
+                ? new CreateRoutine(routine.Schema, definition)
                 // A signature (or kind) change recreates (a replace under different arguments would create a
                 // separate overload); a definition-only change replaces in place.
-                if (r.Definition is { } definition)
-                {
-                    actions.Add(r.RequiresRecreate
-                        ? new RecreateRoutine(r.Schema, definition)
-                        : new ReplaceRoutine(r.Schema, definition));
-                }
-            });
+                : routine.RequiresRecreate
+                    ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
+                    : new ReplaceRoutine(routine.Schema, definition));
+        }
+
+        // Aggregates are assembled from functions so must be dropped before them.
+        var dropped = routines.Where(r => r.Change == ChangeKind.Remove)
+            .OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1);
+        foreach (var routine in InRemovalOrder([.. dropped], dependencies))
+        {
+            actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
+        }
+    }
 
     private static void EmitDomains(SchemaDiff schema, List<MigrationAction> actions) =>
         EmitObjects(schema.Domains, actions,
@@ -505,11 +531,12 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// Emits one table's actions.
     /// </summary>
     /// <param name="table">The change to emit.</param>
+    /// <param name="dependencies">What the current database knows about the table.</param>
     /// <param name="actions">The action list being built.</param>
     /// <param name="unfolded">
     /// The foreign keys that cannot ride the CREATE TABLE, and are added separately afterwards instead.
     /// </param>
-    private static void EmitTable(TableDiff table, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
+    private static void EmitTable(TableDiff table, PlanDependencies dependencies, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
     {
         switch (table.Change)
         {
@@ -535,6 +562,11 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 break;
 
             case ChangeKind.Remove:
+                // A dropped table sheds its triggers explicitly first.
+                foreach (var trigger in dependencies.TriggersOn(new ObjectAddress(table.Schema, table.Name)))
+                {
+                    actions.Add(new DropTrigger(trigger));
+                }
                 actions.Add(new DropTable(new ObjectAddress(table.Schema, table.Name)));
                 break;
 

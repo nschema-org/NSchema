@@ -8,5 +8,6 @@ namespace NSchema.Plan.Domain.Routines;
 /// </summary>
 /// <param name="Routine">The address of the routine.</param>
 /// <param name="NewName">The new name of the routine.</param>
-/// <param name="Kind">Whether the routine is a function or a procedure.</param>
-public sealed record RenameRoutine(ObjectAddress Routine, SqlIdentifier NewName, RoutineKind Kind) : MigrationAction;
+/// <param name="Kind">The kind of routine being renamed.</param>
+/// <param name="Arguments">The declared argument list.</param>
+public sealed record RenameRoutine(ObjectAddress Routine, SqlIdentifier NewName, RoutineKind Kind, SqlText? Arguments = null) : MigrationAction;

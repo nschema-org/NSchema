@@ -416,6 +416,9 @@
       },
       NewName: {
         Value: score
+      },
+      Arguments: {
+        Value: user_id bigint
       }
     }
   },
@@ -480,6 +483,9 @@
           Value: score
         },
         IsImplicit: false
+      },
+      PreviousArguments: {
+        Value: user_id bigint
       }
     }
   },
@@ -731,20 +737,6 @@
     }
   },
   {
-    Type: DropTable,
-    Action: {
-      Table: {
-        Schema: {
-          Value: scratch
-        },
-        Name: {
-          Value: temp_data
-        },
-        Value: scratch.temp_data
-      }
-    }
-  },
-  {
     Type: DropRoutine,
     Action: {
       Routine: {
@@ -771,6 +763,20 @@
         Value: app.stale_proc
       },
       Kind: Procedure
+    }
+  },
+  {
+    Type: DropTable,
+    Action: {
+      Table: {
+        Schema: {
+          Value: scratch
+        },
+        Name: {
+          Value: temp_data
+        },
+        Value: scratch.temp_data
+      }
     }
   },
   {
