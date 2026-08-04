@@ -12,7 +12,12 @@ namespace NSchema.Configuration.Plugins;
 /// <summary>
 /// Resolves NSchema plugins (providers and backends) from NuGet packages at runtime.
 /// </summary>
-internal sealed class PluginLoader(string? cacheRoot = null)
+/// <remarks>
+/// Resolution and restore run under the project directory, so NuGet's own configuration discovery — a
+/// NuGet.Config beside the project, a user-level feed, a credential provider — applies exactly as it would
+/// to any project the user builds. The published closure is shared per user; the resolution is the project's.
+/// </remarks>
+internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = null)
 {
     private const string SynthAssemblyName = "nschema-plugin-host";
 
@@ -189,9 +194,19 @@ internal sealed class PluginLoader(string? cacheRoot = null)
             return publishDir;
         }
 
-        var projectDir = Cache.ProjectDirectory(packageId, version);
+        // The synth project lives under the project being restored: NuGet roots configuration discovery at
+        // the project file, so this is what lets the user's own sources apply.
+        var projectDir = ScratchDirectory(packageId, version);
         Directory.CreateDirectory(projectDir);
         File.WriteAllText(Path.Combine(projectDir, SynthAssemblyName + ".csproj"), SynthProject(packageId.Value, restoreVersion));
+
+        // NuGet configuration is the only thing the synth build should inherit from its surroundings. MSBuild
+        // walks the same tree for its directory files — a repo using central package management would reject
+        // the inline version (NU1008) — so empty stoppers end that search here.
+        foreach (var stopper in (string[])["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"])
+        {
+            File.WriteAllText(Path.Combine(projectDir, stopper), "<Project />");
+        }
 
         // Publish into a staging dir and atomically rename it onto the publish dir, so the lock-free fast path above
         // never sees a partially-populated closure.
@@ -219,6 +234,7 @@ internal sealed class PluginLoader(string? cacheRoot = null)
         }
 
         Directory.Move(staging, publishDir);
+        TryDeleteScratch(packageId);
 
         return publishDir;
     }
@@ -240,13 +256,32 @@ internal sealed class PluginLoader(string? cacheRoot = null)
 
     // Runs 'dotnet' and returns its standard output on success. Launching the external process is a genuine
     // external-code boundary, so catching a missing SDK is correct here.
-    private static Result<string> RunDotnet(params string[] args)
+    private string ScratchDirectory(PackageId packageId, SemanticVersion version) =>
+        Path.Combine(projectDirectory, ".nschema", "restore", packageId.Value, version.ToString());
+
+    // The scratch is transient: once the closure is published to the shared cache, nothing reads it again.
+    private void TryDeleteScratch(PackageId packageId)
+    {
+        try
+        {
+            Directory.Delete(Path.Combine(projectDirectory, ".nschema", "restore", packageId.Value), recursive: true);
+        }
+        catch (IOException)
+        {
+            // A locked file on Windows is harmless; the next restore overwrites it.
+        }
+    }
+
+    private Result<string> RunDotnet(params string[] args)
     {
         var startInfo = new ProcessStartInfo("dotnet")
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            // Anchored at the project, so source resolution (dotnet package search) reads the same NuGet
+            // configuration chain the restore does.
+            WorkingDirectory = projectDirectory,
         };
 
         foreach (var arg in args)

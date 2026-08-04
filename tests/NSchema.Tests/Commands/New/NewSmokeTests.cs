@@ -29,7 +29,7 @@ public sealed class NewSmokeTests : IDisposable
     public async Task Scaffold_WithRealPostgresPlugin_ProducesAValidFormattedProject()
     {
         // Arrange — load the real plugin and take exactly what `new` would.
-        var plugin = new PluginLoader().Load(new PackageId("NSchema.Postgres"), PostgresVersion)
+        var plugin = new PluginLoader(Directory.GetCurrentDirectory()).Load(new PackageId("NSchema.Postgres"), PostgresVersion)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
             .Single();

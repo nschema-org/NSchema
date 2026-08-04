@@ -31,7 +31,7 @@ internal static class NewCommand
         }
 
         var configuration = resolved.Require();
-        var loader = new PluginLoader();
+        var loader = new PluginLoader(Directory.GetCurrentDirectory());
 
         // The database plugin renders its own DATABASE statement and supplies a dialect-specific sample schema; the
         // CLI authors the PLUGIN declaration, since it resolved the package and version. Resolve the latest version

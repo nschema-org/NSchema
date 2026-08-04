@@ -12,6 +12,18 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.4.0] - 2026-08-04
+
+### Added
+
+- **Aggregate support.** `CREATE AGGREGATE` is part of the language (inherited from NSchema.Core 5.4.0).
+- **Plugin restore honors your project's NuGet configuration.** Plugin resolution and restore now run under the project directory, so a `NuGet.Config` beside the project applies as expected.
+
+### Fixed
+
+- **Functions that call each other now apply in the right order.** Inherited from NSchema.Core 5.4: a routine's definition is scanned for the routines it calls and the objects it reads, and creates are ordered so a callee precedes its caller.
+- **Plugin restore works inside a repository using central package management.** Only your NuGet configuration reaches the restore now; a `Directory.Packages.props` (or `Directory.Build.props`) further up the tree no longer breaks it with NU1008.
+
 ## [5.3.0] - 2026-08-03
 
 ### Changed
@@ -283,7 +295,16 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v4.3.0...HEAD
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.4.0...HEAD
+[5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.3.0...v5.4.0
+[5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.2.0...v5.3.0
+[5.2.0]: https://github.com/nschema-org/NSchema/compare/v5.1.0...v5.2.0
+[5.1.0]: https://github.com/nschema-org/NSchema/compare/v5.0.1...v5.1.0
+[5.0.1]: https://github.com/nschema-org/NSchema/compare/v5.0.0...v5.0.1
+[5.0.0]: https://github.com/nschema-org/NSchema/compare/v4.5.1...v5.0.0
+[4.5.1]: https://github.com/nschema-org/NSchema/compare/v4.5.0...v4.5.1
+[4.5.0]: https://github.com/nschema-org/NSchema/compare/v4.4.0...v4.5.0
+[4.4.0]: https://github.com/nschema-org/NSchema/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/nschema-org/NSchema/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/nschema-org/NSchema/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.1.0

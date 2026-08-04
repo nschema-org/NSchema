@@ -18,6 +18,9 @@ public sealed class PluginLoaderTests : IDisposable
 
     private readonly string _cacheRoot = Path.Combine(Path.GetTempPath(), "nschema-plugin-tests", Guid.NewGuid().ToString("N"));
 
+    // A bare project directory: no NuGet.Config anywhere up the temp chain, so the default sources apply.
+    private readonly string _projectDirectory = Directory.CreateTempSubdirectory("nschema-plugin-project-").FullName;
+
     /// <summary>
     /// Every published database plugin, so that one whose closure differs from Postgres' cannot go unloaded.
     /// </summary>
@@ -34,6 +37,10 @@ public sealed class PluginLoaderTests : IDisposable
         {
             Directory.Delete(_cacheRoot, recursive: true);
         }
+        if (Directory.Exists(_projectDirectory))
+        {
+            Directory.Delete(_projectDirectory, recursive: true);
+        }
     }
 
     [Theory]
@@ -41,7 +48,7 @@ public sealed class PluginLoaderTests : IDisposable
     public void Load_RealDatabasePlugin_DiscoversDatabasePluginAndConfiguresHost(string package, string connectionString)
     {
         // Arrange
-        var loader = new PluginLoader(_cacheRoot);
+        var loader = new PluginLoader(_projectDirectory, _cacheRoot);
 
         // Act — restore + load + discover by capability (a plugin has no name of its own).
         var plugin = loader.Load(new PackageId(package), PublishedPlugins.Of(package))
@@ -69,7 +76,7 @@ public sealed class PluginLoaderTests : IDisposable
     public void ResolveLatestVersion_ReturnsAVersionInTheHostMajor()
     {
         // Arrange
-        var loader = new PluginLoader(_cacheRoot);
+        var loader = new PluginLoader(_projectDirectory, _cacheRoot);
 
         // Act — floats NSchema.Postgres within this CLI's NSchema.Core major and reads back the resolved version.
         var version = loader.ResolveLatestVersion(Package);
@@ -88,7 +95,7 @@ public sealed class PluginLoaderTests : IDisposable
 
         // Act — race the restore. Before the cross-process restore lock this collided inside `dotnet publish`
         // ("the process cannot access the file ... because it is being used by another process").
-        Parallel.For(0, concurrency, i => loaded[i] = new PluginLoader(_cacheRoot)
+        Parallel.For(0, concurrency, i => loaded[i] = new PluginLoader(_projectDirectory, _cacheRoot)
             .Load(Package, Version)
             .Require()
             .OfType<INSchemaDatabasePlugin>()
@@ -100,10 +107,42 @@ public sealed class PluginLoaderTests : IDisposable
     }
 
     [Fact]
+    public void Load_ProjectInsideARepoWithCentralPackageManagement_StillRestores()
+    {
+        // Arrange — the project sits inside a repo whose root manages package versions centrally. The synth
+        // restore project must not inherit that context, or its inline version is rejected (NU1008).
+        var repoRoot = Directory.CreateTempSubdirectory("nschema-cpm-repo-");
+        File.WriteAllText(Path.Combine(repoRoot.FullName, "Directory.Packages.props"),
+            """
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+              </PropertyGroup>
+            </Project>
+            """);
+        var project = Directory.CreateDirectory(Path.Combine(repoRoot.FullName, "db"));
+
+        try
+        {
+            // Act
+            var plugins = new PluginLoader(project.FullName, _cacheRoot)
+                .Load(new PackageId("NSchema.Sqlite"), PublishedPlugins.Sqlite)
+                .Require();
+
+            // Assert
+            plugins.OfType<INSchemaDatabasePlugin>().ShouldHaveSingleItem();
+        }
+        finally
+        {
+            repoRoot.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public void Load_WithoutRestore_WhenNotCached_FailsWithDiagnostic()
     {
         // Arrange — a fresh cache, so the plugin is not present.
-        var loader = new PluginLoader(_cacheRoot);
+        var loader = new PluginLoader(_projectDirectory, _cacheRoot);
 
         // Act — allowRestore: false (the --no-init path) must not reach the network; it fails fast as a diagnostic,
         // not an exception. No restore happens here, so this case needs neither the SDK nor network.
@@ -118,7 +157,7 @@ public sealed class PluginLoaderTests : IDisposable
     public void Load_WithoutRestore_AfterCaching_Succeeds()
     {
         // Arrange — warm the cache with a normal (restoring) load.
-        var loader = new PluginLoader(_cacheRoot);
+        var loader = new PluginLoader(_projectDirectory, _cacheRoot);
         loader.Load(Package, Version).Require();
 
         // Act — a subsequent cache-only load (the --no-init path) succeeds without restoring.
