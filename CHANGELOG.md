@@ -12,7 +12,7 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [5.4.0] - 2026-08-03
+## [5.4.0] - 2026-08-04
 
 ### Added
 
