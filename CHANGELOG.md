@@ -16,6 +16,7 @@ a major one, and called out explicitly in this changelog.
 
 ### Added
 
+- **Aggregate support.** `CREATE AGGREGATE` is part of the language (inherited from NSchema.Core 5.4.0).
 - **Plugin restore honors your project's NuGet configuration.** Plugin resolution and restore now run under the project directory, so a `NuGet.Config` beside the project applies as expected.
 
 ### Fixed
@@ -293,7 +294,16 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v4.3.0...HEAD
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.4.0...HEAD
+[5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.3.0...v5.4.0
+[5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.2.0...v5.3.0
+[5.2.0]: https://github.com/nschema-org/NSchema/compare/v5.1.0...v5.2.0
+[5.1.0]: https://github.com/nschema-org/NSchema/compare/v5.0.1...v5.1.0
+[5.0.1]: https://github.com/nschema-org/NSchema/compare/v5.0.0...v5.0.1
+[5.0.0]: https://github.com/nschema-org/NSchema/compare/v4.5.1...v5.0.0
+[4.5.1]: https://github.com/nschema-org/NSchema/compare/v4.5.0...v4.5.1
+[4.5.0]: https://github.com/nschema-org/NSchema/compare/v4.4.0...v4.5.0
+[4.4.0]: https://github.com/nschema-org/NSchema/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/nschema-org/NSchema/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/nschema-org/NSchema/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.1.0
