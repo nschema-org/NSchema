@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.5.0] - 2026-08--6
+
+### Fixed
+
+- **Engine-native SQL bodies no longer show as permanent drift.** Inherited from NSchema.Core 5.5.0, hand-written and database-written provider-native SQL (things like view bodies or trigger definitions) are now stored in the state so they can be diffed like-for-like.
+
 ## [5.4.0] - 2026-08-04
 
 ### Added
