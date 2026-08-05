@@ -69,13 +69,14 @@ internal sealed class MigrationPlanner(
 
         var dependencies = new PlanDependencies(current.Database, project.Database);
         var managed = ManagedAfterApply(current, project, scope);
+        var declared = DeclaredAfterApply(current, project, scope, managed);
 
         // Find any existing identities applying this plan will take over.
         // Even if a plan technically has no changes, it still needs to be applied
         // if there are objects to adopt.
         var adopted = managed.Except(current.Managed).Intersect(current.Database.Identities());
 
-        var plan = Realize(diff, dependencies, dialect, managed, adopted, diagnostics);
+        var plan = Realize(diff, dependencies, dialect, managed, adopted, declared, diagnostics);
 
         // Validate the complete plan — post-render, so policies see exactly what an apply would execute.
         diagnostics.AddRange(options.Value.Apply(planPolicies.SelectMany(p => p.Validate(plan))));
@@ -187,6 +188,17 @@ internal sealed class MigrationPlanner(
     }
 
     /// <summary>
+    /// The declared spellings an apply of this plan records. Within the plan's scope, the definitions the
+    /// project declares for the objects it manages; outside it, whatever is already recorded stays.
+    /// </summary>
+    private static DefinitionSet DeclaredAfterApply(CurrentState current, ProjectDefinition project, PlanningScope scope, IdentitySet managed)
+    {
+        // Don't modify stuff out of scope.
+        var retained = current.Declared.Except(current.Declared.ScopedTo(scope));
+        return project.ScopedTo(scope).Database.Definitions().RestrictedTo(managed).Union(retained);
+    }
+
+    /// <summary>
     /// Constructs an executable plan from a diff. A rendering's diagnostics ride the plan result — an
     /// unsupported action is an error that blocks application, not a hole in the statement list silently.
     /// </summary>
@@ -196,6 +208,7 @@ internal sealed class MigrationPlanner(
         SqlDialect sql,
         IdentitySet managed,
         IdentitySet adopted,
+        DefinitionSet declared,
         DiagnosticCollector diagnostics
     )
     {
@@ -209,6 +222,6 @@ internal sealed class MigrationPlanner(
             }
         }
 
-        return new MigrationPlan(diff, planStatements, managed, adopted);
+        return new MigrationPlan(diff, planStatements, managed, adopted, declared);
     }
 }

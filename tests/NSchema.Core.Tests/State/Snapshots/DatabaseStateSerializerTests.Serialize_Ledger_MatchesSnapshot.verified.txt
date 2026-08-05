@@ -19,5 +19,6 @@
       executedUtc: DateTimeOffset_1
     }
   ],
-  managed: {}
+  managed: {},
+  declared: {}
 }

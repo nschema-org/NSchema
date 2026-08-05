@@ -9,7 +9,13 @@ namespace NSchema.State.Domain;
 /// <param name="Database">The full captured database structure.</param>
 /// <param name="Scripts">The recorded script executions.</param>
 /// <param name="Managed">The identities that we are responsible for managing.</param>
-public sealed record DatabaseState(Database Database, IReadOnlyList<ScriptExecution> Scripts, IdentitySet? Managed = null)
+/// <param name="Declared">The declared spellings recorded for the managed body-bearing objects.</param>
+public sealed record DatabaseState(
+    Database Database,
+    IReadOnlyList<ScriptExecution> Scripts,
+    IdentitySet? Managed = null,
+    DefinitionSet? Declared = null
+)
 {
     /// <summary>
     /// Creates a state carrying only the database structure, with an empty execution ledger and nothing managed.
@@ -27,6 +33,11 @@ public sealed record DatabaseState(Database Database, IReadOnlyList<ScriptExecut
     public IdentitySet Managed { get; init; } = Managed ?? IdentitySet.Empty;
 
     /// <summary>
+    /// The hand-written declarations recorded for the managed body-bearing objects.
+    /// </summary>
+    public DefinitionSet Declared { get; init; } = Declared ?? DefinitionSet.Empty;
+
+    /// <summary>
     /// Restricts the recorded state to what the scope covers.
     /// </summary>
     /// <param name="scope">The scope to restrict the state to.</param>
@@ -35,7 +46,21 @@ public sealed record DatabaseState(Database Database, IReadOnlyList<ScriptExecut
         Database = Database.ScopedTo(scope),
         Scripts = [.. Scripts.Where(e => e.Script.Schema is not { } schema || scope.Contains(schema))],
         Managed = Managed.ScopedTo(scope),
+        Declared = Declared.ScopedTo(scope),
     };
+
+    /// <summary>
+    /// Replaces the snapshot with a fresh capture. A declared spelling is kept only while the engine
+    /// re-rendered its object identically — anything else drifted out of band, so the spelling is stale.
+    /// </summary>
+    /// <param name="captured">The freshly captured database structure.</param>
+    public DatabaseState Recapture(Database captured) => Declared.IsEmpty
+        ? this with { Database = captured }
+        : this with
+        {
+            Database = captured,
+            Declared = Declared.RestrictedTo(Database.Definitions().Intersect(captured.Definitions())),
+        };
 
     /// <summary>
     /// Records the given executions into the ledger, replacing any earlier execution recorded for the same script.

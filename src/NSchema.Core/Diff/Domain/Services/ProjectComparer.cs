@@ -18,8 +18,10 @@ internal sealed class ProjectComparer(IDatabaseComparer comparer) : IProjectComp
         // Look up new scripts to run, excluding those already executed.
         var deploymentScripts = diagnostics.Require(GetNewScripts(directives.DeploymentScripts, current.ExecutedScripts));
 
-        // Align: rewrite the current schema into the declared name-space.
-        var aligned = diagnostics.Require(DatabaseAligner.Align(current.Database, project.Database, directives));
+        // Align: rewrite the current schema into the declared name-space. The current side is spelled as
+        // declared first, so the comparison stays within one language.
+        var currentDb = current.Database.WithDefinitions(current.Declared);
+        var aligned = diagnostics.Require(DatabaseAligner.Align(currentDb, project.Database, directives));
 
         // Compare: the structural diff.
         var diff = comparer.Compare(aligned, project.Database);

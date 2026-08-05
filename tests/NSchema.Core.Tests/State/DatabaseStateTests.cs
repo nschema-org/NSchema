@@ -2,6 +2,7 @@ using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
+using NSchema.Model.Views;
 using NSchema.State.Domain;
 
 namespace NSchema.Tests.State;
@@ -163,4 +164,66 @@ public sealed class DatabaseStateTests
     [Fact]
     public void ScopedTo_Unscoped_ReturnsTheSameState()
         => DatabaseState.Empty.ScopedTo(PlanningScope.All).ShouldBeSameAs(DatabaseState.Empty);
+
+    [Fact]
+    public void ScopedTo_NarrowsTheDeclaredSpellings()
+    {
+        // Arrange
+        var state = TwoSchemas() with
+        {
+            Declared = new DefinitionSet([
+                new ViewDefinition(ObjectAddress.View("app", "v"), "SELECT 1"),
+                new ViewDefinition(ObjectAddress.View("billing", "v"), "SELECT 2"),
+            ]),
+        };
+
+        // Act
+        var scoped = state.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert
+        scoped.Declared.Views.ShouldHaveSingleItem().Address.ShouldBe(ObjectAddress.View("app", "v"));
+    }
+
+    /// <summary>A captured schema holding one view spelled as <paramref name="body"/>.</summary>
+    private static Database CapturedWithView(string body) => new()
+    {
+        Schemas = [new Schema { Name = "app", Views = [new View { Name = "active", Body = body }] }],
+    };
+
+    /// <summary>State pairing an engine-rendered snapshot with the hand-written spelling that produced it.</summary>
+    private static DatabaseState WithDeclaredView() => new DatabaseState(CapturedWithView("SELECT users.id FROM app.users")) with
+    {
+        Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View("app", "active"), "SELECT id FROM users")]),
+    };
+
+    [Fact]
+    public void Recapture_KeepsTheDeclaredSpelling_WhileTheEngineReRendersIdentically()
+    {
+        // Act — the fresh capture matches what was recorded, so the object has not changed.
+        var recaptured = WithDeclaredView().Recapture(CapturedWithView("SELECT users.id FROM app.users"));
+
+        // Assert
+        recaptured.Declared.Views.ShouldHaveSingleItem().Body.ShouldBe(new SqlText("SELECT id FROM users"));
+    }
+
+    [Fact]
+    public void Recapture_DropsTheDeclaredSpelling_WhenTheCapturedTextChanged()
+    {
+        // Act — the engine reports a different rendering: the object drifted out of band.
+        var recaptured = WithDeclaredView().Recapture(CapturedWithView("SELECT 1"));
+
+        // Assert — the stale spelling is gone and the snapshot reflects reality.
+        recaptured.Declared.IsEmpty.ShouldBeTrue();
+        recaptured.Database.Schemas[0].Views[0].Body.ShouldBe(new SqlText("SELECT 1"));
+    }
+
+    [Fact]
+    public void Recapture_DropsTheDeclaredSpelling_WhenTheObjectIsGone()
+    {
+        // Act
+        var recaptured = WithDeclaredView().Recapture(new Database { Schemas = [] });
+
+        // Assert
+        recaptured.Declared.IsEmpty.ShouldBeTrue();
+    }
 }

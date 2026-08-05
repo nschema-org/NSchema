@@ -521,5 +521,6 @@ $$,
       }
     ]
   },
-  managed: {}
+  managed: {},
+  declared: {}
 }

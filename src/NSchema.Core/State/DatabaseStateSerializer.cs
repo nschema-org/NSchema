@@ -16,6 +16,7 @@ internal sealed class DatabaseStateSerializer : IDatabaseStateSerializer
         {
             Scripts = state.Scripts,
             Managed = state.Managed,
+            Declared = state.Declared,
         };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, ModelSerialization.Options);
         return bytes;
@@ -49,6 +50,6 @@ internal sealed class DatabaseStateSerializer : IDatabaseStateSerializer
                 $"{DatabaseStateEnvelope.CurrentVersion}. Upgrade NSchema to read this state.");
         }
 
-        return new DatabaseState(envelope.Database, envelope.Scripts, envelope.Managed);
+        return new DatabaseState(envelope.Database, envelope.Scripts, envelope.Managed, envelope.Declared);
     }
 }

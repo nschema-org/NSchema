@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using NSchema.Model.Extensions;
+using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
+using NSchema.Model.Tables;
+using NSchema.Model.Views;
 
 namespace NSchema.Model;
 
@@ -34,6 +37,56 @@ public sealed class Database : IEquatable<Database>
     public IdentitySet Identities() => new(
         [.. Schemas.Select(s => s.Address), .. Extensions.Select(e => e.Address)],
         [.. Schemas.SelectMany(s => s.Objects()).Select(o => o.Address)]);
+
+    /// <summary>
+    /// The spellings of every body-bearing object the database contains.
+    /// </summary>
+    public DefinitionSet Definitions() => new(
+        [.. Objects<View>().Select(v => new ViewDefinition(v.Object.Address, v.Object.Body))],
+        [.. Objects<Routine>().Select(r => new RoutineDefinition(r.Object.Address, r.Object.Arguments, r.Object.Definition))],
+        [.. Objects<Table>().SelectMany(t => t.Object.Triggers.Select(trigger =>
+            new TriggerDefinition(trigger.Address, trigger.When, trigger.FunctionArguments, trigger.Body)))]);
+
+    /// <summary>
+    /// Returns a copy of the database with each body-bearing object's text replaced by its entry in <paramref name="definitions"/>.
+    /// </summary>
+    public Database WithDefinitions(DefinitionSet definitions)
+    {
+        if (definitions.IsEmpty)
+        {
+            return this;
+        }
+
+        var copy = Clone();
+        foreach (var (_, view) in copy.Objects<View>())
+        {
+            if (definitions.FindView(view.Address) is { } declared)
+            {
+                view.Body = declared.Body;
+            }
+        }
+
+        foreach (var (_, routine) in copy.Objects<Routine>())
+        {
+            if (definitions.FindRoutine(routine.Address) is { } declared)
+            {
+                routine.Arguments = declared.Arguments;
+                routine.Definition = declared.Definition;
+            }
+        }
+
+        foreach (var trigger in copy.Objects<Table>().SelectMany(t => t.Object.Triggers))
+        {
+            if (definitions.FindTrigger(trigger.Address) is { } declared)
+            {
+                trigger.When = declared.When;
+                trigger.FunctionArguments = declared.FunctionArguments;
+                trigger.Body = declared.Body;
+            }
+        }
+
+        return copy;
+    }
 
     /// <summary>
     /// Returns a deep copy of the database.

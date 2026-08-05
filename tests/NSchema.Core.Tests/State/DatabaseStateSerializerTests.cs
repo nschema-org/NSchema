@@ -288,6 +288,36 @@ public sealed class DatabaseStateSerializerTests
         ex.InnerException.ShouldNotBeNull();
     }
 
+    /// <summary>A declared set holding one entry of each kind, nullable trigger fields included.</summary>
+    private static DefinitionSet DeclaredSpellings() => new(
+        [new ViewDefinition(ObjectAddress.View("app", "active"), "SELECT id FROM users")],
+        [new RoutineDefinition(ObjectAddress.Routine("app", "f"), "a int", "RETURNS int AS $$ SELECT a $$")],
+        [new TriggerDefinition(MemberAddress.Trigger("app", "users", "audit"), "(true)", null, "CALL audit()")]);
+
+    [Fact]
+    public Task Serialize_DeclaredSpellings_MatchesSnapshot()
+        // Pins the declared set's wire shape: per-kind entries, each a structural address beside the
+        // recorded texts.
+        => VerifyJson(Encoding.UTF8.GetString(_sut.Serialize(new DatabaseState(new Database { Schemas = [] })
+        {
+            Declared = DeclaredSpellings(),
+        }).Span));
+
+    [Fact]
+    public void RoundTrip_PreservesTheDeclaredSpellings()
+    {
+        // Arrange
+        var state = new DatabaseState(new Database { Schemas = [] }) { Declared = DeclaredSpellings() };
+
+        // Act
+        var roundTripped = _sut.Deserialize(_sut.Serialize(state));
+
+        // Assert
+        roundTripped.Declared.Views.ShouldBe(state.Declared.Views);
+        roundTripped.Declared.Routines.ShouldBe(state.Declared.Routines);
+        roundTripped.Declared.Triggers.ShouldBe(state.Declared.Triggers);
+    }
+
     [Fact]
     public void Deserialize_StructurallyValidButInvalidModel_ThrowsStateDeserializationException()
     {

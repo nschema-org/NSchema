@@ -74,7 +74,7 @@ internal sealed class MigrationWorkflow(
 
         progress.Report(OperationProgress.Step("Computing migration plan..."));
 
-        var current = new CurrentState(state.Database, state.Scripts, state.Managed);
+        var current = new CurrentState(state.Database, state.Scripts, state.Managed, state.Declared);
         var plan = planner.Plan(current, project, scopeInEffect);
 
         diagnostics.AddRange(plan);
@@ -106,13 +106,15 @@ internal sealed class MigrationWorkflow(
 
         var state = read.Value?.State ?? DatabaseState.Empty;
 
-        state = state with { Database = schema };
+        state = state.Recapture(schema);
         if (applied is not null)
         {
             // Recording the run-once ledger is a state-domain job; the shell just supplies what ran and when.
-            state = state.RecordExecution(applied.Diff.DeploymentScripts, DateTimeOffset.UtcNow)
-                with
-            { Managed = applied.Managed };
+            state = state.RecordExecution(applied.Diff.DeploymentScripts, DateTimeOffset.UtcNow) with
+            {
+                Managed = applied.Managed,
+                Declared = applied.Declared
+            };
         }
 
         var written = await stateManager.Write(new StateWriteArguments(state), cancellationToken);

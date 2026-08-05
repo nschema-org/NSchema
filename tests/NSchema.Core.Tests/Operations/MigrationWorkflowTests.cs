@@ -5,6 +5,7 @@ using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
+using NSchema.Model.Views;
 using NSchema.Operations;
 using NSchema.Operations.Progress;
 using NSchema.Operations.Workflow;
@@ -471,6 +472,102 @@ public sealed class MigrationWorkflowTests
 
         // Assert
         _stateSerializer.Deserialize(written!.Value).Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
+    }
+
+    /// <summary>A live schema holding <c>app.active</c> spelled as <paramref name="body"/>.</summary>
+    private static Database ViewSpelled(string body) => new()
+    {
+        Schemas = [new Schema { Name = "app", Views = [new View { Name = "active", Body = body }] }],
+    };
+
+    private static DefinitionSet DeclaredView(string body) =>
+        new([new ViewDefinition(ObjectAddress.View("app", "active"), body)]);
+
+    /// <summary>Builds a store around <paramref name="recorded"/> that captures what gets written back.</summary>
+    private IDatabaseStateStore StoreWith(DatabaseState recorded, Action<ReadOnlyMemory<byte>> onWrite)
+    {
+        var store = Substitute.For<IDatabaseStateStore>();
+        store.Read(Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new StoreReadResult(_stateSerializer.Serialize(recorded))));
+        store.Write(Arg.Do(onWrite), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        return store;
+    }
+
+    [Fact]
+    public async Task Refresh_AppliedPlan_RecordsItsDeclaredSpellings()
+    {
+        // Arrange — an apply records exactly the spellings the plan computed.
+        ReadOnlyMemory<byte>? written = null;
+        var sut = BuildSut(StoreWith(DatabaseState.Empty, m => written = m));
+        var applied = EmptyPlan() with { Declared = DeclaredView("SELECT id FROM users") };
+
+        // Act
+        await sut.Refresh(applied, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _stateSerializer.Deserialize(written!.Value).Declared.Views
+            .ShouldHaveSingleItem().Body.ShouldBe(new SqlText("SELECT id FROM users"));
+    }
+
+    [Fact]
+    public async Task Refresh_WithoutAnAppliedPlan_KeepsDeclaredSpellings_TheEngineReRendersIdentically()
+    {
+        // Arrange — the recorded capture and the live schema agree, so the object has not changed.
+        _liveDatabase.GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+            .Returns(ViewSpelled("SELECT users.id FROM app.users"));
+        var recorded = new DatabaseState(ViewSpelled("SELECT users.id FROM app.users"))
+        {
+            Declared = DeclaredView("SELECT id FROM users"),
+        };
+        ReadOnlyMemory<byte>? written = null;
+        var sut = BuildSut(StoreWith(recorded, m => written = m));
+
+        // Act
+        await sut.Refresh(cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _stateSerializer.Deserialize(written!.Value).Declared.Views
+            .ShouldHaveSingleItem().Body.ShouldBe(new SqlText("SELECT id FROM users"));
+    }
+
+    [Fact]
+    public async Task Refresh_WithoutAnAppliedPlan_DropsDeclaredSpellings_WhenTheObjectDrifted()
+    {
+        // Arrange — the engine reports a different rendering than was captured: an out-of-band edit.
+        _liveDatabase.GetDatabase(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+            .Returns(ViewSpelled("SELECT 1"));
+        var recorded = new DatabaseState(ViewSpelled("SELECT users.id FROM app.users"))
+        {
+            Declared = DeclaredView("SELECT id FROM users"),
+        };
+        ReadOnlyMemory<byte>? written = null;
+        var sut = BuildSut(StoreWith(recorded, m => written = m));
+
+        // Act
+        await sut.Refresh(cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert — the stale spelling is gone; the next apply re-establishes the pair.
+        _stateSerializer.Deserialize(written!.Value).Declared.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ComputePlan_PassesTheDeclaredSpellingsToThePlanner()
+    {
+        // Arrange
+        var recorded = new DatabaseState(ViewSpelled("SELECT users.id FROM app.users"))
+        {
+            Declared = DeclaredView("SELECT id FROM users"),
+        };
+        var sut = SutWithRecordedState(recorded);
+
+        // Act
+        await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
+
+        // Assert
+        _planner.Received(1).Plan(
+            Arg.Is<CurrentState>(c => c!.Declared.Views.Count == 1),
+            Arg.Any<ProjectDefinition>(),
+            Arg.Any<PlanningScope>());
     }
 
     [Fact]

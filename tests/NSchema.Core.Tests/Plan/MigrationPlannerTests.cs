@@ -8,6 +8,7 @@ using NSchema.Model;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Tables;
+using NSchema.Model.Views;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Scripts;
@@ -272,6 +273,84 @@ public sealed class MigrationPlannerTests
 
         // Assert
         plan.Managed.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Plan_DeclaredAfterApply_RecordsTheProjectSpellings()
+    {
+        // Arrange
+        SqlIdentifier app = "app";
+        var desired = new ProjectDefinition(new Database
+        {
+            Schemas = [new Schema { Name = app, Views = [new View { Name = "active", Body = "SELECT id FROM users" }] }],
+        });
+
+        // Act
+        var plan = Sut.Plan(_current, desired, PlanningScope.All).Value!;
+
+        // Assert — an apply of this plan records exactly what the project spells.
+        plan.Declared.Views.ShouldHaveSingleItem().ShouldBe(new ViewDefinition(ObjectAddress.View(app, "active"), "SELECT id FROM users"));
+    }
+
+    [Fact]
+    public void Plan_DeclaredAfterApply_ExcludesImplicitObjects()
+    {
+        // Arrange — an implicit object is here for reference, not for this project to own or respell.
+        SqlIdentifier app = "app";
+        var desired = new ProjectDefinition(new Database
+        {
+            Schemas = [new Schema { Name = app, Views = [new View { Name = "active", Body = "SELECT 1", IsImplicit = true }] }],
+        });
+
+        // Act
+        var plan = Sut.Plan(_current, desired, PlanningScope.All).Value!;
+
+        // Assert
+        plan.Declared.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Plan_DeclaredAfterApply_RetainsOutOfScopeSpellings()
+    {
+        // Arrange — billing's spelling is recorded but out of scope, so this plan carries it forward untouched.
+        SqlIdentifier app = "app";
+        SqlIdentifier billing = "billing";
+        var current = new CurrentState(_emptySchema)
+        {
+            Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(billing)], SchemaObjects: [ObjectAddress.View(billing, "invoices")]),
+            Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View(billing, "invoices"), "SELECT 1")]),
+        };
+        var desired = new ProjectDefinition(new Database
+        {
+            Schemas = [new Schema { Name = app, Views = [new View { Name = "active", Body = "SELECT 2" }] }],
+        });
+
+        // Act
+        var plan = Sut.Plan(current, desired, PlanningScope.To(DatabaseAddress.Schema(app))).Value!;
+
+        // Assert
+        plan.Declared.Views.ShouldBe([
+            new ViewDefinition(ObjectAddress.View(app, "active"), "SELECT 2"),
+            new ViewDefinition(ObjectAddress.View(billing, "invoices"), "SELECT 1"),
+        ], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Plan_Teardown_EmptiesTheDeclaredSet()
+    {
+        // Arrange — a teardown converges towards nothing: no spelling in scope survives it.
+        SqlIdentifier app = "app";
+        var current = new CurrentState(_emptySchema)
+        {
+            Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(app)]),
+            Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View(app, "active"), "SELECT 1")]),
+        };
+
+        // Act
+        var plan = Sut.Plan(current, new ProjectDefinition(new Database()), PlanningScope.To(DatabaseAddress.Schema(app))).Value!;
+
+        // Assert
+        plan.Declared.IsEmpty.ShouldBeTrue();
     }
 
     [Fact]

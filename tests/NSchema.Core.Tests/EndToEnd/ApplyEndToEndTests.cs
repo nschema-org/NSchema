@@ -225,4 +225,43 @@ public sealed class ApplyEndToEndTests : IDisposable
         _store.Written.ShouldNotBeNull().Database.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
         _store.Written!.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
     }
+
+    [Fact]
+    public async Task Apply_HandAuthoredView_OnAnEngineThatRewritesDefinitions_ConvergesAfterOneApply()
+    {
+        // The Postgres deparse problem end to end: the introspector always reports the view body the way the
+        // engine re-renders it — qualified and aliased — never the way the project spells it.
+        var current = new Database
+        {
+            Schemas = [new Schema
+            {
+                Name = "app",
+                Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }],
+                Views = [new NSchema.Model.Views.View { Name = "active", Body = "SELECT users.id FROM app.users" }],
+            }],
+        };
+        var desired = WriteNsql("schema.sql",
+            """
+            CREATE SCHEMA app;
+            CREATE TABLE app.users
+            (
+                id int NOT NULL
+            );
+            CREATE VIEW app.active AS SELECT id FROM users;
+            """);
+
+        using var app = BuildApp(current, desired);
+
+        // First cycle: no declared spelling is recorded yet, so the captured text is all there is and the
+        // plan replaces the view once.
+        (await app.Operations.Refresh(new RefreshArguments(), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeTrue();
+        var first = (await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Project }, TestContext.Current.CancellationToken)).Value.ShouldNotBeNull();
+        first.Plan.ShouldNotBeNull().Diff.IsEmpty.ShouldBeFalse();
+        (await app.Operations.Apply(new ApplyArguments { Plan = first.Plan! }, TestContext.Current.CancellationToken)).IsSuccess.ShouldBeTrue();
+
+        // Second cycle: the engine still reports its own rendering, but the declared spelling now rides the
+        // state, so the plan converges.
+        var second = (await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Project }, TestContext.Current.CancellationToken)).Value.ShouldNotBeNull();
+        second.Plan.ShouldNotBeNull().Diff.IsEmpty.ShouldBeTrue();
+    }
 }

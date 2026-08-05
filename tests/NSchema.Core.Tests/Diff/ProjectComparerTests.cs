@@ -249,4 +249,56 @@ public sealed class ProjectComparerTests
         // Assert
         comparison.Diagnostics.ShouldBeEmpty();
     }
+
+    /// <summary>A database holding <c>app.active</c> spelled as <paramref name="body"/>.</summary>
+    private static Database ViewSpelled(string body) => new()
+    {
+        Schemas = [new Schema { Name = "app", Views = [new NSchema.Model.Views.View { Name = "active", Body = body }] }],
+    };
+
+    [Fact]
+    public void Compare_DeclaredSpellingMatchesTheProject_SeesNoChange()
+    {
+        // Arrange — the engine re-rendered the captured body, but the declared spelling matches the project,
+        // so the comparison stays within one language.
+        var current = new CurrentState(ViewSpelled("SELECT users.id FROM app.users"))
+        {
+            Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View("app", "active"), "SELECT id FROM users")]),
+        };
+
+        // Act
+        var diff = Sut.Compare(current, new ProjectDefinition(ViewSpelled("SELECT id FROM users"))).Require();
+
+        // Assert
+        diff.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Compare_WithoutADeclaredSpelling_FallsBackToTheCapturedText()
+    {
+        // Arrange — no declared half recorded: the captured text is all there is, so the difference shows.
+        var current = new CurrentState(ViewSpelled("SELECT users.id FROM app.users"));
+
+        // Act
+        var diff = Sut.Compare(current, new ProjectDefinition(ViewSpelled("SELECT id FROM users"))).Require();
+
+        // Assert
+        diff.IsEmpty.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Compare_EditedDeclaration_StillPlansTheChange()
+    {
+        // Arrange — the project moved past the recorded spelling.
+        var current = new CurrentState(ViewSpelled("SELECT users.id FROM app.users"))
+        {
+            Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View("app", "active"), "SELECT id FROM users")]),
+        };
+
+        // Act
+        var diff = Sut.Compare(current, new ProjectDefinition(ViewSpelled("SELECT id, email FROM users"))).Require();
+
+        // Assert
+        diff.IsEmpty.ShouldBeFalse();
+    }
 }
