@@ -31,7 +31,15 @@ public sealed class Routine : SchemaObject, IEquatable<Routine>
     /// The objects the definition references, scanned at projection.
     /// </summary>
     [JsonIgnore]
+    [Obsolete("Dependencies now live on the dependency graph.")]
     public List<ObjectAddress> DependsOn { get; init; } = [];
+
+    /// <summary>
+    /// The objects the definition references.
+    /// An unqualified reference resolves against <paramref name="schema"/> (the routine's own).
+    /// </summary>
+    public IReadOnlyList<ObjectAddress> References(SqlIdentifier schema) =>
+        Services.RoutineDependencyExtractor.Extract(Definition, schema, RoutineKind);
 
     /// <inheritdoc/>
     public override Routine Clone() => new()
@@ -40,7 +48,9 @@ public sealed class Routine : SchemaObject, IEquatable<Routine>
         RoutineKind = RoutineKind,
         Arguments = Arguments,
         Definition = Definition,
+#pragma warning disable CS0618 // Type or member is obsolete
         DependsOn = [.. DependsOn],
+#pragma warning restore CS0618 // Type or member is obsolete
         ProvidedBy = ProvidedBy,
         Comment = Comment
     };

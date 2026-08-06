@@ -8,9 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Models answer their own dependencies.** `View.Reads(schema)`, `Routine.References(schema)`, `Column.References(schema)`, `CheckConstraint.References(schema)`, and `Trigger.References(schema)` (its function reference plus its scanned body and `WHEN` predicate).
+
 ### Changed
 
-- **Table and routine creates (and drops) order by their real dependencies.** The two kinds now share one ordering band, and the plan orders each pair by the direction the dependency points.
+- **The whole migration is linearized from the dependency graph.** Action ordering is a priority-respecting topological sort: every create runs after what it requires and every drop before what requires it.
 
 ### Fixed
 

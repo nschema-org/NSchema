@@ -9,6 +9,7 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
+using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
@@ -40,8 +41,7 @@ internal static class DocumentProjector
             case Syn.Views.CreateViewStatement s:
                 {
                     var (schema, name) = Bind(s.Name, context);
-                    var dependsOn = ViewDependencyExtractor.Extract(s.Body, schema);
-                    schemas.AddView(schema, new View { Name = name, Body = s.Body, DependsOn = dependsOn, IsMaterialized = s.IsMaterialized, Comment = s.Doc }, s.Name.Position);
+                    schemas.AddView(schema, new View { Name = name, Body = s.Body, IsMaterialized = s.IsMaterialized, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
             case Syn.Indexes.CreateIndexStatement s:
@@ -54,8 +54,7 @@ internal static class DocumentProjector
                 {
                     var (schema, name) = Bind(s.Name, context);
                     var kind = s.Kind.ToModel();
-                    var dependsOn = RoutineDependencyExtractor.Extract(s.Definition, schema, kind);
-                    schemas.AddRoutine(schema, new Routine { Name = name, RoutineKind = kind, Arguments = s.Arguments, Definition = s.Definition, DependsOn = dependsOn, Comment = s.Doc }, s.Name.Position);
+                    schemas.AddRoutine(schema, new Routine { Name = name, RoutineKind = kind, Arguments = s.Arguments, Definition = s.Definition, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
             case Syn.Enums.CreateEnumStatement s:

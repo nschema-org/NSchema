@@ -68,8 +68,7 @@ public class DependencyGraphTests
             Schemas = [
             new Schema { Name = Id("app"),
                 Tables = [new Table { Name = Id("users"), Columns = [new Column { Name = Id("id"), Type = SqlType.Int }] }],
-                Views = [new View { Name = Id("active_users"), Body = "select * from app.users",
-                    DependsOn = [new ObjectAddress(Id("app"), Id("users"))] }] },
+                Views = [new View { Name = Id("active_users"), Body = "select * from app.users" }] },
         ],
         };
         var graph = new DependencyGraph(database);
@@ -139,10 +138,8 @@ public class DependencyGraphTests
             new Schema { Name = Id("app"),
                 Tables = [new Table { Name = Id("users"), Columns = [new Column { Name = Id("id"), Type = SqlType.Int }] }],
                 Views = [
-                    new View { Name = Id("active_users"), Body = "select * from app.users",
-                        DependsOn = [new ObjectAddress(Id("app"), Id("users"))] },
-                    new View { Name = Id("recent_users"), Body = "select * from app.active_users",
-                        DependsOn = [new ObjectAddress(Id("app"), Id("active_users"))] },
+                    new View { Name = Id("active_users"), Body = "select * from app.users" },
+                    new View { Name = Id("recent_users"), Body = "select * from app.active_users" },
                 ] },
         ],
         };
@@ -186,10 +183,9 @@ public class DependencyGraphTests
             new Schema { Name = Id("app"),
                 Tables = [new Table { Name = Id("users"), Columns = [new Column { Name = Id("id"), Type = SqlType.Int }] }],
                 Views = [
-                    new View { Name = Id("active"), Body = "select * from app.users", DependsOn = [new ObjectAddress(Id("app"), Id("users"))] },
-                    new View { Name = Id("recent"), Body = "select * from app.users", DependsOn = [new ObjectAddress(Id("app"), Id("users"))] },
-                    new View { Name = Id("summary"), Body = "select * from app.active, app.recent",
-                        DependsOn = [new ObjectAddress(Id("app"), Id("active")), new ObjectAddress(Id("app"), Id("recent"))] },
+                    new View { Name = Id("active"), Body = "select * from app.users" },
+                    new View { Name = Id("recent"), Body = "select * from app.users" },
+                    new View { Name = Id("summary"), Body = "select * from app.active, app.recent" },
                 ] },
         ],
         };
@@ -224,7 +220,7 @@ public class DependencyGraphTests
         {
             Schemas = [
             new Schema { Name = Id("app"), Tables = [new Table { Name = Id("users"), Columns = [new Column { Name = Id("id"), Type = SqlType.Int }] }],
-                Views = [new View { Name = Id("summary"), Body = "select * from app.users", DependsOn = [new ObjectAddress(Id("app"), Id("users"))] }] },
+                Views = [new View { Name = Id("summary"), Body = "select * from app.users" }] },
             new Schema { Name = Id("billing"), Tables = [WithForeignKey("orders", "fk_orders_user", "app", "users")] },
         ],
         };
@@ -366,6 +362,25 @@ public class DependencyGraphTests
 
         // Assert
         closure.ShouldBe([Domain("app", "tracked_status"), ColumnNode("billing", "orders", "state")], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void DependentsOf_IntrospectedView_HasEdgesWithoutDependsOn()
+    {
+        // Arrange — an introspected (or state-loaded) model carries no pre-computed DependsOn; the graph
+        // scans the body itself, so the drop side of a migration sees the same edges as the create side.
+        var database = new Database
+        {
+            Schemas = [
+            new Schema { Name = Id("app"),
+                Tables = [new Table { Name = Id("users"), Columns = [new Column { Name = Id("id"), Type = SqlType.Int }] }],
+                Views = [new View { Name = Id("active_users"), Body = "select * from app.users" }] },
+        ],
+        };
+        var graph = new DependencyGraph(database);
+
+        // Assert
+        graph.DependentsOf(Table("app", "users")).ShouldHaveSingleItem().ShouldBe(View("app", "active_users"));
     }
 
     [Fact]

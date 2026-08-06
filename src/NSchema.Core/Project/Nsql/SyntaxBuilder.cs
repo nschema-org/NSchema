@@ -4,7 +4,6 @@ using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
-using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;

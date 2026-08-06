@@ -13,10 +13,10 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
+using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
 using NSchema.Project.Domain.Directives;
-using NSchema.Project.Nsql;
 using DatabaseComparer = NSchema.Diff.Domain.Services.DatabaseComparer;
 
 namespace NSchema.Tests.Diff;
@@ -176,7 +176,7 @@ public sealed class DatabaseComparerSnapshotTests
 
     // Builds a view with its dependencies derived from the body, exactly as the DDL parser would.
     private static View View(string name, string body) =>
-        new View { Name = name, Body = body, DependsOn = ViewDependencyExtractor.Extract(body, "app") };
+        new View { Name = name, Body = body };
 
     private DatabaseDiff Compare(Database current, Database desired, ProjectDirectives? directives = null)
     {

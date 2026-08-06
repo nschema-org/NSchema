@@ -649,17 +649,6 @@
         Body: {
           Value: SELECT * FROM app.users
         },
-        DependsOn: [
-          {
-            Schema: {
-              Value: app
-            },
-            Name: {
-              Value: users
-            },
-            Value: app.users
-          }
-        ],
         IsMaterialized: false,
         Address: {
           Schema: {
@@ -689,17 +678,6 @@
         Body: {
           Value: SELECT * FROM app.active_users
         },
-        DependsOn: [
-          {
-            Schema: {
-              Value: app
-            },
-            Name: {
-              Value: active_users
-            },
-            Value: app.active_users
-          }
-        ],
         IsMaterialized: false,
         Address: {
           Schema: {

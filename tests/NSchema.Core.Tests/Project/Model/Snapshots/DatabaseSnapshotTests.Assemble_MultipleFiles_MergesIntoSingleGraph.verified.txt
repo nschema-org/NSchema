@@ -228,17 +228,6 @@
           Body: {
             Value: SELECT id, name FROM app.users
           },
-          DependsOn: [
-            {
-              Schema: {
-                Value: app
-              },
-              Name: {
-                Value: users
-              },
-              Value: app.users
-            }
-          ],
           IsMaterialized: false,
           Address: {
             Schema: {
@@ -261,17 +250,6 @@
           Body: {
             Value: SELECT id, amount FROM app.invoices
           },
-          DependsOn: [
-            {
-              Schema: {
-                Value: app
-              },
-              Name: {
-                Value: invoices
-              },
-              Value: app.invoices
-            }
-          ],
           IsMaterialized: false,
           Address: {
             Schema: {
@@ -363,17 +341,6 @@
           Body: {
             Value: SELECT day FROM reporting.daily_totals
           },
-          DependsOn: [
-            {
-              Schema: {
-                Value: reporting
-              },
-              Name: {
-                Value: daily_totals
-              },
-              Value: reporting.daily_totals
-            }
-          ],
           IsMaterialized: false,
           Address: {
             Schema: {

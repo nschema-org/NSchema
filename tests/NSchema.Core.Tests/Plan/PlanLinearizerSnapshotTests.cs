@@ -87,8 +87,8 @@ public sealed class PlanLinearizerSnapshotTests
         // reads active_users) is created after it.
         var views = new ViewDiff[]
         {
-            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "user_summary", Body = "SELECT * FROM app.active_users", DependsOn = [new ObjectAddress("app", "active_users")] })),
-            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "active_users", Body = "SELECT * FROM app.users", DependsOn = [new ObjectAddress("app", "users")] })),
+            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "user_summary", Body = "SELECT * FROM app.active_users" })),
+            ViewDiff.Added("app", _sides.Creating("app", new View { Name = "active_users", Body = "SELECT * FROM app.users" })),
             ViewDiff.Modified("app", "report") with { RenamedFrom = "legacy_report" },
             ViewDiff.Removed("app", "stale_view"),
         };

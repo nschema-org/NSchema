@@ -1,9 +1,7 @@
 using System.Text.RegularExpressions;
-using NSchema.Model;
 using NSchema.Model.Routines;
-using NSchema.Model.Services;
 
-namespace NSchema.Project.Nsql;
+namespace NSchema.Model.Services;
 
 /// <summary>
 /// Extracts the objects a routine's (opaque) definition references: what its queries read, plus the

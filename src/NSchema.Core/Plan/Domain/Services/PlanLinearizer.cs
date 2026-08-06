@@ -3,13 +3,13 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Extensions;
 using NSchema.Diff.Domain.Indexes;
-using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
 using NSchema.Model;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
+using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Plan.Domain.Columns;
 using NSchema.Plan.Domain.CompositeTypes;
@@ -42,15 +42,17 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             EmitSchema(schema, actions);
         }
 
-        // Tables, views, and routines are each emitted in one cross-schema pass: their create/drop order is
-        // governed by a dependency sort (created after what they need, dropped before it), which the per-schema
-        // walk above cannot express — a foreign key, a view body, or a routine's calls may reach into another
-        // schema. Tables and routines share one pass, because the dependency can point either way: a routine
-        // reads a table, or a table's computed column calls a routine.
-        EmitTablesAndRoutines(diff, dependencies, capabilities, actions);
-        EmitViews(diff, dependencies, actions);
+        // Tables, views, and routines are each emitted in one cross-schema pass; the ordering below owns the
+        // create/drop order (each after what it requires, before what requires it), reading the dependency
+        // graph directly, so emission is just diff-to-action mapping. Emission order still seeds the sort's
+        // tiebreak, which is why table drops trail the routine drops: absent an edge, a routine drops before
+        // the tables it may reference, mirroring creation.
+        EmitTables(diff, dependencies, capabilities, actions);
+        EmitRoutines(diff, actions);
+        EmitViews(diff, actions);
+        EmitDroppedTables(diff, dependencies, capabilities, actions);
 
-        actions = [.. MigrationActionOrdering.Order(actions)];
+        actions = [.. MigrationActionOrdering.Order(actions, dependencies)];
 
         // Deployment scripts bookend the plan: pre scripts run before everything, post scripts after.
         return [.. ScriptActions(diff, DeploymentPhase.Pre), .. actions, .. ScriptActions(diff, DeploymentPhase.Post)];
@@ -67,16 +69,55 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// unsatisfied is taken out of the way first, unless the dialect keeps its keys on the tables that declare
     /// them.
     /// </summary>
-    private static void EmitTablesAndRoutines(
+    private static void EmitTables(
         DatabaseDiff diff,
         PlanDependencies dependencies,
         DialectCapabilities capabilities,
         List<MigrationAction> actions)
     {
         var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+
+        // The local sorts are not the ordering authority — the graph-driven sort downstream is — but the
+        // foreign-key unfolding must be decided against the order the plan will actually run in, and the
+        // emission order seeds that sort's tiebreak, so deciding and emitting in the same order keeps the
+        // two views of the plan consistent.
+        var created = InCreationOrder([.. tables.Where(table => table.Change != ChangeKind.Remove)], dependencies);
+        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
+        foreach (var table in created)
+        {
+            EmitTable(table, dependencies, actions, unfolded);
+        }
+    }
+
+    private static void EmitDroppedTables(
+        DatabaseDiff diff,
+        PlanDependencies dependencies,
+        DialectCapabilities capabilities,
+        List<MigrationAction> actions)
+    {
+        var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+
+        var dropped = InRemovalOrder([.. tables.Where(table => table.Change == ChangeKind.Remove)], dependencies);
+        if (capabilities.CanAlterForeignKeys)
+        {
+            foreach (var foreignKey in UnsatisfiedOnDrop(dropped, dependencies))
+            {
+                actions.Add(new DropForeignKey(foreignKey));
+            }
+        }
+        foreach (var table in dropped)
+        {
+            EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Emits the routine actions across every schema; the graph-driven sort orders the creates and drops.
+    /// </summary>
+    private static void EmitRoutines(DatabaseDiff diff, List<MigrationAction> actions)
+    {
         var routines = diff.Schemas.SelectMany(schema => schema.Routines).ToList();
 
-        // Routine renames and comments sort into their own bands, so their emission position is free.
         foreach (var routine in routines)
         {
             if (routine.Change is not (ChangeKind.Add or ChangeKind.Remove) && routine.RenamedFrom is { } renamedFrom)
@@ -87,63 +128,24 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             {
                 actions.Add(new SetRoutineComment(new ObjectAddress(routine.Schema, routine.Name), comment.Old, comment.New, routine.RoutineKind, routine.Signature ?? routine.Definition?.Arguments));
             }
-        }
 
-        // Creates share one ordering band; absent an edge, tables keep their place ahead of routines.
-        var changed = InCreationOrder<ISchemaObjectDiff>([
-            .. tables.Where(table => table.Change != ChangeKind.Remove),
-            .. routines.Where(routine => routine.Change != ChangeKind.Remove),
-        ], dependencies);
-
-        var createdTables = changed.OfType<TableDiff>().ToList();
-        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(createdTables) : FrozenSet<MemberAddress>.Empty;
-        foreach (var item in changed)
-        {
-            switch (item)
+            if (routine is { Change: not ChangeKind.Remove, Definition: { } definition })
             {
-                case TableDiff table:
-                    EmitTable(table, dependencies, actions, unfolded);
-                    break;
-
-                case RoutineDiff { Definition: { } definition } routine:
-                    actions.Add(routine.Change == ChangeKind.Add
-                        ? new CreateRoutine(routine.Schema, definition)
-                        // A signature (or kind) change recreates (a replace under different arguments would
-                        // create a separate overload); a definition-only change replaces in place.
-                        : routine.RequiresRecreate
-                            ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
-                            : new ReplaceRoutine(routine.Schema, definition));
-                    break;
+                actions.Add(routine.Change == ChangeKind.Add
+                    ? new CreateRoutine(routine.Schema, definition)
+                    // A signature (or kind) change recreates (a replace under different arguments would
+                    // create a separate overload); a definition-only change replaces in place.
+                    : routine.RequiresRecreate
+                        ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
+                        : new ReplaceRoutine(routine.Schema, definition));
             }
         }
 
-        // Drops mirror it: aggregates before the functions they are assembled from, routines ahead of tables
-        // by default, and a table ahead of a routine its expressions call.
-        var dropped = InRemovalOrder<ISchemaObjectDiff>([
-            .. routines.Where(r => r.Change == ChangeKind.Remove).OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1),
-            .. tables.Where(table => table.Change == ChangeKind.Remove),
-        ], dependencies);
-
-        if (capabilities.CanAlterForeignKeys)
+        // Aggregates are assembled from functions, so absent a scanned edge they still drop first.
+        foreach (var routine in routines.Where(r => r.Change == ChangeKind.Remove)
+                     .OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1))
         {
-            foreach (var foreignKey in UnsatisfiedOnDrop(dropped.OfType<TableDiff>().ToList(), dependencies))
-            {
-                actions.Add(new DropForeignKey(foreignKey));
-            }
-        }
-
-        foreach (var item in dropped)
-        {
-            switch (item)
-            {
-                case TableDiff table:
-                    EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
-                    break;
-
-                case RoutineDiff routine:
-                    actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
-                    break;
-            }
+            actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
         }
     }
 
@@ -197,7 +199,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// </summary>
     private static IReadOnlyList<T> InCreationOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
         where T : ISchemaObjectDiff =>
-        Ordered(objects, o => new ObjectAddress(o.Schema, o.Name), dependencies.Requires);
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.Name), dependencies.RequiresEdges);
 
     /// <summary>
     /// The objects in the order they can be dropped: each before the objects it is required by. Addressed under
@@ -205,11 +207,11 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// </summary>
     private static IReadOnlyList<T> InRemovalOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
         where T : ISchemaObjectDiff =>
-        Ordered(objects, o => new ObjectAddress(o.Schema, o.RenamedFrom ?? o.Name), dependencies.RequiredBy);
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.RenamedFrom ?? o.Name), dependencies.RequiredByEdges);
 
     /// <summary>
-    /// The instance-level ordering layered on top of the fixed action-type order: where two objects of the same
-    /// kind change together and one requires the other, the type order cannot separate them — this can.
+    /// The unfold oracle: the table order the plan will actually run in, decided by the same sort the plan's
+    /// ordering uses, so the two views of the plan cannot disagree.
     /// </summary>
     /// <remarks>
     /// Only an edge between two objects being changed together orders anything; everything else the graph knows
@@ -219,20 +221,34 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     private static IReadOnlyList<T> Ordered<T>(
         IReadOnlyList<T> objects,
         Func<T, ObjectAddress> address,
-        Func<ObjectAddress, IReadOnlyCollection<ObjectAddress>> edges
-    ) where T : ISchemaObjectDiff =>
-        objects.OrderedByDependencies(
-            address,
-            o => edges(address(o)),
-            o => $"{o.Schema}.{o.Name}",
-            allowCycles: true);
+        Func<ObjectAddress, IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)>> edges
+    ) where T : ISchemaObjectDiff
+    {
+        var positions = new Dictionary<ObjectAddress, int>();
+        for (var i = 0; i < objects.Count; i++)
+        {
+            positions.TryAdd(address(objects[i]), i);
+        }
+
+        var constraints = new List<DependencyEdge>();
+        for (var i = 0; i < objects.Count; i++)
+        {
+            foreach (var (dependency, certainty) in edges(address(objects[i])))
+            {
+                if (positions.TryGetValue(dependency, out var position))
+                {
+                    constraints.Add(new DependencyEdge(i, position, certainty == DependencyCertainty.Stated ? 1 : 0));
+                }
+            }
+        }
+
+        return objects.OrderedByDependencies(_ => 0L, constraints);
+    }
 
     /// <summary>
-    /// Emits the view actions across every schema. <see cref="CreateView"/>s are appended in dependency order and
-    /// <see cref="DropView"/>s in the reverse, so that once the stable type sort above gathers each kind into its
-    /// band, a view is created after the views it reads and dropped before them.
+    /// Emits the view actions across every schema; the graph-driven sort orders the creates and drops.
     /// </summary>
-    private static void EmitViews(DatabaseDiff diff, PlanDependencies dependencies, List<MigrationAction> actions)
+    private static void EmitViews(DatabaseDiff diff, List<MigrationAction> actions)
     {
         var creates = new List<ViewDiff>();
         var drops = new List<ViewDiff>();
@@ -280,7 +296,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
             }
         }
 
-        foreach (var view in InCreationOrder(creates, dependencies))
+        foreach (var view in creates)
         {
             if (view.Definition is { } definition)
             {
@@ -295,7 +311,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // A renamed view recreating is dropped under its old name (no rename precedes the drop), and a converting
         // view is dropped as what it currently is — IsMaterialized reflects the desired side, so a flip drops with
         // the old materialization.
-        foreach (var view in InRemovalOrder(drops, dependencies))
+        foreach (var view in drops)
         {
             actions.Add(new DropView(new ObjectAddress(view.Schema, view.RenamedFrom ?? view.Name), view.Materialized?.Old ?? view.IsMaterialized));
         }
@@ -615,7 +631,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     var nullable = column.Definition.Clone();
                     nullable.IsNullable = true;
                     actions.Add(new AddColumn(new ObjectAddress(table.Schema, table.Name), nullable));
-                    actions.Add(new ExecuteScript(backfill));
+                    actions.Add(new ExecuteScript(backfill) { Anchor = new ObjectAddress(table.Schema, table.Name) });
                     actions.Add(new AlterColumn(new ObjectAddress(table.Schema, table.Name), column.Definition, Nullability: new ValueChange<bool>(true, false)));
                 }
                 else
@@ -623,7 +639,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     actions.Add(new AddColumn(new ObjectAddress(table.Schema, table.Name), column.Definition));
                     if (column.MigrationScript is { } migration)
                     {
-                        actions.Add(new ExecuteScript(migration));
+                        actions.Add(new ExecuteScript(migration) { Anchor = new ObjectAddress(table.Schema, table.Name) });
                     }
                 }
                 if (column.Comment is not null)
@@ -646,7 +662,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                     // A matched migration prepares the data for the cast; the priority table runs it first.
                     if (column.MigrationScript is { } prep)
                     {
-                        actions.Add(new ExecuteScript(prep));
+                        actions.Add(new ExecuteScript(prep) { Anchor = new ObjectAddress(table.Schema, table.Name) });
                     }
                 }
                 if (column.Type is not null || column.Nullability is not null)
@@ -684,33 +700,33 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // into the CREATE TABLE and only comment changes still arrive as separate actions.
         var foldAdds = table.Change == ChangeKind.Add;
 
-        EmitConstraintKind(table.PrimaryKeys, actions, _ => foldAdds,
+        EmitConstraintKind(table.PrimaryKeys, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
             pk => pk.Definition,
             (pk, definition) => new AddPrimaryKey(new ObjectAddress(table.Schema, table.Name), definition),
             pk => new DropPrimaryKey(new MemberAddress(table.Schema, preRenameName, pk.Name)),
             (pk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, pk.Name), comment.Old, comment.New));
 
         // A foreign key left out of the CREATE TABLE is added here instead, once the table it points at exists.
-        EmitConstraintKind(table.ForeignKeys, actions,
+        EmitConstraintKind(table.ForeignKeys, new ObjectAddress(table.Schema, table.Name), actions,
             fk => foldAdds && !unfolded.Contains(new MemberAddress(table.Schema, table.Name, fk.Name)),
             fk => fk.Definition,
             (fk, definition) => new AddForeignKey(new ObjectAddress(table.Schema, table.Name), definition),
             fk => new DropForeignKey(new MemberAddress(table.Schema, preRenameName, fk.Name)),
             (fk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, fk.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.UniqueConstraints, actions, _ => foldAdds,
+        EmitConstraintKind(table.UniqueConstraints, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
             uq => uq.Definition,
             (uq, definition) => new AddUniqueConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             uq => new DropUniqueConstraint(new MemberAddress(table.Schema, preRenameName, uq.Name)),
             (uq, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, uq.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.Checks, actions, _ => foldAdds,
+        EmitConstraintKind(table.Checks, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
             ck => ck.Definition,
             (ck, definition) => new AddCheckConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             ck => new DropCheckConstraint(new MemberAddress(table.Schema, preRenameName, ck.Name)),
             (ck, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, ck.Name), comment.Old, comment.New));
 
-        EmitConstraintKind(table.ExclusionConstraints, actions, _ => foldAdds,
+        EmitConstraintKind(table.ExclusionConstraints, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
             ex => ex.Definition,
             (ex, definition) => new AddExclusionConstraint(new ObjectAddress(table.Schema, table.Name), definition),
             ex => new DropExclusionConstraint(new MemberAddress(table.Schema, preRenameName, ex.Name)),
@@ -745,6 +761,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
     /// </summary>
     private static void EmitConstraintKind<T, TDefinition>(
         IReadOnlyList<T> constraints,
+        ObjectAddress owner,
         List<MigrationAction> actions,
         Func<T, bool> foldAdd,
         Func<T, TDefinition?> definition,
@@ -760,7 +777,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 continue;
             }
 
-            EmitConstraintMigration(constraint.Change, constraint.MigrationScript, actions);
+            EmitConstraintMigration(constraint.Change, constraint.MigrationScript, owner, actions);
             switch (constraint.Change)
             {
                 case ChangeKind.Add when definition(constraint) is { } toAdd:
@@ -777,11 +794,11 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
     }
 
-    private static void EmitConstraintMigration(ChangeKind kind, ChangeScript? migration, List<MigrationAction> actions)
+    private static void EmitConstraintMigration(ChangeKind kind, ChangeScript? migration, ObjectAddress table, List<MigrationAction> actions)
     {
         if (kind == ChangeKind.Add && migration is { } script)
         {
-            actions.Add(new ExecuteScript(script));
+            actions.Add(new ExecuteScript(script) { Anchor = table });
         }
     }
 

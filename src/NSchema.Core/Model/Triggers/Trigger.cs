@@ -53,6 +53,28 @@ public sealed class Trigger : ObjectMember, IEquatable<Trigger>
     /// </summary>
     public SqlText? Body { get; set; }
 
+    /// <summary>
+    /// The objects the trigger references.
+    /// An unqualified reference resolves against <paramref name="schema"/> (the owning table's).
+    /// </summary>
+    public IReadOnlyList<ObjectAddress> References(SqlIdentifier schema)
+    {
+        var result = new List<ObjectAddress>();
+        if (Function is { } function)
+        {
+            result.Add(new ObjectAddress(function.Schema ?? schema, function.Name));
+        }
+        if (Body is { } body)
+        {
+            result.AddRange(Services.RoutineDependencyExtractor.Extract(body, schema));
+        }
+        if (When is { } when)
+        {
+            result.AddRange(Services.ExpressionDependencyScanner.CallSites(when.Value, schema));
+        }
+        return [.. result.Distinct()];
+    }
+
     /// <inheritdoc/>
     public override Trigger Clone() => new()
     {

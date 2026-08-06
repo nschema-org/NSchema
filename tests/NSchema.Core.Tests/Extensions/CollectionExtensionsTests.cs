@@ -6,9 +6,15 @@ public sealed class CollectionExtensionsTests
 {
     private sealed record Node(string Name, params string[] Deps);
 
-    private static List<string> Order(params Node[] nodes) =>
-        nodes.OrderedByDependencies(n => n.Name, n => n.Deps, n => n.Name)
-            .Select(n => n.Name).ToList();
+    private static List<string> Order(params Node[] nodes)
+    {
+        var position = nodes.Select((n, i) => (n.Name, i)).ToDictionary(x => x.Name, x => x.i);
+        var edges = nodes.SelectMany((n, i) => n.Deps
+                .Where(position.ContainsKey)
+                .Select(dep => new DependencyEdge(i, position[dep], Strength: 1)))
+            .ToList();
+        return [.. nodes.OrderedByDependencies(_ => 0L, edges).Select(n => n.Name)];
+    }
 
     [Fact]
     public void OrderedByDependencies_PutsDependenciesFirst()
@@ -43,9 +49,56 @@ public sealed class CollectionExtensionsTests
     }
 
     [Fact]
-    public void OrderedByDependencies_DetectsCycle()
+    public void OrderedByDependencies_BreaksAnEqualStrengthCycle_ByInputOrder()
     {
-        var ex = Should.Throw<InvalidOperationException>(() => Order(new Node("a", "b"), new Node("b", "a")));
-        ex.Message.ShouldContain("cycle", Case.Insensitive);
+        // a<->b at equal strength: the first-declared item is released first, deterministically.
+        Order(new Node("a", "b"), new Node("b", "a")).ShouldBe(["a", "b"]);
+    }
+
+    // ── Priority-respecting form ──────────────────────────────────────────────
+
+    [Fact]
+    public void OrderedByDependencies_WithPriority_NoEdges_IsExactlyThePriorityOrder()
+    {
+        // Ties broken by input position, matching a stable sort.
+        var items = new[] { "b2", "a1", "c1", "d2" };
+        var ordered = items.OrderedByDependencies(item => item[1] - '0', []);
+        ordered.ShouldBe(["a1", "c1", "b2", "d2"]);
+    }
+
+    [Fact]
+    public void OrderedByDependencies_WithPriority_AnEdgeOnlyMovesAnItemAsFarAsItMust()
+    {
+        // "late" is priority 0 but depends on "early" (priority 1): it runs right after it, and the
+        // unconstrained "middle" keeps its place.
+        var items = new[] { "late", "middle", "early" };
+        var ordered = items.OrderedByDependencies(
+            item => item == "late" ? 0L : 1L,
+            [new DependencyEdge(Dependent: 0, Dependency: 2, Strength: 1)]);
+        ordered.ShouldBe(["middle", "early", "late"]);
+    }
+
+    [Fact]
+    public void OrderedByDependencies_WithPriority_BreaksCyclesAtTheWeakestEdge_Deterministically()
+    {
+        // a<->b: the strong edge (a after b) survives, the weak edge (b after a) is cut — b first.
+        var items = new[] { "a", "b" };
+        var ordered = items.OrderedByDependencies(
+            _ => 0L,
+            [
+                new DependencyEdge(Dependent: 0, Dependency: 1, Strength: 1),
+                new DependencyEdge(Dependent: 1, Dependency: 0, Strength: 0),
+            ]);
+        ordered.ShouldBe(["b", "a"]);
+    }
+
+    [Fact]
+    public void OrderedByDependencies_WithPriority_SelfAndOutOfRangeEdges_AreIgnored()
+    {
+        var items = new[] { "a", "b" };
+        var ordered = items.OrderedByDependencies(
+            _ => 0L,
+            [new DependencyEdge(0, 0, 1), new DependencyEdge(0, 99, 1), new DependencyEdge(-1, 1, 1)]);
+        ordered.ShouldBe(["a", "b"]);
     }
 }

@@ -155,11 +155,11 @@ public sealed class NsqlParserTests
         var routine = ParseSingleSchema("CREATE AGGREGATE app.group_concat(text) (SFUNC = _group_concat, STYPE = text);")
             .Routines.ShouldHaveSingleItem();
 
-        // Assert
+        // Assert — the graph scans the option values, so the aggregate orders after the functions it names.
         routine.RoutineKind.ShouldBe(RoutineKind.Aggregate);
         routine.Arguments.Value.ShouldBe("text");
         routine.Definition.Value.ShouldBe("(SFUNC = _group_concat, STYPE = text)");
-        routine.DependsOn.ShouldContain(new ObjectAddress("app", "_group_concat"));
+        routine.References("app").ShouldContain(new ObjectAddress("app", "_group_concat"));
     }
 
     [Fact]
@@ -246,9 +246,9 @@ public sealed class NsqlParserTests
         // Act
         var schema = ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.report AS SELECT * FROM app.orders o JOIN app.customers c ON o.cid = c.id;");
 
-        // Assert
+        // Assert — the reads are scanned out of the body, not stored on the model.
         var view = schema.Views.ShouldHaveSingleItem();
-        view.DependsOn.Select(d => $"{d.Schema}.{d.Name}").ShouldBe(["app.orders", "app.customers"]);
+        view.Reads("app").Select(d => $"{d.Schema}.{d.Name}").ShouldBe(["app.orders", "app.customers"]);
     }
 
     [Fact]

@@ -1,6 +1,8 @@
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.CompositeTypes;
 using NSchema.Diff.Domain.Constraints;
+using NSchema.Diff.Domain.Domains;
 using NSchema.Diff.Domain.Enums;
 using NSchema.Diff.Domain.Indexes;
 using NSchema.Diff.Domain.Routines;
@@ -11,21 +13,27 @@ using NSchema.Diff.Domain.Triggers;
 using NSchema.Diff.Domain.Views;
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.CompositeTypes;
 using NSchema.Model.Constraints;
+using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
+using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Columns;
+using NSchema.Plan.Domain.CompositeTypes;
 using NSchema.Plan.Domain.Constraints;
+using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Indexes;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Scripts;
 using NSchema.Plan.Domain.Sequences;
 using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Domain.Tables;
@@ -162,11 +170,14 @@ public sealed class PlanLinearizerTests
         return ViewDiff.Removed(schema, name);
     }
 
+    // The body is the source of truth: the dependency graph scans it, so the reads are written as real
+    // FROM targets rather than declared on the side.
     private static View ViewReading(string name, (string Schema, string Name)[] dependsOn) => new()
     {
         Name = name,
-        Body = $"SELECT * FROM source_of_{name}",
-        DependsOn = [.. dependsOn.Select(d => new ObjectAddress(d.Schema, d.Name))],
+        Body = dependsOn.Length == 0
+            ? "SELECT 1"
+            : $"SELECT * FROM {string.Join(", ", dependsOn.Select(d => $"{d.Schema}.{d.Name}"))}",
     };
 
     private TableDiff AddTable(string name, string schema = "app")
@@ -185,14 +196,13 @@ public sealed class PlanLinearizerTests
     public void Linearize_OrdersRoutineCallsWithinThePlan()
     {
         // Arrange — film_in_stock calls inventory_in_stock; the callee is created first, whatever the
-        // alphabet says. The edge comes from the desired model's scanned DependsOn.
+        // alphabet says. The edge is scanned out of the definition by the dependency graph.
         var caller = _sides.Creating("app", new Routine
         {
             Name = "film_in_stock",
             RoutineKind = RoutineKind.Function,
             Arguments = "p integer",
             Definition = "RETURNS boolean LANGUAGE sql AS $$ SELECT inventory_in_stock(p) $$",
-            DependsOn = [new ObjectAddress("app", "inventory_in_stock")],
         });
         var callee = _sides.Creating("app", new Routine
         {
@@ -212,6 +222,100 @@ public sealed class PlanLinearizerTests
         // Assert
         var creates = plan.OfType<CreateRoutine>().Select(c => c.Routine.Name.Value).ToList();
         creates.ShouldBe(["inventory_in_stock", "film_in_stock"]);
+    }
+
+    [Fact]
+    public void Linearize_AnchoredScript_RunsBeforeItsTablesDrop()
+    {
+        // Arrange - a data-salvage script anchored to a dropped table: the script band sits well before the
+        // drop band, but only the anchor edge guarantees the table still exists when it runs - and keeps
+        // guaranteeing it if the bands ever move.
+        var salvage = new ChangeScript("salvage", "INSERT INTO app.archive SELECT * FROM app.users;",
+            new ChangeTarget("app", "users", "id", ChangeTrigger.AddConstraint));
+
+        // Act - emitted the way a decomposition site would: anchored to its subject.
+        var plan = MigrationActionOrdering.Order([
+            new ExecuteScript(salvage) { Anchor = new ObjectAddress("app", "users") },
+            new DropTable(new ObjectAddress("app", "users")),
+        ], _sides.Dependencies);
+
+        // Assert
+        plan[0].ShouldBeOfType<ExecuteScript>();
+        plan[1].ShouldBeOfType<DropTable>();
+    }
+
+    [Fact]
+    public void Linearize_TriggerExecutingAFunction_CreatesTheFunctionFirst()
+    {
+        // Arrange — the trigger names its function outright; the edge rides the trigger's own action.
+        var table = _sides.Creating("app", new Table
+        {
+            Name = "users",
+            Columns = [new Column { Name = "id", Type = SqlType.Int }],
+            Triggers = [new Trigger { Name = "users_touch", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Function = new RoutineReference("app", "touch") }],
+        });
+        var routine = _sides.Creating("app", new Routine
+        {
+            Name = "touch",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "",
+            // The function reads the table its trigger guards: a false cycle if the trigger's references
+            // were folded into the table's create instead of riding the trigger action.
+            Definition = "RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE app.users SET id = id; RETURN NEW; END $$",
+        });
+
+        // Act — an added table's triggers arrive as their own diff nodes (the comparer's doing).
+        var plan = Linearize(SchemaNode("app",
+            tables: [TableDiff.Added("app", table) with { Triggers = [TriggerDiff.Added(table.Triggers[0])] }],
+            routines: [RoutineDiff.Added("app", routine)]));
+
+        // Assert — table, then the function that reads it, then the trigger that calls the function.
+        IndexOf<CreateTable>(plan).ShouldBeLessThan(IndexOf<CreateRoutine>(plan));
+        IndexOf<CreateRoutine>(plan).ShouldBeLessThan(IndexOf<CreateTrigger>(plan));
+    }
+
+    [Fact]
+    public void Linearize_DomainOnACompositeType_CreatesTheCompositeFirst()
+    {
+        // Arrange — the domain's band precedes the composite's, so only a real edge can order this pair
+        // correctly; the type reference supplies it.
+        var composite = _sides.Creating("app", new CompositeType
+        {
+            Name = "money_bag",
+            Fields = [new CompositeField(new SqlIdentifier("amount"), SqlType.Int)],
+        });
+        var domain = _sides.Creating("app", new DomainType { Name = "wallet", DataType = SqlType.Custom(new SqlIdentifier("app"), "money_bag") });
+
+        // Act
+        var plan = Linearize(SchemaNode("app") with
+        {
+            Domains = [DomainDiff.Added("app", domain)],
+            CompositeTypes = [CompositeTypeDiff.Added("app", composite)],
+        });
+
+        // Assert
+        IndexOf<CreateCompositeType>(plan).ShouldBeLessThan(IndexOf<CreateDomain>(plan));
+    }
+
+    [Fact]
+    public void Linearize_RoutineReadingAView_CreatesTheViewFirst()
+    {
+        // Arrange — the routine band precedes the view band, so only the scanned edge can invert this pair.
+        var routine = _sides.Creating("app", new Routine
+        {
+            Name = "count_active",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "",
+            Definition = "RETURNS int LANGUAGE sql AS $$ SELECT count(*) FROM app.active_users $$",
+        });
+
+        // Act
+        var plan = Linearize(SchemaNode("app",
+            views: [AddView("active_users")],
+            routines: [RoutineDiff.Added("app", routine)]));
+
+        // Assert
+        IndexOfCreateView(plan, "active_users").ShouldBeLessThan(IndexOf<CreateRoutine>(plan));
     }
 
     [Fact]

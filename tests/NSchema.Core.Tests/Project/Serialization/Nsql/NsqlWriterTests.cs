@@ -414,7 +414,6 @@ public sealed class NsqlWriterTests
         var view = reparsed.Schemas.ShouldHaveSingleItem().Views.ShouldHaveSingleItem();
         view.Name.ShouldBe("active");
         view.Body.ShouldBe("SELECT id, name FROM app.users WHERE active");
-        view.DependsOn.ShouldHaveSingleItem().ShouldBe(new ObjectAddress("app", "users"));
     }
 
     // -------------------------------------------------------------------------

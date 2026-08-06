@@ -1,4 +1,7 @@
 using NSchema.Model;
+using NSchema.Model.CompositeTypes;
+using NSchema.Model.Domains;
+using NSchema.Model.Enums;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
@@ -39,6 +42,9 @@ internal sealed class MigrationSides
             case Table table: target.Tables.Add(table); break;
             case View view: target.Views.Add(view); break;
             case Routine routine: target.Routines.Add(routine); break;
+            case DomainType domain: target.Domains.Add(domain); break;
+            case CompositeType composite: target.CompositeTypes.Add(composite); break;
+            case EnumType enumType: target.Enums.Add(enumType); break;
             default: throw new NotSupportedException($"Nothing declares a {declared.GetType().Name} yet.");
         }
 

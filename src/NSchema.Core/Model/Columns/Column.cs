@@ -41,6 +41,24 @@ public sealed class Column : ObjectMember, IEquatable<Column>
     /// </summary>
     public SqlText? GeneratedExpression { get; set; }
 
+    /// <summary>
+    /// The objects the column's expressions call.
+    /// An unqualified reference resolves against <paramref name="schema"/>.
+    /// </summary>
+    public IReadOnlyList<ObjectAddress> References(SqlIdentifier schema)
+    {
+        var result = new List<ObjectAddress>();
+        if (GeneratedExpression is { } generated)
+        {
+            result.AddRange(Services.ExpressionDependencyScanner.CallSites(generated.Value, schema));
+        }
+        if (DefaultExpression is { } fallback)
+        {
+            result.AddRange(Services.ExpressionDependencyScanner.CallSites(fallback.Value, schema));
+        }
+        return [.. result.Distinct()];
+    }
+
     /// <inheritdoc/>
     public override Column Clone() => new()
     {

@@ -12,6 +12,7 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
+using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
@@ -19,7 +20,6 @@ using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Project.Domain.Directives;
-using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Helpers;
 
@@ -177,9 +177,9 @@ public static class TestData
 
     /// <summary>Builds a view with dependencies derived from its body, exactly as the DDL parser would.</summary>
     private static View View(string name, string body, string? comment = null) =>
-        new View { Name = name, Body = body, DependsOn = ViewDependencyExtractor.Extract(body, "app"), Comment = comment };
+        new View { Name = name, Body = body, Comment = comment };
 
     /// <summary>Builds a materialized view (optionally with indexes), dependencies derived from its body.</summary>
     private static View MaterializedView(string name, string body, string? comment = null, ObjectMemberCollection<TableIndex>? indexes = null) =>
-        new View { Name = name, Body = body, DependsOn = ViewDependencyExtractor.Extract(body, "app"), IsMaterialized = true, Indexes = indexes ?? [], Comment = comment };
+        new View { Name = name, Body = body, IsMaterialized = true, Indexes = indexes ?? [], Comment = comment };
 }

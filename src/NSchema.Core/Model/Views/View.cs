@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using NSchema.Model.Indexes;
 
 namespace NSchema.Model.Views;
@@ -20,12 +21,19 @@ public sealed class View : SchemaObject, IEquatable<View>
     /// <summary>
     /// The objects the view reads, derived from <see cref="Body"/>.
     /// </summary>
+    [JsonIgnore]
+    [Obsolete("Dependencies now live on the dependency graph.")]
     public List<ObjectAddress> DependsOn { get; init; } = [];
 
     /// <summary>
     /// Whether this is a materialized view (stores its result set).
     /// </summary>
     public bool IsMaterialized { get; set; }
+
+    /// <summary>
+    /// The objects the body reads, scanned on demand; an unqualified reference resolves against <paramref name="schema"/> (the view's own).
+    /// </summary>
+    public IReadOnlyList<ObjectAddress> Reads(SqlIdentifier schema) => Services.ViewDependencyExtractor.Extract(Body, schema);
 
     /// <summary>
     /// Indexes on the view (materialized views only; empty for a plain view).
@@ -41,7 +49,9 @@ public sealed class View : SchemaObject, IEquatable<View>
     {
         Name = Name,
         Body = Body,
+#pragma warning disable CS0618 // Type or member is obsolete
         DependsOn = [.. DependsOn],
+#pragma warning restore CS0618 // Type or member is obsolete
         IsMaterialized = IsMaterialized,
         Indexes = [.. Indexes.Select(i => i.Clone())],
         ProvidedBy = ProvidedBy,
@@ -56,7 +66,6 @@ public sealed class View : SchemaObject, IEquatable<View>
         && Name == other.Name
         && Body == other.Body
         && IsMaterialized == other.IsMaterialized
-        && DependsOn.SequenceEqual(other.DependsOn)
         && Indexes.SequenceEqual(other.Indexes);
 
     /// <inheritdoc/>

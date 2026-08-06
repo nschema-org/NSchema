@@ -96,24 +96,26 @@ internal sealed class DependencyGraph
             }
         }
 
+        // A view's dependencies are embedded in its body: there is nothing to sever but the view itself.
+        // What it reads is scanned out of SQL nobody parsed, so the edge is a guess — a good one for
+        // ordering two things already in a plan, not good enough to drag a third into it unannounced.
+        // The models answer for themselves, so both sides of a migration carry the edges, however their
+        // models were produced.
         foreach (var (schema, view) in allViews)
         {
             var node = new DependencyNode(new ObjectAddress(schema, view.Name), DependencyKind.View);
-            foreach (var dependency in view.DependsOn)
+            foreach (var dependency in view.Reads(schema))
             {
-                // A view's dependency is embedded in its body: there is nothing to sever but the view itself.
-                // What it reads was scanned out of SQL nobody parsed, so the edge is a guess — a good one for
-                // ordering two things already in a plan, not good enough to drag a third into it unannounced.
                 Connect(node, dependency, DependencyCertainty.Inferred);
             }
         }
 
-        // A routine's references are the same kind of guess, scanned out of its body: what it reads, and the
-        // routines it calls.
+        // A routine's references are the same kind of guess, scanned out of its definition: what it reads,
+        // and the routines it calls.
         foreach (var (schema, routine) in database.Objects<Routine>())
         {
             var node = new DependencyNode(new ObjectAddress(schema, routine.Name), DependencyKind.Routine);
-            foreach (var dependency in routine.DependsOn.Where(d => d != node.Address))
+            foreach (var dependency in routine.References(schema).Where(d => d != node.Address))
             {
                 Connect(node, dependency, DependencyCertainty.Inferred);
             }
@@ -140,12 +142,11 @@ internal sealed class DependencyGraph
             foreach (var column in table.Columns)
             {
                 var columnNode = new DependencyNode(new MemberAddress(schema, table.Name, column.Name), DependencyKind.Column);
-                ConnectToCallSites(columnNode, column.GeneratedExpression?.Value, schema);
-                ConnectToCallSites(columnNode, column.DefaultExpression?.Value, schema);
+                ConnectAll(columnNode, column.References(schema));
             }
             foreach (var check in table.CheckConstraints)
             {
-                ConnectToCallSites(tableNode, check.Expression.Value, schema);
+                ConnectAll(tableNode, check.References(schema));
             }
         }
 
@@ -210,6 +211,19 @@ internal sealed class DependencyGraph
     public IReadOnlyCollection<ObjectAddress> ObjectDependentsOf(ObjectAddress address) => Owners(address, _requiredBy);
 
     /// <summary>
+    /// As <see cref="ObjectDependenciesOf"/>, but each object carries the strongest certainty of the edges
+    /// that reach it — what an ordering should trust when it must break a cycle.
+    /// </summary>
+    public IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)> ObjectDependencyEdgesOf(ObjectAddress address) =>
+        OwnerEdges(address, _requires);
+
+    /// <summary>
+    /// As <see cref="ObjectDependentsOf"/>, with the same certainty accounting.
+    /// </summary>
+    public IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)> ObjectDependentEdgesOf(ObjectAddress address) =>
+        OwnerEdges(address, _requiredBy);
+
+    /// <summary>
     /// The foreign keys pointing at the table at <paramref name="address"/> — the edges into it that can be cut,
     /// where <see cref="ObjectDependentsOf"/> only says who holds them.
     /// </summary>
@@ -262,15 +276,9 @@ internal sealed class DependencyGraph
         _ => throw new ArgumentOutOfRangeException(nameof(type), type.Kind, "Not a type kind."),
     };
 
-    private void ConnectToCallSites(DependencyNode dependent, string? expression, SqlIdentifier defaultSchema)
+    private void ConnectAll(DependencyNode dependent, IReadOnlyList<ObjectAddress> references)
     {
-        if (expression is null)
-        {
-            return;
-        }
-
-        foreach (var address in ExpressionDependencyScanner.CallSites(expression, defaultSchema)
-                     .Where(a => a != dependent.Address && OwnerOf(dependent.Address) != a))
+        foreach (var address in references.Where(a => a != dependent.Address && OwnerOf(dependent.Address) != a))
         {
             Add(dependent);
             Connect(dependent, address, DependencyCertainty.Inferred);
@@ -312,12 +320,16 @@ internal sealed class DependencyGraph
     /// its own members says nothing about where it goes.
     /// </summary>
     private IReadOnlyCollection<ObjectAddress> Owners(ObjectAddress address, Dictionary<DependencyNode, List<Edge>> edges) =>
+        [.. OwnerEdges(address, edges).Select(e => e.Object)];
+
+    private IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)> OwnerEdges(
+        ObjectAddress address, Dictionary<DependencyNode, List<Edge>> edges) =>
         _byOwner.TryGetValue(address, out var owned)
-            ? [.. owned.SelectMany(node => Nodes(edges, node))
-                .Select(node => OwnerOf(node.Address))
-                .OfType<ObjectAddress>()
-                .Where(owner => owner != address)
-                .Distinct()]
+            ? [.. owned.SelectMany(node => edges.TryGetValue(node, out var found) ? found : Enumerable.Empty<Edge>())
+                .Select(edge => (Owner: OwnerOf(edge.Node.Address), edge.Certainty))
+                .Where(x => x.Owner is { } owner && owner != address)
+                .GroupBy(x => x.Owner!)
+                .Select(g => (g.Key, g.Min(x => x.Certainty)))]
             : [];
 
     /// <summary>

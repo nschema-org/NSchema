@@ -33,6 +33,19 @@ internal sealed class PlanDependencies(Database current, Database desired)
     public IReadOnlyCollection<ObjectAddress> RequiredBy(ObjectAddress address) => _current.ObjectDependentsOf(address);
 
     /// <summary>
+    /// As <see cref="Requires"/>, with the strongest certainty each edge carries — what the ordering trusts
+    /// when it must break a cycle.
+    /// </summary>
+    public IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)> RequiresEdges(ObjectAddress address) =>
+        _desired.ObjectDependencyEdgesOf(address);
+
+    /// <summary>
+    /// As <see cref="RequiredBy"/>, with the same certainty accounting.
+    /// </summary>
+    public IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)> RequiredByEdges(ObjectAddress address) =>
+        _current.ObjectDependentEdgesOf(address);
+
+    /// <summary>
     /// The foreign keys the current database points at <paramref name="address"/> with.
     /// </summary>
     public IReadOnlyCollection<MemberAddress> ForeignKeysInto(ObjectAddress address) => _current.ForeignKeysInto(address);

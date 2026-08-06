@@ -271,36 +271,18 @@ END,
         views: [
           {
             body: SELECT id, name FROM app.users WHERE balance > 0,
-            dependsOn: [
-              {
-                schema: app,
-                name: users
-              }
-            ],
             isMaterialized: false,
             name: active_users,
             comment: currently active users
           },
           {
             body: SELECT name FROM app.active_users,
-            dependsOn: [
-              {
-                schema: app,
-                name: active_users
-              }
-            ],
             isMaterialized: false,
             name: user_directory,
             comment: null
           },
           {
             body: SELECT name, balance FROM app.users,
-            dependsOn: [
-              {
-                schema: app,
-                name: users
-              }
-            ],
             isMaterialized: true,
             indexes: [
               {

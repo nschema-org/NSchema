@@ -1,5 +1,12 @@
 namespace NSchema.Extensions;
 
+/// <summary>
+/// One ordering constraint between two items of a list, by position: the dependent may not precede its
+/// dependency. <paramref name="Strength"/> ranks how much the edge is trusted — a cycle is broken at its
+/// weakest edge first.
+/// </summary>
+internal readonly record struct DependencyEdge(int Dependent, int Dependency, int Strength);
+
 internal static class CollectionExtensions
 {
     extension<T>(IList<T> source)
@@ -22,79 +29,105 @@ internal static class CollectionExtensions
     extension<T>(IReadOnlyList<T> source)
     {
         /// <summary>
-        /// Returns the items in dependency order (dependencies first).
+        /// Returns the items in dependency order, with tie-breakers chosen by <paramref name="priority"/>, then input position.
         /// </summary>
-        /// <typeparam name="TKey">The identity type; equality semantics live on the key (e.g. identifier tuples).</typeparam>
-        /// <param name="key">Projects an item's identity.</param>
-        /// <param name="dependencies">Projects the identities an item depends on.</param>
-        /// <param name="describe">Renders an item's identity for the cycle error message.</param>
-        /// <param name="allowCycles">Whether a cycle is legal, and so is broken at the edge that closes it rather than reported.</param>
-        /// <exception cref="InvalidOperationException">A dependency cycle exists among the items.</exception>
+        /// <param name="priority">Ranks an item; lower runs earlier among the unblocked.</param>
+        /// <param name="edges">The constraints, by list position; an out-of-range or self edge is ignored.</param>
         /// <remarks>
-        /// Only dependencies that resolve to another item in the same set produce an edge; a dependency on
-        /// something outside the set is ignored. The sort is stable: independent items keep their original
-        /// relative order.
+        /// Cycles are broken rather than reported: when every remaining item is blocked, the item whose
+        /// unsatisfied edges are weakest (then best priority, then first declared) is released and those
+        /// edges discarded. It's deterministic, and it never fails a plan on an inferred guess.
         /// </remarks>
-        public IReadOnlyList<T> OrderedByDependencies<TKey>(
-            Func<T, TKey> key,
-            Func<T, IEnumerable<TKey>> dependencies,
-            Func<T, string> describe,
-            bool allowCycles = false
-        ) where TKey : notnull
+        public IReadOnlyList<T> OrderedByDependencies(Func<T, long> priority, IReadOnlyList<DependencyEdge> edges)
         {
             if (source.Count <= 1)
             {
                 return source;
             }
 
-            var byKey = new Dictionary<TKey, T>();
-            foreach (var item in source)
+            var dependentsOf = new List<int>?[source.Count];
+            var blockedBy = new List<DependencyEdge>?[source.Count];
+            foreach (var edge in edges)
             {
-                // A duplicate key would make ordering ambiguous; the first declaration wins (callers dedupe upstream).
-                byKey.TryAdd(key(item), item);
+                if (edge.Dependent == edge.Dependency
+                    || edge.Dependent < 0 || edge.Dependent >= source.Count
+                    || edge.Dependency < 0 || edge.Dependency >= source.Count)
+                {
+                    continue;
+                }
+
+                (dependentsOf[edge.Dependency] ??= []).Add(edge.Dependent);
+                (blockedBy[edge.Dependent] ??= []).Add(edge);
+            }
+
+            var remaining = new int[source.Count];
+            var ready = new PriorityQueue<int, (long Priority, int Position)>();
+            for (var i = 0; i < source.Count; i++)
+            {
+                remaining[i] = blockedBy[i]?.Count ?? 0;
+                if (remaining[i] == 0)
+                {
+                    ready.Enqueue(i, (priority(source[i]), i));
+                }
             }
 
             var ordered = new List<T>(source.Count);
-            var state = new Dictionary<TKey, SortMark>();
-
-            // Depth-first post-order over the original sequence preserves the input order for independent items.
-            foreach (var item in source)
+            var emitted = new bool[source.Count];
+            while (ordered.Count < source.Count)
             {
-                Visit(item);
+                if (ready.Count == 0)
+                {
+                    Release(BestBlocked());
+                }
+
+                var index = ready.Dequeue();
+                if (emitted[index])
+                {
+                    continue;
+                }
+
+                emitted[index] = true;
+                ordered.Add(source[index]);
+                foreach (var dependent in dependentsOf[index] ?? (IEnumerable<int>)[])
+                {
+                    if (--remaining[dependent] == 0 && !emitted[dependent])
+                    {
+                        ready.Enqueue(dependent, (priority(source[dependent]), dependent));
+                    }
+                }
             }
 
             return ordered;
 
-            void Visit(T item)
+            // The blocked item held by the weakest edges: cutting there costs the least confidence.
+            int BestBlocked()
             {
-                var k = key(item);
-                if (state.TryGetValue(k, out var mark))
+                var best = -1;
+                var bestKey = (Strength: int.MaxValue, Priority: long.MaxValue, Position: int.MaxValue);
+                for (var i = 0; i < source.Count; i++)
                 {
-                    if (mark == SortMark.InProgress && !allowCycles)
+                    if (emitted[i] || remaining[i] == 0)
                     {
-                        throw new InvalidOperationException(
-                            $"Dependency cycle detected involving {describe(item)}. Cyclic definitions cannot be ordered.");
+                        continue;
                     }
-                    return; // already emitted
+
+                    var strength = blockedBy[i]!.Where(e => !emitted[e.Dependency]).Max(e => e.Strength);
+                    var key = (strength, priority(source[i]), i);
+                    if (key.CompareTo(bestKey) < 0)
+                    {
+                        best = i;
+                        bestKey = key;
+                    }
                 }
 
-                state[k] = SortMark.InProgress;
-                foreach (var dependencyKey in dependencies(item))
-                {
-                    if (byKey.TryGetValue(dependencyKey, out var dependency))
-                    {
-                        Visit(dependency);
-                    }
-                }
-                state[k] = SortMark.Done;
-                ordered.Add(item);
+                return best;
+            }
+
+            void Release(int index)
+            {
+                remaining[index] = 0;
+                ready.Enqueue(index, (priority(source[index]), index));
             }
         }
-    }
-
-    private enum SortMark
-    {
-        InProgress,
-        Done,
     }
 }
