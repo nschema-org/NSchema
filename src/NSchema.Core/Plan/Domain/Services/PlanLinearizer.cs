@@ -3,6 +3,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Extensions;
 using NSchema.Diff.Domain.Indexes;
+using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
@@ -44,10 +45,10 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // Tables, views, and routines are each emitted in one cross-schema pass: their create/drop order is
         // governed by a dependency sort (created after what they need, dropped before it), which the per-schema
         // walk above cannot express — a foreign key, a view body, or a routine's calls may reach into another
-        // schema.
-        EmitTables(diff, dependencies, capabilities, actions);
+        // schema. Tables and routines share one pass, because the dependency can point either way: a routine
+        // reads a table, or a table's computed column calls a routine.
+        EmitTablesAndRoutines(diff, dependencies, capabilities, actions);
         EmitViews(diff, dependencies, actions);
-        EmitRoutines(diff, dependencies, actions);
 
         actions = [.. MigrationActionOrdering.Order(actions)];
 
@@ -59,37 +60,90 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         diff.DeploymentScripts.Where(s => s.Phase == phase).Select(s => new ExecuteScript(s));
 
     /// <summary>
-    /// Emits the table actions across every schema, in the order their foreign keys require: a table is created
-    /// after the tables it references and dropped before them. Tables may legally point at each other, and no
-    /// order satisfies a cycle — so any foreign key the order leaves unsatisfied is taken out of the way first,
-    /// unless the dialect keeps its keys on the tables that declare them.
+    /// Emits the table and routine actions across every schema, in the order their dependencies require: a table
+    /// is created after the tables its foreign keys reference and the routines its expressions call; a routine
+    /// after the tables it reads and the routines it calls — the same edges in reverse for drops. Tables may
+    /// legally point at each other, and no order satisfies a cycle — so any foreign key the order leaves
+    /// unsatisfied is taken out of the way first, unless the dialect keeps its keys on the tables that declare
+    /// them.
     /// </summary>
-    private static void EmitTables(
+    private static void EmitTablesAndRoutines(
         DatabaseDiff diff,
         PlanDependencies dependencies,
         DialectCapabilities capabilities,
         List<MigrationAction> actions)
     {
         var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+        var routines = diff.Schemas.SelectMany(schema => schema.Routines).ToList();
 
-        var created = InCreationOrder([.. tables.Where(table => table.Change != ChangeKind.Remove)], dependencies);
-        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
-        foreach (var table in created)
+        // Routine renames and comments sort into their own bands, so their emission position is free.
+        foreach (var routine in routines)
         {
-            EmitTable(table, dependencies, actions, unfolded);
+            if (routine.Change is not (ChangeKind.Add or ChangeKind.Remove) && routine.RenamedFrom is { } renamedFrom)
+            {
+                actions.Add(new RenameRoutine(new ObjectAddress(routine.Schema, renamedFrom), routine.Name, routine.RoutineKind, routine.Arguments?.Old ?? routine.Signature));
+            }
+            if (routine.Change != ChangeKind.Remove && routine.Comment is { } comment)
+            {
+                actions.Add(new SetRoutineComment(new ObjectAddress(routine.Schema, routine.Name), comment.Old, comment.New, routine.RoutineKind, routine.Signature ?? routine.Definition?.Arguments));
+            }
         }
 
-        var dropped = InRemovalOrder([.. tables.Where(table => table.Change == ChangeKind.Remove)], dependencies);
+        // Creates share one ordering band; absent an edge, tables keep their place ahead of routines.
+        var changed = InCreationOrder<ISchemaObjectDiff>([
+            .. tables.Where(table => table.Change != ChangeKind.Remove),
+            .. routines.Where(routine => routine.Change != ChangeKind.Remove),
+        ], dependencies);
+
+        var createdTables = changed.OfType<TableDiff>().ToList();
+        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(createdTables) : FrozenSet<MemberAddress>.Empty;
+        foreach (var item in changed)
+        {
+            switch (item)
+            {
+                case TableDiff table:
+                    EmitTable(table, dependencies, actions, unfolded);
+                    break;
+
+                case RoutineDiff { Definition: { } definition } routine:
+                    actions.Add(routine.Change == ChangeKind.Add
+                        ? new CreateRoutine(routine.Schema, definition)
+                        // A signature (or kind) change recreates (a replace under different arguments would
+                        // create a separate overload); a definition-only change replaces in place.
+                        : routine.RequiresRecreate
+                            ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
+                            : new ReplaceRoutine(routine.Schema, definition));
+                    break;
+            }
+        }
+
+        // Drops mirror it: aggregates before the functions they are assembled from, routines ahead of tables
+        // by default, and a table ahead of a routine its expressions call.
+        var dropped = InRemovalOrder<ISchemaObjectDiff>([
+            .. routines.Where(r => r.Change == ChangeKind.Remove).OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1),
+            .. tables.Where(table => table.Change == ChangeKind.Remove),
+        ], dependencies);
+
         if (capabilities.CanAlterForeignKeys)
         {
-            foreach (var foreignKey in UnsatisfiedOnDrop(dropped, dependencies))
+            foreach (var foreignKey in UnsatisfiedOnDrop(dropped.OfType<TableDiff>().ToList(), dependencies))
             {
                 actions.Add(new DropForeignKey(foreignKey));
             }
         }
-        foreach (var table in dropped)
+
+        foreach (var item in dropped)
         {
-            EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
+            switch (item)
+            {
+                case TableDiff table:
+                    EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
+                    break;
+
+                case RoutineDiff routine:
+                    actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
+                    break;
+            }
         }
     }
 
@@ -368,50 +422,6 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
     }
 
-    /// <summary>
-    /// Emits the routine actions across every schema: creates in dependency order — a body may call a routine
-    /// created in the same plan — and drops in the reverse.
-    /// </summary>
-    private static void EmitRoutines(DatabaseDiff diff, PlanDependencies dependencies, List<MigrationAction> actions)
-    {
-        var routines = diff.Schemas.SelectMany(schema => schema.Routines).ToList();
-
-        foreach (var routine in routines)
-        {
-            if (routine.Change is not (ChangeKind.Add or ChangeKind.Remove) && routine.RenamedFrom is { } renamedFrom)
-            {
-                actions.Add(new RenameRoutine(new ObjectAddress(routine.Schema, renamedFrom), routine.Name, routine.RoutineKind, routine.Arguments?.Old ?? routine.Signature));
-            }
-            if (routine.Change != ChangeKind.Remove && routine.Comment is { } comment)
-            {
-                actions.Add(new SetRoutineComment(new ObjectAddress(routine.Schema, routine.Name), comment.Old, comment.New, routine.RoutineKind, routine.Signature ?? routine.Definition?.Arguments));
-            }
-        }
-
-        foreach (var routine in InCreationOrder([.. routines.Where(r => r.Change != ChangeKind.Remove)], dependencies))
-        {
-            if (routine.Definition is not { } definition)
-            {
-                continue;
-            }
-
-            actions.Add(routine.Change == ChangeKind.Add
-                ? new CreateRoutine(routine.Schema, definition)
-                // A signature (or kind) change recreates (a replace under different arguments would create a
-                // separate overload); a definition-only change replaces in place.
-                : routine.RequiresRecreate
-                    ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
-                    : new ReplaceRoutine(routine.Schema, definition));
-        }
-
-        // Aggregates are assembled from functions so must be dropped before them.
-        var dropped = routines.Where(r => r.Change == ChangeKind.Remove)
-            .OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1);
-        foreach (var routine in InRemovalOrder([.. dropped], dependencies))
-        {
-            actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
-        }
-    }
 
     private static void EmitDomains(SchemaDiff schema, List<MigrationAction> actions) =>
         EmitObjects(schema.Domains, actions,

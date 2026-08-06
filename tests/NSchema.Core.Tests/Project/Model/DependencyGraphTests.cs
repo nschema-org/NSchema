@@ -1,6 +1,7 @@
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
+using NSchema.Model.Constraints;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Schemas;
@@ -365,5 +366,64 @@ public class DependencyGraphTests
 
         // Assert
         closure.ShouldBe([Domain("app", "tracked_status"), ColumnNode("billing", "orders", "state")], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void ObjectDependenciesOf_ComputedColumn_ReachesTheRoutineItCalls()
+    {
+        // Arrange — the AdventureWorks shape: a computed column calling a scalar function, spelled with
+        // T-SQL brackets. The table must be created after the function, and the function dropped after it.
+        var database = new Database
+        {
+            Schemas = [
+            new Schema
+            {
+                Name = Id("dbo"),
+                Routines = [new NSchema.Model.Routines.Routine { Name = Id("ufnLeadingZeros"), RoutineKind = NSchema.Model.Routines.RoutineKind.Function, Arguments = "@Value int", Definition = "RETURNS varchar(8) AS BEGIN RETURN '0' END" }],
+                Tables = [new Table
+                {
+                    Name = Id("Customer"),
+                    Columns = [
+                        new Column { Name = Id("CustomerID"), Type = SqlType.Int },
+                        new Column { Name = Id("AccountNumber"), Type = SqlType.VarChar(10), GeneratedExpression = "(isnull('AW'+[dbo].[ufnLeadingZeros]([CustomerID]),''))" },
+                    ],
+                }],
+            },
+        ],
+        };
+        var graph = new DependencyGraph(database);
+
+        // Act & Assert — both directions of the same edge: creation needs, and drop cost.
+        graph.ObjectDependenciesOf(new ObjectAddress(Id("dbo"), Id("Customer")))
+            .ShouldContain(new ObjectAddress(Id("dbo"), Id("ufnLeadingZeros")));
+        graph.ObjectDependentsOf(new ObjectAddress(Id("dbo"), Id("ufnLeadingZeros")))
+            .ShouldContain(new ObjectAddress(Id("dbo"), Id("Customer")));
+    }
+
+    [Fact]
+    public void ObjectDependenciesOf_CheckConstraint_ReachesTheRoutineItCalls()
+    {
+        // Arrange — an unqualified call resolves against the table's own schema.
+        var database = new Database
+        {
+            Schemas = [
+            new Schema
+            {
+                Name = Id("app"),
+                Routines = [new NSchema.Model.Routines.Routine { Name = Id("is_valid"), RoutineKind = NSchema.Model.Routines.RoutineKind.Function, Arguments = "v text", Definition = "RETURNS boolean LANGUAGE sql AS $$ SELECT true $$" }],
+                Tables = [new Table
+                {
+                    Name = Id("orders"),
+                    Columns = [new Column { Name = Id("code"), Type = SqlType.Text }],
+                    CheckConstraints = [new CheckConstraint { Name = Id("ck_code"), Expression = "is_valid(code)" }],
+                }],
+            },
+        ],
+        };
+        var graph = new DependencyGraph(database);
+
+        // Act & Assert
+        graph.ObjectDependenciesOf(new ObjectAddress(Id("app"), Id("orders")))
+            .ShouldContain(new ObjectAddress(Id("app"), Id("is_valid")));
     }
 }

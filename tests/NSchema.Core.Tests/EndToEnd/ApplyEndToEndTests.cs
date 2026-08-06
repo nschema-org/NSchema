@@ -150,8 +150,8 @@ public sealed class ApplyEndToEndTests : IDisposable
         // Sales decomposes around the token-substituted backfill; billing just creates its (empty) table.
         var statements = _executor.Executed.ShouldNotBeNull().Select(s => s.Sql).ToList();
         statements.ShouldBe([
-            "-- CreateTable",
             "-- AddColumn",
+            "-- CreateTable",
             "UPDATE sales.events SET actor = 'system';",
             "-- AlterColumn",
         ]);

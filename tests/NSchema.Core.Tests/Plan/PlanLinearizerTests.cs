@@ -215,6 +215,66 @@ public sealed class PlanLinearizerTests
     }
 
     [Fact]
+    public void Linearize_ComputedColumnCallingARoutine_CreatesTheRoutineFirst()
+    {
+        // Arrange — the AdventureWorks shape: a table's computed column calls a scalar function created in
+        // the same plan, so the usual tables-then-routines order inverts for this pair. The edge is scanned
+        // out of the expression by the dependency graph — nothing is declared.
+        var table = _sides.Creating("app", new Table
+        {
+            Name = "customers",
+            Columns = [
+                new Column { Name = "id", Type = SqlType.Int },
+                new Column { Name = "account", Type = SqlType.VarChar(10), GeneratedExpression = "('AW' + [app].[leading_zeros]([id]))" },
+            ],
+        });
+        var routine = _sides.Creating("app", new Routine
+        {
+            Name = "leading_zeros",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "@v int",
+            Definition = "RETURNS varchar(8) AS BEGIN RETURN '0' END",
+        });
+
+        // Act
+        var plan = Linearize(SchemaNode("app",
+            tables: [TableDiff.Added("app", table)],
+            routines: [RoutineDiff.Added("app", routine)]));
+
+        // Assert
+        IndexOf<CreateRoutine>(plan).ShouldBeLessThan(IndexOf<CreateTable>(plan));
+    }
+
+    [Fact]
+    public void Linearize_ComputedColumnCallingARoutine_DropsTheTableFirst()
+    {
+        // Arrange — the same edge in reverse: the routine cannot go while a computed column still calls it.
+        var table = _sides.Dropping("app", new Table
+        {
+            Name = "customers",
+            Columns = [
+                new Column { Name = "id", Type = SqlType.Int },
+                new Column { Name = "account", Type = SqlType.VarChar(10), GeneratedExpression = "('AW' + [app].[leading_zeros]([id]))" },
+            ],
+        });
+        _sides.Dropping("app", new Routine
+        {
+            Name = "leading_zeros",
+            RoutineKind = RoutineKind.Function,
+            Arguments = "@v int",
+            Definition = "RETURNS varchar(8) AS BEGIN RETURN '0' END",
+        });
+
+        // Act
+        var plan = Linearize(SchemaNode("app",
+            tables: [TableDiff.Removed("app", table.Name)],
+            routines: [RoutineDiff.Removed("app", "leading_zeros", RoutineKind.Function, "@v int")]));
+
+        // Assert
+        IndexOf<DropTable>(plan).ShouldBeLessThan(IndexOf<DropRoutine>(plan));
+    }
+
+    [Fact]
     public void Linearize_TriggerRemoveAndAddUnderOneName_FoldsIntoReplace()
     {
         // Arrange — a structural change diffs as remove + add under one name; the plan states the intent

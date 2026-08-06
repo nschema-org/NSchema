@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [5.5.1]
+## [Unreleased]
+
+### Changed
+
+- **Table and routine creates (and drops) order by their real dependencies.** The two kinds now share one ordering band, and the plan orders each pair by the direction the dependency points.
 
 ### Fixed
 

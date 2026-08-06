@@ -130,6 +130,25 @@ internal sealed class DependencyGraph
             }
         }
 
+        // A table's own expressions may call routines: a computed column's generation expression, a column
+        // default, or a check constraint. The edges are scanned out of opaque SQL, so — like a view's — they
+        // are inferred: good enough to order two things already in a plan. A column expression's dependent is
+        // the column; a check's rides the table.
+        foreach (var (schema, table) in allTables)
+        {
+            var tableNode = new DependencyNode(new ObjectAddress(schema, table.Name), DependencyKind.Table);
+            foreach (var column in table.Columns)
+            {
+                var columnNode = new DependencyNode(new MemberAddress(schema, table.Name, column.Name), DependencyKind.Column);
+                ConnectToCallSites(columnNode, column.GeneratedExpression?.Value, schema);
+                ConnectToCallSites(columnNode, column.DefaultExpression?.Value, schema);
+            }
+            foreach (var check in table.CheckConstraints)
+            {
+                ConnectToCallSites(tableNode, check.Expression.Value, schema);
+            }
+        }
+
         foreach (var (schema, domain) in database.Objects<DomainType>())
         {
             ConnectToType(new DependencyNode(new ObjectAddress(schema, domain.Name), DependencyKind.Domain), domain.DataType);
@@ -242,6 +261,21 @@ internal sealed class DependencyGraph
         SchemaObjectKind.NativeType => DependencyKind.NativeType,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type.Kind, "Not a type kind."),
     };
+
+    private void ConnectToCallSites(DependencyNode dependent, string? expression, SqlIdentifier defaultSchema)
+    {
+        if (expression is null)
+        {
+            return;
+        }
+
+        foreach (var address in ExpressionDependencyScanner.CallSites(expression, defaultSchema)
+                     .Where(a => a != dependent.Address && OwnerOf(dependent.Address) != a))
+        {
+            Add(dependent);
+            Connect(dependent, address, DependencyCertainty.Inferred);
+        }
+    }
 
     private void ConnectToType(DependencyNode dependent, SqlType type)
     {

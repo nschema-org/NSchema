@@ -288,6 +288,19 @@ internal static class ViewDependencyExtractor
                 continue;
             }
 
+            if (c == '[')
+            {
+                // A bracket-quoted identifier (the T-SQL spelling).
+                var start = ++i;
+                while (i < body.Length && body[i] != ']')
+                {
+                    i++;
+                }
+                tokens.Add(new Token(TokenType.Word, body[start..i]));
+                i++; // closing bracket
+                continue;
+            }
+
             switch (c)
             {
                 case '.': tokens.Add(new Token(TokenType.Dot, ".")); i++; continue;
