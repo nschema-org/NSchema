@@ -237,7 +237,7 @@ public sealed class ApplyEndToEndTests : IDisposable
             {
                 Name = "app",
                 Tables = [new Table { Name = "users", Columns = [new Column { Name = "id", Type = SqlType.Int }] }],
-                Views = [new NSchema.Model.Views.View { Name = "active", Body = "SELECT users.id FROM app.users" }],
+                Views = [new Model.Views.View { Name = "active", Body = "SELECT users.id FROM app.users" }],
             }],
         };
         var desired = WriteNsql("schema.sql",

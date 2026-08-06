@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.5.1]
+
+### Fixed
+
+- **Multi-statement bodies round-trip.** A routine definition or view body may now be written as a single dollar-quoted block (`$$ … $$`), the same quoting triggers and scripts already use, and `import` writes that form whenever the bare text would not re-parse. A T-SQL body's top-level `;` previously ended the statement early, so an imported SQL Server routine could not be read back.
+- **Trailing line comments no longer swallow what follows.** `import` guards a routine definition or argument list that ends in a `--` comment, which previously commented out the closing `)` or `;` the writer printed on the same line.
+
 ## [5.5.0] - 2026-08-05
 
 While this is technically a bug fix, it does also make additive changes to the state file in the form of capturing every opaque SQL body twice, one

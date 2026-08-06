@@ -621,4 +621,91 @@ public sealed class NsqlWriterTests
         ],
         }).ShouldContain("CREATE AGGREGATE app.group_concat(text) (SFUNC = _group_concat, STYPE = text);");
 
+    [Fact]
+    public void Write_Procedure_DefinitionWithTopLevelSemicolons_IsDollarQuoted()
+        // A T-SQL definition has no dollar quoting of its own; written bare, its first ';' would end the statement.
+        => NsqlWriter.Write(new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Routines = [new Routine { Name = "log_error", RoutineKind = RoutineKind.Procedure, Arguments = "", Definition = "AS BEGIN SET NOCOUNT ON; RETURN 1; END;" }] },
+        ],
+        }).ShouldContain("CREATE PROCEDURE app.log_error() $$\nAS BEGIN SET NOCOUNT ON; RETURN 1; END;\n$$;");
+
+    [Fact]
+    public void Write_Procedure_DefinitionWithTopLevelSemicolons_RoundTripsThroughParse()
+    {
+        // Arrange
+        var original = new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Routines = [new Routine { Name = "log_error", RoutineKind = RoutineKind.Procedure, Arguments = "", Definition = "AS BEGIN SET NOCOUNT ON; RETURN 1; END;" }] },
+        ],
+        };
+
+        // Act
+        var reparsed = new TestNsqlParser(NsqlWriter.Write(original)).Parse().Database;
+
+        // Assert
+        reparsed.Schemas.ShouldHaveSingleItem().Routines.ShouldHaveSingleItem()
+            .Definition.Value.ShouldBe("AS BEGIN SET NOCOUNT ON; RETURN 1; END;");
+    }
+
+    [Fact]
+    public void Write_Procedure_ArgumentsEndingInLineComment_RoundTripsThroughParse()
+    {
+        // Arrange — a trailing line comment would otherwise swallow the closing ')' printed on the same line.
+        var original = new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Routines = [new Routine { Name = "log_error", RoutineKind = RoutineKind.Procedure, Arguments = "@id [int] = 0 OUTPUT -- the logged ID", Definition = "AS BEGIN SET NOCOUNT ON; RETURN 1; END;" }] },
+        ],
+        };
+
+        // Act
+        var reparsed = new TestNsqlParser(NsqlWriter.Write(original)).Parse().Database;
+
+        // Assert
+        var routine = reparsed.Schemas.ShouldHaveSingleItem().Routines.ShouldHaveSingleItem();
+        routine.Arguments.Value.ShouldBe("@id [int] = 0 OUTPUT -- the logged ID");
+        routine.Definition.Value.ShouldBe("AS BEGIN SET NOCOUNT ON; RETURN 1; END;");
+    }
+
+    [Fact]
+    public void Write_Function_DefinitionEndingInLineComment_RoundTripsThroughParse()
+    {
+        // Arrange — no top-level ';', but the trailing comment would swallow the statement's own terminator.
+        var original = new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Routines = [new Routine { Name = "answer", RoutineKind = RoutineKind.Function, Arguments = "", Definition = "RETURNS int AS BEGIN RETURN 1 END -- the answer" }] },
+        ],
+        };
+
+        // Act
+        var reparsed = new TestNsqlParser(NsqlWriter.Write(original)).Parse().Database;
+
+        // Assert
+        reparsed.Schemas.ShouldHaveSingleItem().Routines.ShouldHaveSingleItem()
+            .Definition.Value.ShouldBe("RETURNS int AS BEGIN RETURN 1 END -- the answer");
+    }
+
+    [Fact]
+    public void Write_View_BodyWithTopLevelSemicolon_RoundTripsThroughParse()
+    {
+        // Arrange
+        var original = new Database
+        {
+            Schemas = [
+            new Schema { Name = "app", Views = [new View { Name = "active", Body = "SELECT id FROM app.users;" }] },
+        ],
+        };
+
+        // Act
+        var reparsed = new TestNsqlParser(NsqlWriter.Write(original)).Parse().Database;
+
+        // Assert
+        reparsed.Schemas.ShouldHaveSingleItem().Views.ShouldHaveSingleItem()
+            .Body.Value.ShouldBe("SELECT id FROM app.users;");
+    }
+
 }

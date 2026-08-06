@@ -160,7 +160,7 @@ internal sealed partial class NsqlParser
         var asKeyword = ExpectKeyword(NsqlKeywords.As);
 
         // The body is captured verbatim; projection derives the view's dependencies from it.
-        var (body, bodyToken) = CaptureRawSpanToken("a view body", [TokenKind.Semicolon]);
+        var (body, bodyToken) = CaptureOpaqueBody("a view body");
         var semicolon = Expect(TokenKind.Semicolon, "';' to end the view definition");
 
         return new CreateViewStatement(name, body, materializedKeyword is not null)
@@ -218,7 +218,7 @@ internal sealed partial class NsqlParser
         var what = kind == RoutineKind.Procedure ? "a procedure definition" : "a function definition";
         var name = ParseQualifiedNameNode();
         var (open, arguments, argumentsSpan, close) = CaptureParenthesizedToken();
-        var (definition, definitionSpan) = CaptureRawSpanToken(what, [TokenKind.Semicolon]);
+        var (definition, definitionSpan) = CaptureOpaqueBody(what);
         var semicolon = Expect(TokenKind.Semicolon, $"';' to end {what}");
 
         return new CreateRoutineStatement(name, kind, arguments, definition)

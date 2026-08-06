@@ -50,7 +50,7 @@ internal static class DocumentProjector
                     schemas.AddIndex(schema, relation, ProjectIndex(s.Name, s.IsUnique, s.Columns, s.Method, s.Include, s.Predicate, s.Doc), s.Name.Position);
                     break;
                 }
-            case Syn.Routines.CreateRoutineStatement s:
+            case CreateRoutineStatement s:
                 {
                     var (schema, name) = Bind(s.Name, context);
                     var kind = s.Kind.ToModel();

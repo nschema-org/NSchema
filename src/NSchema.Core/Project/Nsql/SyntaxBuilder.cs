@@ -111,7 +111,7 @@ internal static class SyntaxBuilder
         foreach (var enumType in schema.Enums)
         {
             statements.Add(new Syn.Enums.CreateEnumStatement(Qualified(schema.Name, enumType.Name),
-                new Syn.SeparatedSyntaxList<Syn.Enums.EnumValue>(enumType.Values.Select(v => Syn.Enums.EnumValue.Synthetic(v.Value)).ToList()))
+                new SeparatedSyntaxList<Syn.Enums.EnumValue>(enumType.Values.Select(v => Syn.Enums.EnumValue.Synthetic(v.Value)).ToList()))
             {
                 Doc = enumType.Comment,
                 DocComment = DocToken(enumType.Comment),
@@ -133,7 +133,7 @@ internal static class SyntaxBuilder
         foreach (var compositeType in schema.CompositeTypes)
         {
             statements.Add(new Syn.CompositeTypes.CreateCompositeTypeStatement(Qualified(schema.Name, compositeType.Name),
-                new Syn.SeparatedSyntaxList<Syn.CompositeTypes.CompositeFieldDefinition>(
+                new SeparatedSyntaxList<Syn.CompositeTypes.CompositeFieldDefinition>(
                     compositeType.Fields.Select(f => new Syn.CompositeTypes.CompositeFieldDefinition(Name(f.Name), Type(f.DataType))).ToList()))
             {
                 Doc = compositeType.Comment,
@@ -153,11 +153,13 @@ internal static class SyntaxBuilder
 
         foreach (var routine in schema.Routines)
         {
-            statements.Add(new Syn.Routines.CreateRoutineStatement(Qualified(schema.Name, routine.Name),
+            statements.Add(new CreateRoutineStatement(Qualified(schema.Name, routine.Name),
                 routine.RoutineKind.ToSyntax(), routine.Arguments, routine.Definition)
             {
                 Doc = routine.Comment,
                 DocComment = DocToken(routine.Comment),
+                ArgumentsToken = ArgumentsSpan(routine.Arguments),
+                DefinitionToken = OpaqueSpan(routine.Definition),
             });
         }
 
@@ -214,7 +216,7 @@ internal static class SyntaxBuilder
         foreach (var exclusion in table.ExclusionConstraints)
         {
             members.Add(new Syn.Constraints.ExclusionDefinition(Name(exclusion.Name),
-                new Syn.SeparatedSyntaxList<Syn.Constraints.ExclusionElement>(
+                new SeparatedSyntaxList<Syn.Constraints.ExclusionElement>(
                     exclusion.Elements.Select(e => new Syn.Constraints.ExclusionElement(e.Operator, OptionalName(e.Column), e.Expression)).ToList()),
                 OptionalName(exclusion.Method), exclusion.Predicate)
             {
@@ -233,7 +235,7 @@ internal static class SyntaxBuilder
             });
         }
 
-        statements.Add(new Syn.Tables.CreateTableStatement(Qualified(schemaName, table.Name), new Syn.SeparatedSyntaxList<Syn.Tables.TableMember>(members))
+        statements.Add(new Syn.Tables.CreateTableStatement(Qualified(schemaName, table.Name), new SeparatedSyntaxList<Syn.Tables.TableMember>(members))
         {
             Doc = table.Comment,
             DocComment = DocToken(table.Comment),
@@ -260,6 +262,7 @@ internal static class SyntaxBuilder
         {
             Doc = view.Comment,
             DocComment = DocToken(view.Comment),
+            BodyToken = OpaqueSpan(view.Body),
         });
 
         // A materialized view's indexes are standalone statements emitted after it (a plain view has none).
@@ -346,6 +349,59 @@ internal static class SyntaxBuilder
     /// <summary>A synthetic dollar-quoted string token wrapping <paramref name="body"/>.</summary>
     private static Token DollarString(SqlText body) => new(TokenKind.DollarString, body.Value, _none) { Raw = DollarBlock(body) };
 
+    /// <summary>
+    /// An opaque body as a token: dollar-quoted when the bare text would not re-parse (a top-level <c>;</c>
+    /// ends the statement early, and a line comment on the final line swallows the terminator), verbatim otherwise.
+    /// </summary>
+    private static Token OpaqueSpan(SqlText body) =>
+        HasTopLevelTerminator(body.Value) || EndsInLineComment(body.Value)
+            ? DollarString(body)
+            : Token.Span(body.Value.TrimEnd());
+
+    /// <summary>
+    /// An argument list as a token: a line comment on its final line would swallow the closing <c>)</c>, so such a
+    /// list gains a trailing newline (the parenthesised capture trims it back out).
+    /// </summary>
+    private static Token ArgumentsSpan(SqlText arguments) =>
+        EndsInLineComment(arguments.Value) ? Token.Span($"{arguments.Value}\n") : Token.Span(arguments.Value);
+
+    private static bool EndsInLineComment(string text)
+    {
+        var trimmed = text.TrimEnd();
+        return trimmed[(trimmed.LastIndexOf('\n') + 1)..].Contains("--", StringComparison.Ordinal);
+    }
+
+    private static bool HasTopLevelTerminator(string text)
+    {
+        try
+        {
+            var lexer = new NsqlLexer(text);
+            var depth = 0;
+            while (true)
+            {
+                var token = lexer.Next();
+                switch (token.Kind)
+                {
+                    case TokenKind.EndOfFile:
+                        return false;
+                    case TokenKind.LeftParen:
+                        depth++;
+                        break;
+                    case TokenKind.RightParen when depth > 0:
+                        depth--;
+                        break;
+                    case TokenKind.Semicolon when depth == 0:
+                        return true;
+                }
+            }
+        }
+        catch (NsqlSyntaxException)
+        {
+            // A body the lexer cannot scan bare is safest wrapped.
+            return true;
+        }
+    }
+
     // --- leaf conversions -------------------------------------------------------------
 
     private static Identifier Name(SqlIdentifier name) => Identifier.Synthetic(name.Value);
@@ -354,7 +410,7 @@ internal static class SyntaxBuilder
 
     private static List<Identifier> Names(IReadOnlyList<SqlIdentifier> names) => names.Select(Name).ToList();
 
-    private static Syn.ColumnList ColumnList(IReadOnlyList<SqlIdentifier> names) => Syn.ColumnList.Synthetic(Names(names));
+    private static ColumnList ColumnList(IReadOnlyList<SqlIdentifier> names) => Syn.ColumnList.Synthetic(Names(names));
 
     private static QualifiedName Qualified(SqlIdentifier schema, SqlIdentifier name) =>
         new(Name(schema), Name(name));
@@ -400,10 +456,10 @@ internal static class SyntaxBuilder
         return clause with { InteriorToken = Token.Span(SequenceOptionsText(clause) ?? "") };
     }
 
-    private static Syn.SeparatedSyntaxList<Syn.Indexes.IndexElement> Keys(IReadOnlyList<IndexColumn> columns) =>
+    private static SeparatedSyntaxList<Syn.Indexes.IndexElement> Keys(IReadOnlyList<IndexColumn> columns) =>
         new(columns.Select(c => new Syn.Indexes.IndexElement(OptionalName(c.Column), c.Expression, Sort(c.Sort), Nulls(c.Nulls))).ToList());
 
-    private static Syn.ColumnList? IncludeList(IReadOnlyList<SqlIdentifier> names) => names.Count == 0 ? null : ColumnList(names);
+    private static ColumnList? IncludeList(IReadOnlyList<SqlIdentifier> names) => names.Count == 0 ? null : ColumnList(names);
 
     private static Syn.Constraints.ReferentialAction Action(ReferentialAction action) => action switch
     {
@@ -444,14 +500,14 @@ internal static class SyntaxBuilder
         return mapped;
     }
 
-    private static Syn.SeparatedSyntaxList<Syn.Tables.Privilege> Privileges(TablePrivilege privileges)
+    private static SeparatedSyntaxList<Syn.Tables.Privilege> Privileges(TablePrivilege privileges)
     {
         var mapped = new List<Syn.Tables.Privilege>();
         if (privileges.HasFlag(TablePrivilege.Select)) { mapped.Add(Syn.Tables.Privilege.Synthetic(Syn.Tables.TablePrivilege.Select)); }
         if (privileges.HasFlag(TablePrivilege.Insert)) { mapped.Add(Syn.Tables.Privilege.Synthetic(Syn.Tables.TablePrivilege.Insert)); }
         if (privileges.HasFlag(TablePrivilege.Update)) { mapped.Add(Syn.Tables.Privilege.Synthetic(Syn.Tables.TablePrivilege.Update)); }
         if (privileges.HasFlag(TablePrivilege.Delete)) { mapped.Add(Syn.Tables.Privilege.Synthetic(Syn.Tables.TablePrivilege.Delete)); }
-        return new Syn.SeparatedSyntaxList<Syn.Tables.Privilege>(mapped);
+        return new SeparatedSyntaxList<Syn.Tables.Privilege>(mapped);
     }
 
     private static Syn.Scripts.ChangeTrigger Trigger(ChangeTrigger trigger) => trigger switch

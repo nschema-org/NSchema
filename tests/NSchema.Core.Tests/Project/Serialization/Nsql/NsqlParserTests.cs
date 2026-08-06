@@ -391,6 +391,25 @@ public sealed class NsqlParserTests
     }
 
     [Fact]
+    public void Parse_CreateProcedure_DollarQuotedDefinition_UnwrapsToTheBareDefinition()
+    {
+        // Arrange — a T-SQL definition has no dollar quoting of its own, so its top-level ';'s survive only wrapped.
+        var schema = ParseSingleSchema(
+
+            // Act
+            "CREATE SCHEMA app; CREATE PROCEDURE app.log_error() $$\nAS BEGIN SET NOCOUNT ON; INSERT app.errors DEFAULT VALUES; END;\n$$; CREATE TABLE app.t (id int);");
+
+        // Assert
+        schema.Routines.ShouldHaveSingleItem().Definition.Value.ShouldBe("AS BEGIN SET NOCOUNT ON; INSERT app.errors DEFAULT VALUES; END;");
+        schema.Tables.ShouldHaveSingleItem(); // parsing resumed correctly after the procedure
+    }
+
+    [Fact]
+    public void Parse_CreateView_DollarQuotedBody_UnwrapsToTheBareQuery()
+        => ParseSingleSchema("CREATE SCHEMA app; CREATE VIEW app.active AS $$ SELECT id FROM app.users $$;")
+            .Views.ShouldHaveSingleItem().Body.Value.ShouldBe("SELECT id FROM app.users");
+
+    [Fact]
     public void Parse_CreateFunction_ArgumentsWithQuotedDefault_AreCapturedVerbatim()
         => ParseSingleSchema("CREATE SCHEMA app; CREATE FUNCTION app.f(code text DEFAULT 'a;b)') RETURNS int AS $$ SELECT 1 $$;")
             .Routines.ShouldHaveSingleItem().Arguments.ShouldBe("code text DEFAULT 'a;b)'");

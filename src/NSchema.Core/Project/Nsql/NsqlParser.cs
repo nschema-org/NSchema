@@ -377,6 +377,22 @@ internal sealed partial class NsqlParser
     }
 
     /// <summary>
+    /// Captures an opaque body (a routine definition or view body): either a single dollar-quoted block —
+    /// delimiters stripped, so a body holding top-level <c>;</c>s survives — or the verbatim source up to the
+    /// terminating <c>;</c>.
+    /// </summary>
+    private (string Text, Token Span) CaptureOpaqueBody(string what)
+    {
+        if (_current.Kind == TokenKind.DollarString)
+        {
+            var dollar = Advance();
+            return (StripDollarQuote(dollar.Text).Trim(), dollar);
+        }
+
+        return CaptureRawSpanToken(what, [TokenKind.Semicolon]);
+    }
+
+    /// <summary>
     /// Captures the verbatim source from the cursor up to — but not consuming — a depth-zero terminator among the
     /// <paramref name="terminators"/> token kinds.
     /// Returns it trimmed. Throws <c>Expected {what}</c> when the span is empty unless <paramref name="allowEmpty"/>.
