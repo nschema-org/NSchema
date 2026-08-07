@@ -224,7 +224,11 @@ public static class NsqlWriter
             var member = list[i];
             foreach (var comment in member.Leading)
             {
-                sb.Append('\n').Append(Indent).Append(comment.Text);
+                // A doc-comment is one lead spanning several lines, so the indent goes on each of them.
+                foreach (var line in comment.Text.Split('\n'))
+                {
+                    sb.Append('\n').Append(Indent).Append(line);
+                }
             }
             if (member.Content is { } content)
             {

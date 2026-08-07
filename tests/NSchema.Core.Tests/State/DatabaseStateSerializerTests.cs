@@ -238,7 +238,7 @@ public sealed class DatabaseStateSerializerTests
         // A state file written before the ledger existed must still load.
         const string json =
             """
-            { "version": 1, "schema": { "schemas": [], "droppedSchemas": [] } }
+            { "version": 1, "database": { "schemas": [] } }
             """;
 
         _sut.Deserialize(Encoding.UTF8.GetBytes(json)).Scripts.ShouldBeEmpty();
@@ -253,7 +253,7 @@ public sealed class DatabaseStateSerializerTests
             """
             {
               "version": 1,
-              "schema": { "schemas": [], "droppedSchemas": [] },
+              "database": { "schemas": [] },
               "executedScripts": [ { "name": "api-login", "hash": "abc123", "executedUtc": "2026-07-10T12:00:00+00:00" } ]
             }
             """;
@@ -262,12 +262,37 @@ public sealed class DatabaseStateSerializerTests
     }
 
     [Fact]
+    public void Deserialize_PayloadWithoutASnapshot_ThrowsStateDeserializationException()
+    {
+        // Arrange: a payload from before the snapshot took its current field name — it deserializes cleanly,
+        // but carries no schema, so every read of it would fail on a null snapshot instead.
+        const string json =
+            """
+            { "version": 1, "schema": { "schemas": [], "droppedSchemas": [] } }
+            """;
+
+        // Act
+        var act = () => _sut.Deserialize(Encoding.UTF8.GetBytes(json));
+
+        // Assert
+        act.ShouldThrow<StateDeserializationException>();
+    }
+
+    [Fact]
+    public void Deserialize_PayloadWithANullLedger_ReadsAsAnEmptyLedger()
+        // An explicit null is not the same as an absent field: it defeats the property's default, so it is
+        // coalesced rather than handed on as a null ledger.
+        => _sut.Deserialize(Encoding.UTF8.GetBytes("""
+            { "version": 1, "database": { "schemas": [] }, "scripts": null }
+            """)).Scripts.ShouldBeEmpty();
+
+    [Fact]
     public void Deserialize_FutureFormatVersion_Throws()
     {
         // Arrange
         const string json =
             """
-            { "version": 9999, "schema": { "schemas": [], "droppedSchemas": [] } }
+            { "version": 9999, "database": { "schemas": [] } }
             """;
 
         // Act

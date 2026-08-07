@@ -385,6 +385,40 @@ public sealed class NsqlFormatterTests
     }
 
     [Fact]
+    public void Format_MultiLineDocCommentOnMember_IndentsEveryLine()
+    {
+        // A multi-line doc-comment is one leading item spanning lines, so every line takes the member indent.
+        const string input =
+            """
+            create table app.t (
+              --- First line comment.
+              --- Second line comment.
+              id text NOT NULL
+            );
+            """;
+
+        Format(input).ShouldBe(input + "\n");
+    }
+
+    [Fact]
+    public void Format_MultiLineDocCommentInsideTemplate_IndentsEveryLine()
+    {
+        const string input =
+            """
+            TEMPLATE my_template
+            BEGIN
+              CREATE TABLE dummy (
+                --- First line comment.
+                --- Second line comment.
+                id text NOT NULL
+              );
+            END;
+            """;
+
+        Format(input).ShouldBe(input + "\n");
+    }
+
+    [Fact]
     public void Format_MultipleCommentsAfterLastMember_KeepEachOnItsOwnLine()
     {
         // Regression: dangling comments after the final member must not be flattened onto one line.

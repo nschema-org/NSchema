@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.6.1] - 2026-08-07
+
+### Added
+
+- **Lockfiles can be updated additively.** `LockFile.With(pins)` applies a resolution over the existing file, replacing the entry for each source it names and appending the rest, so partial resolutions don't clobber other pinned versions.
+
+### Fixed
+
+- **Multi-line doc comments indent correctly.** Every line of a `---` doc comment on a column or setting now takes the member indent, rather than only the first.
+- **A state payload with no captured schema is rejected.** Reading one now fails as an unreadable payload, instead of throwing an NRE.
+
 ## [5.6.0] - 2026-08-06
 
 ### Added

@@ -20,6 +20,15 @@ public sealed record LockFile(IReadOnlyList<LockedPlugin> Plugins)
     public LockedPlugin? Find(PackageId source) => Plugins.FirstOrDefault(plugin => plugin.Source == source);
 
     /// <summary>
+    /// The lockfile with <paramref name="versions"/> applied over it.
+    /// </summary>
+    /// <param name="versions">The pins to apply.</param>
+    public LockFile With(IReadOnlyList<LockedPlugin> versions) => new([
+        .. Plugins.Select(existing => versions.FirstOrDefault(pin => pin.Source == existing.Source) ?? existing),
+        .. versions.Where(pin => Find(pin.Source) is null),
+    ]);
+
+    /// <summary>
     /// Resolves <paramref name="declaration"/> to the concrete version to use: an exact pin is its own resolution;
     /// a range resolves to its locked pin, and is an error when the lockfile does not carry one.
     /// </summary>

@@ -50,6 +50,13 @@ internal sealed class DatabaseStateSerializer : IDatabaseStateSerializer
                 $"{DatabaseStateEnvelope.CurrentVersion}. Upgrade NSchema to read this state.");
         }
 
-        return new DatabaseState(envelope.Database, envelope.Scripts, envelope.Managed, envelope.Declared);
+        if (envelope.Database is null)
+        {
+            throw new StateDeserializationException(
+                "The stored state payload carries no captured schema; it may be corrupt, or written by an " +
+                "incompatible version of NSchema. Re-capture the live schema with a forced refresh to replace it.");
+        }
+
+        return new DatabaseState(envelope.Database, envelope.Scripts ?? [], envelope.Managed, envelope.Declared);
     }
 }
