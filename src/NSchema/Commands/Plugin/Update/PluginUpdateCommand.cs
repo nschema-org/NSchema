@@ -63,7 +63,8 @@ internal static class PluginUpdateCommand
             return ExitCodes.NoChanges;
         }
 
-        var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), new LockFile(pins), cancellationToken);
+        var newVersions = existing.With(pins);
+        var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), newVersions, cancellationToken);
         if (written.ReportFailure(messenger))
         {
             return ExitCodes.Error;

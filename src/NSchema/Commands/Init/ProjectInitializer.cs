@@ -45,7 +45,8 @@ internal static class ProjectInitializer
         var plugins = configuration.ResolvedPlugins();
         if (plugins.Count > 0)
         {
-            var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), new LockFile(plugins), cancellationToken);
+            var newPins = existing.With(plugins);
+            var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), newPins, cancellationToken);
             if (written.IsFailure)
             {
                 return written;
