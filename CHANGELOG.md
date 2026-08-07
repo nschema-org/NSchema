@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.7.1] - 2026-08-07
+
+### Fixed
+
+- **Environment overlays can declare schema again.** Database objects declared in `*.env.<name>.sql` will now join the project alongside the base files, restoring the v4 behavior.
+
 ## [5.7.0] - 2026-08-07
 
 ### Changed

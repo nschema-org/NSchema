@@ -11,13 +11,15 @@ internal sealed class CliApplicationBuilder
 {
     private readonly NSchemaApplicationBuilder _builder;
     private readonly bool _allowRestore;
+    private readonly string? _environment;
     private readonly IConsoleMessenger _messenger;
     private readonly IConsolePresenter _presenter;
     private readonly DiagnosticCollection _diagnostics = [];
 
-    private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore)
+    private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore, string? environment)
     {
         _allowRestore = allowRestore;
+        _environment = environment;
         _builder = NSchemaApplication.CreateBuilder();
 
         // The messenger and presenter are stateless console utilities, so the CLI owns them directly (see CliApplication)
@@ -46,9 +48,20 @@ internal sealed class CliApplicationBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registers the files the desired schema is read from: the base set, plus the selected environment's overlay.
+    /// </summary>
     public CliApplicationBuilder ConfigureDesiredSchema()
     {
-        _builder.AddProjectSource(Directory.GetCurrentDirectory(), ProjectGlobs.Base());
+        var root = Directory.GetCurrentDirectory();
+        _builder.AddProjectSource(root, ProjectGlobs.Base());
+
+        // Registered second so the overlay layers after the base, matching how its configuration statements resolve.
+        if (_environment != null)
+        {
+            _builder.AddProjectSource(root, ProjectGlobs.Environment(_environment));
+        }
+
         return this;
     }
 
@@ -165,12 +178,14 @@ internal sealed class CliApplicationBuilder
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.
     /// </summary>
-    public static CliApplicationBuilder Create() => new(OutputFormat.Text, Verbosity.Normal, allowRestore: true);
+    public static CliApplicationBuilder Create() =>
+        new(OutputFormat.Text, Verbosity.Normal, allowRestore: true, environment: null);
 
     /// <summary>
-    /// Creates a builder whose output format and verbosity follow the command-line flags.
+    /// Creates a builder whose output format, verbosity, and target environment follow the command-line flags.
     /// </summary>
     public static CliApplicationBuilder Create(ParseResult parseResult) =>
         new(ReporterFactory.ResolveFormat(parseResult), ReporterFactory.ResolveVerbosity(parseResult),
-            allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false));
+            allowRestore: !CommonOptions.NoInit.GetValueOrDefault(parseResult, false),
+            environment: ConfigurationFactory.ResolveEnvironment(parseResult));
 }
