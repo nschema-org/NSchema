@@ -14,27 +14,27 @@ internal static class ProjectGlobs
     public const string AllSql = "**/*.sql";
 
     /// <summary>
-    /// Any environment-specific configuration file, for any environment.
+    /// Any environment overlay file, for any environment.
     /// </summary>
-    public const string AnyEnvironmentConfigurationGlob = "**/*.env.*.sql";
+    public const string AnyEnvironmentGlob = "**/*.env.*.sql";
 
     /// <summary>
-    /// The configuration glob for a single environment.
+    /// The overlay glob for a single environment.
     /// </summary>
-    public static string EnvironmentConfigurationGlob(string environment) => $"**/*.env.{environment}.sql";
+    public static string EnvironmentGlob(string environment) => $"**/*.env.{environment}.sql";
 
     /// <summary>
-    /// Matches the base files: every <c>.sql</c> file except environment files.
+    /// Matches the base files: every <c>.sql</c> file except environment overlays.
     /// </summary>
     public static Matcher Base() => new Matcher()
         .AddInclude(AllSql)
-        .AddExclude(AnyEnvironmentConfigurationGlob);
+        .AddExclude(AnyEnvironmentGlob);
 
     /// <summary>
-    /// Matches a single environment's configuration files.
+    /// Matches a single environment's overlay files.
     /// </summary>
-    public static Matcher EnvironmentConfiguration(string environment) => new Matcher()
-        .AddInclude(EnvironmentConfigurationGlob(environment));
+    public static Matcher Environment(string environment) => new Matcher()
+        .AddInclude(EnvironmentGlob(environment));
 
     /// <summary>
     /// Runs <paramref name="matcher"/> against <paramref name="root"/> and returns the matched files as sorted absolute paths.

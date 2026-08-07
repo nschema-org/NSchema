@@ -109,7 +109,7 @@ internal static class ProjectConfigurationReader
 
         if (environment is not null)
         {
-            var overlayFiles = ProjectGlobs.Match(root, ProjectGlobs.EnvironmentConfiguration(environment));
+            var overlayFiles = ProjectGlobs.Match(root, ProjectGlobs.Environment(environment));
             if (overlayFiles.Count == 0)
             {
                 return ConfigurationDiagnostics.UnknownEnvironment(environment);

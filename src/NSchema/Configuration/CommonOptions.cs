@@ -17,7 +17,7 @@ internal static class CommonOptions
         .FromOption("--environment", "-e")
         .FromEnvironmentVariable(EnvironmentVariables.Environment)
         .Recursive()
-        .WithDescription("Target environment. Layers the matching *.env.<name>.sql overlay files over the base configuration.");
+        .WithDescription("Target environment. Layers the matching *.env.<name>.sql overlay files over the base project.");
 
     public static readonly OptionBinding<bool> NoColor = OptionBinding.Create<bool>()
         .FromOption("--no-color")

@@ -18,8 +18,8 @@ public sealed class ProjectGlobsTests : IDisposable
     private List<string> Base() =>
         ProjectGlobs.Match(_root, ProjectGlobs.Base()).Select(Path.GetFileName).ToList()!;
 
-    private List<string> EnvironmentConfiguration(string environment) =>
-        ProjectGlobs.Match(_root, ProjectGlobs.EnvironmentConfiguration(environment)).Select(Path.GetFileName).ToList()!;
+    private List<string> Environment(string environment) =>
+        ProjectGlobs.Match(_root, ProjectGlobs.Environment(environment)).Select(Path.GetFileName).ToList()!;
 
     [Fact]
     public void Base_IncludesEverySqlFile_RecursivelyAndSorted()
@@ -34,7 +34,7 @@ public sealed class ProjectGlobsTests : IDisposable
     [Fact]
     public void Base_ExcludesEnvironmentFiles()
     {
-        // The .env. marker makes a file configuration; a plain dotted name stays in the schema set.
+        // The .env. marker moves a file into its environment's set; a plain dotted name stays in the base.
         Write("schema.sql");
         Write("public.users.sql");
         Write("config.env.prod.sql");
@@ -44,15 +44,15 @@ public sealed class ProjectGlobsTests : IDisposable
     }
 
     [Fact]
-    public void EnvironmentConfiguration_SelectsOnlyTheNamedEnvironmentsFiles()
+    public void Environment_SelectsOnlyTheNamedEnvironmentsFiles()
     {
         Write("config.sql");
         Write("config.env.prod.sql");
         Write("secrets.env.prod.sql");
         Write("config.env.dev.sql");
 
-        EnvironmentConfiguration("prod").ShouldBe(["config.env.prod.sql", "secrets.env.prod.sql"]);
-        EnvironmentConfiguration("dev").ShouldBe(["config.env.dev.sql"]);
-        EnvironmentConfiguration("staging").ShouldBeEmpty();
+        Environment("prod").ShouldBe(["config.env.prod.sql", "secrets.env.prod.sql"]);
+        Environment("dev").ShouldBe(["config.env.dev.sql"]);
+        Environment("staging").ShouldBeEmpty();
     }
 }
