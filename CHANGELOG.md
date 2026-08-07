@@ -12,6 +12,14 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.6.1] - 2026-08-07
+
+### Fixed
+
+- **Multi-line doc comments indent correctly.** Every line of a `---` doc comment on a column or setting now takes the member indent, rather than only the first.
+- **A state payload with no captured schema is rejected.** Reading one now fails as an unreadable payload, instead of throwing an NRE.
+- **Lockfiles are updated additively.** Pinning package version now no-longer clobbers packages that weren't in the updated list, so initializing plugins for one environment won't remove pins for a different environment.
+
 ## [5.6.0] - 2026-08-07
 
 ### Changed
