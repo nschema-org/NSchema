@@ -470,6 +470,21 @@ public sealed class RootCommandTests
         // --no-lock is meaningless for commands that never take the lock.
         => _sut.Parse([command, "--no-lock"]).Errors.ShouldNotBeEmpty();
 
+    [Theory]
+    [InlineData("apply")]
+    [InlineData("destroy")]
+    public void NoRefresh_IsAcceptedByCommandsThatPlanBeforeExecuting(string command)
+        // --no-refresh plans against the recorded state instead of capturing the live schema first.
+        => _sut.Parse([command, "--no-refresh"]).Errors.ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("plan")]
+    [InlineData("refresh")]
+    [InlineData("drift")]
+    public void NoRefresh_IsRejectedByCommandsThatNeverRefreshBeforePlanning(string command)
+        // Planning is offline by design, drift reports rather than records, and refresh is the capture itself.
+        => _sut.Parse([command, "--no-refresh"]).Errors.ShouldNotBeEmpty();
+
     [Fact]
     public void Format_AcceptsAPositionalPathAndCheck()
         // format <path> --check formats (or checks) the .sql files under a file/dir (Terraform's fmt -check).

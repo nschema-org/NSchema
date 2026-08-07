@@ -27,15 +27,19 @@ internal static class ApplyOptions
 
     public static readonly OptionBinding<string> PlanFile = OptionBinding.Create<string>()
         .FromOption("--plan-file", "-p")
-        .WithDescription("Apply a plan previously saved with plan --out, replaying exactly that plan instead of computing a fresh one.");
+        .WithDescription("Apply a plan previously saved with plan --out.");
 
     public static readonly OptionBinding<bool> NoLock = OptionBinding.Create<bool>()
         .FromOption("--no-lock")
-        .WithDescription("Apply without acquiring the state lock. You take responsibility for preventing concurrent runs (e.g. when operating under a manually-held lock).");
+        .WithDescription("Apply without acquiring the state lock.");
+
+    public static readonly OptionBinding<bool> NoRefresh = OptionBinding.Create<bool>()
+        .FromOption("--no-refresh")
+        .WithDescription("Plan against the recorded state as-is, without capturing the live schema first.");
 
     public static readonly OptionBinding<bool> Ephemeral = OptionBinding.Create<bool>()
         .FromOption("--ephemeral")
-        .WithDescription("Run against an in-memory state store discarded when the command exits, instead of a configured STATE store — for CI runs against disposable databases. Run-once script history does not persist.");
+        .WithDescription("Run against an in-memory state store instead of a configured STATE store.");
 
     public static IEnumerable<Option> All =>
     [
@@ -45,6 +49,7 @@ internal static class ApplyOptions
         AutoApprove.Option,
         PlanFile.Option,
         NoLock.Option,
+        NoRefresh.Option,
         Ephemeral.Option,
     ];
 }

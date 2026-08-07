@@ -65,6 +65,11 @@ internal static class DestroyCommand
 
     private static async Task<int> DestroyUnderLock(CliApplication app, DestroyConfiguration configuration, CancellationToken cancellationToken)
     {
+        if (!await StateRefresh.TryRefresh(app, configuration.NoRefresh, cancellationToken))
+        {
+            return ExitCodes.Error;
+        }
+
         var planResult = await app.Operations.Plan(new PlanArguments { Target = PlanTarget.Empty }, cancellationToken);
 
         // Show the plan so the operator can see what will be dropped — even on a failure the result carries it.
