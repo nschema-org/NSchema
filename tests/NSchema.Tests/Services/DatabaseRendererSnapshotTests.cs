@@ -23,7 +23,7 @@ public sealed class DatabaseRendererSnapshotTests
 {
     /// <summary>Builds a view with its read dependencies (the schema is "app" for each), as the parser would derive them.</summary>
     private static View View(string name, string body, string? comment = null, params string[] reads) =>
-        new() { Name = name, Body = body, Comment = comment, DependsOn = [.. reads.Select(r => new ObjectAddress("app", r))] };
+        new() { Name = name, Body = body, Comment = comment };
 
     /// <summary>
     /// A schema exercising schema comments and grants, identity/default/nullable/commented columns,
@@ -120,7 +120,6 @@ public sealed class DatabaseRendererSnapshotTests
                             Name = "order_totals",
                             Body = "SELECT user_id, count(*) FROM app.orders GROUP BY user_id",
                             Comment = "per-user order counts",
-                            DependsOn = [new ObjectAddress("app", "orders")],
                             IsMaterialized = true,
                             Indexes = [new TableIndex { Name = "order_totals_user_ix", Columns = ["user_id"], IsUnique = true }],
                         },

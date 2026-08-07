@@ -66,7 +66,6 @@ public sealed class DatabaseRendererTests
             Name = "active_users",
             Body = "SELECT id FROM app.users",
             Comment = "active users",
-            DependsOn = [new ObjectAddress("app", "users")],
         };
         var database = new Database { Schemas = [new Schema { Name = "app", Views = [view] }] };
 
@@ -83,7 +82,6 @@ public sealed class DatabaseRendererTests
         {
             Name = "user_orders",
             Body = "SELECT * FROM app.users u JOIN app.orders o ON o.user_id = u.id",
-            DependsOn = [new ObjectAddress("app", "users"), new ObjectAddress("app", "orders")],
         };
         var database = new Database { Schemas = [new Schema { Name = "app", Views = [view] }] };
 
