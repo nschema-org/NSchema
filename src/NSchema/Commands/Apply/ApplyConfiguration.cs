@@ -52,6 +52,11 @@ internal sealed class ApplyConfiguration : IBindable
     public bool NoLock { get; private set; }
 
     /// <summary>
+    /// Whether to plan against the recorded state without capturing the live schema first (<c>--no-refresh</c>).
+    /// </summary>
+    public bool NoRefresh { get; private set; }
+
+    /// <summary>
     /// Whether to run against an in-memory state store instead of a configured <c>STATE</c> store.
     /// </summary>
     // internal set: bound via Bind, but the validator's presence rules branch on it, so tests set it directly.
@@ -67,6 +72,7 @@ internal sealed class ApplyConfiguration : IBindable
         ApplyOptions.AutoApprove.Bind(cli, a => AutoApprove = a);
         ApplyOptions.PlanFile.Bind(cli, p => PlanFile = p);
         ApplyOptions.NoLock.Bind(cli, n => NoLock = n);
+        ApplyOptions.NoRefresh.Bind(cli, n => NoRefresh = n);
         ApplyOptions.Ephemeral.Bind(cli, e => Ephemeral = e);
     }
 }

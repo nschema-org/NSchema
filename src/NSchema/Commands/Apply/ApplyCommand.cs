@@ -93,6 +93,11 @@ internal static class ApplyCommand
                 return ExitCodes.Error;
             }
 
+            if (!await StateRefresh.TryRefresh(app, configuration.NoRefresh, cancellationToken))
+            {
+                return ExitCodes.Error;
+            }
+
             var planResult = await app.Operations.Plan(new PlanArguments { Scope = scope.Require() }, cancellationToken);
 
             // Show the plan first — the difference and the SQL it would run. Even on a policy error, the result

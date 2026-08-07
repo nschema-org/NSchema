@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.7.0] - 2026-08-07
+
+### Changed
+
+- **`apply` and `destroy` capture the live schema before planning.** Before the plan step of `apply` and `destroy`, the state is now refreshed. This helps capture drift and also bootstraps the state before a first apply, which is particularly helpful when using the ephemeral store. Replaying a saved plan with `--plan-file` is unaffected, since its statements were fixed when the plan was written.
+
 ## [5.6.1] - 2026-08-07
 
 ### Fixed
