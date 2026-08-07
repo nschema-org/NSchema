@@ -12,6 +12,30 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.6.1] - 2026-08-07
+
+### Fixed
+
+- **Multi-line doc comments indent correctly.** Every line of a `---` doc comment on a column or setting now takes the member indent, rather than only the first.
+- **A state payload with no captured schema is rejected.** Reading one now fails as an unreadable payload, instead of throwing an NRE.
+- **Lockfiles are updated additively.** Pinning package version now no-longer clobbers packages that weren't in the updated list, so initializing plugins for one environment won't remove pins for a different environment.
+
+## [5.6.0] - 2026-08-07
+
+### Changed
+
+- **Full dependency graph support.** Updated to NSchema.Core 5.6.0, which refactors the linearizer to be built entirely from the dependency graph.
+
+### Fixed
+
+- **Imported SQL Server projects read back.** Inherits NSchema.Core 5.5.1: multi-statement routine definitions and view bodies survive the import round trip via dollar-quoted bodies, and trailing line comments no longer swallow the closing tokens.
+
+## [5.5.0] - 2026-08-06
+
+### Fixed
+
+- **Engine-native SQL bodies no longer show as permanent drift.** Inherited from NSchema.Core 5.5.0, hand-written and database-written provider-native SQL (things like view bodies or trigger definitions) are now stored in the state so they can be diffed like-for-like.
+
 ## [5.4.0] - 2026-08-04
 
 ### Added
