@@ -83,7 +83,7 @@ internal static class DatabaseRenderer
 
         foreach (var view in schema.Views)
         {
-            RenderView(sb, view, ManagementSuffix(managed?.Contains(view)));
+            RenderView(sb, schema.Name, view, ManagementSuffix(managed?.Contains(view)));
         }
 
         foreach (var enumType in schema.Enums)
@@ -199,12 +199,12 @@ internal static class DatabaseRenderer
         return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
-    private static void RenderView(StringBuilder sb, View view, string management)
+    private static void RenderView(StringBuilder sb, SqlIdentifier schema, View view, string management)
     {
         var label = view.IsMaterialized ? "materialized view" : "view";
         sb.Append(Indent).Append(label).Append(' ').Append(view.Name)
             .Append(CommentSuffix(view.Comment)).AppendLine(management);
-        foreach (var dependency in view.DependsOn)
+        foreach (var dependency in view.Reads(schema))
         {
             sb.Append(Indent).Append(Indent).Append("reads ").AppendLine(dependency.Value);
         }

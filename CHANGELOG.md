@@ -12,6 +12,16 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.6.0] - 2026-08-07
+
+### Changed
+
+- **Full dependency graph support.** Updated to NSchema.Core 5.6.0, which refactors the linearizer to be built entirely from the dependency graph.
+
+### Fixed
+
+- **Imported SQL Server projects read back.** Inherits NSchema.Core 5.5.1: multi-statement routine definitions and view bodies survive the import round trip via dollar-quoted bodies, and trailing line comments no longer swallow the closing tokens.
+
 ## [5.5.0] - 2026-08-06
 
 ### Fixed
