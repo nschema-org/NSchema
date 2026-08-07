@@ -6,11 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [Unreleased]
+## [5.6.0] - 2026-08-06
 
 ### Added
 
 - **Models answer their own dependencies.** `View.Reads(schema)`, `Routine.References(schema)`, `Column.References(schema)`, `CheckConstraint.References(schema)`, and `Trigger.References(schema)` (its function reference plus its scanned body and `WHEN` predicate).
+- **`SqlLexer`: one lexical layer for engine SQL.** A public, tolerant scanner over the amorphous "SQL grammar" — nestable block comments, `'…'` strings, `"…"` and `[…]` identifiers with doubling escapes, etc.
 
 ### Changed
 

@@ -35,11 +35,26 @@ internal static class ViewDependencyExtractor
         return new Scanner(tokens, defaultSchema, CollectCteNames(tokens)).Scan();
     }
 
+    /// <summary>All significant tokens, via the shared lexical layer.</summary>
+    private static List<SqlToken> Tokenize(string body)
+    {
+        var scanner = new SqlLexer(body);
+        var tokens = new List<SqlToken>();
+        while (scanner.Next() is { Kind: not SqlTokenKind.End } token)
+        {
+            tokens.Add(token);
+        }
+        return tokens;
+    }
+
+    /// <summary>A token that can name an object: a bare word or a quoted identifier.</summary>
+    private static bool IsName(SqlToken token) => token.Kind is SqlTokenKind.Word or SqlTokenKind.QuotedIdentifier;
+
     /// <summary>
     /// One pass over a tokenized body, carrying the resolution context (default schema, CTE names) and the
     /// accumulating result so the per-clause readers don't thread them through every signature.
     /// </summary>
-    private sealed class Scanner(IReadOnlyList<Token> tokens, SqlIdentifier defaultSchema, HashSet<string> ctes)
+    private sealed class Scanner(IReadOnlyList<SqlToken> tokens, SqlIdentifier defaultSchema, HashSet<string> ctes)
     {
         private readonly List<ObjectAddress> _result = [];
         private readonly HashSet<ObjectAddress> _seen = [];
@@ -53,7 +68,16 @@ internal static class ViewDependencyExtractor
             for (var i = 0; i < tokens.Count; i++)
             {
                 var token = tokens[i];
-                if (token.Kind != TokenType.Word)
+                if (token.Kind == SqlTokenKind.DollarString)
+                {
+                    // A dollar-quoted block holds real SQL (a routine's body): its clauses count too.
+                    foreach (var dependency in Extract(token.Value, defaultSchema))
+                    {
+                        Add(dependency);
+                    }
+                    continue;
+                }
+                if (token.Kind != SqlTokenKind.Word)
                 {
                     continue;
                 }
@@ -83,7 +107,7 @@ internal static class ViewDependencyExtractor
                 }
 
                 SkipAlias(ref j);
-                if (j < tokens.Count && tokens[j].Kind == TokenType.Comma)
+                if (j < tokens.Count && tokens[j].Kind == SqlTokenKind.Comma)
                 {
                     j++;
                     continue;
@@ -105,24 +129,24 @@ internal static class ViewDependencyExtractor
                 return false;
             }
 
-            if (tokens[j].Kind == TokenType.LeftParen)
+            if (tokens[j].Kind == SqlTokenKind.LeftParen)
             {
                 SkipBalancedParens(tokens, ref j);
                 return true;
             }
 
-            if (tokens[j].Kind != TokenType.Word || _stops.Contains(tokens[j].Text))
+            if (!IsName(tokens[j]) || (tokens[j].Kind == SqlTokenKind.Word && _stops.Contains(tokens[j].Value)))
             {
                 return false;
             }
 
-            var first = tokens[j].Text;
+            var first = tokens[j].Value;
             j++;
 
-            if (j + 1 < tokens.Count && tokens[j].Kind == TokenType.Dot && tokens[j + 1].Kind == TokenType.Word)
+            if (j + 1 < tokens.Count && tokens[j].Kind == SqlTokenKind.Dot && IsName(tokens[j + 1]))
             {
                 var schema = first;
-                var name = tokens[j + 1].Text;
+                var name = tokens[j + 1].Value;
                 j += 2;
                 Add(new ObjectAddress(schema, name));
                 return true;
@@ -141,7 +165,7 @@ internal static class ViewDependencyExtractor
         /// </summary>
         private void SkipAlias(ref int j)
         {
-            if (j >= tokens.Count || tokens[j].Kind != TokenType.Word)
+            if (j >= tokens.Count || !IsName(tokens[j]))
             {
                 return;
             }
@@ -149,14 +173,14 @@ internal static class ViewDependencyExtractor
             if (Is(tokens[j], "AS"))
             {
                 j++;
-                if (j < tokens.Count && tokens[j].Kind == TokenType.Word)
+                if (j < tokens.Count && IsName(tokens[j]))
                 {
                     j++;
                 }
                 return;
             }
 
-            if (!_stops.Contains(tokens[j].Text))
+            if (tokens[j].Kind != SqlTokenKind.Word || !_stops.Contains(tokens[j].Value))
             {
                 j++; // a bare alias, e.g. "users u"
             }
@@ -175,31 +199,31 @@ internal static class ViewDependencyExtractor
     /// Collects the names introduced by common-table expressions: any <c>name AS (</c> binds a local name that
     /// must not be mistaken for a real object.
     /// </summary>
-    private static HashSet<string> CollectCteNames(IReadOnlyList<Token> tokens)
+    private static HashSet<string> CollectCteNames(IReadOnlyList<SqlToken> tokens)
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i + 2 < tokens.Count; i++)
         {
-            if (tokens[i].Kind == TokenType.Word
+            if (IsName(tokens[i])
                 && Is(tokens[i + 1], "AS")
-                && tokens[i + 2].Kind == TokenType.LeftParen)
+                && tokens[i + 2].Kind == SqlTokenKind.LeftParen)
             {
-                names.Add(tokens[i].Text);
+                names.Add(tokens[i].Value);
             }
         }
         return names;
     }
 
-    private static void SkipBalancedParens(IReadOnlyList<Token> tokens, ref int i)
+    private static void SkipBalancedParens(IReadOnlyList<SqlToken> tokens, ref int i)
     {
         var depth = 0;
         for (; i < tokens.Count; i++)
         {
-            if (tokens[i].Kind == TokenType.LeftParen)
+            if (tokens[i].Kind == SqlTokenKind.LeftParen)
             {
                 depth++;
             }
-            else if (tokens[i].Kind == TokenType.RightParen)
+            else if (tokens[i].Kind == SqlTokenKind.RightParen)
             {
                 depth--;
                 if (depth == 0)
@@ -211,127 +235,7 @@ internal static class ViewDependencyExtractor
         }
     }
 
-    private static bool Is(Token token, string keyword) =>
-        token.Kind == TokenType.Word && string.Equals(token.Text, keyword, StringComparison.OrdinalIgnoreCase);
+    private static bool Is(SqlToken token, string keyword) =>
+        token.Kind == SqlTokenKind.Word && string.Equals(token.Value, keyword, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// A forgiving scanner over an opaque SQL body. Unlike the NSQL lexer (which only accepts the DDL
-    /// character set) this tolerates any SQL: it recognises identifiers, dots, parentheses and commas, swallows
-    /// string literals and comments, and ignores every other character (operators, <c>*</c>, etc.).
-    /// </summary>
-    private static List<Token> Tokenize(string body)
-    {
-        var tokens = new List<Token>();
-        var i = 0;
-        while (i < body.Length)
-        {
-            var c = body[i];
-
-            if (char.IsWhiteSpace(c))
-            {
-                i++;
-                continue;
-            }
-
-            if (c == '-' && i + 1 < body.Length && body[i + 1] == '-')
-            {
-                while (i < body.Length && body[i] != '\n')
-                {
-                    i++;
-                }
-                continue;
-            }
-
-            if (c == '/' && i + 1 < body.Length && body[i + 1] == '*')
-            {
-                i += 2;
-                while (i + 1 < body.Length && !(body[i] == '*' && body[i + 1] == '/'))
-                {
-                    i++;
-                }
-                i += 2;
-                continue;
-            }
-
-            if (c == '\'')
-            {
-                i++;
-                while (i < body.Length)
-                {
-                    if (body[i] == '\'')
-                    {
-                        if (i + 1 < body.Length && body[i + 1] == '\'')
-                        {
-                            i += 2;
-                            continue;
-                        }
-                        i++;
-                        break;
-                    }
-                    i++;
-                }
-                continue;
-            }
-
-            if (c == '"')
-            {
-                // A double-quoted identifier.
-                var start = ++i;
-                while (i < body.Length && body[i] != '"')
-                {
-                    i++;
-                }
-                tokens.Add(new Token(TokenType.Word, body[start..i]));
-                i++; // closing quote
-                continue;
-            }
-
-            if (c == '[')
-            {
-                // A bracket-quoted identifier (the T-SQL spelling).
-                var start = ++i;
-                while (i < body.Length && body[i] != ']')
-                {
-                    i++;
-                }
-                tokens.Add(new Token(TokenType.Word, body[start..i]));
-                i++; // closing bracket
-                continue;
-            }
-
-            switch (c)
-            {
-                case '.': tokens.Add(new Token(TokenType.Dot, ".")); i++; continue;
-                case '(': tokens.Add(new Token(TokenType.LeftParen, "(")); i++; continue;
-                case ')': tokens.Add(new Token(TokenType.RightParen, ")")); i++; continue;
-                case ',': tokens.Add(new Token(TokenType.Comma, ",")); i++; continue;
-            }
-
-            if (char.IsLetter(c) || c == '_')
-            {
-                var start = i;
-                while (i < body.Length && (char.IsLetterOrDigit(body[i]) || body[i] == '_'))
-                {
-                    i++;
-                }
-                tokens.Add(new Token(TokenType.Word, body[start..i]));
-                continue;
-            }
-
-            i++; // any other character (operators, digits, *, etc.) is irrelevant to dependency extraction.
-        }
-
-        return tokens;
-    }
-
-    private enum TokenType
-    {
-        Word,
-        Dot,
-        LeftParen,
-        RightParen,
-        Comma,
-    }
-
-    private readonly record struct Token(TokenType Kind, string Text);
 }

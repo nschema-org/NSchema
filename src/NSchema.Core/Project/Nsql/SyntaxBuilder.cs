@@ -7,6 +7,7 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
+using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
@@ -353,7 +354,7 @@ internal static class SyntaxBuilder
     /// ends the statement early, and a line comment on the final line swallows the terminator), verbatim otherwise.
     /// </summary>
     private static Token OpaqueSpan(SqlText body) =>
-        HasTopLevelTerminator(body.Value) || EndsInLineComment(body.Value)
+        SqlLexer.HasTopLevelSemicolon(body.Value) || SqlLexer.EndsInLineComment(body.Value)
             ? DollarString(body)
             : Token.Span(body.Value.TrimEnd());
 
@@ -362,46 +363,7 @@ internal static class SyntaxBuilder
     /// list gains a trailing newline (the parenthesised capture trims it back out).
     /// </summary>
     private static Token ArgumentsSpan(SqlText arguments) =>
-        EndsInLineComment(arguments.Value) ? Token.Span($"{arguments.Value}\n") : Token.Span(arguments.Value);
-
-    private static bool EndsInLineComment(string text)
-    {
-        var trimmed = text.TrimEnd();
-        return trimmed[(trimmed.LastIndexOf('\n') + 1)..].Contains("--", StringComparison.Ordinal);
-    }
-
-    private static bool HasTopLevelTerminator(string text)
-    {
-        try
-        {
-            var lexer = new NsqlLexer(text);
-            var depth = 0;
-            while (true)
-            {
-                var token = lexer.Next();
-                switch (token.Kind)
-                {
-                    case TokenKind.EndOfFile:
-                        return false;
-                    case TokenKind.LeftParen:
-                        depth++;
-                        break;
-                    case TokenKind.RightParen when depth > 0:
-                        depth--;
-                        break;
-                    case TokenKind.Semicolon when depth == 0:
-                        return true;
-                }
-            }
-        }
-        catch (NsqlSyntaxException)
-        {
-            // A body the lexer cannot scan bare is safest wrapped.
-            return true;
-        }
-    }
-
-    // --- leaf conversions -------------------------------------------------------------
+        SqlLexer.EndsInLineComment(arguments.Value) ? Token.Span($"{arguments.Value}\n") : Token.Span(arguments.Value);
 
     private static Identifier Name(SqlIdentifier name) => Identifier.Synthetic(name.Value);
 

@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace NSchema.Model.Services;
 
 /// <summary>
@@ -10,7 +8,7 @@ namespace NSchema.Model.Services;
 /// Over-collecting is free — a reference only forms an ordering edge when it names an object in the same
 /// database — so casts and builtins match harmlessly.
 /// </remarks>
-internal static partial class ExpressionDependencyScanner
+internal static class ExpressionDependencyScanner
 {
     /// <summary>
     /// The call sites <paramref name="expression"/> references, unqualified names resolved against
@@ -21,29 +19,41 @@ internal static partial class ExpressionDependencyScanner
         var result = new List<ObjectAddress>();
         var seen = new HashSet<ObjectAddress>();
 
-        foreach (Match match in CallSite().Matches(expression))
+        // A three-token lookbehind is enough to see `name (` and `schema . name (`.
+        var scanner = new SqlLexer(expression);
+        var previous = new SqlToken[3];
+        while (scanner.Next() is { Kind: not SqlTokenKind.End } token)
         {
-            var schema = match.Groups["schema"];
-            var address = new ObjectAddress(
-                schema.Success ? Unquote(schema.Value) : defaultSchema.Value,
-                Unquote(match.Groups["name"].Value));
-            if (seen.Add(address))
+            // A dollar-quoted block holds real SQL (a routine's whole body, typically): descend.
+            if (token.Kind == SqlTokenKind.DollarString)
             {
-                result.Add(address);
+                foreach (var address in CallSites(token.Value, defaultSchema))
+                {
+                    if (seen.Add(address))
+                    {
+                        result.Add(address);
+                    }
+                }
             }
+
+            if (token.Kind == SqlTokenKind.LeftParen && IsName(previous[0]))
+            {
+                var address = previous is [_, { Kind: SqlTokenKind.Dot }, var schema] && IsName(schema)
+                    ? new ObjectAddress(schema.Value, previous[0].Value)
+                    : new ObjectAddress(defaultSchema, previous[0].Value);
+                if (seen.Add(address))
+                {
+                    result.Add(address);
+                }
+            }
+
+            previous[2] = previous[1];
+            previous[1] = previous[0];
+            previous[0] = token;
         }
 
         return result;
     }
 
-    private static string Unquote(string identifier) => identifier[0] switch
-    {
-        '[' => identifier[1..^1].Replace("]]", "]"),
-        '"' => identifier[1..^1].Replace("\"\"", "\""),
-        _ => identifier,
-    };
-
-    // A call site: name( or schema.name(, each part bare, [bracketed], or "quoted".
-    [GeneratedRegex("""(?:(?<schema>[A-Za-z_][\w$]*|\[(?:[^\]]|\]\])+\]|"(?:[^"]|"")+")\s*\.\s*)?(?<name>[A-Za-z_][\w$]*|\[(?:[^\]]|\]\])+\]|"(?:[^"]|"")+")\s*\(""")]
-    private static partial Regex CallSite();
+    private static bool IsName(SqlToken token) => token.Kind is SqlTokenKind.Word or SqlTokenKind.QuotedIdentifier;
 }
