@@ -41,13 +41,13 @@ internal static class ScriptHashCommand
 
         if (name is null)
         {
-            app.Messenger.ReportScriptHashes(project.ScriptHashes());
+            app.Reporter.ReportScriptHashes(project.ScriptHashes());
             return ExitCodes.NoChanges;
         }
 
         if (project.FindScript(name) is not { } declaration)
         {
-            app.Messenger.Warn($"Script '{name}' is not declared in this project.");
+            app.Reporter.Warn($"Script '{name}' is not declared in this project.");
             return ExitCodes.Error;
         }
 

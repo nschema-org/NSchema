@@ -1,0 +1,8 @@
+﻿── stdout ──
+  Lock ID: abc123
+  Held by: tom@dev
+  Operation: apply
+  Since: 1970-01-01 00:00:00Z
+  Expires: 1970-01-01 00:30:00Z (expired)
+
+── stderr ──

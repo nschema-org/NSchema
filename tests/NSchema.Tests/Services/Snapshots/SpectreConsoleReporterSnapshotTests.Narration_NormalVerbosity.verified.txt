@@ -1,0 +1,10 @@
+﻿── stdout ──
+Environment: staging
+
+Applying schema migration. Changes will be applied to the orders database.
+Generating SQL...
+  The lock is held until you run: nschema lock release
+✔ Apply complete. 2 added.
+
+── stderr ──
+⚠️ Drift detected: 1 changed.

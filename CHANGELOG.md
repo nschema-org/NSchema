@@ -12,10 +12,19 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [5.7.2] - 2026-08-08
+## [5.8.0] - 2026-08-08
+
+### Changed
+
+- **`--quiet` now summarizes the run's output.** A quiet `plan` or `apply` reports one line per artifact (`Plan: 2 to add, 1 to change, 0 to destroy (5 statements).`) instead of the full diff and SQL.
+- **`--quiet` drops Info diagnostics**. The run-once "already executed" advisories no longer repeat on every planned run.
+- **`--quiet` suppresses the environment banner and secondary hint lines** (such as `lock acquire`'s release hint), which previously printed regardless.
 
 ### Fixed
 
+- **`--json` no longer writes the confirmation prompt into the result stream.** An interactive `apply --json` wrote its summary and question to stdout as raw markup, breaking `nschema apply --json | jq`; the prompt now renders on stderr with the rest of the narration. The same fix keeps a piped `--format markdown` job summary free of prompt text. Without a terminal, the summary is reported as a `{"type":"log"}` event so a redirected stderr stays uniform NDJSON.
+- **`--json` reports a `Detail` line at its own log level.** Secondary hint lines were emitted as `"level":"announcement"`, indistinguishable from top-level narration.
+- **`format` rejects the presentation flags instead of ignoring them.** `nschema format --json` (and `--format`, `--quiet`, `--verbose`) because `format`'s output is the formatted code.
 - The `NO_COLOR` environment variable and `--no-color` args should now be respected correctly.
 
 ## [5.7.1] - 2026-08-07

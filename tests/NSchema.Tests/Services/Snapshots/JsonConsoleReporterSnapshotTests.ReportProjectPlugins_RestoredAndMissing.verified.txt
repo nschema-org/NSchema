@@ -1,0 +1,4 @@
+﻿── stdout ──
+[{"role":"provider","label":"postgres","packageId":"NSchema.Postgres","version":"4.0.0","restored":true,"cachePath":"/c"},{"role":"backend","label":"s3","packageId":"NSchema.Aws","version":"4.1.0","restored":false}]
+
+── stderr ──

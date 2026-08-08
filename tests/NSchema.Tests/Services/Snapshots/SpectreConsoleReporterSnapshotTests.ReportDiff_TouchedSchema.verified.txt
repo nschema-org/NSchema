@@ -1,0 +1,7 @@
+﻿Plan
+────
+~ table app.orders
+    + placed_at bigint not null
+
+Plan: 1 to add, 1 to change, 0 to destroy.
+

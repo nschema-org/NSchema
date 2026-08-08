@@ -1,6 +1,5 @@
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Init;
 
@@ -11,7 +10,7 @@ namespace NSchema.Commands.Init;
 internal static class ProjectInitializer
 {
     /// <returns>Success once the lockfile is written and the plugins restored, or the reason resolution failed.</returns>
-    public static async Task<Result> Initialize(string root, string? environment, PluginLoader loader, IConsoleMessenger messenger, CancellationToken cancellationToken)
+    public static async Task<Result> Initialize(string root, string? environment, PluginLoader loader, IConsoleReporter reporter, CancellationToken cancellationToken)
     {
         // Keep versions already locked, resolving only ranges that are new or unlocked — the lockfile is respected,
         // not silently upgraded (that is 'plugin update').
@@ -37,7 +36,7 @@ internal static class ProjectInitializer
 
         if (references.Count == 0)
         {
-            messenger.Announce($"Nothing to restore: no database or state plugin is configured.");
+            reporter.Announce($"Nothing to restore: no database or state plugin is configured.");
             return Result.Success();
         }
 
@@ -53,6 +52,6 @@ internal static class ProjectInitializer
             }
         }
 
-        return loader.Restore(references, messenger);
+        return loader.Restore(references, reporter);
     }
 }

@@ -29,7 +29,7 @@ internal static class ImportCommand
         var (app, configuration, _, _) = context;
 
         var outputDirectory = Path.GetFullPath(configuration.OutputDirectory ?? ".", Directory.GetCurrentDirectory());
-        if (CheckForOverwrite(outputDirectory, configuration.Force).ReportFailure(app.Messenger))
+        if (CheckForOverwrite(outputDirectory, configuration.Force).ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -37,11 +37,11 @@ internal static class ImportCommand
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            app.Reporter.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.Announce($"Importing schema from database...");
+        app.Reporter.Announce($"Importing schema from database...");
 
         var args = new ImportArguments
         {
@@ -52,11 +52,11 @@ internal static class ImportCommand
         var result = await app.Operations.Import(args, cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Schema imported successfully.");
+        app.Reporter.Success($"Schema imported successfully.");
         return ExitCodes.NoChanges;
     }
 

@@ -40,20 +40,20 @@ internal static class StatePullCommand
         var result = await app.State.ReadRaw(new StateRawReadArguments(), cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (result.Value.Payload is not { } payload)
         {
-            app.Messenger.Warn($"No state has been recorded yet; there is nothing to pull.");
+            app.Reporter.Warn($"No state has been recorded yet; there is nothing to pull.");
             return ExitCodes.Error;
         }
 
         if (file is not null)
         {
             await File.WriteAllBytesAsync(file, payload, cancellationToken);
-            app.Messenger.Success($"State pulled to {file} ({payload.Length:N0} bytes).");
+            app.Reporter.Success($"State pulled to {file} ({payload.Length:N0} bytes).");
             return ExitCodes.NoChanges;
         }
 

@@ -22,11 +22,11 @@ internal static class CompletionUninstallCommand
         var outcome = await CompletionInstaller.Uninstall(shell, cancellationToken);
         if (outcome.Changed)
         {
-            app.Messenger.Success($"Removed {shell} completion from {outcome.Path}.");
+            app.Reporter.Success($"Removed {shell} completion from {outcome.Path}.");
         }
         else
         {
-            app.Messenger.Announce($"No {shell} completion found in {outcome.Path}.");
+            app.Reporter.Announce($"No {shell} completion found in {outcome.Path}.");
         }
     }
 }

@@ -40,13 +40,13 @@ internal static class ScriptTaintCommand
         var locked = await app.Locks.Acquire(new AcquireLockArguments("script taint") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         try
@@ -65,13 +65,13 @@ internal static class ScriptTaintCommand
         var read = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (read.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(read.Diagnostics);
+            app.Reporter.ReportDiagnostics(read.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (read.Value?.State is not { } state || state.FindScript(name) is not { } execution)
         {
-            app.Messenger.Warn($"No execution is recorded for script '{name}'; there is nothing to taint.");
+            app.Reporter.Warn($"No execution is recorded for script '{name}'; there is nothing to taint.");
             return ExitCodes.Error;
         }
 
@@ -82,11 +82,11 @@ internal static class ScriptTaintCommand
         var written = await app.State.Write(new StateWriteArguments(state), cancellationToken);
         if (written.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(written.Diagnostics);
+            app.Reporter.ReportDiagnostics(written.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Removed the recorded execution for '{name}'. It will run again on the next apply.");
+        app.Reporter.Success($"Removed the recorded execution for '{name}'. It will run again on the next apply.");
         return ExitCodes.NoChanges;
     }
 }

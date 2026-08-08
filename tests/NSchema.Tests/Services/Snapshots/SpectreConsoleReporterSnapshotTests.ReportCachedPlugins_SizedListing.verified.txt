@@ -1,0 +1,11 @@
+﻿── stdout ──
+Plugin cache: /cache/root
+╭──────────────────┬─────────┬─────────╮
+│ Package          │ Version │    Size │
+├──────────────────┼─────────┼─────────┤
+│ NSchema.Postgres │ 4.0.0   │ 2.0 MiB │
+│ NSchema.Sqlite   │ 4.2.0   │   512 B │
+╰──────────────────┴─────────┴─────────╯
+  2 cached, 2.0 MiB total. Remove with: nschema plugin cache remove <package> [version]
+
+── stderr ──

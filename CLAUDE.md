@@ -33,35 +33,54 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    state pull / push and script list / taint / untaint — read → mutate → write loops over the public
    `IDatabaseStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.ProjectDefinition`;
    plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
-   project config; init, fmt, completion.)*
+   project config; init, format, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
 deliberate API decision (e.g. `show` re-publicized `IDatabaseProvider`/`IPlanFileManager`/`PlanFileEnvelope`) — weigh
 it against API-surface stability, not just the boundary rule.
 
-**Presentation lives in the CLI**, split by *what* is being written (`Services/Reporting/`), with a Spectre face and a
-`--json` face for each:
+**Presentation lives in the CLI** as **one seam**: `IConsoleReporter` (`Services/Reporting/`), with one implementation
+per output format — `SpectreConsoleReporter` (text), `JsonConsoleReporter` (`--json`), `MarkdownConsoleReporter`
+(`--format markdown`). There is no messenger/presenter split; the earlier one sorted by "app-free vs app-bound", which
+was never a real constraint (no face needs the application), so members drifted across it.
 
-- **`IConsoleMessenger`** — line-level narration (status `Report`, `Announce`/`Success`/`Warn`/`Detail`,
-  `ReportDiagnostics`, the lock/plugin query renderers). App-free: built straight from the `ParseResult` by
-  `ReporterFactory`, so it works before/without an application (top-level error handling in `Program.cs`, the `plugin`
-  commands). With an app it's reached as **`app.Messenger`**.
-- **`IConsolePresenter`** — an operation's structured output (`ReportDatabase`/`ReportState`/`ReportDiff`/
-  `ReportPlan`/`ReportScripts`; `ReportPlan` also serves `plan show`, since a saved plan is the same artifact).
-  It owns the core renderers directly — `DiffRenderer`/`DatabaseRenderer`/
-  `SqlPlanRenderer` via their `.Default` singletons, stateless utilities rather than DI services — and wraps their
-  plain-text output in Spectre markup. Reached as **`app.Presenter`**.
-- The messenger and presenter are **stateless console utilities the CLI owns directly, not container services**:
-  `ReporterFactory` builds the right (Spectre or `--json`) pair, and they hang off the **`CliApplication`** handle
-  (`app.Messenger`/`app.Presenter`) next to the engine members it forwards (`app.Operations`/`app.Locks`/
-  `app.Database`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()` returns — the built core
-  `NSchemaApplication` paired with the console surfaces, so a command reaches engine and console through one handle.
-- **Core-operation progress** (the live narration a long run emits) flows through the core's `IProgress<OperationProgress>`,
-  implemented CLI-side by `Services/Reporting/ConsoleProgress` (wrapping the messenger) and registered via the builder's
-  `UseProgressReporter(new ConsoleProgress(messenger))`.
+Every output belongs to exactly one of **three classes**, and the class — never the call site — decides how verbosity
+applies. **A command never checks `Verbosity`**; it calls the reporter and the face decides.
 
-The `--json` shape follows **what is being reported**, not which command asked. Every presenter report writes a
+1. **Narration** — the kind-classified line methods (`Report`, `Announce`/`Success`/`Warn`/`Detail`,
+   `ReportEnvironment`). Presence is gated by the `Verbosity` predicate over `MessageKind`; quiet shows only
+   `Success`/`Warning`. Every narration passes through one chokepoint per face, so the rule is total — there is no
+   "show this one anyway" escape, and a message that should survive quiet earns it by being the right `MessageKind`.
+2. **Artifacts** — the `Report*` methods (plan, diff, schema, state, script ledger, script hashes, lock info, plugin
+   reports, diagnostics). **Never suppressed**; verbosity selects *rendering depth*. The text faces render a one-line
+   summary under `--quiet` (`Plan: 2 to add, 1 to change, 0 to destroy (5 statements).`); the **JSON face ignores
+   verbosity entirely** — its artifacts are the machine contract and are always complete. Diagnostics summarize by
+   dropping the Info rows. Single-object artifacts (lock info, plugin detail) have one face: their full rendering
+   already is the summary.
+3. **Interaction** — `Confirm(ConfirmationRequest)`. Never suppressed while it actually prompts: whatever the
+   verbosity, an operator typing "yes" sees what they are approving. Pre-approved (`--auto-approve`) it degenerates to
+   narration and gates with it, so `--quiet --auto-approve` is silent. The command supplies facts
+   (`ConfirmationRequest`: summary, question, skip flag, `Destructive`); the **face** owns the wording and styling, so
+   commands never pre-bake markup. The JSON/Markdown faces prompt on **stderr** and, with no terminal, report the
+   summary as a log event rather than raw text — stdout stays a byte-clean result stream either way.
+
+`ReportException` is never gated at all.
+
+The reporter is a **stateless console utility the CLI owns directly, not a container service**: `ReporterFactory` is
+the single construction point (`CreateReporter(ParseResult)` / `CreateReporter(OutputFormat, Verbosity)`), used by the
+builder, `CommandRunner`'s preamble, `Program.cs`'s top-level error handling, and the odd app-free command alike. It
+hangs off the **`CliApplication`** handle as **`app.Reporter`**, next to the engine members it forwards
+(`app.Operations`/`app.Locks`/`app.Database`/`app.PlanFile`). `CliApplication` is what `CliApplicationBuilder.Build()`
+returns — the built core `NSchemaApplication` paired with the console, so a command reaches engine and console through
+one handle. **Core-operation progress** flows through the core's `IProgress<OperationProgress>`, implemented CLI-side
+by `Services/Reporting/ConsoleProgress` (wrapping the reporter) and registered via `UseProgressReporter`.
+
+Wording shared between faces and tenses lives in small statics beside them — `PlanNarrative` (prospective counts, the
+quiet summary, *and* the retrospective `Describe` recap, so a plan is counted one way everywhere), `DatabaseNarrative`,
+`ScriptLedger`, `SqlPlanNarrative`.
+
+The `--json` shape follows **what is being reported**, not which command asked. Every artifact writes a
 **single bare object** (or array) on one line of stdout, keyed for the artifact: `ReportDatabase` writes the schema
 directly, `ReportDiff` the diff, `ReportPlan` `{diff, adopted, sql}`, `ReportState` `{database, managed, scripts}`,
 and `ReportScripts` a bare array — so `cmd --json | jq` reads a result without unwrapping a discriminator. NDJSON
@@ -189,9 +208,27 @@ The CLI is the **single** presenter of errors. `Program.cs` disables System.Comm
 (`EnableDefaultExceptionHandler = false`) and maps the genuinely-exceptional escapes to exit codes (130 for cancellation,
 1 otherwise). Core operations return `Result`s — an *expected* failure (contention, a policy violation, a bad config)
 comes back as failure diagnostics the command renders, not a thrown exception and not a core-side print. Structured
-run output (the diff, schema, SQL plan) is rendered by the CLI's `app.Presenter`, and live progress flows through the
-core's `IProgress<OperationProgress>` (the CLI's `ConsoleProgress`); avoid direct `Console` writes except in `Program.cs`
-(top-level errors) and the interactive prompt in `ConsoleConfirmationPrompt`.
+run output (the diff, schema, SQL plan) is rendered by the CLI's `app.Reporter`, and live progress flows through the
+core's `IProgress<OperationProgress>` (the CLI's `ConsoleProgress`). **Anything that reports goes through the reporter**
+— the confirmation prompt included, since it is a console write that needed the format's stream and styling rather than
+a fourth output source.
+
+The exception is a **payload**, and the test is per-*write*, not per-command: *would `--format json` or `--quiet`
+legitimately change these bytes?* If not, the bytes are a contract with a consumer (a shell, a file, `jq`, `xargs`)
+rather than a rendering, and the command writes them raw — `completion <shell>` emits a shell script, `state pull`
+the recorded payload verbatim (so pull/push round-trips byte-for-byte), `script hash <name>` a bare hash so
+`$(nschema script hash x)` works, `format` the formatted source plus the compiler-style file list and
+`path(line,col): message` errors an editor or CI problem matcher parses. Two commands split *within themselves* on
+exactly this line — `script hash`'s listing form goes through `ReportScriptHashes` while its single-value form writes
+raw; `completion install/uninstall` narrate while bare `completion <shell>` writes raw — and `announceEnvironment` is
+computed per-invocation (`announceEnvironment: parseResult.GetValue(NameArgument) is null`) so the banner is suppressed
+exactly when *that* invocation's stdout is a payload. A command whose whole surface is a payload **rejects the
+presentation flags** rather than ignoring them silently (`format` errors on `--json`/`--format`/`--quiet`/`--verbose`).
+
+`new`'s interactive scaffolding wizard (`Services/Prompting/ScaffoldPrompter`) also writes directly, on a different
+ground: the reporter owns a prompt when the command has a run whose output format the prompt must fit into. Scaffolding
+*is* the command — no plan, no diff, nothing `--json` could mean — so it stays out rather than growing the seam an
+`Ask`/`Select` surface the JSON face could only throw from.
 
 ## Options layout
 

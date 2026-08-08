@@ -33,14 +33,14 @@ internal static class LockAcquireCommand
         var result = await app.Locks.Acquire(new AcquireLockArguments(configuration.Reason) { TimeToLive = configuration.TimeToLive }, cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
         var info = result.Require().Info;
-        app.Messenger.Success($"Acquired the state lock.");
-        app.Messenger.ReportLockInfo(info);
-        app.Messenger.Detail($"The lock is held until you run: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
+        app.Reporter.Success($"Acquired the state lock.");
+        app.Reporter.ReportLockInfo(info);
+        app.Reporter.Detail($"The lock is held until you run: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
         return ExitCodes.NoChanges;
     }
 }

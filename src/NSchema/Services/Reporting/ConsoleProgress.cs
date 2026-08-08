@@ -5,10 +5,10 @@ namespace NSchema.Services.Reporting;
 /// <summary>
 /// The CLI sink for an operation's transient progress narration.
 /// </summary>
-internal sealed class ConsoleProgress(IConsoleMessenger messenger) : IProgress<OperationProgress>
+internal sealed class ConsoleProgress(IConsoleReporter reporter) : IProgress<OperationProgress>
 {
     public void Report(OperationProgress value) =>
-        messenger.Report(
+        reporter.Report(
             value.Level == ProgressLevel.Detail ? MessageKind.Verbose : MessageKind.Progress,
             value.Message);
 }

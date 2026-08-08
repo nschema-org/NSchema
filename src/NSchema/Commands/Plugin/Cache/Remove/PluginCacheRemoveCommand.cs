@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Cache.Remove;
 
@@ -34,7 +33,7 @@ internal static class PluginCacheRemoveCommand
         var package = parseResult.GetValue(PackageArgument)!;
         var version = parseResult.GetValue(VersionArgument);
 
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
 
         // A malformed id or version can't match a cached entry (every cache dir is a valid id/version), so treat it
         // as a miss and fall through to the "nothing removed" reporting below rather than throwing.
@@ -51,11 +50,11 @@ internal static class PluginCacheRemoveCommand
         {
             if (version is null)
             {
-                messenger.Warn($"No cached versions of '{package}' to remove.");
+                reporter.Warn($"No cached versions of '{package}' to remove.");
             }
             else
             {
-                messenger.Warn($"'{package}' {version} is not in the cache.");
+                reporter.Warn($"'{package}' {version} is not in the cache.");
             }
 
             return Task.CompletedTask;
@@ -63,7 +62,7 @@ internal static class PluginCacheRemoveCommand
 
         foreach (var entry in removed)
         {
-            messenger.Success($"Removed {entry.PackageId} {entry.Version} from the cache.");
+            reporter.Success($"Removed {entry.PackageId} {entry.Version} from the cache.");
         }
 
         return Task.CompletedTask;

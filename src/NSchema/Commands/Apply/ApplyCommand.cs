@@ -2,9 +2,7 @@ using System.CommandLine;
 using NSchema.Operations;
 using NSchema.Plan.Domain;
 using NSchema.Services;
-using NSchema.Services.Confirmation;
 using NSchema.State.Locks;
-using Spectre.Console;
 
 namespace NSchema.Commands.Apply;
 
@@ -42,19 +40,19 @@ internal static class ApplyCommand
     {
         var (app, configuration, _, _) = context;
 
-        app.Messenger.Announce($"Applying schema migration. Changes will be applied to the database.");
+        app.Reporter.Announce($"Applying schema migration. Changes will be applied to the database.");
 
         // Hold the state lock across the whole apply: the plan is computed and executed under the same lock.
         var locked = await app.Locks.Acquire(new AcquireLockArguments("apply") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         // Release explicitly in a finally — a lock handle is not disposable (a manual lock can outlive the process).
@@ -77,23 +75,23 @@ internal static class ApplyCommand
             var envelope = await app.PlanFile.Read(configuration.PlanFile, cancellationToken);
             if (envelope.IsFailure)
             {
-                app.Messenger.ReportDiagnostics(envelope.Diagnostics);
+                app.Reporter.ReportDiagnostics(envelope.Diagnostics);
                 return ExitCodes.Error;
             }
 
             plan = envelope.Require().Plan;
-            app.Presenter.ReportPlan(plan);
+            app.Reporter.ReportPlan(plan);
         }
         else
         {
             var scope = configuration.Scope.ToPlanningScope();
             if (scope.IsFailure)
             {
-                app.Messenger.ReportDiagnostics(scope.Diagnostics);
+                app.Reporter.ReportDiagnostics(scope.Diagnostics);
                 return ExitCodes.Error;
             }
 
-            if (!await StateRefresh.TryRefresh(app, configuration.NoRefresh, cancellationToken))
+            if (!await StateRefresh.TryRefresh(app.Operations, app.Reporter, configuration.NoRefresh, cancellationToken))
             {
                 return ExitCodes.Error;
             }
@@ -105,12 +103,12 @@ internal static class ApplyCommand
             var computed = planResult.Value?.Plan;
             if (computed is not null)
             {
-                app.Presenter.ReportPlan(computed);
+                app.Reporter.ReportPlan(computed);
             }
 
             if (planResult.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(planResult.Diagnostics);
+                app.Reporter.ReportDiagnostics(planResult.Diagnostics);
             }
 
             // A blocked policy fails the plan; the diff is shown, but nothing is applied.
@@ -125,44 +123,43 @@ internal static class ApplyCommand
         // The database already matches the desired schema, and there are no objects to adopt.
         if (plan.IsEmpty)
         {
-            app.Messenger.Success($"No changes. The database already matches the desired schema.");
+            app.Reporter.Success($"No changes. The database already matches the desired schema.");
             await app.Operations.Apply(new ApplyArguments { Plan = plan }, cancellationToken);
             return ExitCodes.NoChanges;
         }
 
         // Confirmation is entirely CLI-side. Declining throws, which propagates out (the lock is released by the
         // finally in Run) and is mapped to a cancellation by Program.
-        ConsoleConfirmationPrompt.Require(
-            AnsiConsole.Console,
-            configuration.AutoApprove,
-            ConfirmationSummary(plan),
-            "Do you want to apply these changes? Only [green]yes[/] will be accepted:",
-            "--auto-approve");
+        app.Reporter.Confirm(Confirmation(plan, configuration.AutoApprove));
 
         var result = await app.Operations.Apply(new ApplyArguments { Plan = plan }, cancellationToken);
         if (result.IsFailure)
         {
             if (result.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(result.Diagnostics);
+                app.Reporter.ReportDiagnostics(result.Diagnostics);
             }
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Apply complete. {RunSummary.Describe(plan)}.");
+        app.Reporter.Success($"Apply complete. {PlanNarrative.Describe(plan)}.");
         return ExitCodes.NoChanges;
     }
 
     // What the operator is agreeing to. A plan can have nothing to execute and still take objects over, which is
     // the whole of what an apply would do in that case.
-    private static string ConfirmationSummary(MigrationPlan plan)
+    private static ConfirmationRequest Confirmation(MigrationPlan plan, bool autoApprove)
     {
-        if (!plan.HasStatements)
-        {
-            var adopted = plan.Adopted.DatabaseObjects.Count + plan.Adopted.SchemaObjects.Count;
-            return $"NSchema will bring [yellow]{adopted}[/] existing object(s) under management. No SQL will be executed.";
-        }
+        var adopted = plan.Adopted.DatabaseObjects.Count + plan.Adopted.SchemaObjects.Count;
+        var summary = plan.HasStatements
+            ? (ConsoleMessage)$"NSchema will execute {plan.Statements.Count} statement(s) against the database."
+            : $"NSchema will bring {adopted} existing object(s) under management. No SQL will be executed.";
 
-        return $"NSchema will execute [yellow]{plan.Statements.Count}[/] statement(s) against the database.";
+        return new ConfirmationRequest(summary)
+        {
+            Question = "Do you want to apply these changes?",
+            SkipFlag = "--auto-approve",
+            AutoApprove = autoApprove,
+        };
     }
 }

@@ -2,7 +2,6 @@ using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Outdated;
 
@@ -17,24 +16,24 @@ internal static class PluginOutdatedCommand
 
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
         ConfigurationFactory.ApplyWorkingDirectory(parseResult);
         var root = Directory.GetCurrentDirectory();
 
         var configuration = await ProjectConfigurationReader.Read(root, environment, cancellationToken);
-        if (configuration.ReportFailure(messenger))
+        if (configuration.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
 
         var outdated = Inspect(configuration.Require(), new PluginLoader(root));
-        if (outdated.ReportFailure(messenger))
+        if (outdated.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
 
-        messenger.ReportOutdatedPlugins(outdated.Require());
+        reporter.ReportOutdatedPlugins(outdated.Require());
         return ExitCodes.NoChanges;
     }
 

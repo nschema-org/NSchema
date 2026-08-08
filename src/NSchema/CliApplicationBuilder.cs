@@ -3,7 +3,6 @@ using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
 using NSchema.Configuration.State;
 using NSchema.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema;
 
@@ -12,8 +11,7 @@ internal sealed class CliApplicationBuilder
     private readonly NSchemaApplicationBuilder _builder;
     private readonly bool _allowRestore;
     private readonly string? _environment;
-    private readonly IConsoleMessenger _messenger;
-    private readonly IConsolePresenter _presenter;
+    private readonly IConsoleReporter _reporter;
     private readonly DiagnosticCollection _diagnostics = [];
 
     private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore, string? environment)
@@ -21,13 +19,8 @@ internal sealed class CliApplicationBuilder
         _allowRestore = allowRestore;
         _environment = environment;
         _builder = NSchemaApplication.CreateBuilder();
-
-        // The messenger and presenter are stateless console utilities, so the CLI owns them directly (see CliApplication)
-        // rather than registering them in the container. The engine still narrates progress through its own seam, so
-        // feed that one the messenger.
-        _messenger = ReporterFactory.CreateMessenger(format, verbosity);
-        _presenter = ReporterFactory.CreatePresenter(format);
-        _builder.UseProgressReporter(new ConsoleProgress(_messenger));
+        _reporter = ReporterFactory.CreateReporter(format, verbosity);
+        _builder.UseProgressReporter(new ConsoleProgress(_reporter));
     }
 
     // Lazy: the loader anchors at the project directory, which --directory establishes before first use.
@@ -173,7 +166,7 @@ internal sealed class CliApplicationBuilder
     /// </summary>
     public Result<CliApplication> Build() => _diagnostics.HasErrors
         ? Result.Failure<CliApplication>(_diagnostics)
-        : Result.From(new CliApplication(_builder.Build(), _messenger, _presenter), _diagnostics);
+        : Result.From(new CliApplication(_builder.Build(), _reporter), _diagnostics);
 
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.

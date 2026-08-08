@@ -1,0 +1,7 @@
+﻿── stdout ──
+s3 (backend)
+  Package: NSchema.Aws
+  Version: 4.0.0
+  Restored: no — run 'nschema init' to restore it.
+
+── stderr ──

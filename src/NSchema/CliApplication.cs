@@ -2,28 +2,20 @@ using NSchema.Deployment;
 using NSchema.Operations;
 using NSchema.Plan.PlanFile;
 using NSchema.Project;
-using NSchema.Services.Reporting;
 using NSchema.State;
 using NSchema.State.Locks;
 
 namespace NSchema;
 
 /// <summary>
-/// The CLI's composition of a built <see cref="NSchemaApplication"/> with the console surfaces it renders through.
-/// A command reaches the engine (operations, locks, schema/plan reads) and the console (messenger, presenter) through
-/// this one handle, so neither console surface has to live in the DI container.
+/// The CLI's composition of a built <see cref="NSchemaApplication"/>.
 /// </summary>
-internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger messenger, IConsolePresenter presenter) : IDisposable
+internal sealed class CliApplication(NSchemaApplication app, IConsoleReporter reporter) : IDisposable
 {
     /// <summary>
-    /// The line-level messenger: status, outcomes, diagnostics, and the like.
+    /// The console reporter for the application.
     /// </summary>
-    public IConsoleMessenger Messenger { get; } = messenger;
-
-    /// <summary>
-    /// The presenter for an operation's structured output: the diff, schema, SQL plan, and deployment scripts.
-    /// </summary>
-    public IConsolePresenter Presenter { get; } = presenter;
+    public IConsoleReporter Reporter { get; } = reporter;
 
     /// <inheritdoc cref="NSchemaApplication.Operations"/>
     public INSchemaOperations Operations => app.Operations;

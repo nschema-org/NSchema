@@ -1,0 +1,9 @@
+﻿── stdout ──
+
+── stderr ──
+{"type":"log","level":"announcement","message":"Applying schema migration. Changes will be applied to the orders database."}
+{"type":"log","level":"progress","message":"Generating SQL..."}
+{"type":"log","level":"verbose","message":"Resolved provider plugin NSchema.Postgres 5.0.0."}
+{"type":"log","level":"detail","message":"The lock is held until you run: nschema lock release"}
+{"type":"log","level":"warning","message":"Drift detected: 1 changed."}
+{"type":"log","level":"success","message":"Apply complete. 2 added."}

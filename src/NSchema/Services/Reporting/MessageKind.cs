@@ -16,6 +16,11 @@ public enum MessageKind
     Announcement,
 
     /// <summary>
+    /// An indented secondary line elaborating on the message before it.
+    /// </summary>
+    Detail,
+
+    /// <summary>
     /// A transient progress step ("Loading project...", "Generating SQL...").
     /// </summary>
     Progress,

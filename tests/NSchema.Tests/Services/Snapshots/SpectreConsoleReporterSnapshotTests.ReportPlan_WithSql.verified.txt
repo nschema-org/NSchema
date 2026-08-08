@@ -1,0 +1,16 @@
+﻿Plan
+────
++ schema app
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+SQL
+───
+-- [1/2]
+CREATE TABLE app.users (
+    id bigint NOT NULL
+)
+
+-- [2/2] (outside transaction)
+CREATE INDEX CONCURRENTLY users_id_ix ON app.users (id)
+

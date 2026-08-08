@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Commands.Format;
@@ -18,11 +19,39 @@ internal static class FormatCommand
         Description = "Don't write changes; list the files that need formatting and exit 2 if any do.",
     };
 
+    /// <summary>
+    /// The presentation flags <c>format</c> cannot honour. Its whole output surface is a payload for other tools —
+    /// the formatted source, the <c>--check</c> file list piped into the next command, and compiler-style
+    /// <c>path(line,col): message</c> errors an editor or CI problem matcher parses. None of that varies by format or
+    /// verbosity, so accepting these silently would promise a rendering that never happens.
+    /// </summary>
+    private static readonly (Option Option, string Name)[] UnsupportedPresentationOptions =
+    [
+        (CommonOptions.Json.Option, "--json"),
+        (CommonOptions.Format.Option, "--format"),
+        (CommonOptions.Quiet.Option, "--quiet"),
+        (CommonOptions.Verbose.Option, "--verbose"),
+    ];
+
     public static Command Create()
     {
         var command = new Command("format", "Reformat .sql DDL files to a canonical layout (in place, or check with --check).");
         command.Arguments.Add(PathArgument);
         command.Options.Add(CheckOption);
+
+        // Rejected while parsing, like the other harness-flag usage errors: the alternative is honouring them
+        // silently, which reads as "this ran the way I asked" when it did not.
+        command.Validators.Add(result =>
+        {
+            foreach (var (option, name) in UnsupportedPresentationOptions)
+            {
+                if (result.Specified(option))
+                {
+                    result.AddError($"{name} cannot be used with 'format': its output is a payload for other tools, not a report.");
+                }
+            }
+        });
+
         command.SetAction(Run);
         return command;
     }
@@ -40,7 +69,7 @@ internal static class FormatCommand
         var changed = FormatPath(path, check);
         if (changed.IsFailure)
         {
-            // Reported like the syntax errors above rather than through the messenger: format is a source-text tool,
+            // Reported like the syntax errors above rather than through the reporter: format is a source-text tool,
             // and its whole output surface is compiler-style lines on stdout/stderr.
             foreach (var error in changed.Errors)
             {

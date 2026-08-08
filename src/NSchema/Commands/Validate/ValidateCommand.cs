@@ -31,7 +31,7 @@ internal static class ValidateCommand
         // The findings ride the result's diagnostics; render them, then map their severity to an exit code.
         if (result.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
         }
 
         if (result.IsFailure)
@@ -39,7 +39,7 @@ internal static class ValidateCommand
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Schema is valid.");
+        app.Reporter.Success($"Schema is valid.");
         return ExitCodes.NoChanges;
     }
 }

@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Operations;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plan;
 
@@ -50,18 +49,18 @@ internal static class PlanCommand
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            app.Reporter.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
         // The two previews are the same run against different targets: the project's desired schema, or nothing at all.
         if (configuration.Destroy)
         {
-            app.Messenger.Announce($"Planning schema teardown. No changes will be applied to the database.");
+            app.Reporter.Announce($"Planning schema teardown. No changes will be applied to the database.");
         }
         else
         {
-            app.Messenger.Announce($"Planning schema migration. No changes will be applied to the database.");
+            app.Reporter.Announce($"Planning schema migration. No changes will be applied to the database.");
         }
 
         var result = await app.Operations.Plan(
@@ -73,23 +72,23 @@ internal static class PlanCommand
             },
             cancellationToken);
 
-        return Finish(app.Presenter, app.Messenger, result, configuration.OutFile,
+        return Finish(app.Reporter, result, configuration.OutFile,
             configuration.Destroy ? "Planned destroy saved to" : "Plan saved to", configuration.DetailedExitCode);
     }
 
     // The operation returns its outcome (the plan and its diagnostics); the CLI renders them and maps the result
     // to an exit code (failure → error, otherwise the detailed code reflects whether the plan has changes).
-    private static int Finish(IConsolePresenter presenter, IConsoleMessenger messenger, Result<PlanResult> result, string? outFile, string savedPrefix, bool detailed)
+    private static int Finish(IConsoleReporter reporter, Result<PlanResult> result, string? outFile, string savedPrefix, bool detailed)
     {
         // A policy-blocked result still carries the complete plan, so the offending change stays visible.
         if (result.Value?.Plan is { } plan)
         {
-            presenter.ReportPlan(plan);
+            reporter.ReportPlan(plan);
         }
 
         if (result.Diagnostics.Count > 0)
         {
-            messenger.ReportDiagnostics(result.Diagnostics);
+            reporter.ReportDiagnostics(result.Diagnostics);
         }
 
         if (result.IsFailure)
@@ -99,7 +98,7 @@ internal static class PlanCommand
 
         if (outFile is not null)
         {
-            messenger.Success($"{savedPrefix} {outFile}. Apply it later with this file to execute exactly this plan.");
+            reporter.Success($"{savedPrefix} {outFile}. Apply it later with this file to execute exactly this plan.");
         }
 
         return detailed && result.Require().HasChanges ? ExitCodes.HasChanges : ExitCodes.NoChanges;

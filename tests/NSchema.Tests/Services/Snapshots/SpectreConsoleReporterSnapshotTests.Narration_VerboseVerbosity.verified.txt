@@ -1,0 +1,11 @@
+﻿── stdout ──
+Environment: staging
+
+Applying schema migration. Changes will be applied to the orders database.
+Generating SQL...
+Resolved provider plugin NSchema.Postgres 5.0.0.
+  The lock is held until you run: nschema lock release
+✔ Apply complete. 2 added.
+
+── stderr ──
+⚠️ Drift detected: 1 changed.

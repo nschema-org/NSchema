@@ -1,0 +1,5 @@
+﻿── stdout ──
+✔ Apply complete. 2 added.
+
+── stderr ──
+⚠️ Drift detected: 1 changed.

@@ -1,0 +1,18 @@
+﻿Plan
+────
++ schema reporting
+
++ table app.users
+    + id bigint not null
+
+~ table app.orders
+    ~ total type: int → bigint
+    - legacy boolean not null
+
+- schema scratch
+
+Adopting 1 existing object into management:
+    = app.legacy_audit
+
+Plan: 3 to add, 2 to change, 2 to destroy, 1 to adopt.
+

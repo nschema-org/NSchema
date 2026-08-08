@@ -1,0 +1,5 @@
+﻿── stdout ──
+
+── stderr ──
+{"type":"log","level":"warning","message":"Drift detected: 1 changed."}
+{"type":"log","level":"success","message":"Apply complete. 2 added."}

@@ -1,0 +1,11 @@
+﻿── stdout ──
+
+── stderr ──
+                                    Diagnostics                                    
+╭──────────┬─────────────────────┬────────────────────────────────────────────────╮
+│ Severity │ Source              │ Message                                        │
+├──────────┼─────────────────────┼────────────────────────────────────────────────┤
+│ warning  │ drift               │ Recorded state differs from the live database. │
+│ error    │ destructive-actions │ Dropping column id                             │
+╰──────────┴─────────────────────┴────────────────────────────────────────────────╯
+

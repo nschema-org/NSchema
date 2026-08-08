@@ -1,7 +1,5 @@
 using NSchema.Commands;
 using NSchema.Configuration;
-using NSchema.Services.Confirmation;
-using NSchema.Services.Reporting;
 using Spectre.Console;
 
 var root = RootCommand.Create();
@@ -13,7 +11,7 @@ var configuration = new System.CommandLine.InvocationConfiguration { EnableDefau
 var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
 
-var messenger = ReporterFactory.CreateMessenger(parseResult);
+var reporter = ReporterFactory.CreateReporter(parseResult);
 
 try
 {
@@ -21,16 +19,16 @@ try
 }
 catch (OperationCanceledException)
 {
-    messenger.Report(MessageKind.Warning, "Operation cancelled.");
+    reporter.Report(MessageKind.Warning, "Operation cancelled.");
     return ExitCodes.OperationCanceled;
 }
 catch (ConfirmationDeclinedException ex)
 {
-    messenger.Report(MessageKind.Warning, ex.Message);
+    reporter.Report(MessageKind.Warning, ex.Message);
     return ExitCodes.Error;
 }
 catch (Exception ex)
 {
-    messenger.ReportException(ex);
+    reporter.ReportException(ex);
     return ExitCodes.Error;
 }

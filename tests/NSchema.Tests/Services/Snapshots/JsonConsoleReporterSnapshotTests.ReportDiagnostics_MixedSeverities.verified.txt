@@ -1,0 +1,4 @@
+﻿── stdout ──
+{"type":"diagnostics","diagnostics":[{"source":"run-once","code":"run-once","severity":"info","message":"Skipping 'seed-users': already executed."},{"source":"drift","code":"drift-detected","severity":"warning","message":"Recorded state differs from the live database."},{"source":"destructive-actions","code":"destructive-change","severity":"error","message":"Dropping column id"}]}
+
+── stderr ──

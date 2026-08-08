@@ -25,7 +25,7 @@ internal static class NewCommand
         var console = AnsiConsole.Console;
 
         var resolved = await ConfigurationFactory.Load<NewConfiguration>(parseResult, environment: null, cancellationToken);
-        if (resolved.ReportFailure(app.Messenger))
+        if (resolved.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -39,10 +39,10 @@ internal static class NewCommand
         var plugins = new List<ResolvedPlugin>();
         var (providerPackageName, providerLabel) = DatabasePackage(configuration.Database);
         var providerPackage = new PackageId(providerPackageName);
-        app.Messenger.Announce($"Resolving {providerPackage}...");
+        app.Reporter.Announce($"Resolving {providerPackage}...");
 
         var providerResolution = loader.ResolveLatestVersion(providerPackage);
-        if (providerResolution.ReportFailure(app.Messenger))
+        if (providerResolution.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -50,14 +50,14 @@ internal static class NewCommand
         var providerVersion = providerResolution.Require();
         plugins.Add(new ResolvedPlugin(new PluginLabel(providerLabel), providerPackage, providerVersion));
         var resolvedProvider = Resolve<INSchemaDatabasePlugin>(loader, providerPackage, providerVersion);
-        if (resolvedProvider.ReportFailure(app.Messenger))
+        if (resolvedProvider.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
 
         var providerPlugin = resolvedProvider.Require();
         var configured = Configure(console, providerPlugin, new ScaffoldContext(), configuration.Answers);
-        if (configured.ReportFailure(app.Messenger))
+        if (configured.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -77,10 +77,10 @@ internal static class NewCommand
         if (StatePackage(configuration.State) is { } backend)
         {
             var backendPackage = new PackageId(backend.Package);
-            app.Messenger.Announce($"Resolving {backendPackage}...");
+            app.Reporter.Announce($"Resolving {backendPackage}...");
 
             var backendResolution = loader.ResolveLatestVersion(backendPackage);
-            if (backendResolution.ReportFailure(app.Messenger))
+            if (backendResolution.ReportFailure(app.Reporter))
             {
                 return ExitCodes.Error;
             }
@@ -88,14 +88,14 @@ internal static class NewCommand
             var backendVersion = backendResolution.Require();
             plugins.Add(new ResolvedPlugin(new PluginLabel(backend.Label), backendPackage, backendVersion));
             var resolvedBackend = Resolve<INSchemaStatePlugin>(loader, backendPackage, backendVersion);
-            if (resolvedBackend.ReportFailure(app.Messenger))
+            if (resolvedBackend.ReportFailure(app.Reporter))
             {
                 return ExitCodes.Error;
             }
 
             var backendPlugin = resolvedBackend.Require();
             var backendConfigured = Configure(console, backendPlugin, new ScaffoldContext(), configuration.Answers);
-            if (backendConfigured.ReportFailure(app.Messenger))
+            if (backendConfigured.ReportFailure(app.Reporter))
             {
                 return ExitCodes.Error;
             }
@@ -122,7 +122,7 @@ internal static class NewCommand
             },
             cancellationToken);
 
-        if (scaffolded.ReportFailure(app.Messenger))
+        if (scaffolded.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -140,8 +140,8 @@ internal static class NewCommand
         // '--no-init' opts out for an offline or edit-first workflow.
         if (!configuration.NoInit)
         {
-            var initialized = await ProjectInitializer.Initialize(Directory.GetCurrentDirectory(), environment: null, loader, app.Messenger, cancellationToken);
-            if (initialized.ReportFailure(app.Messenger))
+            var initialized = await ProjectInitializer.Initialize(Directory.GetCurrentDirectory(), environment: null, loader, app.Reporter, cancellationToken);
+            if (initialized.ReportFailure(app.Reporter))
             {
                 return ExitCodes.Error;
             }
@@ -151,11 +151,11 @@ internal static class NewCommand
         // band, so point the user at the right environment variable.
         if (configuration.Database == DatabaseKind.Sqlite)
         {
-            app.Messenger.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
+            app.Reporter.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
         }
         else
         {
-            app.Messenger.Announce($"Set {EnvironmentVariables.DatabaseConnectionString}, then run {"nschema plan"}.");
+            app.Reporter.Announce($"Set {EnvironmentVariables.DatabaseConnectionString}, then run {"nschema plan"}.");
         }
 
         return ExitCodes.NoChanges;

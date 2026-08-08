@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Cache.List;
 
@@ -17,7 +16,7 @@ internal static class PluginCacheListCommand
     private static Task Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
         var cache = new PluginCache();
-        ReporterFactory.CreateMessenger(parseResult).ReportCachedPlugins(cache.Root, cache.List());
+        ReporterFactory.CreateReporter(parseResult).ReportCachedPlugins(cache.Root, cache.List());
         return Task.CompletedTask;
     }
 }

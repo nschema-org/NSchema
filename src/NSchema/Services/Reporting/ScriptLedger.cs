@@ -23,4 +23,14 @@ internal static class ScriptLedger
     /// When the entry ran, stamped in UTC.
     /// </summary>
     public static string Executed(ScriptExecution script) => $"{script.ExecutedUtc:u}";
+
+    /// <summary>
+    /// The one-line count the quiet faces render in place of the ledger table.
+    /// </summary>
+    public static string Summary(IReadOnlyList<ScriptExecution> scripts) => scripts.Count switch
+    {
+        0 => "No script executions are recorded.",
+        1 => "1 script execution recorded.",
+        _ => $"{scripts.Count} script executions recorded.",
+    };
 }

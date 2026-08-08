@@ -99,13 +99,13 @@ public sealed class CliApplicationBuilderTests
     }
 
     [Fact]
-    public void Build_UsesTheSpectreConsolePresenter()
+    public void Build_UsesTheSpectreConsoleReporter()
     {
         // Act
         using var app = _sut.Build().Require();
 
-        // Assert — the formatted (non-JSON) builder wires up the Spectre presenter as the CLI's presentation surface.
-        app.Presenter.ShouldBeOfType<SpectreConsolePresenter>();
+        // Assert — the formatted (non-JSON) builder wires up the Spectre reporter as the CLI's console surface.
+        app.Reporter.ShouldBeOfType<SpectreConsoleReporter>();
     }
 
     [Fact]

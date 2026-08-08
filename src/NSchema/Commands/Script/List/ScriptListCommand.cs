@@ -29,11 +29,11 @@ internal static class ScriptListCommand
         var result = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportScripts(result.Require().State?.Scripts ?? []);
+        app.Reporter.ReportScripts(result.Require().State?.Scripts ?? []);
         return ExitCodes.NoChanges;
     }
 }
