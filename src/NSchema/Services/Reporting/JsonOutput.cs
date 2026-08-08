@@ -6,8 +6,8 @@ using NSchema.Model.Serialization;
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// The shared NDJSON serialization used by both the JSON messenger and presenter, so the two write identical output
-/// without sharing a base class.
+/// The shared NDJSON serialization the JSON reporter writes results and log events through, so every line follows
+/// the same conventions.
 /// </summary>
 internal static class JsonOutput
 {

@@ -27,15 +27,15 @@ internal static class PlanShowCommand
         // A saved plan is self-contained: no project config, database, or state store is needed.
         using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
 
-        app.Messenger.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
+        app.Reporter.Announce($"Showing saved plan from {file}. No database or state store will be contacted.");
         var envelope = await app.PlanFile.Read(file, cancellationToken);
         if (envelope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(envelope.Diagnostics);
+            app.Reporter.ReportDiagnostics(envelope.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportPlan(envelope.Require().Plan);
+        app.Reporter.ReportPlan(envelope.Require().Plan);
         return ExitCodes.NoChanges;
     }
 }

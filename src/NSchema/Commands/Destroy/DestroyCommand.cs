@@ -1,9 +1,7 @@
 using System.CommandLine;
 using NSchema.Operations;
 using NSchema.Services;
-using NSchema.Services.Confirmation;
 using NSchema.State.Locks;
-using Spectre.Console;
 
 namespace NSchema.Commands.Destroy;
 
@@ -37,19 +35,19 @@ internal static class DestroyCommand
     {
         var (app, configuration, _, _) = context;
 
-        app.Messenger.Announce($"Destroying schema. All managed objects will be dropped from the database.");
+        app.Reporter.Announce($"Destroying schema. All managed objects will be dropped from the database.");
 
         // Hold the state lock across the teardown plan + apply.
         var locked = await app.Locks.Acquire(new AcquireLockArguments("destroy") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         // Release explicitly in a finally — a lock handle is not disposable (a manual lock can outlive the process).
@@ -65,7 +63,7 @@ internal static class DestroyCommand
 
     private static async Task<int> DestroyUnderLock(CliApplication app, DestroyConfiguration configuration, CancellationToken cancellationToken)
     {
-        if (!await StateRefresh.TryRefresh(app, configuration.NoRefresh, cancellationToken))
+        if (!await StateRefresh.TryRefresh(app.Operations, app.Reporter, configuration.NoRefresh, cancellationToken))
         {
             return ExitCodes.Error;
         }
@@ -76,12 +74,12 @@ internal static class DestroyCommand
         var plan = planResult.Value?.Plan;
         if (plan is not null)
         {
-            app.Presenter.ReportPlan(plan);
+            app.Reporter.ReportPlan(plan);
         }
 
         if (planResult.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(planResult.Diagnostics);
+            app.Reporter.ReportDiagnostics(planResult.Diagnostics);
         }
 
         if (planResult.IsFailure || plan is null)
@@ -92,24 +90,26 @@ internal static class DestroyCommand
         // Nothing managed means nothing to drop; applying the empty plan is a clean no-op that still captures state.
         if (plan.IsEmpty)
         {
-            app.Messenger.Success($"Nothing to destroy. No managed objects were found.");
+            app.Reporter.Success($"Nothing to destroy. No managed objects were found.");
             await app.Operations.Apply(new ApplyArguments { Plan = plan }, cancellationToken);
             return ExitCodes.NoChanges;
         }
 
         // Confirmation is entirely CLI-side: the engine never prompts. Declining throws, which propagates out (the lock
         // is released by the finally in Run) and is mapped to a cancellation by Program.
-        ConsoleConfirmationPrompt.Require(
-            AnsiConsole.Console,
-            configuration.AutoApprove,
-            $"[red]NSchema will DROP managed objects via [yellow]{plan.Statements.Count}[/] statement(s). This is destructive and cannot be undone.[/]",
-            "Do you want to destroy these objects? Only [green]yes[/] will be accepted:",
-            "--auto-approve");
+        app.Reporter.Confirm(new ConfirmationRequest(
+            $"NSchema will DROP managed objects via {plan.Statements.Count} statement(s). This is destructive and cannot be undone.")
+        {
+            Question = "Do you want to destroy these objects?",
+            SkipFlag = "--auto-approve",
+            AutoApprove = configuration.AutoApprove,
+            Destructive = true,
+        });
 
         var result = await app.Operations.Apply(new ApplyArguments { Plan = plan }, cancellationToken);
         if (result.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
         }
 
         if (result.IsFailure)
@@ -117,7 +117,7 @@ internal static class DestroyCommand
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Destroy complete. {RunSummary.Describe(plan)}.");
+        app.Reporter.Success($"Destroy complete. {PlanNarrative.Describe(plan)}.");
         return ExitCodes.NoChanges;
     }
 }

@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.List;
 
@@ -16,18 +15,18 @@ internal static class PluginListCommand
 
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
 
         var resolved = await ConfigurationFactory.Load<PluginListConfiguration>(parseResult, environment, cancellationToken);
-        if (resolved.ReportFailure(messenger))
+        if (resolved.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
 
         var configuration = resolved.Require();
         var plugins = PluginInventory.ForProject(configuration.Database, configuration.State, new PluginCache());
-        messenger.ReportProjectPlugins(plugins);
+        reporter.ReportProjectPlugins(plugins);
         return ExitCodes.NoChanges;
     }
 }

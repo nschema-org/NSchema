@@ -40,7 +40,7 @@ internal static class FormatCommand
         var changed = FormatPath(path, check);
         if (changed.IsFailure)
         {
-            // Reported like the syntax errors above rather than through the messenger: format is a source-text tool,
+            // Reported like the syntax errors above rather than through the reporter: format is a source-text tool,
             // and its whole output surface is compiler-style lines on stdout/stderr.
             foreach (var error in changed.Errors)
             {

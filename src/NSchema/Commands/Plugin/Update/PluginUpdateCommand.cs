@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Update;
 
@@ -28,13 +27,13 @@ internal static class PluginUpdateCommand
         var root = Directory.GetCurrentDirectory();
         var label = parseResult.GetValue(_labelArgument);
 
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var loader = new PluginLoader(root);
 
         // A named plugin resolves to the one package that label declares; only that package is re-resolved, so the
         // other pins stay exactly as the lockfile records them.
         var resolvedTarget = await ResolveTarget(root, environment, label, cancellationToken);
-        if (resolvedTarget.ReportFailure(messenger))
+        if (resolvedTarget.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -42,13 +41,13 @@ internal static class PluginUpdateCommand
         var target = resolvedTarget.Value;
         if (label is not null && target is null)
         {
-            messenger.Announce($"'{label}' is pinned to an exact version; there is no range to update.");
+            reporter.Announce($"'{label}' is pinned to an exact version; there is no range to update.");
             return ExitCodes.NoChanges;
         }
 
         var existing = (await LockFileManager.Read(ProjectConfigurationReader.LockFilePath(root), cancellationToken)).Require();
         var resolved = await ProjectConfigurationReader.Refresh(root, environment, existing, loader, source => target is null || source == target, cancellationToken);
-        if (resolved.ReportFailure(messenger))
+        if (resolved.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -59,13 +58,13 @@ internal static class PluginUpdateCommand
         var changed = target is null ? pins : pins.Where(pin => pin.Source == target).ToList();
         if (changed.Count == 0)
         {
-            messenger.Announce($"Nothing to update: no plugins are declared.");
+            reporter.Announce($"Nothing to update: no plugins are declared.");
             return ExitCodes.NoChanges;
         }
 
         var newVersions = existing.With(pins);
         var written = await LockFileManager.Write(ProjectConfigurationReader.LockFilePath(root), newVersions, cancellationToken);
-        if (written.ReportFailure(messenger))
+        if (written.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -75,15 +74,15 @@ internal static class PluginUpdateCommand
             var previous = existing.Find(pin.Source)?.Version;
             if (previous is null)
             {
-                messenger.Success($"{pin.Source} locked at {pin.Version}");
+                reporter.Success($"{pin.Source} locked at {pin.Version}");
             }
             else if (!previous.Equals(pin.Version))
             {
-                messenger.Success($"{pin.Source} {previous} → {pin.Version}");
+                reporter.Success($"{pin.Source} {previous} → {pin.Version}");
             }
             else
             {
-                messenger.Announce($"{pin.Source} {pin.Version} (already up to date)");
+                reporter.Announce($"{pin.Source} {pin.Version} (already up to date)");
             }
         }
 
@@ -98,7 +97,7 @@ internal static class PluginUpdateCommand
             references.Add(backend);
         }
 
-        return loader.Restore(references, messenger).ReportFailure(messenger)
+        return loader.Restore(references, reporter).ReportFailure(reporter)
             ? ExitCodes.Error
             : ExitCodes.NoChanges;
     }

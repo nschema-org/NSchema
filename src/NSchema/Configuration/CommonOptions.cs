@@ -1,5 +1,4 @@
 using NSchema.Configuration.Binding;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Configuration;
 

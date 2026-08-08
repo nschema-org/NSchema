@@ -1,6 +1,4 @@
 using System.CommandLine;
-using NSchema.Services.Confirmation;
-using Spectre.Console;
 
 namespace NSchema.Commands.Lock.Release;
 
@@ -37,17 +35,16 @@ internal static class LockReleaseCommand
     private static async Task<int> Execute(CommandContext<LockReleaseConfiguration> context, CancellationToken cancellationToken)
     {
         var (app, configuration, _, _) = context;
-        var console = AnsiConsole.Console;
 
         var peeked = await app.Locks.Peek(cancellationToken);
-        if (peeked.ReportFailure(app.Messenger))
+        if (peeked.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
 
         if (peeked.Require().Held is not { } current)
         {
-            app.Messenger.Announce($"No state lock is held.");
+            app.Reporter.Announce($"No state lock is held.");
             return ExitCodes.NoChanges;
         }
 
@@ -56,30 +53,34 @@ internal static class LockReleaseCommand
         // when no id is given does --force take over and release whatever is held (the validator requires one or the other).
         if (configuration.LockId is { } lockId && current.Id.Value != lockId)
         {
-            app.Messenger.ReportDiagnostics([
+            app.Reporter.ReportDiagnostics([
                 LockDiagnostics.IdMismatch(lockId, current)
             ]);
             return ExitCodes.Error;
         }
 
-        ConsoleConfirmationPrompt.Require(console, configuration.AutoApprove,
-            "[red]NSchema will release the state lock, even if another operation still holds it. This can corrupt the shared state.[/]",
-            "Do you want to release the lock? Only [green]yes[/] will be accepted:",
-            "--auto-approve");
+        app.Reporter.Confirm(new ConfirmationRequest(
+            $"NSchema will release the state lock, even if another operation still holds it. This can corrupt the shared state.")
+        {
+            Question = "Do you want to release the lock?",
+            SkipFlag = "--auto-approve",
+            AutoApprove = configuration.AutoApprove,
+            Destructive = true,
+        });
 
         var result = await app.Locks.Release(cancellationToken);
-        if (result.ReportFailure(app.Messenger))
+        if (result.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
 
         if (result.Require().Released is not { } released)
         {
-            app.Messenger.Announce($"No state lock is held.");
+            app.Reporter.Announce($"No state lock is held.");
             return ExitCodes.NoChanges;
         }
 
-        app.Messenger.Success($"Released the state lock held by {released.Who} (operation '{released.Operation}', since {released.CreatedUtc:u}).");
+        app.Reporter.Success($"Released the state lock held by {released.Who} (operation '{released.Operation}', since {released.CreatedUtc:u}).");
         return ExitCodes.NoChanges;
     }
 }

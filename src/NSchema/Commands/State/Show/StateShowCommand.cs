@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Configuration.State;
-using NSchema.Services.Reporting;
 using NSchema.State;
 
 namespace NSchema.Commands.State.Show;
@@ -46,7 +45,7 @@ internal static class StateShowCommand
     {
         var (app, configuration, _, _) = context;
 
-        app.Messenger.Announce($"Showing recorded state. The live database will not be contacted.");
+        app.Reporter.Announce($"Showing recorded state. The live database will not be contacted.");
         return ShowRecordedState(app, configuration.Scope, cancellationToken);
     }
 
@@ -59,13 +58,13 @@ internal static class StateShowCommand
             .ConfigureState(new StateConfiguration { File = new FileStateConfiguration { Path = file } })
             .Build();
 
-        if (built.ReportFailure(ReporterFactory.CreateMessenger(parseResult)))
+        if (built.ReportFailure(ReporterFactory.CreateReporter(parseResult)))
         {
             return ExitCodes.Error;
         }
 
         using var app = built.Require();
-        app.Messenger.Announce($"Showing state file {file}.");
+        app.Reporter.Announce($"Showing state file {file}.");
         return await ShowRecordedState(app, scope, cancellationToken);
     }
 
@@ -74,25 +73,25 @@ internal static class StateShowCommand
         var read = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (read.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(read.Diagnostics);
+            app.Reporter.ReportDiagnostics(read.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (read.Require().State is not { } state)
         {
-            app.Messenger.Warn($"No state has been recorded yet. Run refresh to capture the schema first.");
+            app.Reporter.Warn($"No state has been recorded yet. Run refresh to capture the schema first.");
             return ExitCodes.Error;
         }
 
         var scope = scopedObjects.ToPlanningScope();
         if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            app.Reporter.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
         state = state.ScopedTo(scope.Require());
-        app.Presenter.ReportState(state);
+        app.Reporter.ReportState(state);
         return ExitCodes.NoChanges;
     }
 }

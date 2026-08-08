@@ -43,13 +43,13 @@ internal static class ScriptUntaintCommand
         var locked = await app.Locks.Acquire(new AcquireLockArguments("script untaint") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         try
@@ -67,19 +67,19 @@ internal static class ScriptUntaintCommand
         var read = await app.State.Read(new StateReadArguments(), cancellationToken);
         if (read.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(read.Diagnostics);
+            app.Reporter.ReportDiagnostics(read.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (read.Value?.State is not { } state)
         {
-            app.Messenger.Warn($"No state has been recorded yet. Run refresh to capture the schema first, then untaint.");
+            app.Reporter.Warn($"No state has been recorded yet. Run refresh to capture the schema first, then untaint.");
             return ExitCodes.Error;
         }
 
         if (state.FindScript(name) is not null)
         {
-            app.Messenger.Warn($"Script '{name}' is already recorded as executed. To accept a changed body, taint it first, then untaint.");
+            app.Reporter.Warn($"Script '{name}' is already recorded as executed. To accept a changed body, taint it first, then untaint.");
             return ExitCodes.Error;
         }
 
@@ -89,18 +89,18 @@ internal static class ScriptUntaintCommand
         var declaration = project.FindScript(name);
         if (declaration is null || declaration.RunCondition != RunCondition.Once)
         {
-            app.Messenger.Warn($"Script '{name}' is not declared as a RUN ONCE script in this project; there is nothing to record.");
+            app.Reporter.Warn($"Script '{name}' is not declared as a RUN ONCE script in this project; there is nothing to record.");
             return ExitCodes.Error;
         }
 
         var written = await app.State.Write(new StateWriteArguments(state.RecordExecution([declaration], DateTimeOffset.UtcNow)), cancellationToken);
         if (written.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(written.Diagnostics);
+            app.Reporter.ReportDiagnostics(written.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"Recorded '{name}' as executed without running it. Later plans will skip it.");
+        app.Reporter.Success($"Recorded '{name}' as executed without running it. Later plans will skip it.");
         return ExitCodes.NoChanges;
     }
 }

@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Operations;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Doctor;
 
@@ -17,11 +16,11 @@ internal static class DoctorCommand
 
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
 
         var resolved = await ConfigurationFactory.Load(parseResult, environment, new DoctorConfigurationValidator(), cancellationToken);
-        if (resolved.ReportFailure(messenger))
+        if (resolved.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -37,13 +36,13 @@ internal static class DoctorCommand
         };
 
         var built = builder.Build();
-        if (built.ReportFailure(messenger))
+        if (built.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
 
         using var app = built.Require();
-        app.Messenger.ReportEnvironment(environment);
+        app.Reporter.ReportEnvironment(environment);
 
         var failures = results.SelectMany(result => result.Errors).ToList();
         if (failures.Count > 0)
@@ -52,7 +51,7 @@ internal static class DoctorCommand
             // plugin problem and stop, rather than following them with misleading "not configured" lines.
             foreach (var plugin in failures.GroupBy(error => error.Source))
             {
-                app.Messenger.Warn($"Plugin '{plugin.Key}': {string.Join("; ", plugin.Select(error => error.Message))}");
+                app.Reporter.Warn($"Plugin '{plugin.Key}': {string.Join("; ", plugin.Select(error => error.Message))}");
             }
 
             return ExitCodes.Error;
@@ -68,7 +67,7 @@ internal static class DoctorCommand
         {
             if (result.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(result.Diagnostics);
+                app.Reporter.ReportDiagnostics(result.Diagnostics);
             }
 
             return ExitCodes.Error;
@@ -78,7 +77,7 @@ internal static class DoctorCommand
         var report = result.Require();
         if (report.Checks.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(report.Checks);
+            app.Reporter.ReportDiagnostics(report.Checks);
         }
 
         if (report.HasErrors)
@@ -86,7 +85,7 @@ internal static class DoctorCommand
             return ExitCodes.Error;
         }
 
-        app.Messenger.Success($"All checks passed.");
+        app.Reporter.Success($"All checks passed.");
         return ExitCodes.NoChanges;
     }
 }

@@ -1,36 +1,106 @@
 using System.Text;
+using NSchema.Configuration.Plugins;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Rendering;
 using NSchema.Model;
 using NSchema.Plan.Domain;
 using NSchema.State.Domain;
+using NSchema.State.Locks;
+using Spectre.Console;
 
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// An <see cref="IConsolePresenter"/> that renders structured output as Markdown, for a PR comment or a CI job summary.
+/// Outputs narration and artifacts in markdown format.
 /// </summary>
-internal sealed class MarkdownConsolePresenter : IConsolePresenter
+internal sealed class MarkdownConsoleReporter : IConsoleReporter
 {
     private readonly TextWriter _out;
+    private readonly SpectreConsoleReporter _narration;
+    private readonly Verbosity _verbosity;
 
-    public MarkdownConsolePresenter() : this(Console.Out) { }
+    public MarkdownConsoleReporter(IAnsiConsole error, Verbosity verbosity) : this(Console.Out, error, verbosity) { }
 
-    internal MarkdownConsolePresenter(TextWriter output) => _out = output;
+    internal MarkdownConsoleReporter(TextWriter output, IAnsiConsole error, Verbosity verbosity)
+    {
+        _out = output;
+        _narration = new SpectreConsoleReporter(error, error, verbosity);
+        _verbosity = verbosity;
+    }
 
-    public void ReportDatabase(Database database) => WriteSection("Database", Fenced(DatabaseRenderer.Render(database)));
+    public void Report(MessageKind kind, string message) => _narration.Report(kind, message);
+
+    public void Announce(ConsoleMessage message) => _narration.Announce(message);
+
+    public void Success(ConsoleMessage message) => _narration.Success(message);
+
+    public void Warn(ConsoleMessage message) => _narration.Warn(message);
+
+    public void Detail(ConsoleMessage message) => _narration.Detail(message);
+
+    public void ReportEnvironment(string? environment) => _narration.ReportEnvironment(environment);
+
+    public void Confirm(ConfirmationRequest request) => _narration.Confirm(request);
+
+    public void ReportException(Exception exception) => _narration.ReportException(exception);
+
+    public void ReportDiagnostics(IReadOnlyList<Diagnostic> diagnostics) => _narration.ReportDiagnostics(diagnostics);
+
+    public void ReportLockInfo(StateLockInfo? info) => _narration.ReportLockInfo(info);
+
+    public void ReportScriptHashes(IReadOnlyList<ScriptHashEntry> scripts) => _narration.ReportScriptHashes(scripts);
+
+    public void ReportProjectPlugins(IReadOnlyList<ProjectPlugin> plugins) => _narration.ReportProjectPlugins(plugins);
+
+    public void ReportPluginDetail(ProjectPlugin plugin) => _narration.ReportPluginDetail(plugin);
+
+    public void ReportCachedPlugins(string cacheRoot, IReadOnlyList<CachedPlugin> plugins) => _narration.ReportCachedPlugins(cacheRoot, plugins);
+
+    public void ReportOutdatedPlugins(IReadOnlyList<OutdatedPlugin> plugins) => _narration.ReportOutdatedPlugins(plugins);
+
+    public void ReportDatabase(Database database)
+    {
+        if (_verbosity.SummarizeArtifacts)
+        {
+            Summarize(DatabaseNarrative.Summary(database));
+            return;
+        }
+
+        WriteSection("Database", Fenced(DatabaseRenderer.Render(database)));
+    }
 
     public void ReportState(DatabaseState state)
     {
+        if (_verbosity.SummarizeArtifacts)
+        {
+            Summarize(DatabaseNarrative.Summary(state));
+            return;
+        }
+
         var database = DatabaseRenderer.Render(state.Database, state.Managed);
         WriteSection("Database", Fenced(database));
         WriteSection("Scripts", RenderScripts(state.Scripts));
     }
 
-    public void ReportDiff(DatabaseDiff diff) => WriteSection("Plan", RenderPlan(diff, IdentitySet.Empty));
+    public void ReportDiff(DatabaseDiff diff)
+    {
+        if (_verbosity.SummarizeArtifacts)
+        {
+            Summarize(PlanNarrative.Summary(diff));
+            return;
+        }
+
+        WriteSection("Plan", RenderPlan(diff, IdentitySet.Empty));
+    }
 
     public void ReportPlan(MigrationPlan plan)
     {
+        if (_verbosity.SummarizeArtifacts)
+        {
+            Summarize(PlanNarrative.Summary(plan));
+            return;
+        }
+
         WriteSection("Plan", RenderPlan(plan.Diff, plan.Adopted));
         if (plan.HasStatements)
         {
@@ -40,7 +110,20 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
 
     public void ReportScripts(IReadOnlyList<ScriptExecution> scripts)
     {
+        if (_verbosity.SummarizeArtifacts)
+        {
+            Summarize(ScriptLedger.Summary(scripts));
+            return;
+        }
+
         WriteSection("Scripts", RenderScripts(scripts));
+    }
+
+    // An artifact's quiet face: a plain Markdown line in place of the full sectioned rendering.
+    private void Summarize(string line)
+    {
+        _out.Write(line);
+        _out.Write("\n\n");
     }
 
     // The diff as a ```diff fenced block. Each line keeps its marker (+ add / - remove / ! modify) at column 0 so
@@ -77,7 +160,7 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
                 + string.Join('\n', adoptions.Select(name => $"- `{name}`")) + "\n\n";
 
         var block = document.Lines.Count > 0 ? $"{Fenced(body.ToString(), "diff")}\n\n" : string.Empty;
-        return $"{block}{takeover}**Plan:** {PlanNarrative.Counts(document.Summary, adoptions.Count)}";
+        return $"{block}{takeover}**Plan:** {PlanNarrative.Counts(document.Summary, adoptions.Count)}.";
     }
 
     // Touched marks an element carried only by what it owns. The core's renderer emits no line for one today (a
@@ -104,10 +187,8 @@ internal sealed class MarkdownConsolePresenter : IConsolePresenter
                 body.AppendLine();
             }
 
-            var statement = statements[i];
-            var marker = statement.RunOutsideTransaction ? " (outside transaction)" : string.Empty;
-            body.Append("-- [").Append(i + 1).Append('/').Append(statements.Count).Append(']').Append(marker).AppendLine();
-            body.Append(statement.Sql.Value).AppendLine();
+            body.Append(SqlPlanNarrative.Header(i, statements.Count, statements[i])).AppendLine();
+            body.Append(statements[i].Sql.Value).AppendLine();
         }
 
         return Fenced(body.ToString(), "sql");

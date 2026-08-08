@@ -1,6 +1,5 @@
 using System.CommandLine;
 using NSchema.Operations;
-using NSchema.Services;
 
 namespace NSchema.Commands.Drift;
 
@@ -33,27 +32,27 @@ internal static class DriftCommand
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            app.Reporter.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
         var result = await app.Operations.Drift(new DriftArguments { Scope = scope.Require() }, cancellationToken);
         if (result.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(result.Diagnostics);
+            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 
         // The operation returns the diff; the CLI renders it and the outcome line.
         var drift = result.Require();
-        app.Presenter.ReportDiff(drift.Diff);
+        app.Reporter.ReportDiff(drift.Diff);
         if (drift.HasDrift)
         {
-            app.Messenger.Warn($"Drift detected: {RunSummary.Describe(drift.Diff)}.");
+            app.Reporter.Warn($"Drift detected: {PlanNarrative.Describe(drift.Diff)}.");
         }
         else
         {
-            app.Messenger.Success($"No drift detected.");
+            app.Reporter.Success($"No drift detected.");
         }
 
         return configuration.DetailedExitCode && drift.HasDrift

@@ -38,18 +38,18 @@ internal static class StatePushCommand
 
         var payload = await File.ReadAllBytesAsync(file, cancellationToken);
 
-        app.Messenger.Announce($"Pushing state from {file}. The recorded state will be replaced.");
+        app.Reporter.Announce($"Pushing state from {file}. The recorded state will be replaced.");
 
         var locked = await app.Locks.Acquire(new AcquireLockArguments("state push") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         try
@@ -57,16 +57,16 @@ internal static class StatePushCommand
             var result = await app.State.WriteRaw(new StateRawWriteArguments(payload), cancellationToken);
             if (result.IsFailure)
             {
-                app.Messenger.ReportDiagnostics(result.Diagnostics);
+                app.Reporter.ReportDiagnostics(result.Diagnostics);
                 return ExitCodes.Error;
             }
 
             if (result.Diagnostics.Count > 0)
             {
-                app.Messenger.ReportDiagnostics(result.Diagnostics);
+                app.Reporter.ReportDiagnostics(result.Diagnostics);
             }
 
-            app.Messenger.Success($"State pushed ({result.Value.PayloadSize:N0} bytes).");
+            app.Reporter.Success($"State pushed ({result.Value.PayloadSize:N0} bytes).");
             return ExitCodes.NoChanges;
         }
         finally

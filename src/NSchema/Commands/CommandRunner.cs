@@ -2,7 +2,6 @@ using System.CommandLine;
 using FluentValidation;
 using NSchema.Configuration;
 using NSchema.Configuration.Binding;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands;
 
@@ -29,16 +28,14 @@ internal static class CommandRunner
         CancellationToken cancellationToken
     ) where TConfiguration : class, IBindable, new()
     {
-        // App-free by design: a configuration failure has to be reportable before there is an application to report
-        // through, and this is the same messenger the built application would carry.
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
 
         var resolved = validator is null
             ? await ConfigurationFactory.Load<TConfiguration>(parseResult, environment, cancellationToken)
             : await ConfigurationFactory.Load(parseResult, environment, validator, cancellationToken);
 
-        if (resolved.ReportFailure(messenger))
+        if (resolved.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -46,7 +43,7 @@ internal static class CommandRunner
         var configuration = resolved.Require();
 
         var built = configure(CliApplicationBuilder.Create(parseResult), configuration).Build();
-        if (built.ReportFailure(messenger))
+        if (built.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -54,7 +51,7 @@ internal static class CommandRunner
         using var app = built.Require();
         if (announceEnvironment)
         {
-            app.Messenger.ReportEnvironment(environment);
+            app.Reporter.ReportEnvironment(environment);
         }
 
         return await command(new CommandContext<TConfiguration>(app, configuration, parseResult, environment), cancellationToken);

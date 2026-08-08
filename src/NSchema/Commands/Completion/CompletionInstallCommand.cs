@@ -22,11 +22,11 @@ internal static class CompletionInstallCommand
         var outcome = await CompletionInstaller.Install(shell, cancellationToken);
         if (outcome.Changed)
         {
-            app.Messenger.Success($"Installed {shell} completion in {outcome.Path}. Restart your shell to enable it.");
+            app.Reporter.Success($"Installed {shell} completion in {outcome.Path}. Restart your shell to enable it.");
         }
         else
         {
-            app.Messenger.Announce($"{shell} completion is already installed in {outcome.Path}.");
+            app.Reporter.Announce($"{shell} completion is already installed in {outcome.Path}.");
         }
     }
 }

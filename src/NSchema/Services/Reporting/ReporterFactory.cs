@@ -5,35 +5,26 @@ using Spectre.Console;
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// Builds the CLI's console reporters.
+/// Builds the CLI's console reporter.
 /// </summary>
 internal static class ReporterFactory
 {
-    /// <summary>
-    /// Builds an <see cref="IConsolePresenter"/> for the resolved output format.
-    /// </summary>
-    public static IConsolePresenter CreatePresenter(OutputFormat format) => format switch
-    {
-        OutputFormat.Json => new JsonConsolePresenter(),
-        OutputFormat.Markdown => new MarkdownConsolePresenter(),
-        _ => new SpectreConsolePresenter(AnsiConsole.Console),
-    };
-
-    public static IConsoleMessenger CreateMessenger(ParseResult parseResult) => CreateMessenger(
+    public static IConsoleReporter CreateReporter(ParseResult parseResult) => CreateReporter(
         ResolveFormat(parseResult),
         ResolveVerbosity(parseResult)
     );
 
     /// <summary>
-    /// Builds an <see cref="IConsoleMessenger"/> for the resolved output format and verbosity.
+    /// Builds an <see cref="IConsoleReporter"/> for the resolved output format and verbosity.
     /// </summary>
-    public static IConsoleMessenger CreateMessenger(OutputFormat format, Verbosity verbosity) => format switch
+    public static IConsoleReporter CreateReporter(OutputFormat format, Verbosity verbosity) => format switch
     {
-        OutputFormat.Json => new JsonConsoleMessenger(verbosity),
-        // Markdown output owns stdout, so its narration goes to stderr — the same results-on-stdout / logs-on-stderr
-        // split the JSON path uses — keeping the piped Markdown (e.g. into $GITHUB_STEP_SUMMARY) uncontaminated.
-        OutputFormat.Markdown => new SpectreConsoleMessenger(ConsoleFactory.CreateStandardError(AnsiConsole.Console), verbosity),
-        _ => new SpectreConsoleMessenger(AnsiConsole.Console, verbosity),
+        OutputFormat.Json => new JsonConsoleReporter(verbosity),
+        // Markdown owns stdout, so its narration goes through a stderr Spectre reporter — the same
+        // results-on-stdout / logs-on-stderr split the JSON path uses — keeping the piped Markdown
+        // (e.g. into $GITHUB_STEP_SUMMARY) uncontaminated.
+        OutputFormat.Markdown => new MarkdownConsoleReporter(ConsoleFactory.CreateStandardError(AnsiConsole.Console), verbosity),
+        _ => new SpectreConsoleReporter(AnsiConsole.Console, verbosity),
     };
 
     /// <summary>

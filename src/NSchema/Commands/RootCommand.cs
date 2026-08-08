@@ -18,7 +18,6 @@ using NSchema.Commands.Script;
 using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands;
 

@@ -30,19 +30,19 @@ internal static class DatabaseShowCommand
         var scope = configuration.Scope.ToPlanningScope();
         if (scope.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(scope.Diagnostics);
+            app.Reporter.ReportDiagnostics(scope.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Messenger.Announce($"Reading the live database schema.");
+        app.Reporter.Announce($"Reading the live database schema.");
         var database = await app.Database.GetDatabase(scope.Require(), cancellationToken);
         if (database.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(database.Diagnostics);
+            app.Reporter.ReportDiagnostics(database.Diagnostics);
             return ExitCodes.Error;
         }
 
-        app.Presenter.ReportDatabase(database.Require());
+        app.Reporter.ReportDatabase(database.Require());
         return ExitCodes.NoChanges;
     }
 }

@@ -3,7 +3,7 @@ using System.Reflection;
 namespace NSchema.Services.Reporting;
 
 /// <summary>
-/// Renders the pieces both messengers present for an escaped exception: the message chain and the stack.
+/// Renders the pieces the reporter faces present for an escaped exception: the message chain and the stack.
 /// </summary>
 /// <remarks>
 /// Every expected failure — a broken configuration file, an unresolvable plugin, a policy violation — travels as

@@ -33,13 +33,13 @@ internal static class RefreshCommand
         var locked = await app.Locks.Acquire(new AcquireLockArguments("refresh") { SkipLock = configuration.NoLock }, cancellationToken);
         if (locked.IsFailure)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
             return ExitCodes.Error;
         }
 
         if (locked.Diagnostics.Count > 0)
         {
-            app.Messenger.ReportDiagnostics(locked.Diagnostics);
+            app.Reporter.ReportDiagnostics(locked.Diagnostics);
         }
 
         // Release explicitly in a finally — a lock handle is not disposable (a manual lock can outlive the process).
@@ -50,12 +50,12 @@ internal static class RefreshCommand
             {
                 if (result.Diagnostics.Count > 0)
                 {
-                    app.Messenger.ReportDiagnostics(result.Diagnostics);
+                    app.Reporter.ReportDiagnostics(result.Diagnostics);
                 }
                 return ExitCodes.Error;
             }
 
-            app.Messenger.Success($"State store updated successfully.");
+            app.Reporter.Success($"State store updated successfully.");
             return ExitCodes.NoChanges;
         }
         finally

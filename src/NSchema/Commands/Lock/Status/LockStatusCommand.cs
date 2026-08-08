@@ -28,7 +28,7 @@ internal static class LockStatusCommand
         var (app, configuration, parseResult, environment) = context;
 
         var peeked = await app.Locks.Peek(cancellationToken);
-        if (peeked.ReportFailure(app.Messenger))
+        if (peeked.ReportFailure(app.Reporter))
         {
             return ExitCodes.Error;
         }
@@ -37,16 +37,16 @@ internal static class LockStatusCommand
 
         if (info is null)
         {
-            app.Messenger.Success($"The state is not locked.");
+            app.Reporter.Success($"The state is not locked.");
         }
         else
         {
-            app.Messenger.Warn($"The state is locked.");
+            app.Reporter.Warn($"The state is locked.");
         }
-        app.Messenger.ReportLockInfo(info);
+        app.Reporter.ReportLockInfo(info);
         if (info is not null)
         {
-            app.Messenger.Detail($"Release it, once you're sure no operation is still running, with: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
+            app.Reporter.Detail($"Release it, once you're sure no operation is still running, with: {LockReleaseHint.Command(info.Id.Value, environment, parseResult)}");
         }
 
         // Without --detailed-exitcode, reading the lock succeeded → 0 regardless of state. With it, a held lock is the

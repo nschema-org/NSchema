@@ -1,7 +1,6 @@
 using System.CommandLine;
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Commands.Plugin.Show;
 
@@ -22,11 +21,11 @@ internal static class PluginShowCommand
 
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var messenger = ReporterFactory.CreateMessenger(parseResult);
+        var reporter = ReporterFactory.CreateReporter(parseResult);
         var environment = ConfigurationFactory.ResolveEnvironment(parseResult);
 
         var resolved = await ConfigurationFactory.Load<PluginShowConfiguration>(parseResult, environment, cancellationToken);
-        if (resolved.ReportFailure(messenger))
+        if (resolved.ReportFailure(reporter))
         {
             return ExitCodes.Error;
         }
@@ -37,13 +36,13 @@ internal static class PluginShowCommand
         if (match is null)
         {
             var configured = plugins.Count == 0 ? "none are configured" : string.Join(", ", plugins.Select(p => p.Label));
-            messenger.ReportDiagnostics([
+            reporter.ReportDiagnostics([
                 PluginDiagnostics.NotConfigured(configuration.Label, configured)
             ]);
             return ExitCodes.Error;
         }
 
-        messenger.ReportPluginDetail(match);
+        reporter.ReportPluginDetail(match);
         return ExitCodes.NoChanges;
     }
 }

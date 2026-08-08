@@ -5,7 +5,6 @@ using System.Runtime.Loader;
 using System.Text.Json;
 using NSchema.Configuration.Domain;
 using NSchema.Plugins;
-using NSchema.Services.Reporting;
 
 namespace NSchema.Configuration.Plugins;
 
@@ -88,7 +87,7 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
     /// Restores each reference into the cache, narrating whether it was freshly fetched or already present.
     /// </summary>
     /// <returns>Success, or the first reference's failure — an unloadable plugin is the operator's to fix.</returns>
-    public Result Restore(IEnumerable<PluginReference> references, IConsoleMessenger messenger)
+    public Result Restore(IEnumerable<PluginReference> references, IConsoleReporter reporter)
     {
         foreach (var reference in references)
         {
@@ -97,7 +96,7 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
             var alreadyInstalled = Cache.Contains(reference.PackageId, reference.Version);
             if (!alreadyInstalled)
             {
-                messenger.Announce($"Restoring {reference.PackageId} {reference.Version}...");
+                reporter.Announce($"Restoring {reference.PackageId} {reference.Version}...");
             }
 
             var loaded = Load(reference.PackageId, reference.Version);
@@ -108,11 +107,11 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
 
             if (alreadyInstalled)
             {
-                messenger.Success($"{reference.PackageId} {reference.Version} (already installed)");
+                reporter.Success($"{reference.PackageId} {reference.Version} (already installed)");
             }
             else
             {
-                messenger.Success($"{reference.PackageId} {reference.Version} (installed)");
+                reporter.Success($"{reference.PackageId} {reference.Version} (installed)");
             }
         }
 
