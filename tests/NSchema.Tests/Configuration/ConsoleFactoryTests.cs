@@ -1,3 +1,4 @@
+using NSchema.Commands;
 using NSchema.Configuration;
 using Spectre.Console;
 
@@ -49,6 +50,47 @@ public sealed class ConsoleFactoryTests : IDisposable
         var output = writer.ToString();
         output.ShouldNotContain("\u001b");
         output.ShouldContain("Environment:");
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("true")]
+    // NO_COLOR disables colour whenever it is present and non-empty, whatever the value says — including "0".
+    [InlineData("0")]
+    public void NoColor_ResolvesTrue_WhenTheEnvironmentVariableIsPresent(string raw)
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable(EnvironmentVariables.NoColor, raw);
+        var parseResult = RootCommand.Create().Parse(["plan"]);
+
+        // Act / Assert
+        CommonOptions.NoColor.GetValueOrDefault(parseResult, false).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void NoColor_ResolvesFalse_WhenTheEnvironmentVariableIsAbsentOrEmpty(string? raw)
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable(EnvironmentVariables.NoColor, raw);
+        var parseResult = RootCommand.Create().Parse(["plan"]);
+
+        // Act / Assert
+        CommonOptions.NoColor.GetValueOrDefault(parseResult, false).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void CreateStandardError_MirrorsTheOutputConsolesColorDecision()
+    {
+        // Arrange — GITHUB_ACTIONS is set, so Spectre would re-enable colour on the redirected stderr stream.
+        var output = ConsoleFactory.Create(new StringWriter(), colorDisabled: true);
+
+        // Act
+        var error = ConsoleFactory.CreateStandardError(output);
+
+        // Assert
+        error.Profile.Capabilities.ColorSystem.ShouldBe(ColorSystem.NoColors);
     }
 
     [Fact]

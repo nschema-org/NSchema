@@ -1,9 +1,6 @@
 using NSchema.Configuration.Domain;
 using NSchema.Configuration.Plugins;
-using NSchema.Model;
-using NSchema.Model.Scripts;
 using NSchema.Services.Reporting;
-using NSchema.State.Domain;
 using NSchema.State.Locks;
 using Spectre.Console.Testing;
 

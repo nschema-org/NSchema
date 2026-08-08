@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.7.2]
+
+### Fixed
+
+- The `NO_COLOR` environment variable and `--no-color` args should now be respected correctly.
+
 ## [5.7.1] - 2026-08-07
 
 ### Fixed

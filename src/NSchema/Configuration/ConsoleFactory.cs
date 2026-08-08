@@ -33,6 +33,11 @@ internal static class ConsoleFactory
     }
 
     /// <summary>
+    /// Creates the stderr console paired with <paramref name="output"/>.
+    /// </summary>
+    public static IAnsiConsole CreateStandardError(IAnsiConsole output) => Create(Console.Error, output.Profile.Capabilities.ColorSystem == ColorSystem.NoColors);
+
+    /// <summary>
     /// Resolves the rendered console width, layering the conventional <c>COLUMNS</c> override over Spectre's detection.
     /// </summary>
     private static int ResolveWidth(Profile profile)

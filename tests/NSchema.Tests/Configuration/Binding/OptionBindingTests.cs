@@ -134,6 +134,52 @@ public sealed class OptionBindingTests : IDisposable
         captured.ShouldBe(PolicyEnforcement.Warn);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("true")]
+    [InlineData("TRUE")]
+    [InlineData("yes")]
+    [InlineData("on")]
+    // An unrecognised value still reads as the flag being present rather than failing the run.
+    [InlineData("please")]
+    public void Bind_ParsesTruthyBoolFromEnvironment(string raw)
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable(EnvVar, raw);
+        var binding = OptionBinding.Create<bool>().FromOption("--flag").FromEnvironmentVariable(EnvVar);
+        var result = Parse(binding);
+
+        // Act
+        bool? captured = null;
+        binding.Bind(result, value => captured = value);
+
+        // Assert
+        captured.ShouldBe(true);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("false")]
+    [InlineData("False")]
+    [InlineData("no")]
+    [InlineData("off")]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Bind_ParsesFalsyBoolFromEnvironment(string raw)
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable(EnvVar, raw);
+        var binding = OptionBinding.Create<bool>().FromOption("--flag").FromEnvironmentVariable(EnvVar);
+        var result = Parse(binding);
+
+        // Act
+        bool? captured = null;
+        binding.Bind(result, value => captured = value);
+
+        // Assert
+        captured.ShouldBe(false);
+    }
+
     [Fact]
     public void Bind_UsesCustomParser_ForNonStringEnvironmentValues()
     {

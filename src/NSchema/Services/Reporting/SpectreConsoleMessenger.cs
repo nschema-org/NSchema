@@ -1,6 +1,5 @@
 using NSchema.Configuration;
 using NSchema.Configuration.Plugins;
-using NSchema.State.Domain;
 using NSchema.State.Locks;
 using Spectre.Console;
 
@@ -18,7 +17,7 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
     /// <param name="console">The console for informational output (typically stdout).</param>
     /// <param name="verbosity">Decides which line-messages to show, per <c>--quiet</c> / <c>--verbose</c>.</param>
     public SpectreConsoleMessenger(IAnsiConsole console, Verbosity verbosity)
-        : this(console, CreateStandardErrorConsole(console), verbosity) { }
+        : this(console, ConsoleFactory.CreateStandardError(console), verbosity) { }
 
     /// <param name="output">The console for informational output (typically stdout).</param>
     /// <param name="error">The console for errors and warnings (typically stderr).</param>
@@ -291,8 +290,4 @@ internal sealed class SpectreConsoleMessenger : IConsoleMessenger
         DiagnosticSeverity.Warning => "[yellow]warning[/]",
         _ => "[grey]info[/]",
     };
-
-    // Mirror the output console's color decision (which already reflects --no-color / NO_COLOR) onto stderr.
-    private static IAnsiConsole CreateStandardErrorConsole(IAnsiConsole output) =>
-        ConsoleFactory.Create(Console.Error, output.Profile.Capabilities.ColorSystem == ColorSystem.NoColors);
 }
