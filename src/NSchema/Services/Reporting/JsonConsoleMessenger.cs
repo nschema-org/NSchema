@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using NSchema.Configuration.Plugins;
-using NSchema.State.Domain;
 using NSchema.State.Locks;
 
 namespace NSchema.Services.Reporting;

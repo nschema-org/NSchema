@@ -170,6 +170,12 @@ internal sealed class OptionBinding<T>
             return (T)Enum.Parse(typeof(T), raw, ignoreCase: true);
         }
 
+        if (typeof(T) == typeof(bool))
+        {
+            var on = raw.Trim().ToLowerInvariant() is not ("" or "0" or "false" or "no" or "off");
+            return (T)(object)on;
+        }
+
         // A string binding needs no parser: the raw value is already the target type.
         if (raw is T value)
         {

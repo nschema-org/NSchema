@@ -32,7 +32,7 @@ internal static class ReporterFactory
         OutputFormat.Json => new JsonConsoleMessenger(verbosity),
         // Markdown output owns stdout, so its narration goes to stderr — the same results-on-stdout / logs-on-stderr
         // split the JSON path uses — keeping the piped Markdown (e.g. into $GITHUB_STEP_SUMMARY) uncontaminated.
-        OutputFormat.Markdown => new SpectreConsoleMessenger(ConsoleFactory.Create(Console.Error, colorDisabled: false), verbosity),
+        OutputFormat.Markdown => new SpectreConsoleMessenger(ConsoleFactory.CreateStandardError(AnsiConsole.Console), verbosity),
         _ => new SpectreConsoleMessenger(AnsiConsole.Console, verbosity),
     };
 

@@ -15,10 +15,14 @@ namespace NSchema;
 /// </summary>
 internal sealed class CliApplication(NSchemaApplication app, IConsoleMessenger messenger, IConsolePresenter presenter) : IDisposable
 {
-    /// <summary>The line-level messenger: status, outcomes, diagnostics, and the like.</summary>
+    /// <summary>
+    /// The line-level messenger: status, outcomes, diagnostics, and the like.
+    /// </summary>
     public IConsoleMessenger Messenger { get; } = messenger;
 
-    /// <summary>The presenter for an operation's structured output: the diff, schema, SQL plan, and deployment scripts.</summary>
+    /// <summary>
+    /// The presenter for an operation's structured output: the diff, schema, SQL plan, and deployment scripts.
+    /// </summary>
     public IConsolePresenter Presenter { get; } = presenter;
 
     /// <inheritdoc cref="NSchemaApplication.Operations"/>

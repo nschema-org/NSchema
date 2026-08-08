@@ -21,7 +21,7 @@ internal static class CommonOptions
 
     public static readonly OptionBinding<bool> NoColor = OptionBinding.Create<bool>()
         .FromOption("--no-color")
-        .FromEnvironmentVariable(EnvironmentVariables.NoColor)
+        .FromEnvironmentVariable(EnvironmentVariables.NoColor, raw => !string.IsNullOrEmpty(raw))
         .Recursive()
         .WithDescription("Disable colored output.");
 
