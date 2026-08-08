@@ -1,3 +1,6 @@
+using System.CommandLine;
+using System.CommandLine.Parsing;
+
 namespace NSchema.Extensions;
 
 internal static class CommandExtensions
@@ -14,5 +17,14 @@ internal static class CommandExtensions
                 list.Add(item);
             }
         }
+    }
+
+    extension(CommandResult result)
+    {
+        /// <summary>
+        /// Whether the user actually wrote <paramref name="option"/>, as opposed to it being filled in from its
+        /// default. What a usage-error validator must ask: a defaulted flag was never asked for.
+        /// </summary>
+        public bool Specified(Option option) => result.GetResult(option) is { Implicit: false };
     }
 }

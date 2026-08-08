@@ -33,7 +33,7 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    state pull / push and script list / taint / untaint — read → mutate → write loops over the public
    `IDatabaseStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.ProjectDefinition`;
    plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
-   project config; init, fmt, completion.)*
+   project config; init, format, completion.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
@@ -211,9 +211,24 @@ comes back as failure diagnostics the command renders, not a thrown exception an
 run output (the diff, schema, SQL plan) is rendered by the CLI's `app.Reporter`, and live progress flows through the
 core's `IProgress<OperationProgress>` (the CLI's `ConsoleProgress`). **Anything that reports goes through the reporter**
 — the confirmation prompt included, since it is a console write that needed the format's stream and styling rather than
-a fourth output source. Direct `Console`/`AnsiConsole` writes are left to `Program.cs` (top-level errors), the commands
-whose **stdout is a payload rather than a report** (`completion`, `state pull`, `script hash`, `fmt`), and `new`'s
-interactive scaffolding wizard (`Services/Prompting/ScaffoldPrompter`).
+a fourth output source.
+
+The exception is a **payload**, and the test is per-*write*, not per-command: *would `--format json` or `--quiet`
+legitimately change these bytes?* If not, the bytes are a contract with a consumer (a shell, a file, `jq`, `xargs`)
+rather than a rendering, and the command writes them raw — `completion <shell>` emits a shell script, `state pull`
+the recorded payload verbatim (so pull/push round-trips byte-for-byte), `script hash <name>` a bare hash so
+`$(nschema script hash x)` works, `format` the formatted source plus the compiler-style file list and
+`path(line,col): message` errors an editor or CI problem matcher parses. Two commands split *within themselves* on
+exactly this line — `script hash`'s listing form goes through `ReportScriptHashes` while its single-value form writes
+raw; `completion install/uninstall` narrate while bare `completion <shell>` writes raw — and `announceEnvironment` is
+computed per-invocation (`announceEnvironment: parseResult.GetValue(NameArgument) is null`) so the banner is suppressed
+exactly when *that* invocation's stdout is a payload. A command whose whole surface is a payload **rejects the
+presentation flags** rather than ignoring them silently (`format` errors on `--json`/`--format`/`--quiet`/`--verbose`).
+
+`new`'s interactive scaffolding wizard (`Services/Prompting/ScaffoldPrompter`) also writes directly, on a different
+ground: the reporter owns a prompt when the command has a run whose output format the prompt must fit into. Scaffolding
+*is* the command — no plan, no diff, nothing `--json` could mean — so it stays out rather than growing the seam an
+`Ask`/`Select` surface the JSON face could only throw from.
 
 ## Options layout
 

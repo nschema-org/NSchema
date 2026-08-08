@@ -1,3 +1,4 @@
+using NSchema.Commands;
 using NSchema.Commands.Format;
 
 namespace NSchema.Tests.Commands.Format;
@@ -92,4 +93,38 @@ public sealed class FormatCommandTests : IDisposable
     public void FormatPath_MissingPath_Fails()
         => FormatCommand.FormatPath(Path.Combine(_directory, "nope"), check: false)
             .ShouldFailContaining("No such file or directory");
+
+    [Theory]
+    [InlineData("--json")]
+    [InlineData("--quiet")]
+    [InlineData("--verbose")]
+    public void Parse_PresentationFlag_IsAUsageError(string flag)
+    {
+        // Arrange / Act — format's output is a payload for other tools, so no presentation flag applies to it.
+        // Accepting one silently would promise a rendering that never happens.
+        var parseResult = RootCommand.Create().Parse(["format", flag, "."]);
+
+        // Assert
+        parseResult.Errors.ShouldContain(error => error.Message.Contains($"{flag} cannot be used with 'format'"));
+    }
+
+    [Fact]
+    public void Parse_Format_IsAUsageError()
+    {
+        // Act
+        var parseResult = RootCommand.Create().Parse(["format", "--format", "markdown", "."]);
+
+        // Assert
+        parseResult.Errors.ShouldContain(error => error.Message.Contains("--format cannot be used with 'format'"));
+    }
+
+    [Fact]
+    public void Parse_WithoutPresentationFlags_IsAccepted()
+    {
+        // Act — the flags format does honour stay unaffected.
+        var parseResult = RootCommand.Create().Parse(["format", "--check", "."]);
+
+        // Assert
+        parseResult.Errors.ShouldBeEmpty();
+    }
 }

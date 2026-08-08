@@ -70,14 +70,14 @@ internal static class RootCommand
     {
         command.Validators.Add(result =>
         {
-            if (Specified(result, CommonOptions.Quiet.Option) && Specified(result, CommonOptions.Verbose.Option))
+            if (result.Specified(CommonOptions.Quiet.Option) && result.Specified(CommonOptions.Verbose.Option))
             {
                 result.AddError("--quiet and --verbose cannot be used together.");
             }
 
             // --json is shorthand for --format json, so the two only conflict when they disagree.
-            if (Specified(result, CommonOptions.Json.Option)
-                && Specified(result, CommonOptions.Format.Option)
+            if (result.Specified(CommonOptions.Json.Option)
+                && result.Specified(CommonOptions.Format.Option)
                 && result.GetValue(CommonOptions.Format.Option) != OutputFormat.Json)
             {
                 result.AddError("--json cannot be combined with --format; pass --format json instead.");
@@ -89,7 +89,4 @@ internal static class RootCommand
             AddConflictingFlagValidators(subcommand);
         }
     }
-
-    // An option the user actually wrote, as opposed to one filled in from its default.
-    private static bool Specified(CommandResult result, Option option) => result.GetResult(option) is { Implicit: false };
 }
