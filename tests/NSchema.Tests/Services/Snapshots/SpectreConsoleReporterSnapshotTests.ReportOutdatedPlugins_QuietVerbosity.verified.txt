@@ -1,0 +1,4 @@
+﻿── stdout ──
+1 of 2 plugins outdated.
+
+── stderr ──

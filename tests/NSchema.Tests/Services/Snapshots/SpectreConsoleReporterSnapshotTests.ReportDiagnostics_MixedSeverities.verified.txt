@@ -1,0 +1,12 @@
+﻿── stdout ──
+
+── stderr ──
+                                    Diagnostics                                    
+╭──────────┬─────────────────────┬────────────────────────────────────────────────╮
+│ Severity │ Source              │ Message                                        │
+├──────────┼─────────────────────┼────────────────────────────────────────────────┤
+│ info     │ run-once            │ Skipping 'seed-users': already executed.       │
+│ warning  │ drift               │ Recorded state differs from the live database. │
+│ error    │ destructive-actions │ Dropping column id                             │
+╰──────────┴─────────────────────┴────────────────────────────────────────────────╯
+

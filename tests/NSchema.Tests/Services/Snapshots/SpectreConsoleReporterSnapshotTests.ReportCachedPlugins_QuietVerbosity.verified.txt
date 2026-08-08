@@ -1,0 +1,4 @@
+﻿── stdout ──
+Plugin cache: /cache/root — 2 cached, 2.0 MiB total.
+
+── stderr ──

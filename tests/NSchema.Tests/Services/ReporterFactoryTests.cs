@@ -5,20 +5,32 @@ namespace NSchema.Tests.Services;
 
 public sealed class ReporterFactoryTests
 {
-    private static IConsoleMessenger Create(params string[] args) =>
-        ReporterFactory.CreateMessenger(RootCommand.Create().Parse(args));
+    private static IConsoleReporter Create(params string[] args) =>
+        ReporterFactory.CreateReporter(RootCommand.Create().Parse(args));
 
     [Fact]
-    public void Create_DefaultsToTheSpectreMessenger() =>
-        Create("plan").ShouldBeOfType<SpectreConsoleMessenger>();
+    public void Create_DefaultsToTheSpectreReporter() =>
+        Create("plan").ShouldBeOfType<SpectreConsoleReporter>();
 
     [Fact]
-    public void Create_Json_ReturnsTheJsonMessenger() =>
-        Create("plan", "--json").ShouldBeOfType<JsonConsoleMessenger>();
+    public void Create_Json_ReturnsTheJsonReporter() =>
+        Create("plan", "--json").ShouldBeOfType<JsonConsoleReporter>();
 
     [Fact]
-    public void Create_Markdown_ReturnsTheSpectreMessenger_SoNarrationGoesToStderr() =>
-        Create("plan", "--format", "markdown").ShouldBeOfType<SpectreConsoleMessenger>();
+    public void Create_Markdown_ReturnsTheMarkdownReporter() =>
+        Create("plan", "--format", "markdown").ShouldBeOfType<MarkdownConsoleReporter>();
+
+    [Fact]
+    public void CreateReporter_Text_ReturnsSpectreReporter() =>
+        ReporterFactory.CreateReporter(OutputFormat.Text, Verbosity.Normal).ShouldBeOfType<SpectreConsoleReporter>();
+
+    [Fact]
+    public void CreateReporter_Json_ReturnsJsonReporter() =>
+        ReporterFactory.CreateReporter(OutputFormat.Json, Verbosity.Normal).ShouldBeOfType<JsonConsoleReporter>();
+
+    [Fact]
+    public void CreateReporter_Markdown_ReturnsMarkdownReporter() =>
+        ReporterFactory.CreateReporter(OutputFormat.Markdown, Verbosity.Normal).ShouldBeOfType<MarkdownConsoleReporter>();
 
     private static OutputFormat ResolveFormat(params string[] args) =>
         ReporterFactory.ResolveFormat(RootCommand.Create().Parse(args));
@@ -56,18 +68,6 @@ public sealed class ReporterFactoryTests
         parseResult.Errors.ShouldBeEmpty();
         ReporterFactory.ResolveFormat(parseResult).ShouldBe(OutputFormat.Json);
     }
-
-    [Fact]
-    public void CreatePresenter_Text_ReturnsSpectrePresenter() =>
-        ReporterFactory.CreatePresenter(OutputFormat.Text).ShouldBeOfType<SpectreConsolePresenter>();
-
-    [Fact]
-    public void CreatePresenter_Json_ReturnsJsonPresenter() =>
-        ReporterFactory.CreatePresenter(OutputFormat.Json).ShouldBeOfType<JsonConsolePresenter>();
-
-    [Fact]
-    public void CreatePresenter_Markdown_ReturnsMarkdownPresenter() =>
-        ReporterFactory.CreatePresenter(OutputFormat.Markdown).ShouldBeOfType<MarkdownConsolePresenter>();
 
     [Fact]
     public void ResolveVerbosity_Default_IsNormal() =>

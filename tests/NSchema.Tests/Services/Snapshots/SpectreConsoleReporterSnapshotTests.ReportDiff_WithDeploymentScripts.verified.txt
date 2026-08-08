@@ -1,0 +1,11 @@
+﻿Plan
+────
++ schema app
+
+
++ script seed-roles (on pre deployment)
+
++ script refresh-views (on post deployment)
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+

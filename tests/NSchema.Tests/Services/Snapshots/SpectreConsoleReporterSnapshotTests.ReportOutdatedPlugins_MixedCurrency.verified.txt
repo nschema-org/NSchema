@@ -1,0 +1,10 @@
+﻿── stdout ──
+╭──────────┬──────────┬──────────────────┬─────────┬────────┬────────╮
+│ Role     │ Plugin   │ Package          │ Current │ Wanted │ Latest │
+├──────────┼──────────┼──────────────────┼─────────┼────────┼────────┤
+│ provider │ postgres │ NSchema.Postgres │ 5.0.0   │ 5.2.0  │ 5.2.0  │
+│ backend  │ s3       │ NSchema.Aws      │ 5.2.0   │ 5.2.0  │ 5.2.0  │
+╰──────────┴──────────┴──────────────────┴─────────┴────────┴────────╯
+  1 outdated. Widen the range or run: nschema plugin update
+
+── stderr ──

@@ -1,0 +1,4 @@
+﻿── stdout ──
+[{"role":"provider","label":"postgres","packageId":"NSchema.Postgres","current":"5.0.0","wanted":"5.2.0","latest":"5.2.0","outdated":true}]
+
+── stderr ──

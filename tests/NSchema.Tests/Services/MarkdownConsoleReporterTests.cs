@@ -10,18 +10,27 @@ using NSchema.Model.Tables;
 using NSchema.Plan.Domain;
 using NSchema.Services.Reporting;
 using NSchema.State.Domain;
+using Spectre.Console.Testing;
 
 namespace NSchema.Tests.Services;
 
 /// <summary>
-/// Snapshot coverage for <see cref="MarkdownConsolePresenter"/>.
+/// Snapshot coverage for <see cref="MarkdownConsoleReporter"/>: the document artifacts it writes to stdout, and the
+/// narration it routes to stderr so a piped job summary stays uncontaminated.
 /// </summary>
-public sealed class MarkdownConsolePresenterTests
+public sealed class MarkdownConsoleReporterTests
 {
     private readonly StringWriter _out = new();
-    private readonly MarkdownConsolePresenter _sut;
+    private readonly TestConsole _error = new();
+    private readonly MarkdownConsoleReporter _sut;
 
-    public MarkdownConsolePresenterTests() => _sut = new MarkdownConsolePresenter(_out);
+    public MarkdownConsoleReporterTests()
+    {
+        _error.Profile.Width = 200;
+        _sut = Build(Verbosity.Normal);
+    }
+
+    private MarkdownConsoleReporter Build(Verbosity verbosity) => new(_out, _error, verbosity);
 
     // A diff exercising every marker: an added schema and table (+), a modified table with a type change (!) and a
     // dropped column (-), and a removed schema (-). 'app' is Touched — in the diff only because its tables changed —
@@ -244,5 +253,58 @@ public sealed class MarkdownConsolePresenterTests
         _sut.ReportScripts([]);
 
         return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportPlan_QuietVerbosity()
+    {
+        // Quiet collapses the document to its counts line — a Markdown summary is still Markdown.
+        Build(Verbosity.Quiet).ReportPlan(new MigrationPlan(new DatabaseDiff([SchemaDiff.Added("app")]),
+        [
+            new SqlStatement("CREATE SCHEMA app", RunOutsideTransaction: false),
+        ]));
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public Task ReportState_QuietVerbosity()
+    {
+        Build(Verbosity.Quiet).ReportState(new DatabaseState(PartlyManaged(), []) { Managed = ManagedInApp() });
+
+        return Verify(_out.ToString());
+    }
+
+    [Fact]
+    public void Narration_GoesToStderr_LeavingTheMarkdownStreamClean()
+    {
+        // Arrange / Act — the split that keeps a piped $GITHUB_STEP_SUMMARY free of run narration.
+        _sut.Announce($"Planning schema migration.");
+        _sut.Success($"Plan complete.");
+
+        // Assert
+        _out.ToString().ShouldBeEmpty();
+        _error.Output.ShouldContain("Planning schema migration.");
+        _error.Output.ShouldContain("Plan complete.");
+    }
+
+    [Fact]
+    public void Confirm_PromptsOnStderr_LeavingTheMarkdownStreamClean()
+    {
+        // Arrange
+        _error.Interactive();
+        _error.Input.PushTextWithEnter("yes");
+
+        // Act
+        _sut.Confirm(new ConfirmationRequest($"NSchema will execute {3} statement(s) against the database.")
+        {
+            Question = "Do you want to apply these changes?",
+            SkipFlag = "--auto-approve",
+            AutoApprove = false,
+        });
+
+        // Assert
+        _out.ToString().ShouldBeEmpty();
+        _error.Output.ShouldContain("execute 3 statement(s)");
     }
 }

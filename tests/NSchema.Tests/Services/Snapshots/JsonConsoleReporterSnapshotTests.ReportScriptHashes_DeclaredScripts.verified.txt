@@ -1,0 +1,4 @@
+﻿── stdout ──
+[{"name":"seed-users","hash":"abc123"},{"name":"backfill","hash":"def456"}]
+
+── stderr ──

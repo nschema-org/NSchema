@@ -1,0 +1,6 @@
+﻿Database
+────────
+schema app
+  table widgets
+    id bigint not null
+

@@ -1,0 +1,4 @@
+﻿── stdout ──
+{"cacheRoot":"/cache/root","plugins":[{"packageId":"NSchema.Postgres","version":"4.0.0","path":"/c","sizeBytes":2097152}]}
+
+── stderr ──

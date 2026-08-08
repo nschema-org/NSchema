@@ -1,0 +1,4 @@
+﻿── stdout ──
+2 plugins configured, 1 not restored.
+
+── stderr ──

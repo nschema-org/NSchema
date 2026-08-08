@@ -66,15 +66,18 @@ internal sealed class JsonConsoleReporter : IConsoleReporter
             return;
         }
 
-        // Interaction is never suppressed, and never touches stdout: the prompt renders on stderr.
         var console = _interaction.Value;
-        console.MarkupLine(Markup.Escape(request.SummaryText));
 
         // Without an interactive terminal (redirected stdin / CI / a container) there is nothing to read.
         if (!console.Profile.Capabilities.Interactive)
         {
+            Report(MessageKind.Announcement, request.SummaryText);
             throw new ConfirmationDeclinedException($"This operation needs confirmation, but there is no interactive terminal. Re-run with {request.SkipFlag} to proceed non-interactively.");
         }
+
+        // A terminal is attached, so a human is reading: present the summary and prompt as text on stderr, never
+        // on the stdout result stream. Interaction is never suppressed by verbosity.
+        console.MarkupLine(Markup.Escape(request.SummaryText));
 
         var response = console.Prompt(new TextPrompt<string>($"{Markup.Escape(request.Question)} Only [green]yes[/] will be accepted:").AllowEmpty());
 
