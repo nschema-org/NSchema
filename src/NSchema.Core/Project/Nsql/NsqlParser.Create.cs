@@ -613,6 +613,16 @@ internal sealed partial class NsqlParser
             when = ReadRawExpression(parenthesised: true);
         }
 
+        // NOT FOR REPLICATION, where T-SQL puts it: after the firing condition and before the body.
+        var notForReplication = false;
+        if (_current.IsKeyword(NsqlKeywords.Not))
+        {
+            Advance();
+            ExpectKeyword(NsqlKeywords.For);
+            ExpectKeyword(NsqlKeywords.Replication);
+            notForReplication = true;
+        }
+
         var header = RawSpanFrom(headerStart, _current);
 
         TriggerAction action;
@@ -660,7 +670,7 @@ internal sealed partial class NsqlParser
 
         var semicolon = Expect(TokenKind.Semicolon, "';'");
 
-        return new CreateTriggerStatement(name, timing, events, on, action, updateOfColumns, level, when)
+        return new CreateTriggerStatement(name, timing, events, on, action, updateOfColumns, level, when, notForReplication)
         {
             Doc = doc?.Text,
             DocComment = doc,
@@ -808,6 +818,14 @@ internal sealed partial class NsqlParser
         var type = ParseTypeNode();
         var modifiersStart = _current;
 
+        // Before the nullability, which is where T-SQL puts it: 'rowguid uniqueidentifier ROWGUIDCOL NOT NULL'.
+        var isRowGuid = false;
+        if (_current.IsKeyword(NsqlKeywords.RowGuidCol))
+        {
+            Advance();
+            isRowGuid = true;
+        }
+
         var isNullable = true;
         if (_current.IsKeyword(NsqlKeywords.Not))
         {
@@ -827,6 +845,24 @@ internal sealed partial class NsqlParser
             Advance();
             isIdentity = true;
             identity = TryParseIdentityOptions();
+
+            // After the options, as T-SQL writes it: IDENTITY(1, 1) NOT FOR REPLICATION.
+            if (_current.IsKeyword(NsqlKeywords.Not))
+            {
+                Advance();
+                ExpectKeyword(NsqlKeywords.For);
+                ExpectKeyword(NsqlKeywords.Replication);
+                identity = (identity ?? new IdentityOptionsClause()) with { NotForReplication = true };
+            }
+        }
+
+        // A named default reads as T-SQL writes it: CONSTRAINT df_x DEFAULT (...). The name is only meaningful
+        // alongside a default, so it is parsed here rather than as a modifier of its own.
+        Identifier? defaultConstraintName = null;
+        if (_current.IsKeyword(NsqlKeywords.Constraint))
+        {
+            Advance();
+            defaultConstraintName = ExpectIdentifierNode("a default constraint name");
         }
 
         SqlText? defaultExpression = null;
@@ -837,20 +873,33 @@ internal sealed partial class NsqlParser
         }
 
         SqlText? generatedExpression = null;
+        var stored = false;
         if (_current.IsKeyword(NsqlKeywords.Generated))
         {
             Advance();
             ExpectKeyword(NsqlKeywords.Always);
             ExpectKeyword(NsqlKeywords.As);
             generatedExpression = ReadRawExpression(parenthesised: true);
-            ExpectKeyword(NsqlKeywords.Stored);
+
+            // STORED or VIRTUAL, and neither reads as virtual — which is what SQL Server and Sqlite do when the
+            // keyword is left off. Previously STORED was required and then ignored, so every generated column was
+            // stored whatever it said.
+            if (_current.IsKeyword(NsqlKeywords.Stored))
+            {
+                Advance();
+                stored = true;
+            }
+            else if (_current.IsKeyword(NsqlKeywords.Virtual))
+            {
+                Advance();
+            }
         }
 
         // The modifiers after the type are order-fixed and opaque enough to reprint verbatim; the parsed fields
         // above carry the semantics. The span runs from the first modifier to the member terminator (',' or ')').
         var modifiers = modifiersStart.Position.Offset < _current.Position.Offset ? RawSpanFrom(modifiersStart, _current) : (Token?)null;
 
-        return new ColumnDefinition(name, type, isNullable, isIdentity, identity, defaultExpression, generatedExpression)
+        return new ColumnDefinition(name, type, isNullable, isIdentity, identity, defaultExpression, generatedExpression, stored, isRowGuid, defaultConstraintName)
         {
             Doc = doc?.Text,
             DocComment = doc,
@@ -1075,6 +1124,11 @@ internal sealed partial class NsqlParser
         {
             Advance();
             return ReferentialAction.Cascade;
+        }
+        if (_current.IsKeyword(NsqlKeywords.Restrict))
+        {
+            Advance();
+            return ReferentialAction.Restrict;
         }
         if (_current.IsKeyword(NsqlKeywords.Set))
         {

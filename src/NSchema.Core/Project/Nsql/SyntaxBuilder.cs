@@ -195,7 +195,7 @@ internal static class SyntaxBuilder
         foreach (var column in table.Columns)
         {
             var node = new Syn.Tables.ColumnDefinition(Name(column.Name), Type(column.Type), column.IsNullable, column.IsIdentity,
-                Options(column.IdentityOptions), Default(column.DefaultExpression), column.GeneratedExpression)
+                Options(column.IdentityOptions), Default(column.DefaultExpression), column.GeneratedExpression, column.IsStored, column.IsRowGuid, column.DefaultConstraintName is { } defaultName ? Name(defaultName) : null)
             {
                 Doc = column.Comment,
                 DocComment = DocToken(column.Comment),
@@ -314,7 +314,7 @@ internal static class SyntaxBuilder
             Qualified(schemaName, tableName), action,
             trigger.UpdateOfColumns is { Count: > 0 } updateOf ? Names(updateOf) : null,
             trigger.Level == TriggerLevel.Row ? Syn.Triggers.TriggerLevel.Row : Syn.Triggers.TriggerLevel.Statement,
-            trigger.When)
+            trigger.When, trigger.IsNotForReplication)
         {
             Doc = trigger.Comment,
             DocComment = DocToken(trigger.Comment),
@@ -423,7 +423,7 @@ internal static class SyntaxBuilder
     }
 
     private static Syn.Tables.IdentityOptionsClause? Options(IdentityOptions? options) =>
-        options is null ? null : new Syn.Tables.IdentityOptionsClause(options.StartWith, options.IncrementBy, options.MinValue);
+        options is null ? null : new Syn.Tables.IdentityOptionsClause(options.StartWith, options.IncrementBy, options.MinValue, options.NotForReplication);
 
     private static Syn.Sequences.SequenceOptionsClause? Options(SequenceOptions options)
     {
@@ -458,6 +458,7 @@ internal static class SyntaxBuilder
     private static Syn.Constraints.ReferentialAction Action(ReferentialAction action) => action switch
     {
         ReferentialAction.Cascade => Syn.Constraints.ReferentialAction.Cascade,
+        ReferentialAction.Restrict => Syn.Constraints.ReferentialAction.Restrict,
         ReferentialAction.SetNull => Syn.Constraints.ReferentialAction.SetNull,
         ReferentialAction.SetDefault => Syn.Constraints.ReferentialAction.SetDefault,
         _ => Syn.Constraints.ReferentialAction.NoAction,
@@ -526,6 +527,10 @@ internal static class SyntaxBuilder
                 sb.Append($" {NsqlKeywords.When} (").Append(when.Value).Append(')');
             }
         }
+        if (statement.NotForReplication)
+        {
+            sb.Append($" {NsqlKeywords.Not} {NsqlKeywords.For} {NsqlKeywords.Replication}");
+        }
         return sb.ToString();
     }
 
@@ -544,6 +549,10 @@ internal static class SyntaxBuilder
     private static string ColumnModifiers(Syn.Tables.ColumnDefinition column)
     {
         var parts = new List<string>();
+        if (column.RowGuid)
+        {
+            parts.Add(NsqlKeywords.RowGuidCol);
+        }
         if (!column.IsNullable)
         {
             parts.Add($"{NsqlKeywords.Not} {NsqlKeywords.Null}");
@@ -553,6 +562,14 @@ internal static class SyntaxBuilder
             parts.Add(column.IdentityOptions is { } options && IdentityOptionsText(options) is { } text
                 ? $"{NsqlKeywords.Identity} ({text})"
                 : NsqlKeywords.Identity);
+            if (column.IdentityOptions is { NotForReplication: true })
+            {
+                parts.Add($"{NsqlKeywords.Not} {NsqlKeywords.For} {NsqlKeywords.Replication}");
+            }
+        }
+        if (column.DefaultConstraintName is { } constraintName)
+        {
+            parts.Add($"{NsqlKeywords.Constraint} {constraintName.Value}");
         }
         if (column.Default is { } @default)
         {
@@ -560,7 +577,8 @@ internal static class SyntaxBuilder
         }
         if (column.Generated is { } generated)
         {
-            parts.Add($"{NsqlKeywords.Generated} {NsqlKeywords.Always} {NsqlKeywords.As} ({generated.Value}) {NsqlKeywords.Stored}");
+            var storage = column.Stored ? NsqlKeywords.Stored : NsqlKeywords.Virtual;
+            parts.Add($"{NsqlKeywords.Generated} {NsqlKeywords.Always} {NsqlKeywords.As} ({generated.Value}) {storage}");
         }
         return string.Join(" ", parts);
     }
@@ -683,6 +701,7 @@ internal static class SyntaxBuilder
     private static string ActionText(Syn.Constraints.ReferentialAction action) => action switch
     {
         Syn.Constraints.ReferentialAction.Cascade => NsqlKeywords.Cascade,
+        Syn.Constraints.ReferentialAction.Restrict => NsqlKeywords.Restrict,
         Syn.Constraints.ReferentialAction.SetNull => $"{NsqlKeywords.Set} {NsqlKeywords.Null}",
         Syn.Constraints.ReferentialAction.SetDefault => $"{NsqlKeywords.Set} {NsqlKeywords.Default}",
         _ => $"{NsqlKeywords.No} {NsqlKeywords.Action}",

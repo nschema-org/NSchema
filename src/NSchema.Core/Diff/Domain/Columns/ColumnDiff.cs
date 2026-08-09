@@ -64,6 +64,11 @@ public sealed record ColumnDiff : IMigratableDiff
     public ValueChange<SqlText>? Generated { get; init; }
 
     /// <summary>
+    /// The change to whether this column is the table's row identifier for merge replication.
+    /// </summary>
+    public ValueChange<bool>? RowGuid { get; init; }
+
+    /// <summary>
     /// The change-event script matched to this change, run at this point in the plan (<see langword="null"/> when none).
     /// </summary>
     public ChangeScript? MigrationScript { get; init; }

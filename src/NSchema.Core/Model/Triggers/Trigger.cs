@@ -54,6 +54,11 @@ public sealed class Trigger : ObjectMember, IEquatable<Trigger>
     public SqlText? Body { get; set; }
 
     /// <summary>
+    /// Whether the trigger stays out of the way while a replication agent is doing the writing.
+    /// </summary>
+    public bool IsNotForReplication { get; set; }
+
+    /// <summary>
     /// The objects the trigger references.
     /// An unqualified reference resolves against <paramref name="schema"/> (the owning table's).
     /// </summary>
@@ -87,6 +92,7 @@ public sealed class Trigger : ObjectMember, IEquatable<Trigger>
         When = When,
         FunctionArguments = FunctionArguments,
         Body = Body,
+        IsNotForReplication = IsNotForReplication,
         Comment = Comment,
     };
 
@@ -103,11 +109,13 @@ public sealed class Trigger : ObjectMember, IEquatable<Trigger>
         && UpdateOfColumns.SequenceEqual(other.UpdateOfColumns)
         && Equals(When, other.When)
         && Equals(FunctionArguments, other.FunctionArguments)
-        && Equals(Body, other.Body);
+        && Equals(Body, other.Body)
+        && IsNotForReplication == other.IsNotForReplication;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Trigger other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(Name, Timing, Events, Function, Level, When, FunctionArguments, Body);
+    public override int GetHashCode() => HashCode.Combine(Name, Timing, Events, Function, Level, When, FunctionArguments,
+        HashCode.Combine(Body, IsNotForReplication));
 }

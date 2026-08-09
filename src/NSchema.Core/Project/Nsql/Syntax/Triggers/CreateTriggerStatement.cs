@@ -15,6 +15,7 @@ namespace NSchema.Project.Nsql.Syntax.Triggers;
 /// <param name="UpdateOfColumns">The <c>UPDATE OF</c> columns, or <see langword="null"/> when absent.</param>
 /// <param name="Level">The <c>FOR EACH</c> level (default <see cref="TriggerLevel.Statement"/>).</param>
 /// <param name="When">The <c>WHEN</c> condition, or <see langword="null"/>.</param>
+/// <param name="NotForReplication">Whether the trigger does not fire for a replication agent's writes.</param>
 public sealed record CreateTriggerStatement(
     Identifier Name,
     TriggerTiming Timing,
@@ -23,7 +24,8 @@ public sealed record CreateTriggerStatement(
     TriggerAction Action,
     IReadOnlyList<Identifier>? UpdateOfColumns = null,
     TriggerLevel Level = TriggerLevel.Statement,
-    SqlText? When = null
+    SqlText? When = null,
+    bool NotForReplication = false
 ) : NsqlStatement
 {
     /// <summary>

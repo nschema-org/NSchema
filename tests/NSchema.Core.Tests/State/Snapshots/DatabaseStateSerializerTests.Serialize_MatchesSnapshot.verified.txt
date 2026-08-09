@@ -29,9 +29,13 @@
                 identityOptions: {
                   startWith: 1,
                   minValue: 1,
-                  incrementBy: 1
+                  incrementBy: 1,
+                  notForReplication: false
                 },
                 generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: id,
                 comment: null
               },
@@ -49,6 +53,9 @@
                 defaultExpression: null,
                 identityOptions: null,
                 generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: name,
                 comment: display name
               },
@@ -66,6 +73,9 @@
                 defaultExpression: 0,
                 identityOptions: null,
                 generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: balance,
                 comment: null
               },
@@ -83,6 +93,9 @@
                 defaultExpression: null,
                 identityOptions: null,
                 generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: code,
                 comment: null
               },
@@ -100,6 +113,9 @@
                 defaultExpression: null,
                 identityOptions: null,
                 generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: metadata,
                 comment: null
               },
@@ -117,6 +133,9 @@
                 defaultExpression: null,
                 identityOptions: null,
                 generatedExpression: upper(name),
+                isStored: true,
+                isRowGuid: false,
+                defaultConstraintName: null,
                 name: name_upper,
                 comment: null
               }
@@ -243,6 +262,7 @@
                 when: new.balance > 0,
                 functionArguments: null,
                 body: null,
+                isNotForReplication: false,
                 name: users_audit,
                 comment: audit row changes
               },
@@ -257,6 +277,7 @@
                 when: null,
                 functionArguments: null,
                 body: null,
+                isNotForReplication: false,
                 name: users_stamp,
                 comment: null
               },
@@ -272,6 +293,7 @@ BEGIN
   INSERT INTO app.audit (msg) VALUES ('blocked');
   RETURN;
 END,
+                isNotForReplication: false,
                 name: users_guard,
                 comment: block deletes
               }

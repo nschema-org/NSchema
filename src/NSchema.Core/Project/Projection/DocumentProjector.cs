@@ -138,6 +138,9 @@ internal static class DocumentProjector
                         DefaultExpression = ProjectDefault(m.Default),
                         IdentityOptions = ProjectIdentityOptions(m.IdentityOptions),
                         GeneratedExpression = m.Generated,
+                        IsStored = m.Stored,
+                        IsRowGuid = m.RowGuid,
+                        DefaultConstraintName = m.DefaultConstraintName is { } n ? new SqlIdentifier(n.Value) : null,
                         Comment = m.Doc,
                     });
                     break;
@@ -322,6 +325,7 @@ internal static class DocumentProjector
             When = statement.When,
             FunctionArguments = functionArguments,
             Body = body,
+            IsNotForReplication = statement.NotForReplication,
             Comment = statement.Doc,
         };
     }
@@ -369,7 +373,7 @@ internal static class DocumentProjector
     }
 
     private static IdentityOptions? ProjectIdentityOptions(Syn.Tables.IdentityOptionsClause? options) =>
-        options is null ? null : new IdentityOptions(options.Start, options.MinValue, options.Increment);
+        options is null ? null : new IdentityOptions(options.Start, options.MinValue, options.Increment, options.NotForReplication);
 
     private static SequenceOptions? ProjectSequenceOptions(Syn.Sequences.SequenceOptionsClause? options) =>
         options is null
@@ -380,6 +384,7 @@ internal static class DocumentProjector
     private static ReferentialAction Map(Syn.Constraints.ReferentialAction action) => action switch
     {
         Syn.Constraints.ReferentialAction.Cascade => ReferentialAction.Cascade,
+        Syn.Constraints.ReferentialAction.Restrict => ReferentialAction.Restrict,
         Syn.Constraints.ReferentialAction.SetNull => ReferentialAction.SetNull,
         Syn.Constraints.ReferentialAction.SetDefault => ReferentialAction.SetDefault,
         _ => ReferentialAction.NoAction,

@@ -192,6 +192,31 @@ public abstract partial class SqlDialect
     public virtual bool SupportsClustering => false;
 
     /// <summary>
+    /// Whether the engine has <c>RESTRICT</c> as a referential action distinct from <c>NO ACTION</c>.
+    /// </summary>
+    public virtual bool SupportsRestrict => false;
+
+    /// <summary>
+    /// Whether the engine can leave a generated column unstored, computing it on read.
+    /// </summary>
+    public virtual bool SupportsVirtualGeneratedColumns => false;
+
+    /// <summary>
+    /// Whether the engine marks a column as the table's row identifier for merge replication.
+    /// </summary>
+    public virtual bool SupportsRowGuidColumns => false;
+
+    /// <summary>
+    /// Whether the engine makes a column default a named constraint.
+    /// </summary>
+    public virtual bool SupportsNamedDefaults => false;
+
+    /// <summary>
+    /// Whether the engine lets an identity or a trigger stand aside while a replication agent writes.
+    /// </summary>
+    public virtual bool SupportsNotForReplication => false;
+
+    /// <summary>
     /// The <c> CLUSTERED</c> / <c> NONCLUSTERED</c> fragment for a member that declares one, empty when it
     /// does not or when the engine has no such concept.
     /// </summary>

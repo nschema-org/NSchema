@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [Unreleased]
+
+### Added
+
+- **`RESTRICT` is a referential action in its own right.** `ReferentialAction.Restrict` is parsed, written and rendered.
+- **`SqlDialect.SupportsRestrict`** says whether the engine has `RESTRICT` as distinct from `NO ACTION`. Providers have to opt in.
+- **A generated column records whether it is stored.** `Column.IsStored` and the NSQL `STORED` / `VIRTUAL` keywords.
+- **`SqlDialect.SupportsVirtualGeneratedColumns`** says whether the engine can leave one unstored. Off by default, matching Postgres, which stores every generated column.
+- **`virtual-generated-column-not-supported`** is a warning: a virtual generated column declared against an engine that always stores.
+- **A column records whether it is the table's row identifier for merge replication.** `Column.IsRowGuid` and the NSQL `ROWGUIDCOL` keyword.
+- **A column default can carry its constraint's name.** `Column.DefaultConstraintName` and the NSQL `CONSTRAINT <name> DEFAULT <expr>` form, for engines that make a default a named constraint.
+- **An identity and a trigger can stand aside for a replication agent.** `IdentityOptions.NotForReplication`, `Trigger.IsNotForReplication`, and the NSQL `NOT FOR REPLICATION` form on both.
+
+### Fixed
+
+- **`Trigger.Clone()`, `Equals` and `GetHashCode` cover every field**, as `Column`'s now do. Both enumerate fields by hand, and import clones every object on its way to a file.
+
 ## [5.8.0] - 2026-08-09
 
 ### Added

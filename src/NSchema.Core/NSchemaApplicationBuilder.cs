@@ -57,6 +57,11 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         AddPlanPolicy<EnumValueRemovalPolicy>();
         AddPlanPolicy<AdoptionPolicy>();
         AddPlanPolicy<ClusteringPolicy>();
+        AddPlanPolicy<ReferentialActionPolicy>();
+        AddPlanPolicy<GeneratedColumnStoragePolicy>();
+        AddPlanPolicy<RowGuidPolicy>();
+        AddPlanPolicy<NamedDefaultPolicy>();
+        AddPlanPolicy<NotForReplicationPolicy>();
     }
 
     /// <inheritdoc />

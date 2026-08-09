@@ -23,5 +23,11 @@ public enum ReferentialAction
     /// <summary>
     /// <c>SET DEFAULT</c>.
     /// </summary>
-    SetDefault
+    SetDefault,
+
+    /// <summary>
+    /// Indicates that the referenced row cannot be updated or deleted while rows still reference it; the attempt is
+    /// rejected rather than propagated.
+    /// </summary>
+    Restrict
 }

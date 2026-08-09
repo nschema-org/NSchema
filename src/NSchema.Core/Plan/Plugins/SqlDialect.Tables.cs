@@ -87,12 +87,15 @@ public abstract partial class SqlDialect
             $"CONSTRAINT {Quote(key.Name)} FOREIGN KEY ({ColumnList(key.ColumnNames)}) " +
             $"REFERENCES {ForeignKeyTarget(key)} ({ColumnList(key.ReferencedColumnNames)})");
 
-        if (key.OnDelete != ReferentialAction.NoAction)
+        // An action the engine cannot spell is omitted, which leaves the engine's own default — NO ACTION, the
+        // nearest thing to RESTRICT that every engine has. ReferentialActionPolicy is what says so out loud; if this
+        // were silent the foreign key would simply have different semantics than the one that was asked for.
+        if (Honours(key.OnDelete))
         {
             sql.Append($" ON DELETE {ReferentialActionSql(key.OnDelete)}");
         }
 
-        if (key.OnUpdate != ReferentialAction.NoAction)
+        if (Honours(key.OnUpdate))
         {
             sql.Append($" ON UPDATE {ReferentialActionSql(key.OnUpdate)}");
         }
@@ -128,11 +131,19 @@ public abstract partial class SqlDialect
     protected virtual Result<IReadOnlyList<SqlStatement>> SetTableComment(SetTableComment action) =>
         Unsupported(action);
 
+    private bool Honours(ReferentialAction action) => action switch
+    {
+        ReferentialAction.NoAction => false,
+        ReferentialAction.Restrict => SupportsRestrict,
+        _ => true,
+    };
+
     private static string ReferentialActionSql(ReferentialAction action) => action switch
     {
         ReferentialAction.Cascade => "CASCADE",
         ReferentialAction.SetNull => "SET NULL",
         ReferentialAction.SetDefault => "SET DEFAULT",
+        ReferentialAction.Restrict => "RESTRICT",
         _ => "NO ACTION",
     };
 

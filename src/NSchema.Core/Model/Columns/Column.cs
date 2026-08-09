@@ -37,9 +37,25 @@ public sealed class Column : ObjectMember, IEquatable<Column>
     public IdentityOptions? IdentityOptions { get; set; }
 
     /// <summary>
-    /// An optional expression for a stored generated column; mutually exclusive with a default.
+    /// An optional expression for a generated column; mutually exclusive with a default.
     /// </summary>
     public SqlText? GeneratedExpression { get; set; }
+
+    /// <summary>
+    /// Whether a generated column's value is written to storage rather than computed on read.
+    /// Ignored when <see cref="GeneratedExpression"/> is null.
+    /// </summary>
+    public bool IsStored { get; set; }
+
+    /// <summary>
+    /// Whether this column is the table's row identifier for merge replication.
+    /// </summary>
+    public bool IsRowGuid { get; set; }
+
+    /// <summary>
+    /// The name of the constraint carrying this column's default, where the engine names one.
+    /// </summary>
+    public SqlIdentifier? DefaultConstraintName { get; set; }
 
     /// <summary>
     /// The objects the column's expressions call.
@@ -75,6 +91,9 @@ public sealed class Column : ObjectMember, IEquatable<Column>
         DefaultExpression = DefaultExpression,
         IdentityOptions = IdentityOptions,
         GeneratedExpression = GeneratedExpression,
+        IsStored = IsStored,
+        IsRowGuid = IsRowGuid,
+        DefaultConstraintName = DefaultConstraintName,
         Comment = Comment,
     };
 
@@ -89,14 +108,18 @@ public sealed class Column : ObjectMember, IEquatable<Column>
         && IsIdentity == other.IsIdentity
         && Equals(DefaultExpression, other.DefaultExpression)
         && Equals(IdentityOptions, other.IdentityOptions)
-        && Equals(GeneratedExpression, other.GeneratedExpression);
+        && Equals(GeneratedExpression, other.GeneratedExpression)
+        && IsStored == other.IsStored
+        && IsRowGuid == other.IsRowGuid
+        && DefaultConstraintName == other.DefaultConstraintName;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Column other && Equals(other);
 
     /// <inheritdoc/>
     public override int GetHashCode() =>
-        HashCode.Combine(Name, Type, IsNullable, IsIdentity, DefaultExpression, IdentityOptions, GeneratedExpression);
+        HashCode.Combine(Name, Type, IsNullable, IsIdentity, DefaultExpression, IdentityOptions, GeneratedExpression,
+            HashCode.Combine(IsStored, IsRowGuid, DefaultConstraintName));
 
     private string DebuggerDisplay =>
         $"{Name} {Type}" +

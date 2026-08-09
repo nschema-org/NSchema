@@ -43,6 +43,8 @@
                 },
                 IsNullable: false,
                 IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
                 Address: {
                   Schema: {
                     Value: app
@@ -84,6 +86,8 @@
                 },
                 IsNullable: false,
                 IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
                 Address: {
                   Schema: {
                     Value: app
@@ -137,6 +141,8 @@
                 },
                 IsNullable: false,
                 IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
                 Address: {
                   Schema: {
                     Value: app
@@ -197,6 +203,8 @@
                 GeneratedExpression: {
                   Value: upper(email_address)
                 },
+                IsStored: false,
+                IsRowGuid: false,
                 Address: {
                   Schema: {
                     Value: app

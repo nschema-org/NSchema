@@ -75,7 +75,7 @@ public static class TestData
                             new Column { Name = "balance", Type = SqlType.Decimal(18, 2), IsNullable = true, DefaultExpression = "0" },
                             new Column { Name = "code", Type = SqlType.Char(8) },
                             new Column { Name = "metadata", Type = SqlType.Custom("jsonb"), IsNullable = true },
-                            new Column { Name = "name_upper", Type = SqlType.Text, IsNullable = true, GeneratedExpression = "upper(name)" },
+                            new Column { Name = "name_upper", Type = SqlType.Text, IsNullable = true, GeneratedExpression = "upper(name)", IsStored = true },
                         ],
                         ForeignKeys = [
                             new ForeignKey { Name = "users_org_fk", ColumnNames = ["org_id"], References = new ObjectAddress("app", "orgs"), ReferencedColumnNames = ["id"],

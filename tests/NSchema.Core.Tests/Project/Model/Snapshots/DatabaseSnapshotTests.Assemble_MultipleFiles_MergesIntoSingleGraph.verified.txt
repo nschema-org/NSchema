@@ -52,6 +52,8 @@
               },
               IsNullable: true,
               IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
               Address: {
                 Schema: {
                   Value: app
@@ -88,6 +90,8 @@
               },
               IsNullable: true,
               IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
               Address: {
                 Schema: {
                   Value: app
@@ -141,6 +145,8 @@
               },
               IsNullable: true,
               IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
               Address: {
                 Schema: {
                   Value: app
@@ -178,6 +184,8 @@
               },
               IsNullable: true,
               IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
               Address: {
                 Schema: {
                   Value: app
@@ -293,6 +301,8 @@
               },
               IsNullable: true,
               IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
               Address: {
                 Schema: {
                   Value: reporting

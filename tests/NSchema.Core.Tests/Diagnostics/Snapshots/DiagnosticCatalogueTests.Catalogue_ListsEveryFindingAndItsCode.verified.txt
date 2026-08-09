@@ -43,6 +43,7 @@ warning  advisory    cannot-be-lowered                          EnforcementDiagn
 error    structural  engine-requirement-unsatisfied             EngineDiagnostics.EngineRequirementUnsatisfied
 error    structural  host-requirement-unsatisfied               EngineDiagnostics.HostRequirementUnsatisfied
 error    structural  requires-recreate                          EnumValueRemovalDiagnostics.RequiresRecreate
+warning  advisory    virtual-generated-column-not-supported     GeneratedColumnStorageDiagnostics.VirtualNotSupported
 error    structural  does-not-reference-core                    HandshakeDiagnostics.DoesNotReferenceCore
 error    structural  engine-older-than-plugin                   HandshakeDiagnostics.EngineOlderThanPlugin
 error    structural  major-mismatch                             HandshakeDiagnostics.MajorMismatch
@@ -50,6 +51,8 @@ warning  advisory    running-unlocked                           LockDiagnostics.
 error    structural  state-locked                               LockDiagnostics.StateLocked
 error    structural  lock-unreachable                           LockDiagnostics.Unreachable
 error    structural  unwritable                                 LockFileDiagnostics.Unwritable
+warning  advisory    named-default-not-supported                NamedDefaultDiagnostics.NamedDefaultNotSupported
+warning  advisory    not-for-replication-not-supported          NotForReplicationDiagnostics.NotForReplicationNotSupported
 warning  advisory    formatting                                 NsqlDiagnostics.Formatting
 error    structural  syntax                                     NsqlDiagnostics.Syntax
 error    structural  unreadable-source-file                     NsqlDiagnostics.UnreadableFile
@@ -79,6 +82,8 @@ error    structural  rename-source-still-declared               ProjectDiagnosti
 error    structural  rename-target-not-declared                 ProjectDiagnostics.RenameTargetNotDeclared
 error    structural  self-rename                                ProjectDiagnostics.SelfRename
 error    structural  index-on-plain-view                        ProjectDiagnostics.UnknownIndexRelation
+warning  advisory    restrict-not-supported                     ReferentialActionDiagnostics.RestrictNotSupported
+warning  advisory    row-guid-not-supported                     RowGuidDiagnostics.RowGuidNotSupported
 warning  advisory    missing-primary-key                        SchemaLintDiagnostics.MissingPrimaryKey
 warning  advisory    nullable-primary-key-column                SchemaLintDiagnostics.NullablePrimaryKeyColumn
 warning  advisory    repeated-column                            SchemaLintDiagnostics.RepeatedColumn
