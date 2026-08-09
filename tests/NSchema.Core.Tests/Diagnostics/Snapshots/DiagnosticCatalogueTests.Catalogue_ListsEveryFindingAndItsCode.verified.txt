@@ -58,8 +58,10 @@ error    structural  missing-dialect                            PlanDiagnostics.
 error    structural  it                                         PlanDiagnostics.UndeclaredSchemaMissing
 error    structural  invalid-payload                            PlanFileDiagnostics.InvalidPayload
 error    structural  unreadable-plan-file                       PlanFileDiagnostics.UnreadableFile
+error    structural  conflicting-plugin-origin                  PluginDiagnostics.ConflictingPluginOrigin
 error    structural  duplicate-plugin-label                     PluginDiagnostics.DuplicatePluginLabel
 error    structural  duplicate-plugin-source                    PluginDiagnostics.DuplicatePluginSource
+error    structural  missing-plugin-origin                      PluginDiagnostics.MissingPluginOrigin
 error    structural  plugin-not-locked                          PluginDiagnostics.PluginNotLocked
 error    structural  unknown-plugin-label                       PluginDiagnostics.UnknownPluginLabel
 error    structural  invalid-setting                            PluginSettingsDiagnostics.InvalidSetting

@@ -56,7 +56,7 @@ public sealed class LockFileTests
     [Fact]
     public void Resolve_ExactPin_ResolvesToItself()
         // An exact pin is its own resolution — it needs no lock entry.
-        => new LockFile([]).Resolve(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") }))
+        => new LockFile([]).Resolve(new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") })
             .Value.ShouldBe(SemanticVersion.Parse("5.0.1"));
 
     [Fact]
@@ -64,12 +64,12 @@ public sealed class LockFileTests
     {
         var lockFile = new LockFile([new LockedPlugin { Source = new PackageId("NSchema.Postgres"), Version = SemanticVersion.Parse("5.3.1") }]);
 
-        lockFile.Resolve(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("[5.0,6.0)") }))
+        lockFile.Resolve(new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("[5.0,6.0)") })
             .Value.ShouldBe(SemanticVersion.Parse("5.3.1"));
     }
 
     [Fact]
     public void Resolve_UnlockedRange_IsAnError()
-        => new LockFile([]).Resolve(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("[5.0,6.0)") }))
+        => new LockFile([]).Resolve(new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("[5.0,6.0)") })
             .IsFailure.ShouldBeTrue();
 }

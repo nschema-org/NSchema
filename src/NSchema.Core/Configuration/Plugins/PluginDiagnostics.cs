@@ -34,4 +34,20 @@ internal static class PluginDiagnostics
     /// </summary>
     public static Diagnostic PluginNotLocked(PackageId source, VersionRange range) => Diagnostic.Error(Source, "plugin-not-locked",
         $"Plugin '{source}' is declared with version range '{range}' but is not locked.");
+
+    /// <summary>
+    /// A <c>PLUGIN</c> statement declaring both a package and a path.
+    /// </summary>
+    public static NsqlDiagnostic ConflictingPluginOrigin(PluginLabel label, SourcePosition position) =>
+        new(Source, "conflicting-plugin-origin",
+            $"Plugin '{label}' mixes 'path' with the package attributes 'source' and 'version'. A plugin comes from a package or from a built assembly, not both.",
+            DiagnosticSeverity.Error, position);
+
+    /// <summary>
+    /// A <c>PLUGIN</c> statement declaring neither a package nor a path.
+    /// </summary>
+    public static NsqlDiagnostic MissingPluginOrigin(PluginLabel label, SourcePosition position) =>
+        new(Source, "missing-plugin-origin",
+            $"Plugin '{label}' declares no origin; give it 'source' and 'version' to resolve a package, or 'path' to load a built assembly.",
+            DiagnosticSeverity.Error, position);
 }

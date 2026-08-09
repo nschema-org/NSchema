@@ -40,7 +40,7 @@ public sealed class ConfigurationAssemblerTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Plugins.ShouldHaveSingleItem().ShouldBe(new PluginDeclaration("pg", new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") }));
+        result.Value.Plugins.ShouldHaveSingleItem().ShouldBe(new PluginDeclaration("pg", new PackageOrigin(new PackageReference { Source = "NSchema.Postgres", Version = VersionRange.Parse("5.0.1") })));
         result.Value.Engine.ShouldBe(new EngineConfiguration { Version = VersionRange.Parse("[5.0,6.0)") });
         result.Value.Database!.Value("host").ShouldBe("localhost");
         result.Value.State!.Label.ShouldBe("file");
@@ -98,7 +98,7 @@ public sealed class ConfigurationAssemblerTests
         var document = Doc("PLUGIN pg ( source = 'NSchema.Postgres', version = '[5.0,6.0)' );");
 
         // Assert
-        ConfigurationAssembler.Assemble([document]).Value!.Plugins.Single().Package.Version.ShouldBe(VersionRange.Parse("[5.0,6.0)"));
+        ConfigurationAssembler.Assemble([document]).Value!.Plugins.Single().Package!.Version.ShouldBe(VersionRange.Parse("[5.0,6.0)"));
     }
 
     [Fact]
@@ -197,16 +197,17 @@ public sealed class ConfigurationAssemblerTests
     }
 
     [Fact]
-    public void Assemble_MissingPluginAttributes_ReportsEach()
+    public void Assemble_MissingPluginAttributes_ReportsTheMissingOrigin()
     {
+        // A plugin declaring nothing used to report 'source' and 'version' as two missing required fields. It now
+        // reports one missing origin instead, because with 'path' as the alternative neither field is required on
+        // its own — and naming both as required would send someone towards the wrong one.
+
         // Act
-        // source and version are both required.
         var errors = ConfigurationAssembler.Assemble([Doc("PLUGIN pg ();")]).Errors.ToList();
 
         // Assert
-        errors.Count.ShouldBe(2);
-        errors.ShouldContain(e => e.Message.Contains("Source"));
-        errors.ShouldContain(e => e.Message.Contains("Version"));
+        errors.ShouldHaveSingleItem().Code.ShouldBe("missing-plugin-origin");
     }
 
     [Fact]
@@ -218,7 +219,7 @@ public sealed class ConfigurationAssemblerTests
     public void Assemble_IntegerVersion_IsAcceptedAsExact()
         // A non-string value stringifies, so an unquoted 5 is the exact version 5.0.0.
         => ConfigurationAssembler.Assemble([Doc("PLUGIN pg ( source = 'NSchema.Postgres', version = 5 );")])
-            .Value!.Plugins.Single().Package.Version.ShouldBe(VersionRange.Parse("5"));
+            .Value!.Plugins.Single().Package!.Version.ShouldBe(VersionRange.Parse("5"));
 
     [Fact]
     public void Assemble_InvalidVersionRange_IsAnError()

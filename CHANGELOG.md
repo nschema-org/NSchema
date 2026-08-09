@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.8.0] - 2026-08-09
+
+### Added
+
+- **A plugin may be declared by path.** `PLUGIN db ( path = './artifacts/NSchema.Postgres.dll' )` names a built assembly instead of a package to resolve, so a provider can be exercised straight from `dotnet build` output with no packing, feed or restore.
+
+### Changed
+
+- **`LockFile.Resolve` takes a `PackageReference` rather than a `PluginDeclaration`.** A plugin declared by path has no version to resolve and no lockfile entry, so it is now unable to reach this rather than guarded inside it.
+- **A `PLUGIN` statement with no attributes reports one finding, not two.** It used to report `source` and `version` as separately missing; with `path` as an alternative neither is required on its own, so it reports `missing-plugin-origin` instead.
+
 ## [5.7.0] - 2026-08-09
 
 ### Added

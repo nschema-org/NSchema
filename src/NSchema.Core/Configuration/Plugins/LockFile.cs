@@ -29,18 +29,18 @@ public sealed record LockFile(IReadOnlyList<LockedPlugin> Plugins)
     ]);
 
     /// <summary>
-    /// Resolves <paramref name="declaration"/> to the concrete version to use: an exact pin is its own resolution;
+    /// Resolves <paramref name="package"/> to the concrete version to use: an exact pin is its own resolution;
     /// a range resolves to its locked pin, and is an error when the lockfile does not carry one.
     /// </summary>
-    public Result<SemanticVersion> Resolve(PluginDeclaration declaration)
+    public Result<SemanticVersion> Resolve(PackageReference package)
     {
-        if (declaration.Package.Version.ExactVersion is { } exact)
+        if (package.Version.ExactVersion is { } exact)
         {
             return Result.Success(exact);
         }
 
-        return Find(declaration.Package.Source)?.Version is { } locked
+        return Find(package.Source)?.Version is { } locked
             ? Result.Success(locked)
-            : PluginDiagnostics.PluginNotLocked(declaration.Package.Source, declaration.Package.Version);
+            : PluginDiagnostics.PluginNotLocked(package.Source, package.Version);
     }
 }

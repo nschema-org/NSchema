@@ -49,19 +49,27 @@ internal static class ConfigurationAssembler
         foreach (var located in statements)
         {
             // The label is structural (the statement's identifier); only the attributes are bound.
-            if (located.Bind<PackageReference>(diagnostics) is not { } package || located.Statement.Label is not { } label)
+            if (located.Bind<PluginOriginSettings>(diagnostics) is not { } settings || located.Statement.Label is not { } label)
             {
                 continue;
             }
 
-            var declaration = new PluginDeclaration(label.Value, package);
+            if (Origin(settings, label.Value, located, diagnostics) is not { } origin)
+            {
+                continue;
+            }
+
+            var declaration = new PluginDeclaration(label.Value, origin);
             if (plugins.Any(p => p.Label == declaration.Label))
             {
                 diagnostics.Add(located.Stamp(PluginDiagnostics.DuplicatePluginLabel(declaration.Label, located.Statement.Position)));
             }
-            else if (plugins.Any(p => p.Package.Source == declaration.Package.Source))
+
+            // Declaring one package twice is a mistake: it is declared once and referenced by label. Declaring one
+            // path twice is not the same thing — a path names bits rather than an identity, and nothing keys on it.
+            else if (declaration.Package is { } package && plugins.Any(p => p.Package?.Source == package.Source))
             {
-                diagnostics.Add(located.Stamp(PluginDiagnostics.DuplicatePluginSource(declaration.Package.Source, located.Statement.Position)));
+                diagnostics.Add(located.Stamp(PluginDiagnostics.DuplicatePluginSource(package.Source, located.Statement.Position)));
             }
             else
             {
@@ -70,6 +78,39 @@ internal static class ConfigurationAssembler
         }
 
         return plugins;
+    }
+
+    // Which origin the author reached for. Binding cannot decide this, because what is required depends on the
+    // answer, so the combination is judged here where a diagnostic can name it.
+    private static PluginOrigin? Origin(
+        PluginOriginSettings settings,
+        PluginLabel label,
+        Located located,
+        DiagnosticCollection<NsqlDiagnostic> diagnostics
+    )
+    {
+        var position = located.Statement.Position;
+
+        if (settings.Path is { Length: > 0 } path)
+        {
+            // Rejected rather than ignored: a package attribute beside a path reads as if it pins something, and
+            // it pins nothing. Which attribute it was does not change the answer, so neither does the diagnostic.
+            if (settings.Source is not null || settings.Version is not null)
+            {
+                diagnostics.Add(located.Stamp(PluginDiagnostics.ConflictingPluginOrigin(label, position)));
+                return null;
+            }
+
+            return new PathOrigin(path);
+        }
+
+        if (settings.Source is not { } source || settings.Version is not { } version)
+        {
+            diagnostics.Add(located.Stamp(PluginDiagnostics.MissingPluginOrigin(label, position)));
+            return null;
+        }
+
+        return new PackageOrigin(new PackageReference { Source = source, Version = version });
     }
 
     // A provider reference (DATABASE/STATE): at most one, labelled, and resolving to a declared or built-in plugin.
