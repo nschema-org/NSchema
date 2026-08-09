@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [Unreleased]
+
+### Fixed
+
+- **`import` reports its diagnostics whether or not it succeeded.** They were shown only on failure, so a successful import had no way to tell you what it could not carry into the project.
+
 ## [5.10.0] - 2026-08-09
 
 ### Added
