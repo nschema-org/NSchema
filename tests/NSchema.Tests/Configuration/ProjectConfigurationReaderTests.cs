@@ -44,7 +44,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
         var plugin = config.Database!;
         plugin.PackageId.ShouldBe("NSchema.Postgres");
         plugin.Label.ShouldBe("postgres");
-        plugin.Version.ToString().ShouldBe("5.0.0");
+        plugin.Version!.ToString().ShouldBe("5.0.0");
         // The plugin's own attributes ride the statement's config for the plugin to interpret.
         plugin.Settings.Value("connection_string")!.ShouldBe("host=db");
     }
@@ -83,7 +83,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
             DATABASE postgres ( connection_string = 'x' );
             """);
 
-        config.Database!.Version.ToString().ShouldBe("5.0.0-alpha.2");
+        config.Database!.Version!.ToString().ShouldBe("5.0.0-alpha.2");
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
             """);
 
         // The range pins to the locked version; that pin is both the display/cache key and (as an interval) the restore.
-        config.Database!.Version.ToString().ShouldBe("5.3.1");
+        config.Database!.Version!.ToString().ShouldBe("5.3.1");
     }
 
     [Fact]
@@ -272,7 +272,7 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
         var config = await Refresh(existing);
 
         // Assert — the point of a lockfile: a range resolves to the recorded pin rather than drifting upward.
-        config.Database!.Version.ToString().ShouldBe("5.3.1");
+        config.Database!.Version!.ToString().ShouldBe("5.3.1");
     }
 
     [Fact]
@@ -291,6 +291,6 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
 
         // Assert — a lock records how a declaration resolved, so editing the declaration outranks it. Keeping the
         // stale pin would make the edit silently do nothing and go on restoring a version nothing asks for.
-        config.Database!.Version.ToString().ShouldBe("5.0.0-beta.4");
+        config.Database!.Version!.ToString().ShouldBe("5.0.0-beta.4");
     }
 }

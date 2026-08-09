@@ -26,9 +26,13 @@ internal sealed class ProjectConfiguration
     /// <summary>
     /// The resolved version of every referenced plugin, to record in the lockfile.
     /// </summary>
+    /// <remarks>
+    /// Plugins loaded from paths are left out on purpose.
+    /// </remarks>
     public IReadOnlyList<LockedPlugin> ResolvedPlugins() =>
         ReferencedPlugins()
-            .Select(reference => new LockedPlugin { Source = reference.PackageId, Version = reference.Version })
+            .Where(reference => reference.Version is not null)
+            .Select(reference => new LockedPlugin { Source = reference.PackageId, Version = reference.Version! })
             .ToList();
 
     private IEnumerable<PluginReference> ReferencedPlugins()

@@ -160,7 +160,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         // Assert
         config.Database.ShouldNotBeNull();
         config.Database!.Label.ShouldBe("postgres");
-        config.Database.Version.ToString().ShouldBe("5.0.0-test");
+        config.Database.Version!.ToString().ShouldBe("5.0.0-test");
         config.State!.File.ShouldNotBeNull();
         config.State.File!.Path.ShouldBe("./nschema.state.json");
     }

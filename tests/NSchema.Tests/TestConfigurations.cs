@@ -17,5 +17,5 @@ internal static class TestConfigurations
         new() { Plugin = Reference("s3", "NSchema.Aws") };
 
     private static PluginReference Reference(string label, string packageId) =>
-        new(new PackageId(packageId), SemanticVersion.Parse("5.0.0"), new PluginLabel(label), new PluginSettings(new PluginLabel(label), new Dictionary<string, string?>()));
+        new(new PackageId(packageId), new ResolvedPackage(SemanticVersion.Parse("5.0.0")), new PluginLabel(label), new PluginSettings(new PluginLabel(label), new Dictionary<string, string?>()));
 }

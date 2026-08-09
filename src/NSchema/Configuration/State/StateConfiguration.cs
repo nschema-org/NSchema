@@ -25,10 +25,11 @@ internal sealed class StateConfiguration
     /// </summary>
     /// <param name="config">The statement's translated settings.</param>
     /// <param name="plugins">The project's <c>PLUGIN</c> declarations.</param>
+    /// <param name="root">The project root, which a declared relative plugin path is resolved against.</param>
     /// <param name="resolve">Resolves a declared range to a concrete version.</param>
     /// <returns>The resolved store, or a failure carrying the reason the statement could not be mapped.</returns>
-    public static Result<StateConfiguration> Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve) =>
+    public static Result<StateConfiguration> Resolve(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, string root, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve) =>
         config.Label == _fileLabel
             ? FileStateConfiguration.FromSettings(config).Map(file => new StateConfiguration { File = file })
-            : PluginReference.Resolve(config, plugins, resolve).Map(plugin => new StateConfiguration { Plugin = plugin });
+            : PluginReference.Resolve(config, plugins, root, resolve).Map(plugin => new StateConfiguration { Plugin = plugin });
 }

@@ -21,7 +21,7 @@ public sealed class PluginReferenceTests
 
         // Assert
         reference.PackageId.ShouldBe("NSchema.Postgres");
-        reference.Version.ToString().ShouldBe("5.0.0");
+        reference.Version!.ToString().ShouldBe("5.0.0");
         reference.Label.ShouldBe("postgres");
         reference.Settings.Value("connection_string")!.ShouldBe("Host=localhost");
     }
@@ -37,7 +37,7 @@ public sealed class PluginReferenceTests
         var reference = Resolved(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 0, 1, 0, null)));
 
         // Assert
-        reference.Version.ToString().ShouldBe("5.0.1");
+        reference.Version!.ToString().ShouldBe("5.0.1");
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public sealed class PluginReferenceTests
         var reference = Resolved(Settings("postgres"), plugins, Resolver(new SemanticVersion(5, 3, 1, 0, null)));
 
         // Assert
-        reference.Version.ToString().ShouldBe("5.3.1");
+        reference.Version!.ToString().ShouldBe("5.3.1");
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class PluginReferenceTests
     public void Resolve_UndeclaredLabel_FailsAndSuggestsPluginStatement()
     {
         // Act
-        var result = PluginReference.Resolve(Settings("oracle"), [], Resolver());
+        var result = PluginReference.Resolve(Settings("oracle"), [], root: ".", Resolver());
 
         // Assert
         result.IsFailure.ShouldBeTrue();
@@ -79,11 +79,11 @@ public sealed class PluginReferenceTests
     }
 
     // Every case here resolves successfully; the failure case asserts on the diagnostics directly.
-    private static PluginReference Resolved(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve) =>
-        PluginReference.Resolve(config, plugins, resolve).Require();
+    private static PluginReference Resolved(PluginSettings config, IReadOnlyList<PluginDeclaration> plugins, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve, string root = ".") =>
+        PluginReference.Resolve(config, plugins, root, resolve).Require();
 
     private static PluginDeclaration Declaration(string label, string packageId, string version) =>
-        new(new PluginLabel(label), new PackageReference { Source = new PackageId(packageId), Version = VersionRange.Parse(version) });
+        new(new PluginLabel(label), new PackageOrigin(new PackageReference { Source = new PackageId(packageId), Version = VersionRange.Parse(version) }));
 
     private static PluginSettings Settings(string label, params (string Key, string? Value)[] attributes)
         => new(new PluginLabel(label), attributes.ToDictionary(a => a.Key, a => a.Value, StringComparer.OrdinalIgnoreCase));

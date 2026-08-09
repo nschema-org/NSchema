@@ -20,7 +20,7 @@ public sealed class PluginInventoryTests : IDisposable
     }
 
     private static PluginReference Reference(string packageId, string version, string label) =>
-        new(new PackageId(packageId), SemanticVersion.Parse(version), new PluginLabel(label), new PluginSettings(new PluginLabel(label), new Dictionary<string, string?>()));
+        new(new PackageId(packageId), new ResolvedPackage(SemanticVersion.Parse(version)), new PluginLabel(label), new PluginSettings(new PluginLabel(label), new Dictionary<string, string?>()));
 
     private void Seed(string packageId, string version)
     {

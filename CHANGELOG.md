@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.10.0] - 2026-08-09
+
+### Added
+
+- **Plugins can be loaded from a path.** A `PLUGIN` statement declaring `path` loads the assembly directly, skipping the package restore and the shared cache entirely.
+
 ## [5.9.0] - 2026-08-09
 
 ### Added

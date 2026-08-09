@@ -32,13 +32,20 @@ internal static class PluginInventory
 
     private static ProjectPlugin Describe(string role, PluginReference reference, PluginCache cache)
     {
-        var restored = cache.Contains(reference.PackageId, reference.Version);
+        // A path plugin is never in the cache; reporting it as un-restored would send someone off to restore
+        // something that is already sitting where they built it.
+        if (reference.Origin is ResolvedPath path)
+        {
+            return new ProjectPlugin(role, reference.Label, reference.PackageId, reference.Version, true, path.AssemblyPath);
+        }
+
+        var restored = cache.Contains(reference.PackageId, reference.Version!);
         return new ProjectPlugin(
             role,
             reference.Label,
             reference.PackageId,
             reference.Version,
             restored,
-            restored ? cache.VersionDirectory(reference.PackageId, reference.Version) : null);
+            restored ? cache.VersionDirectory(reference.PackageId, reference.Version!) : null);
     }
 }

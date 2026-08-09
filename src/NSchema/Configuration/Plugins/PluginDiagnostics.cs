@@ -23,16 +23,20 @@ internal static class PluginDiagnostics
     /// <summary>
     /// A plugin whose types will not bind against the host's NSchema.Core.
     /// </summary>
-    public static Diagnostic IncompatiblePlugin(PackageId package, SemanticVersion version, string reason) =>
+    public static Diagnostic IncompatiblePlugin(PackageId package, SemanticVersion? version, string reason) =>
         Diagnostic.Error(Source, "incompatible-plugin",
-            $"The plugin '{package}' {version} was built for a different version of NSchema and cannot be loaded. "
+            $"The plugin {Describe(package, version):text} was built for a different version of NSchema and cannot be loaded.\n"
             + $"Update it with 'nschema plugin update', or set a compatible version in its PLUGIN statement. ({reason:text})");
 
     /// <summary>
     /// A plugin that failed to load for any other reason.
     /// </summary>
-    public static Diagnostic LoadFailed(PackageId package, SemanticVersion version, string reason) =>
-        Diagnostic.Error(Source, "plugin-load-failed", $"The plugin '{package}' {version} could not be loaded: {reason}");
+    public static Diagnostic LoadFailed(PackageId package, SemanticVersion? version, string reason) =>
+        Diagnostic.Error(Source, "plugin-load-failed", $"The plugin {Describe(package, version):text} could not be loaded: {reason}");
+
+    // A package names itself with its version; a path-loaded plugin has none, and saying so beats printing a blank.
+    private static string Describe(PackageId package, SemanticVersion? version) =>
+        version is null ? $"'{package}' (loaded from a path)" : $"'{package}' {version}";
 
     /// <summary>
     /// A package the feeds offer no version of that this host can load.
@@ -76,6 +80,32 @@ internal static class PluginDiagnostics
             $"'{label}' does not reference a declared plugin. Add: PLUGIN {label} ( source = '...', version = '...' );");
 
     /// <summary>
+    /// A declared plugin path whose file name is not a usable assembly name.
+    /// </summary>
+    public static Diagnostic UnusablePluginPath(PluginLabel label, string path) =>
+        Diagnostic.Error(Source, "unusable-plugin-path",
+            $"Plugin '{label}' points at {path:text}, which is invalid. The path must name the plugin assembly directly.");
+
+    /// <summary>
+    /// A declared plugin path with nothing at it.
+    /// </summary>
+    public static Diagnostic PluginPathNotFound(PluginLabel label, string path) =>
+        Diagnostic.Error(Source, "plugin-path-not-found",
+            $"Plugin '{label}' points at {path:text}, which does not exist. Paths are resolved against the project root.");
+
+    /// <summary>
+    /// A plugin assembly with no dependency manifest beside it.
+    /// </summary>
+    /// <remarks>
+    /// Worth its own diagnostic because the runtime's own account of this is unhelpful — a dependency resolution
+    /// failure naming a component that was never there. The cause is nearly always a plugin built without its
+    /// dependency closure, which leaves the assembly on disk but none of what it needs beside it.
+    /// </remarks>
+    public static Diagnostic PluginPathNotSelfContained(PluginLabel label, string path) =>
+        Diagnostic.Error(Source, "plugin-path-not-self-contained",
+            $"Plugin '{label}' at {path:text} has no .deps.json beside it, so its dependencies cannot be resolved. Build the plugin with <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> so its full dependency closure is written alongside it.");
+
+    /// <summary>
     /// A declared plugin whose version range the lockfile does not pin.
     /// </summary>
     /// <remarks>
@@ -113,4 +143,16 @@ internal static class PluginDiagnostics
     public static Diagnostic DotnetFailed(int exitCode, string output) =>
         Diagnostic.Error(Source, "dotnet-failed",
             $"An NSchema plugin operation failed (dotnet exit code {exitCode}):{Environment.NewLine:text}{output:text}");
+
+    /// <summary>
+    /// A plugin loaded from a path rather than a pinned package. Raised on every run that loads one.
+    /// </summary>
+    /// <remarks>
+    /// Information rather than a warning: it reports how the run was configured, not a fault in the project. Someone
+    /// who wrote a path meant to, and until findings can be configured a warning they cannot turn off would be noise
+    /// on every command for as long as they were working. It still has to be said, because whoever reads a log needs
+    /// to tell a run against a build from a run against a release — revisit the severity once it can be silenced.
+    /// </remarks>
+    public static Diagnostic PluginLoadedFromPath(PluginLabel label, string path) => Diagnostic.Info(Source, "plugin-from-path",
+        $"Plugin '{label}' is loaded from {path:text} rather than a pinned package, so this project is not reproducible from its lockfile.");
 }
