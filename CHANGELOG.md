@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.9.0] - 2026-08-09
+
+### Added
+
+**Clustering and XML indexes.** Added support for clustering, XML indexes and view indexes, all inherited from NSchema.Core 5.7.
+
 ## [5.8.0] - 2026-08-08
 
 ### Changed
