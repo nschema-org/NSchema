@@ -10,6 +10,7 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
+using NSchema.Model.XmlSchemaCollections;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Project.Projection;
@@ -86,6 +87,9 @@ internal sealed class DatabaseAccumulator
 
     public void AddView(SqlIdentifier schema, View view, SourcePosition position) =>
         Add(schema, view, e => e.Views, position);
+
+    public void AddXmlSchemaCollection(SqlIdentifier schema, XmlSchemaCollection collection, SourcePosition position) =>
+        Add(schema, collection, e => e.XmlSchemaCollections, position);
 
     public void AddEnum(SqlIdentifier schema, EnumType enumType, SourcePosition position) =>
         Add(schema, enumType, e => e.Enums, position);
@@ -166,6 +170,7 @@ internal sealed class DatabaseAccumulator
                 Tables = e.Tables,
                 Grants = e.Grants,
                 Views = e.Views,
+                XmlSchemaCollections = e.XmlSchemaCollections,
                 Enums = e.Enums,
                 Sequences = e.Sequences,
                 Routines = e.Routines,
@@ -238,7 +243,7 @@ internal sealed class DatabaseAccumulator
                 continue;
             }
 
-            // A standalone index attaches to a table (the same as an inline index) or a materialized view.
+            // A standalone index attaches to a table (the same as an inline index) or a view.
             if (entry.Tables.FirstOrDefault(t => t.Name == pending.Relation) is { } table)
             {
                 if (table.Indexes.Any(i => i.Name == pending.Index.Name))
@@ -257,12 +262,6 @@ internal sealed class DatabaseAccumulator
                 Report(ProjectDiagnostics.UnknownIndexRelation(pending.Schema, pending.Relation, pending.Position), pending.File);
                 continue;
             }
-            if (!view.IsMaterialized)
-            {
-                Report(ProjectDiagnostics.IndexOnPlainView(pending.Schema, pending.Relation, pending.Position), pending.File);
-                continue;
-            }
-
             if (view.Indexes.Any(i => i.Name == pending.Index.Name))
             {
                 Report(ProjectDiagnostics.IndexAlreadyDeclared(pending.Index.Name, pending.Schema, pending.Relation, pending.Position), pending.File);
@@ -299,6 +298,7 @@ internal sealed class DatabaseAccumulator
         public SchemaObjectCollection<Routine> Routines { get; } = [];
         public SchemaObjectCollection<DomainType> Domains { get; } = [];
         public SchemaObjectCollection<CompositeType> CompositeTypes { get; } = [];
+        public SchemaObjectCollection<XmlSchemaCollection> XmlSchemaCollections { get; } = [];
     }
 
     private readonly record struct PendingGrant(SqlIdentifier Schema, SqlIdentifier Table, TableGrant Grant, SourcePosition Position, string? File);

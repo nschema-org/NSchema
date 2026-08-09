@@ -163,6 +163,18 @@ internal static class SyntaxBuilder
             });
         }
 
+        // Collections precede the tables whose columns are typed by them, so a read encounters each in order.
+        foreach (var collection in schema.XmlSchemaCollections)
+        {
+            statements.Add(new Syn.XmlSchemaCollections.CreateXmlSchemaCollectionStatement(
+                Qualified(schema.Name, collection.Name), collection.Body)
+            {
+                Doc = collection.Comment,
+                DocComment = DocToken(collection.Comment),
+                BodyToken = OpaqueSpan(collection.Body),
+            });
+        }
+
         foreach (var table in schema.Tables)
         {
             AddTable(statements, schema.Name, table);
@@ -192,7 +204,7 @@ internal static class SyntaxBuilder
         }
         if (table.PrimaryKey is { } pk)
         {
-            members.Add(new Syn.Constraints.PrimaryKeyDefinition(Name(pk.Name), ColumnList(pk.ColumnNames)) { Doc = pk.Comment, DocComment = DocToken(pk.Comment) });
+            members.Add(new Syn.Constraints.PrimaryKeyDefinition(Name(pk.Name), ColumnList(pk.ColumnNames), pk.Clustered) { Doc = pk.Comment, DocComment = DocToken(pk.Comment) });
         }
         foreach (var fk in table.ForeignKeys)
         {
@@ -207,7 +219,7 @@ internal static class SyntaxBuilder
         }
         foreach (var unique in table.UniqueConstraints)
         {
-            members.Add(new Syn.Constraints.UniqueDefinition(Name(unique.Name), ColumnList(unique.ColumnNames)) { Doc = unique.Comment, DocComment = DocToken(unique.Comment) });
+            members.Add(new Syn.Constraints.UniqueDefinition(Name(unique.Name), ColumnList(unique.ColumnNames), unique.Clustered) { Doc = unique.Comment, DocComment = DocToken(unique.Comment) });
         }
         foreach (var check in table.CheckConstraints)
         {
@@ -224,11 +236,11 @@ internal static class SyntaxBuilder
                 DocComment = DocToken(exclusion.Comment),
             });
         }
-        foreach (var index in table.Indexes)
+        foreach (var index in table.Indexes.Where(i => i.Xml is null))
         {
             members.Add(new Syn.Indexes.IndexDefinition(Name(index.Name), index.IsUnique, Keys(index.Columns),
                 OptionalName(index.Method),
-                IncludeList(index.Include), index.Predicate)
+                IncludeList(index.Include), index.Predicate, index.Clustered)
             {
                 Doc = index.Comment,
                 DocComment = DocToken(index.Comment),
@@ -240,6 +252,13 @@ internal static class SyntaxBuilder
             Doc = table.Comment,
             DocComment = DocToken(table.Comment),
         });
+
+        // An XML index is standalone: a secondary names the primary it is built over, and a table member has no
+        // way to refer to another index. Emitted after the table, primaries first, so a read sees each in order.
+        foreach (var index in table.Indexes.Where(i => i.Xml is not null).OrderBy(i => i.Xml!.IsPrimary ? 0 : 1))
+        {
+            statements.Add(IndexStatement(schemaName, table.Name, index));
+        }
 
         foreach (var grant in table.Grants)
         {
@@ -258,23 +277,17 @@ internal static class SyntaxBuilder
 
     private static void AddView(List<NsqlStatement> statements, SqlIdentifier schemaName, View view)
     {
-        statements.Add(new Syn.Views.CreateViewStatement(Qualified(schemaName, view.Name), view.Body, view.IsMaterialized)
+        statements.Add(new Syn.Views.CreateViewStatement(Qualified(schemaName, view.Name), view.Body, view.IsMaterialized, view.IsSchemaBound)
         {
             Doc = view.Comment,
             DocComment = DocToken(view.Comment),
             BodyToken = OpaqueSpan(view.Body),
         });
 
-        // A materialized view's indexes are standalone statements emitted after it (a plain view has none).
+        // A view's indexes are standalone statements emitted after it.
         foreach (var index in view.Indexes)
         {
-            statements.Add(new Syn.Indexes.CreateIndexStatement(Name(index.Name), index.IsUnique, Qualified(schemaName, view.Name),
-                Keys(index.Columns), OptionalName(index.Method),
-                IncludeList(index.Include), index.Predicate)
-            {
-                Doc = index.Comment,
-                DocComment = DocToken(index.Comment),
-            });
+            statements.Add(IndexStatement(schemaName, view.Name, index));
         }
     }
 
@@ -387,6 +400,14 @@ internal static class SyntaxBuilder
         // The type carries its qualifier and arguments as components, so read them straight across — no
         // rendering to a string and splitting it back apart.
         var schema = type.Schema is { } qualifier ? Identifier.Synthetic(qualifier.Value) : null;
+
+        // A typed xml's argument names an object, not a number, so it is written as a qualified name.
+        if (type.Xml is { } xml)
+        {
+            return new TypeName(schema, Identifier.Synthetic(type.Name.Value), null,
+                Qualified(xml.Collection.Schema, xml.Collection.Name), xml.IsDocument);
+        }
+
         var arguments = Arguments(type);
         return new TypeName(schema, Identifier.Synthetic(type.Name.Value), arguments);
     }
@@ -416,6 +437,18 @@ internal static class SyntaxBuilder
         // The clause exists only when there are options, so the interior text is always present.
         return clause with { InteriorToken = Token.Span(SequenceOptionsText(clause) ?? "") };
     }
+
+    /// <summary>One standalone <c>CREATE INDEX</c> on <paramref name="relation"/>.</summary>
+    private static Syn.Indexes.CreateIndexStatement IndexStatement(SqlIdentifier schemaName, SqlIdentifier relation, TableIndex index) =>
+        new(Name(index.Name), index.IsUnique, Qualified(schemaName, relation),
+            Keys(index.Columns), OptionalName(index.Method),
+            IncludeList(index.Include), index.Predicate,
+            index.Xml is { } xml ? new Syn.Indexes.XmlIndexClause(xml.Kind, OptionalName(xml.PrimaryIndex)) : null,
+            index.Clustered)
+        {
+            Doc = index.Comment,
+            DocComment = DocToken(index.Comment),
+        };
 
     private static SeparatedSyntaxList<Syn.Indexes.IndexElement> Keys(IReadOnlyList<IndexColumn> columns) =>
         new(columns.Select(c => new Syn.Indexes.IndexElement(OptionalName(c.Column), c.Expression, Sort(c.Sort), Nulls(c.Nulls))).ToList());

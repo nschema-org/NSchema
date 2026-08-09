@@ -9,10 +9,10 @@ using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
-using NSchema.Model.Services;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
+using NSchema.Model.XmlSchemaCollections;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Routines;
 using Syn = NSchema.Project.Nsql.Syntax;
@@ -38,16 +38,22 @@ internal static class DocumentProjector
             case Syn.Tables.CreateTableStatement s:
                 ProjectTable(s, schemas, context);
                 break;
+            case Syn.XmlSchemaCollections.CreateXmlSchemaCollectionStatement s:
+                {
+                    var (schema, name) = Bind(s.Name, context);
+                    schemas.AddXmlSchemaCollection(schema, new XmlSchemaCollection { Name = name, Body = s.Body, Comment = s.Doc }, s.Name.Position);
+                    break;
+                }
             case Syn.Views.CreateViewStatement s:
                 {
                     var (schema, name) = Bind(s.Name, context);
-                    schemas.AddView(schema, new View { Name = name, Body = s.Body, IsMaterialized = s.IsMaterialized, Comment = s.Doc }, s.Name.Position);
+                    schemas.AddView(schema, new View { Name = name, Body = s.Body, IsMaterialized = s.IsMaterialized, IsSchemaBound = s.IsSchemaBound, Comment = s.Doc }, s.Name.Position);
                     break;
                 }
             case Syn.Indexes.CreateIndexStatement s:
                 {
                     var (schema, relation) = Bind(s.On, context);
-                    schemas.AddIndex(schema, relation, ProjectIndex(s.Name, s.IsUnique, s.Columns, s.Method, s.Include, s.Predicate, s.Doc), s.Name.Position);
+                    schemas.AddIndex(schema, relation, ProjectIndex(s.Name, s.IsUnique, s.Columns, s.Method, s.Include, s.Predicate, s.Doc, s.Xml, s.Clustered), s.Name.Position);
                     break;
                 }
             case CreateRoutineStatement s:
@@ -136,7 +142,7 @@ internal static class DocumentProjector
                     });
                     break;
                 case Syn.Constraints.PrimaryKeyDefinition m:
-                    primaryKey = new PrimaryKey { Name = Name(m.Name), ColumnNames = Names(m.Columns), Comment = m.Doc };
+                    primaryKey = new PrimaryKey { Name = Name(m.Name), ColumnNames = Names(m.Columns), Clustered = m.Clustered, Comment = m.Doc };
                     break;
                 case Syn.Constraints.ForeignKeyDefinition m:
                     {
@@ -156,7 +162,7 @@ internal static class DocumentProjector
                         break;
                     }
                 case Syn.Constraints.UniqueDefinition m:
-                    uniqueConstraints.Add(new UniqueConstraint { Name = Name(m.Name), ColumnNames = Names(m.Columns), Comment = m.Doc });
+                    uniqueConstraints.Add(new UniqueConstraint { Name = Name(m.Name), ColumnNames = Names(m.Columns), Clustered = m.Clustered, Comment = m.Doc });
                     break;
                 case Syn.Constraints.CheckDefinition m:
                     checkConstraints.Add(new CheckConstraint { Name = Name(m.Name), Expression = m.Expression, Comment = m.Doc });
@@ -172,7 +178,7 @@ internal static class DocumentProjector
                     });
                     break;
                 case Syn.Indexes.IndexDefinition m:
-                    indexes.Add(ProjectIndex(m.Name, m.IsUnique, m.Columns, m.Method, m.Include, m.Predicate, m.Doc));
+                    indexes.Add(ProjectIndex(m.Name, m.IsUnique, m.Columns, m.Method, m.Include, m.Predicate, m.Doc, xml: null, m.Clustered));
                     break;
                 case Syn.Templates.IncludeMember m:
                     includes.Add((Name(m.TemplateName), columns.Count));
@@ -271,10 +277,22 @@ internal static class DocumentProjector
     }
 
     private static TableIndex ProjectIndex(Syn.Identifier name, bool isUnique, IReadOnlyList<Syn.Indexes.IndexElement> columns,
-        Syn.Identifier? method, IReadOnlyList<Syn.Identifier>? include, SqlText? predicate, string? doc)
+        Syn.Identifier? method, IReadOnlyList<Syn.Identifier>? include, SqlText? predicate, string? doc,
+        Syn.Indexes.XmlIndexClause? xml = null, bool? clustered = null)
     {
         var keys = columns.Select(c => new IndexColumn(OptionalName(c.Column), c.Expression, Map(c.Sort), Map(c.Nulls))).ToList();
-        return new TableIndex { Name = Name(name), Columns = keys, IsUnique = isUnique, Predicate = predicate, Method = method?.Value, Include = Names(include ?? []), Comment = doc };
+        return new TableIndex
+        {
+            Name = Name(name),
+            Columns = keys,
+            IsUnique = isUnique,
+            Predicate = predicate,
+            Method = method?.Value,
+            Clustered = clustered,
+            Include = Names(include ?? []),
+            Xml = xml is null ? null : new XmlIndexDefinition(xml.Kind, OptionalName(xml.PrimaryIndex)),
+            Comment = doc,
+        };
     }
 
     private static Trigger ProjectTrigger(Syn.Triggers.CreateTriggerStatement statement)
@@ -329,6 +347,18 @@ internal static class DocumentProjector
 
     private static SqlType ParseType(Syn.TypeName type)
     {
+        // A typed xml is the base type plus the collection it validates against; the collection is an object
+        // reference, so it binds like one rather than folding into the type's name.
+        if (type.XmlCollection is { } collection)
+        {
+            return SqlType.Custom(type.Name.Value) with
+            {
+                Xml = new XmlTypeBinding(
+                    new ObjectAddress(Name(collection.Schema!), Name(collection.Name), SchemaObjectKind.XmlSchemaCollection),
+                    type.IsDocument),
+            };
+        }
+
         if (type.Schema is { } schema)
         {
             return SqlType.Custom(Name(schema), type.Name.Value);

@@ -597,7 +597,8 @@
           Value: users_name_ix
         },
         IsImplicit: false
-      }
+      },
+      OnView: false
     }
   },
   {
@@ -635,7 +636,8 @@
           Value: orders_total_ix
         },
         IsImplicit: false
-      }
+      },
+      OnView: false
     }
   },
   {
@@ -650,6 +652,7 @@
           Value: SELECT * FROM app.users
         },
         IsMaterialized: false,
+        IsSchemaBound: false,
         Address: {
           Schema: {
             Value: app
@@ -679,6 +682,7 @@
           Value: SELECT * FROM app.active_users
         },
         IsMaterialized: false,
+        IsSchemaBound: false,
         Address: {
           Schema: {
             Value: app

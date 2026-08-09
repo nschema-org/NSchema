@@ -155,6 +155,12 @@ public sealed record SqlType(SqlIdentifier Name)
     public static SqlType Custom(SqlIdentifier schema, string typeName) => new(typeName.Trim()) { Schema = schema };
 
     /// <summary>
+    /// The XML schema collection an <c>xml</c> value is validated against; <see langword="null"/> for an
+    /// untyped one, and for every other type.
+    /// </summary>
+    public XmlTypeBinding? Xml { get; init; }
+
+    /// <summary>
     /// Assesses whether stored values can fail when converted to <paramref name="target"/>.
     /// </summary>
     public TypeConversionRisk ConversionRiskTo(SqlType target)
@@ -188,6 +194,11 @@ public sealed record SqlType(SqlIdentifier Name)
     public override string ToString()
     {
         var qualified = Schema != null ? $"{Schema}.{Name}" : Name.Value;
+
+        if (Xml is { } xml)
+        {
+            return $"{qualified}({(xml.IsDocument ? "DOCUMENT" : "CONTENT")} {xml.Collection})";
+        }
 
         if (Precision is { } precision)
         {

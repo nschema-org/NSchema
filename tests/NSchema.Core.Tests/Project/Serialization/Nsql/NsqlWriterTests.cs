@@ -528,6 +528,46 @@ public sealed class NsqlWriterTests
     }
 
     // -------------------------------------------------------------------------
+    // Schema-bound views
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void Write_SchemaBoundView_EmitsSchemaBindingClause()
+        => NsqlWriter.Write(new Database
+        {
+            Schemas = [new Schema { Name = "app",
+            Views = [new View { Name = "v", Body = "SELECT 1", IsSchemaBound = true }] }],
+        })
+            .ShouldContain("CREATE VIEW app.v WITH SCHEMABINDING AS SELECT 1;");
+
+    [Fact]
+    public void Write_SchemaBoundMaterializedView_EmitsBothClauses()
+        => NsqlWriter.Write(new Database
+        {
+            Schemas = [new Schema { Name = "app",
+            Views = [new View { Name = "v", Body = "SELECT 1", IsSchemaBound = true, IsMaterialized = true }] }],
+        })
+            .ShouldContain("CREATE MATERIALIZED VIEW app.v WITH SCHEMABINDING AS SELECT 1;");
+
+    [Fact]
+    public void Write_SchemaBoundView_RoundTripsThroughParse()
+    {
+        // An indexed view as SQL Server has it: bound, plain, and carrying a unique index.
+        var schema = new Database
+        {
+            Schemas = [new Schema { Name = "app",
+            Views = [new View { Name = "v", Body = "SELECT id FROM app.t", IsSchemaBound = true,
+                Indexes = [new TableIndex { Name = "v_ix", Columns = ["id"], IsUnique = true }] }] }],
+        };
+
+        var view = new TestNsqlParser(NsqlWriter.Write(schema)).Parse().Database
+            .Schemas.ShouldHaveSingleItem().Views.ShouldHaveSingleItem();
+        view.IsSchemaBound.ShouldBeTrue();
+        view.IsMaterialized.ShouldBeFalse();
+        view.Indexes.ShouldHaveSingleItem().Name.ShouldBe("v_ix");
+    }
+
+    // -------------------------------------------------------------------------
     // Enums and sequences
     // -------------------------------------------------------------------------
 

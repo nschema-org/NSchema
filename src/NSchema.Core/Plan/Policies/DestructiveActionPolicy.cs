@@ -7,6 +7,7 @@ using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Sequences;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
+using NSchema.Diff.Domain.XmlSchemaCollections;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Columns;
 using NSchema.Plan.Domain.CompositeTypes;
@@ -19,6 +20,7 @@ using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Sequences;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Domain.XmlSchemaCollections;
 
 namespace NSchema.Plan.Policies;
 
@@ -72,6 +74,7 @@ internal sealed class DestructiveActionPolicy : IPlanPolicy
                     RoutineDiff => nameof(DropRoutine),
                     DomainDiff => nameof(DropDomain),
                     CompositeTypeDiff => nameof(DropCompositeType),
+                    XmlSchemaCollectionDiff => nameof(DropXmlSchemaCollection),
                     _ => throw new ArgumentOutOfRangeException(nameof(diff), $"Unhandled object diff type: {obj.GetType().Name}"),
                 };
             }

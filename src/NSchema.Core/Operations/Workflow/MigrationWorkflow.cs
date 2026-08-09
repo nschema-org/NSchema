@@ -60,22 +60,17 @@ internal sealed class MigrationWorkflow(
         // Coalesce to empty if it's a first-time run.
         var state = read.State ?? DatabaseState.Empty;
 
-        // An unscoped run auto-scopes to a union of the project and the existing state.
-        var scopeInEffect = scope.IsUnscoped
-            ? PlanningScope.To(project.AddressedSchemas.Concat(state.Managed.Schemas))
-            : scope;
-
-        progress.Report(OperationProgress.Step($"Migration will be scoped to: {Describe(scopeInEffect)}"));
+        progress.Report(OperationProgress.Step($"Migration will be scoped to: {Describe(scope)}"));
 
         // The current side is not narrowed here: scope applies to the difference, once computed. Filtering it
         // away first would hide the out-of-scope objects a scoped run may still disturb.
         // TODO: Move progress reporting down into the planner where the scoping is done?
-        progress.Report(OperationProgress.Detail($"Recorded state: {StatusHelpers.Describe(state.Database.ScopedTo(scopeInEffect))}."));
+        progress.Report(OperationProgress.Detail($"Recorded state: {StatusHelpers.Describe(state.Database.ScopedTo(scope))}."));
 
         progress.Report(OperationProgress.Step("Computing migration plan..."));
 
         var current = new CurrentState(state.Database, state.Scripts, state.Managed, state.Declared);
-        var plan = planner.Plan(current, project, scopeInEffect);
+        var plan = planner.Plan(current, project, scope);
 
         diagnostics.AddRange(plan);
         return diagnostics.ToResult(plan.Value);

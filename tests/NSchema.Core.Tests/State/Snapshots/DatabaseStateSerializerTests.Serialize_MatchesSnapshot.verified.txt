@@ -9,6 +9,7 @@
               columnNames: [
                 id
               ],
+              clustered: null,
               name: users_pkey,
               comment: surrogate key
             },
@@ -19,7 +20,8 @@
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 },
                 isNullable: false,
                 isIdentity: true,
@@ -39,7 +41,8 @@
                   schema: null,
                   length: 255,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 },
                 isNullable: false,
                 isIdentity: false,
@@ -55,7 +58,8 @@
                   schema: null,
                   length: null,
                   precision: 18,
-                  scale: 2
+                  scale: 2,
+                  xml: null
                 },
                 isNullable: true,
                 isIdentity: false,
@@ -71,7 +75,8 @@
                   schema: null,
                   length: 8,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 },
                 isNullable: false,
                 isIdentity: false,
@@ -87,7 +92,8 @@
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 },
                 isNullable: true,
                 isIdentity: false,
@@ -103,7 +109,8 @@
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 },
                 isNullable: true,
                 isIdentity: false,
@@ -137,6 +144,7 @@
                 columnNames: [
                   code
                 ],
+                clustered: null,
                 name: users_code_uq,
                 comment: external code
               }
@@ -181,6 +189,8 @@
                 isUnique: true,
                 predicate: name IS NOT NULL,
                 method: null,
+                clustered: null,
+                xml: null,
                 name: users_name_ix,
                 comment: unique names
               },
@@ -202,9 +212,11 @@
                 isUnique: false,
                 predicate: null,
                 method: btree,
+                clustered: null,
                 include: [
                   code
                 ],
+                xml: null,
                 name: users_balance_ix,
                 comment: covering balance index
               }
@@ -272,18 +284,21 @@ END,
           {
             body: SELECT id, name FROM app.users WHERE balance > 0,
             isMaterialized: false,
+            isSchemaBound: false,
             name: active_users,
             comment: currently active users
           },
           {
             body: SELECT name FROM app.active_users,
             isMaterialized: false,
+            isSchemaBound: false,
             name: user_directory,
             comment: null
           },
           {
             body: SELECT name, balance FROM app.users,
             isMaterialized: true,
+            isSchemaBound: false,
             indexes: [
               {
                 columns: [
@@ -297,6 +312,8 @@ END,
                 isUnique: true,
                 predicate: null,
                 method: null,
+                clustered: null,
+                xml: null,
                 name: daily_balances_name_ix,
                 comment: by name
               }
@@ -345,7 +362,8 @@ END,
                 schema: null,
                 length: null,
                 precision: null,
-                scale: null
+                scale: null,
+                xml: null
               },
               startWith: 100,
               incrementBy: 5,
@@ -394,7 +412,8 @@ $$,
               schema: null,
               length: null,
               precision: null,
-              scale: null
+              scale: null,
+              xml: null
             },
             default: null,
             notNull: false,
@@ -407,7 +426,8 @@ $$,
               schema: null,
               length: null,
               precision: 18,
-              scale: 2
+              scale: 2,
+              xml: null
             },
             default: 0,
             notNull: true,
@@ -432,7 +452,8 @@ $$,
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 }
               },
               {
@@ -442,7 +463,8 @@ $$,
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 }
               }
             ],
@@ -458,7 +480,8 @@ $$,
                   schema: null,
                   length: null,
                   precision: 18,
-                  scale: 2
+                  scale: 2,
+                  xml: null
                 }
               },
               {
@@ -468,7 +491,8 @@ $$,
                   schema: null,
                   length: null,
                   precision: null,
-                  scale: null
+                  scale: null,
+                  xml: null
                 }
               }
             ],

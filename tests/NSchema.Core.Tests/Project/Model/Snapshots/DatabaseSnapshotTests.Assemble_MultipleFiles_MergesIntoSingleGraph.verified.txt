@@ -229,6 +229,7 @@
             Value: SELECT id, name FROM app.users
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           Address: {
             Schema: {
               Value: app
@@ -251,6 +252,7 @@
             Value: SELECT id, amount FROM app.invoices
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           Address: {
             Schema: {
               Value: app
@@ -342,6 +344,7 @@
             Value: SELECT day FROM reporting.daily_totals
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           Address: {
             Schema: {
               Value: reporting

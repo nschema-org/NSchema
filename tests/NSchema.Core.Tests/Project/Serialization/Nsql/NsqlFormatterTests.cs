@@ -1,3 +1,9 @@
+using NSchema.Model;
+using NSchema.Model.Columns;
+using NSchema.Model.Indexes;
+using NSchema.Model.Schemas;
+using NSchema.Model.Tables;
+using NSchema.Model.Views;
 using NSchema.Project.Nsql;
 
 namespace NSchema.Tests.Project.Serialization.Nsql;
@@ -5,6 +11,62 @@ namespace NSchema.Tests.Project.Serialization.Nsql;
 public sealed class NsqlFormatterTests
 {
     private static string Format(string source) => NsqlWriter.Format(source).Value!;
+
+    // -------------------------------------------------------------------------
+    // Views: the attribute clause on a parsed tree and on a synthetic one
+    // -------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("CREATE VIEW app.v WITH SCHEMABINDING AS SELECT 1;")]
+    [InlineData("CREATE MATERIALIZED VIEW app.v WITH SCHEMABINDING AS SELECT 1;")]
+    public void Format_SchemaBoundView_IsIdempotent(string statement)
+    {
+        // A parsed tree carries its own tokens for the clause; formatting twice must reach a fixed point.
+        var once = Format("CREATE SCHEMA app;\n\n" + statement);
+
+        once.ShouldContain("WITH SCHEMABINDING AS");
+        Format(once).ShouldBe(once);
+    }
+
+    [Fact]
+    public void Format_SchemaBoundView_KeepsIntraStatementSpacingLikeAnyOtherView()
+    {
+        // The formatter lays out structure, not inter-token spacing: a one-line statement keeps the spacing it
+        // was written with. The attribute clause is no exception, and must behave exactly as MATERIALIZED does.
+        const string bound = "CREATE SCHEMA app;\n\nCREATE    VIEW app.v    WITH    SCHEMABINDING    AS SELECT 1;\n";
+        const string plain = "CREATE SCHEMA app;\n\nCREATE    MATERIALIZED    VIEW app.v    AS SELECT 1;\n";
+
+        Format(bound).ShouldBe(bound);
+        Format(plain).ShouldBe(plain);
+    }
+
+    [Fact]
+    public void Format_WrittenSchemaBoundView_IsAlreadyCanonical()
+    {
+        // The synthetic tree the writer builds carries no tokens for the clause — the keywords are supplied by
+        // the node itself. What it prints must therefore be what the formatter would print for the same text,
+        // or an imported project would never format as a no-op.
+        var written = NsqlWriter.Write(new Database
+        {
+            Schemas = [new Schema
+            {
+                Name = "app",
+                Tables = [new Table { Name = "t", Columns = [new Column { Name = "id", Type = SqlType.Int }] }],
+                Views = [new View
+                {
+                    Name = "v",
+                    Body = "SELECT id FROM app.t",
+                    IsSchemaBound = true,
+                    Indexes = [new TableIndex { Name = "v_ix", Columns = ["id"], IsUnique = true }],
+                }],
+            }],
+        });
+
+        var result = NsqlWriter.Format(written);
+
+        result.Value.ShouldBe(written);
+        result.Warnings.ShouldBeEmpty();
+    }
 
     // -------------------------------------------------------------------------
     // Layout normalisation

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Domain.XmlSchemaCollections;
 using NSchema.Diff.Plugins;
 using NSchema.Model;
 using NSchema.Model.Schemas;
@@ -200,6 +201,11 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             .OrderBy(type => type.Name)
             .ToList();
 
+        var xmlSchemaCollections = desired.XmlSchemaCollections
+            .Select(collection => XmlSchemaCollectionDiff.Added(desired.Name, collection))
+            .OrderBy(collection => collection.Name)
+            .ToList();
+
         var schema = desired.IsImplicit
             ? SchemaDiff.Containing(desired.Name)
             : SchemaDiff.Added(desired.Name) with
@@ -217,6 +223,7 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             Routines = routines,
             Domains = domains,
             CompositeTypes = compositeTypes,
+            XmlSchemaCollections = xmlSchemaCollections,
         };
     }
 
@@ -241,6 +248,7 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             Routines = CompareRoutines(current.Name, current.Routines, empty, RenameLog.Empty),
             Domains = CompareDomains(current.Name, current.Domains, empty, RenameLog.Empty),
             CompositeTypes = CompareCompositeTypes(current.Name, current.CompositeTypes, empty, RenameLog.Empty),
+            XmlSchemaCollections = CompareXmlSchemaCollections(current.Name, current.XmlSchemaCollections, empty, RenameLog.Empty),
         };
     }
 
@@ -275,12 +283,14 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
         var routines = CompareRoutines(desired.Name, current.Routines, desired, renames);
         var domains = CompareDomains(desired.Name, current.Domains, desired, renames);
         var compositeTypes = CompareCompositeTypes(desired.Name, current.CompositeTypes, desired, renames);
+        var xmlSchemaCollections = CompareXmlSchemaCollections(desired.Name, current.XmlSchemaCollections, desired, renames);
 
         // The schema entity itself only changes when it is renamed or its comment/grants change; a schema that
         // merely contains changed tables or views has a null Kind.
         var schemaLevelChange = renamedFrom is not null || comment is not null || grants.Count > 0;
         if (!schemaLevelChange && tables.Count == 0 && views.Count == 0 && enums.Count == 0 && sequences.Count == 0
-            && routines.Count == 0 && domains.Count == 0 && compositeTypes.Count == 0)
+            && routines.Count == 0 && domains.Count == 0 && compositeTypes.Count == 0
+            && xmlSchemaCollections.Count == 0)
         {
             return null;
         }
@@ -298,6 +308,7 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
             Routines = routines,
             Domains = domains,
             CompositeTypes = compositeTypes,
+            XmlSchemaCollections = xmlSchemaCollections,
         };
     }
 }

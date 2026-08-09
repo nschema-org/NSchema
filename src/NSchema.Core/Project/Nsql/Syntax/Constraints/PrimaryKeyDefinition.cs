@@ -4,11 +4,12 @@ using NSchema.Project.Nsql.Tokens;
 namespace NSchema.Project.Nsql.Syntax.Constraints;
 
 /// <summary>
-/// <c>CONSTRAINT name PRIMARY KEY (columns)</c>.
+/// <c>CONSTRAINT name PRIMARY KEY [CLUSTERED|NONCLUSTERED] (columns)</c>.
 /// </summary>
 /// <param name="Name">The constraint name.</param>
 /// <param name="Columns">The key columns.</param>
-public sealed record PrimaryKeyDefinition(Identifier Name, ColumnList Columns) : TableMember
+/// <param name="Clustered">Whether the backing index was written <c>CLUSTERED</c> or <c>NONCLUSTERED</c>.</param>
+public sealed record PrimaryKeyDefinition(Identifier Name, ColumnList Columns, bool? Clustered = null) : TableMember
 {
     /// <summary>
     /// The <c>CONSTRAINT</c> keyword token.
@@ -25,6 +26,11 @@ public sealed record PrimaryKeyDefinition(Identifier Name, ColumnList Columns) :
     /// </summary>
     public Token KeyKeyword { get; init; } = Token.Keyword(NsqlKeywords.Key);
 
+    /// <summary>
+    /// The <c>CLUSTERED</c> or <c>NONCLUSTERED</c> keyword token, when either was written.
+    /// </summary>
+    public Token? ClusteredKeyword { get; init; }
+
     internal override IEnumerable<NsqlChild> Children
     {
         get
@@ -37,6 +43,10 @@ public sealed record PrimaryKeyDefinition(Identifier Name, ColumnList Columns) :
             yield return Name;
             yield return PrimaryKeyword;
             yield return KeyKeyword;
+            if (Clustered is { } clustered)
+            {
+                yield return ClusteredKeyword ?? Token.Keyword(clustered ? NsqlKeywords.Clustered : NsqlKeywords.Nonclustered);
+            }
             yield return Columns;
         }
     }

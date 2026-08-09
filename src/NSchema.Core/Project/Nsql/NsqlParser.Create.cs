@@ -13,6 +13,7 @@ using NSchema.Project.Nsql.Syntax.Tables;
 using NSchema.Project.Nsql.Syntax.Templates;
 using NSchema.Project.Nsql.Syntax.Triggers;
 using NSchema.Project.Nsql.Syntax.Views;
+using NSchema.Project.Nsql.Syntax.XmlSchemaCollections;
 using NSchema.Project.Nsql.Tokens;
 
 namespace NSchema.Project.Nsql;
@@ -95,9 +96,21 @@ internal sealed partial class NsqlParser
         {
             return ParseCreateTrigger(create, doc);
         }
-        if (_current.IsKeyword(NsqlKeywords.Index))
+        if (_current.IsAnyKeyword(NsqlKeywords.Index, NsqlKeywords.Clustered, NsqlKeywords.Nonclustered))
         {
             return ParseCreateIndex(create, uniqueKeyword: null, doc);
+        }
+        if (_current.IsAnyKeyword(NsqlKeywords.Xml, NsqlKeywords.Primary))
+        {
+            Token? primary = _current.IsKeyword(NsqlKeywords.Primary) ? Advance() : null;
+            var xml = ExpectKeyword(NsqlKeywords.Xml);
+
+            // CREATE XML opens two statements: an index, or a schema collection.
+            if (primary is null && _current.IsKeyword(NsqlKeywords.Schema))
+            {
+                return ParseCreateXmlSchemaCollection(create, xml, doc);
+            }
+            return ParseCreateIndex(create, uniqueKeyword: null, doc, primary, xml);
         }
         if (_current.IsKeyword(NsqlKeywords.Unique))
         {
@@ -153,23 +166,60 @@ internal sealed partial class NsqlParser
     }
 
     // The "VIEW" keyword has already been consumed by the dispatcher (preceded by "MATERIALIZED" when the view
-    // is materialized); both are threaded in so the statement reprints exactly.
+    // is materialized); both are threaded in so the statement reprints exactly. The attribute clause that may
+    // follow the name is this statement's own to parse.
     private CreateViewStatement ParseCreateView(Token create, Token? materializedKeyword, Token view, Token? doc)
     {
         var name = ParseQualifiedNameNode();
+
+        // WITH SCHEMABINDING, spelled as SQL Server spells it — the only engine that makes the binding a choice.
+        Token? withKeyword = null;
+        Token? schemaBindingKeyword = null;
+        if (_current.IsKeyword(NsqlKeywords.With))
+        {
+            withKeyword = Advance();
+            schemaBindingKeyword = ExpectKeyword(NsqlKeywords.SchemaBinding);
+        }
+
         var asKeyword = ExpectKeyword(NsqlKeywords.As);
 
         // The body is captured verbatim; projection derives the view's dependencies from it.
         var (body, bodyToken) = CaptureOpaqueBody("a view body");
         var semicolon = Expect(TokenKind.Semicolon, "';' to end the view definition");
 
-        return new CreateViewStatement(name, body, materializedKeyword is not null)
+        return new CreateViewStatement(name, body, materializedKeyword is not null, withKeyword is not null)
         {
             Doc = doc?.Text,
             DocComment = doc,
             CreateKeyword = create,
             MaterializedKeyword = materializedKeyword,
             ViewKeyword = view,
+            WithKeyword = withKeyword,
+            SchemaBindingKeyword = schemaBindingKeyword,
+            AsKeyword = asKeyword,
+            BodyToken = bodyToken,
+            SemicolonToken = semicolon,
+        };
+    }
+
+    // The "XML" keyword has already been consumed by the dispatcher.
+    private CreateXmlSchemaCollectionStatement ParseCreateXmlSchemaCollection(Token create, Token xml, Token? doc)
+    {
+        var schemaKeyword = ExpectKeyword(NsqlKeywords.Schema);
+        var collectionKeyword = ExpectKeyword(NsqlKeywords.Collection);
+        var name = ParseQualifiedNameNode();
+        var asKeyword = ExpectKeyword(NsqlKeywords.As);
+        var (body, bodyToken) = CaptureOpaqueBody("an XML schema collection body");
+        var semicolon = Expect(TokenKind.Semicolon, "';' to end the collection");
+
+        return new CreateXmlSchemaCollectionStatement(name, body)
+        {
+            Doc = doc?.Text,
+            DocComment = doc,
+            CreateKeyword = create,
+            XmlKeyword = xml,
+            SchemaKeyword = schemaKeyword,
+            CollectionKeyword = collectionKeyword,
             AsKeyword = asKeyword,
             BodyToken = bodyToken,
             SemicolonToken = semicolon,
@@ -177,27 +227,41 @@ internal sealed partial class NsqlParser
     }
 
     /// <summary>
-    /// Parses a standalone index: <c>CREATE [UNIQUE] INDEX name ON s.relation (cols) [WHERE (expr)]</c>. The
-    /// "UNIQUE" keyword (if present) has already been consumed by the dispatcher.
+    /// Parses a standalone index: <c>CREATE [UNIQUE] INDEX name ON s.relation (cols) [WHERE (expr)]</c>, or an
+    /// XML index: <c>CREATE [PRIMARY] XML INDEX name ON s.table (col) [USING XML INDEX primary FOR kind]</c>. The
+    /// "UNIQUE", "PRIMARY" and "XML" keywords (where present) have already been consumed by the dispatcher.
     /// </summary>
-    private CreateIndexStatement ParseCreateIndex(Token create, Token? uniqueKeyword, Token? doc)
+    private CreateIndexStatement ParseCreateIndex(Token create, Token? uniqueKeyword, Token? doc,
+        Token? primaryKeyword = null, Token? xmlKeyword = null)
     {
+        var clustered = TryParseClustered();
         var indexKeyword = ExpectKeyword(NsqlKeywords.Index);
         var name = ExpectIdentifierNode("an index name");
         var onKeyword = ExpectKeyword(NsqlKeywords.On);
         var on = ParseQualifiedNameNode();
         var method = TryParseIndexMethod();
         var (open, keys, close) = ParseIndexColumns();
+
+        // A primary XML index takes no clause; a secondary must say which primary it reads and in what order.
+        var xml = xmlKeyword is null
+            ? null
+            : primaryKeyword is not null
+                ? new XmlIndexClause(Model.Indexes.XmlIndexKind.Primary)
+                : ParseXmlIndexSource();
+
         var include = TryParseInclude();
         var where = TryParseWhereClause();
         var semicolon = Expect(TokenKind.Semicolon, "';'");
 
-        return new CreateIndexStatement(name, uniqueKeyword is not null, on, keys, method?.Method, include?.Columns, where?.Predicate)
+        return new CreateIndexStatement(name, uniqueKeyword is not null, on, keys, method?.Method, include?.Columns, where?.Predicate, xml, clustered?.Clustered)
         {
             Doc = doc?.Text,
             DocComment = doc,
             CreateKeyword = create,
             UniqueKeyword = uniqueKeyword,
+            ClusteredKeyword = clustered?.Keyword,
+            PrimaryKeyword = primaryKeyword,
+            XmlKeyword = xmlKeyword,
             IndexKeyword = indexKeyword,
             OnKeyword = onKeyword,
             UsingKeyword = method?.Using,
@@ -693,7 +757,7 @@ internal sealed partial class NsqlParser
         {
             return ParseIndexMember(doc, isUnique: true);
         }
-        if (_current.IsKeyword(NsqlKeywords.Index))
+        if (_current.IsAnyKeyword(NsqlKeywords.Index, NsqlKeywords.Clustered, NsqlKeywords.Nonclustered))
         {
             return ParseIndexMember(doc, isUnique: false);
         }
@@ -809,6 +873,29 @@ internal sealed partial class NsqlParser
         }
         string? arguments = null;
         Token? open = null, precision = null, comma = null, scale = null, close = null;
+        QualifiedName? xmlCollection = null;
+        Token? contentKeyword = null;
+        var isDocument = false;
+
+        // A typed xml names a schema collection where every other type carries a length or precision, so the
+        // type's own name decides how its argument reads — no lookahead needed, and nothing else is ambiguous.
+        if (_current.Kind == TokenKind.LeftParen && schema is null
+            && NsqlKeywords.Comparer.Equals(name.Value, NsqlKeywords.Xml))
+        {
+            open = Advance();
+            contentKeyword = Advance();
+            isDocument = contentKeyword.Value.IsKeyword(NsqlKeywords.Document);
+            xmlCollection = ParseQualifiedNameNode();
+            close = Expect(TokenKind.RightParen, "')'");
+            return new TypeName(schema, name, null, xmlCollection, isDocument)
+            {
+                SchemaDotToken = schemaDot,
+                OpenParenToken = open,
+                ContentKeyword = contentKeyword,
+                CloseParenToken = close,
+            };
+        }
+
         if (_current.Kind == TokenKind.LeftParen)
         {
             open = Advance();
@@ -880,14 +967,16 @@ internal sealed partial class NsqlParser
         {
             var primary = Advance();
             var key = ExpectKeyword(NsqlKeywords.Key);
+            var clustered = TryParseClustered();
             var columns = ParseColumnList();
-            return new PrimaryKeyDefinition(name, columns)
+            return new PrimaryKeyDefinition(name, columns, clustered?.Clustered)
             {
                 Doc = doc?.Text,
                 DocComment = doc,
                 ConstraintKeyword = constraint,
                 PrimaryKeyword = primary,
                 KeyKeyword = key,
+                ClusteredKeyword = clustered?.Keyword,
             };
         }
         if (_current.IsKeyword(NsqlKeywords.Foreign))
@@ -915,13 +1004,15 @@ internal sealed partial class NsqlParser
         if (_current.IsKeyword(NsqlKeywords.Unique))
         {
             var unique = Advance();
+            var clustered = TryParseClustered();
             var columns = ParseColumnList();
-            return new UniqueDefinition(name, columns)
+            return new UniqueDefinition(name, columns, clustered?.Clustered)
             {
                 Doc = doc?.Text,
                 DocComment = doc,
                 ConstraintKeyword = constraint,
                 UniqueKeyword = unique,
+                ClusteredKeyword = clustered?.Keyword,
             };
         }
         if (_current.IsKeyword(NsqlKeywords.Check))
@@ -1084,6 +1175,7 @@ internal sealed partial class NsqlParser
         {
             uniqueKeyword = Advance(); // UNIQUE
         }
+        var clustered = TryParseClustered();
         var indexKeyword = ExpectKeyword(NsqlKeywords.Index);
         var name = ExpectIdentifierNode("an index name");
         var method = TryParseIndexMethod();
@@ -1091,11 +1183,12 @@ internal sealed partial class NsqlParser
         var include = TryParseInclude();
         var where = TryParseWhereClause();
 
-        return new IndexDefinition(name, isUnique, keys, method?.Method, include?.Columns, where?.Predicate)
+        return new IndexDefinition(name, isUnique, keys, method?.Method, include?.Columns, where?.Predicate, clustered?.Clustered)
         {
             Doc = doc?.Text,
             DocComment = doc,
             UniqueKeyword = uniqueKeyword,
+            ClusteredKeyword = clustered?.Keyword,
             IndexKeyword = indexKeyword,
             UsingKeyword = method?.Using,
             OpenParenToken = open,
@@ -1109,6 +1202,23 @@ internal sealed partial class NsqlParser
     }
 
     /// <summary>Parses the optional <c>USING &lt;method&gt;</c> clause of an index; returns <see langword="null"/> when absent (default B-tree).</summary>
+    /// <summary>
+    /// Parses an optional <c>CLUSTERED</c> or <c>NONCLUSTERED</c>. Absent means neither was written, which is
+    /// not the same as <c>NONCLUSTERED</c>: the engine's own default stands, and the engines disagree on it.
+    /// </summary>
+    private (bool Clustered, Token Keyword)? TryParseClustered()
+    {
+        if (_current.IsKeyword(NsqlKeywords.Clustered))
+        {
+            return (true, Advance());
+        }
+        if (_current.IsKeyword(NsqlKeywords.Nonclustered))
+        {
+            return (false, Advance());
+        }
+        return null;
+    }
+
     private (Token Using, Identifier Method)? TryParseIndexMethod()
     {
         if (!_current.IsKeyword(NsqlKeywords.Using))
@@ -1117,6 +1227,37 @@ internal sealed partial class NsqlParser
         }
         var usingKeyword = Advance();
         return (usingKeyword, ExpectIdentifierNode("an index access method"));
+    }
+
+    /// <summary>
+    /// Parses a secondary XML index's <c>USING XML INDEX primary FOR {PATH|VALUE|PROPERTY}</c>. It is required:
+    /// a secondary indexes a primary's node table, so there is no such thing as one without a primary named.
+    /// </summary>
+    private XmlIndexClause ParseXmlIndexSource()
+    {
+        var usingKeyword = ExpectKeyword(NsqlKeywords.Using);
+        var xmlKeyword = ExpectKeyword(NsqlKeywords.Xml);
+        var indexKeyword = ExpectKeyword(NsqlKeywords.Index);
+        var primary = ExpectIdentifierNode("the name of the primary XML index this one is built over");
+        var forKeyword = ExpectKeyword(NsqlKeywords.For);
+
+        var kind = _current switch
+        {
+            var t when t.IsKeyword(NsqlKeywords.Path) => Model.Indexes.XmlIndexKind.Path,
+            var t when t.IsKeyword(NsqlKeywords.Value) => Model.Indexes.XmlIndexKind.Value,
+            var t when t.IsKeyword(NsqlKeywords.Property) => Model.Indexes.XmlIndexKind.Property,
+            _ => throw Error($"Expected PATH, VALUE or PROPERTY after FOR, found '{_current.Text}'."),
+        };
+        var kindToken = Advance();
+
+        return new XmlIndexClause(kind, primary)
+        {
+            UsingKeyword = usingKeyword,
+            XmlKeyword = xmlKeyword,
+            IndexKeyword = indexKeyword,
+            ForKeyword = forKeyword,
+            KindToken = kindToken,
+        };
     }
 
     /// <summary>Parses the optional covering <c>INCLUDE (cols)</c> clause of an index; returns <see langword="null"/> when absent.</summary>

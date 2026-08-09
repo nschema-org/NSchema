@@ -14,6 +14,10 @@ internal sealed partial class NsqlParser
     private readonly NsqlLexer _lexer;
     private Token _current;
 
+    // The last consumed token, for measuring where an opaque region opens: the region starts just past this
+    // token's text, not at the next token, so trivia between the two belongs to the region.
+    private Token? _previous;
+
     // True while parsing a template body, where unqualified names are legal (they bind to the applied
     // schema at projection) and template-restricted statements are rejected.
     private bool _inTemplateBody;
@@ -229,9 +233,20 @@ internal sealed partial class NsqlParser
     private Token Advance()
     {
         var consumed = _current;
+        _previous = consumed;
         _current = _lexer.Next();
         return consumed;
     }
+
+    /// <summary>
+    /// The offset just past the last consumed token's own text — where an opaque region that follows it begins.
+    /// A comment on the same line as that token is its <em>trailing</em> trivia, so a region measured from the
+    /// next token would start after the comment and lose it.
+    /// </summary>
+    private int RegionStart(Token startToken) =>
+        _previous is { } previous && previous.Position.Offset + previous.Raw.Length <= startToken.Position.Offset
+            ? previous.Position.Offset + previous.Raw.Length
+            : startToken.Position.Offset;
 
     private Token Expect(TokenKind kind, string what)
     {
@@ -408,6 +423,13 @@ internal sealed partial class NsqlParser
     private (string Text, Token Span) CaptureRawSpanToken(string what, ReadOnlySpan<TokenKind> terminators, bool allowEmpty = false)
     {
         var startToken = _current;
+
+        // Measured before the scan, which advances the cursor: the region opens just past the token that
+        // introduced it, not at its first token. A comment opening an opaque body sits on the same line as that
+        // introducing token, so it is the token's trailing trivia, and a span starting at the body's first token
+        // loses it — the body then read back changed from what was written, and every plan against it wanted to
+        // rewrite the object it belonged to. Whitespace makes no difference; the span is trimmed.
+        var regionStart = RegionStart(startToken);
         var depth = 0;
         while (true)
         {
@@ -442,7 +464,7 @@ internal sealed partial class NsqlParser
         }
 
         var terminator = _current;
-        var text = _lexer.Slice(startToken.Position.Offset, terminator.Position.Offset).Trim();
+        var text = _lexer.Slice(regionStart, terminator.Position.Offset).Trim();
         if (!allowEmpty && text.Length == 0)
         {
             throw new NsqlSyntaxException($"Expected {what}", startToken.Position);

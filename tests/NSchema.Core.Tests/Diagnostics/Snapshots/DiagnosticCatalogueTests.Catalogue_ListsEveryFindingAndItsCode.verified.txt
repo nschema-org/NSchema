@@ -3,6 +3,7 @@ error    structural  blocked-by-policy                          ApplyDiagnostics
 error    structural  execution-failed                           ApplyDiagnostics.ExecutionFailed
 error    structural  missing-executor                           ApplyDiagnostics.MissingExecutor
 error    structural  store-required                             ApplyDiagnostics.StoreRequired
+warning  advisory    clustering-not-supported                   ClusteringDiagnostics.ClusteringNotSupported
 error    structural  duplicate-statement                        ConfigurationDiagnostics.DuplicateStatement
 error    structural  unlabelled-reference                       ConfigurationDiagnostics.UnlabelledReference
 warning  advisory    column-becomes-required                    DataHazardDiagnostics.ColumnBecomesRequired
@@ -70,12 +71,12 @@ error    structural  duplicate-change-target                    ProjectDiagnosti
 error    structural  duplicate-rename-source                    ProjectDiagnostics.DuplicateRenameSource
 error    structural  duplicate-rename-target                    ProjectDiagnostics.DuplicateRenameTarget
 error    structural  duplicate-script-name                      ProjectDiagnostics.DuplicateScriptName
-error    structural  index-on-plain-view                        ProjectDiagnostics.IndexOnPlainView
 error    structural  no-files-matched                           ProjectDiagnostics.NoFilesMatched
 error    structural  rename-chain                               ProjectDiagnostics.RenameChain
 error    structural  rename-source-still-declared               ProjectDiagnostics.RenameSourceStillDeclared
 error    structural  rename-target-not-declared                 ProjectDiagnostics.RenameTargetNotDeclared
 error    structural  self-rename                                ProjectDiagnostics.SelfRename
+error    structural  index-on-plain-view                        ProjectDiagnostics.UnknownIndexRelation
 warning  advisory    missing-primary-key                        SchemaLintDiagnostics.MissingPrimaryKey
 warning  advisory    nullable-primary-key-column                SchemaLintDiagnostics.NullablePrimaryKeyColumn
 warning  advisory    repeated-column                            SchemaLintDiagnostics.RepeatedColumn
@@ -95,6 +96,7 @@ error    structural  duplicate-routine-name                     StructuralIntegr
 error    structural  empty-table                                StructuralIntegrityDiagnostics.EmptyTable
 error    structural  foreign-key-arity-mismatch                 StructuralIntegrityDiagnostics.ForeignKeyArityMismatch
 error    structural  foreign-key-target-not-unique              StructuralIntegrityDiagnostics.ForeignKeyTargetNotUnique
+error    structural  multiple-clustered-indexes                 StructuralIntegrityDiagnostics.MultipleClusteredIndexes
 warning  advisory    undeclared-foreign-key-target              StructuralIntegrityDiagnostics.UndeclaredForeignKeyTarget
 error    structural  unknown-index-column                       StructuralIntegrityDiagnostics.UnknownIndexColumn
 error    structural  unknown-local-column                       StructuralIntegrityDiagnostics.UnknownLocalColumn

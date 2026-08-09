@@ -1,4 +1,6 @@
 using NSchema.Model;
+using NSchema.Model.Constraints;
+using NSchema.Model.Indexes;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
 using NSchema.Project.Domain.Directives;
@@ -30,9 +32,39 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
             ValidateObjectNames(definition, diagnostics);
             ValidateRoutineNames(definition, diagnostics);
             ValidateIndexNames(definition, diagnostics);
+            ValidateClustering(definition, diagnostics);
         }
 
         return diagnostics;
+    }
+
+    // A clustered index is the relation's row order rather than a structure beside it, so a relation has at
+    // most one. Catching the second here beats letting the engine reject it at apply time.
+    private static void ValidateClustering(Schema definition, List<Diagnostic> diagnostics)
+    {
+        var relations = definition.Tables
+            .Select(t => (Relation: t.Name, Members: IndexBacked(t)))
+            .Concat(definition.Views
+                .Where(v => v.IsMaterialized)
+                .Select(v => (Relation: v.Name, Members: v.Indexes.Cast<ObjectMember>())));
+
+        foreach (var (relation, members) in relations)
+        {
+            if (members.Where(IsClustered).ToList() is { Count: > 1 } clustered)
+            {
+                var sites = string.Join(", ", clustered.Select(m => $"{m.Kind.Display()} '{m.Name}'"));
+                diagnostics.Add(StructuralIntegrityDiagnostics.MultipleClusteredIndexes(
+                    new ObjectAddress(definition.Name, relation), sites));
+            }
+        }
+
+        static bool IsClustered(ObjectMember member) => member switch
+        {
+            TableIndex index => index.Clustered is true,
+            PrimaryKey key => key.Clustered is true,
+            UniqueConstraint unique => unique.Clustered is true,
+            _ => false,
+        };
     }
 
     // Index names are schema-scoped in the database (indexes live in pg_class alongside tables).

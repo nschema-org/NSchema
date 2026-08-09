@@ -31,12 +31,17 @@ public sealed class View : SchemaObject, IEquatable<View>
     public bool IsMaterialized { get; set; }
 
     /// <summary>
+    /// Whether the view is bound to the schema of what it reads.
+    /// </summary>
+    public bool IsSchemaBound { get; set; }
+
+    /// <summary>
     /// The objects the body reads, scanned on demand; an unqualified reference resolves against <paramref name="schema"/> (the view's own).
     /// </summary>
     public IReadOnlyList<ObjectAddress> Reads(SqlIdentifier schema) => Services.ViewDependencyExtractor.Extract(Body, schema);
 
     /// <summary>
-    /// Indexes on the view (materialized views only; empty for a plain view).
+    /// Indexes on the view.
     /// </summary>
     public ObjectMemberCollection<TableIndex> Indexes
     {
@@ -53,6 +58,7 @@ public sealed class View : SchemaObject, IEquatable<View>
         DependsOn = [.. DependsOn],
 #pragma warning restore CS0618 // Type or member is obsolete
         IsMaterialized = IsMaterialized,
+        IsSchemaBound = IsSchemaBound,
         Indexes = [.. Indexes.Select(i => i.Clone())],
         ProvidedBy = ProvidedBy,
         Comment = Comment,
@@ -66,11 +72,12 @@ public sealed class View : SchemaObject, IEquatable<View>
         && Name == other.Name
         && Body == other.Body
         && IsMaterialized == other.IsMaterialized
+        && IsSchemaBound == other.IsSchemaBound
         && Indexes.SequenceEqual(other.Indexes);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is View other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(Name, Body, IsMaterialized);
+    public override int GetHashCode() => HashCode.Combine(Name, Body, IsMaterialized, IsSchemaBound);
 }

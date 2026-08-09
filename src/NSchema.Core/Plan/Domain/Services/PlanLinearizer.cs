@@ -25,6 +25,7 @@ using NSchema.Plan.Domain.Sequences;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Triggers;
 using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Domain.XmlSchemaCollections;
 
 namespace NSchema.Plan.Domain.Services;
 
@@ -47,6 +48,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         // graph directly, so emission is just diff-to-action mapping. Emission order still seeds the sort's
         // tiebreak, which is why table drops trail the routine drops: absent an edge, a routine drops before
         // the tables it may reference, mirroring creation.
+        EmitXmlSchemaCollections(diff, actions);
         EmitTables(diff, dependencies, capabilities, actions);
         EmitRoutines(diff, actions);
         EmitViews(diff, actions);
@@ -56,6 +58,30 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
         // Deployment scripts bookend the plan: pre scripts run before everything, post scripts after.
         return [.. ScriptActions(diff, DeploymentPhase.Pre), .. actions, .. ScriptActions(diff, DeploymentPhase.Post)];
+    }
+
+    /// <summary>
+    /// Emits the XML schema collection actions. A change to what a collection holds is a rebuild — an engine can
+    /// add namespaces to one but never take them away — so it drops and creates rather than altering.
+    /// </summary>
+    private static void EmitXmlSchemaCollections(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        foreach (var schema in diff.Schemas)
+        {
+            foreach (var collection in schema.XmlSchemaCollections)
+            {
+                if (collection.Change == ChangeKind.Remove || collection.RequiresRecreate)
+                {
+                    actions.Add(new DropXmlSchemaCollection(
+                        new ObjectAddress(collection.Schema, collection.RenamedFrom ?? collection.Name, SchemaObjectKind.XmlSchemaCollection)));
+                }
+
+                if (collection is { Change: not ChangeKind.Remove, Definition: { } definition })
+                {
+                    actions.Add(new CreateXmlSchemaCollection(collection.Schema, definition));
+                }
+            }
+        }
     }
 
     private static IEnumerable<ExecuteScript> ScriptActions(DatabaseDiff diff, DeploymentPhase phase) =>
@@ -291,7 +317,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 // renamed view they run while it still carries its old name.
                 foreach (var index in view.Indexes)
                 {
-                    actions.Add(IndexAction(view.Schema, view.Name, view.RenamedFrom ?? view.Name, index));
+                    actions.Add(IndexAction(view.Schema, view.Name, view.RenamedFrom ?? view.Name, index, onView: true));
                 }
             }
         }
@@ -804,19 +830,29 @@ internal sealed class PlanLinearizer : IPlanLinearizer
 
     private static void EmitIndexes(TableDiff table, List<MigrationAction> actions)
     {
-        foreach (var index in table.Indexes)
+        foreach (var index in table.Indexes.OrderBy(IndexRank))
         {
             actions.Add(IndexAction(table.Schema, table.Name, table.RenamedFrom ?? table.Name, index));
         }
     }
 
     /// <summary>
+    /// Where an index change sorts among its owner's own. A secondary XML index reads the node table a primary
+    /// builds, so the primary has to be created first.
+    /// </summary>
+    private static int IndexRank(IndexDiff index) => index.Definition?.Xml is { IsPrimary: false } ? 1 : 0;
+
+    /// <summary>
     /// The action for one index change on <paramref name="owner"/>. Drops target <paramref name="preRenameName"/>,
     /// since they sort before the owner's rename and so run while it still carries its old name.
     /// </summary>
-    private static MigrationAction IndexAction(SqlIdentifier schema, SqlIdentifier owner, SqlIdentifier preRenameName, IndexDiff index) => index switch
+    /// <remarks>
+    /// <paramref name="onView"/> says whether the owner is a view. The address stays kind-less so the ordering
+    /// layer's subject lookup still matches the owner's create; the nature travels on the action instead.
+    /// </remarks>
+    private static MigrationAction IndexAction(SqlIdentifier schema, SqlIdentifier owner, SqlIdentifier preRenameName, IndexDiff index, bool onView = false) => index switch
     {
-        { Change: ChangeKind.Add, Definition: { } definition } => new CreateIndex(new ObjectAddress(schema, owner), definition),
+        { Change: ChangeKind.Add, Definition: { } definition } => new CreateIndex(new ObjectAddress(schema, owner), definition, onView),
         { Change: ChangeKind.Remove } => new DropIndex(new MemberAddress(schema, preRenameName, index.Name)),
         { Comment: { } comment } => new SetIndexComment(new MemberAddress(schema, owner, index.Name), comment.Old, comment.New),
         _ => throw new NotSupportedException($"Cannot linearize index change {index.Change} on '{schema}.{owner}'."),

@@ -1,7 +1,16 @@
 using NSchema.Model;
+using NSchema.Model.Columns;
+using NSchema.Model.CompositeTypes;
+using NSchema.Model.Domains;
+using NSchema.Model.Enums;
+using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
+using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
+using NSchema.Model.Types;
+using NSchema.Model.Views;
+using NSchema.Model.XmlSchemaCollections;
 using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Tests.Project.Model;
@@ -169,5 +178,39 @@ public sealed class DatabaseTests
 
         // Assert
         schema.ScopedTo(PlanningScope.To()).ShouldBe(schema);
+    }
+
+    /// <summary>
+    /// Every schema-level kind has to reach <see cref="Database.Identities"/>, because that set is both what
+    /// the planner adopts and what it filters the observed database down to. A kind missing from it is
+    /// invisible on the current side, so an object that plainly exists is planned as a create — and the apply
+    /// collides with it.
+    /// </summary>
+    [Fact]
+    public void Identities_CoverEverySchemaLevelKind()
+    {
+        // Arrange — one of everything, so a kind added later fails here until it is carried.
+        var database = Db(new Schema
+        {
+            Name = "app",
+            Tables = [Table("users")],
+            Views = [new View { Name = "active_users", Body = "select 1" }],
+            Enums = [new EnumType { Name = "status", Values = ["on"] }],
+            Sequences = [new Sequence { Name = "user_id" }],
+            Routines = [new Routine { Name = "touch", RoutineKind = RoutineKind.Procedure, Arguments = "", Definition = "begin end" }],
+            Domains = [new DomainType { Name = "email", DataType = SqlType.Text }],
+            CompositeTypes = [new CompositeType { Name = "address", Fields = [new CompositeField("street", SqlType.Text)] }],
+            NativeTypes = [new NativeType { Name = "geography" }],
+            XmlSchemaCollections = [new XmlSchemaCollection { Name = "survey", Body = "<xsd:schema/>" }],
+        });
+
+        // Act
+        var identities = database.Identities();
+
+        // Assert
+        identities.SchemaObjects
+            .Select(o => o.Kind)
+            .OfType<SchemaObjectKind>()
+            .ShouldBe(Enum.GetValues<SchemaObjectKind>(), ignoreOrder: true);
     }
 }

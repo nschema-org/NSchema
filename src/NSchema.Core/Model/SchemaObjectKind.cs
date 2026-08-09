@@ -43,7 +43,12 @@ public enum SchemaObjectKind
     /// <summary>
     /// A type provided by the engine or an extension.
     /// </summary>
-    NativeType
+    NativeType,
+
+    /// <summary>
+    /// A collection of XSD schemas a typed xml column is validated against.
+    /// </summary>
+    XmlSchemaCollection
 }
 
 /// <summary>
@@ -64,6 +69,7 @@ internal static class SchemaObjectKindExtensions
         SchemaObjectKind.Domain => "domain",
         SchemaObjectKind.CompositeType => "composite type",
         SchemaObjectKind.NativeType => "native type",
+        SchemaObjectKind.XmlSchemaCollection => "xml schema collection",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

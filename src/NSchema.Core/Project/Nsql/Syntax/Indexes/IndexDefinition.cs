@@ -5,7 +5,7 @@ using NSchema.Project.Nsql.Tokens;
 namespace NSchema.Project.Nsql.Syntax.Indexes;
 
 /// <summary>
-/// An inline index member: <c>[UNIQUE] INDEX name [USING method] (keys) [INCLUDE (columns)] [WHERE (predicate)]</c>.
+/// An inline index member: <c>[UNIQUE] [CLUSTERED|NONCLUSTERED] INDEX name [USING method] (keys) [INCLUDE (columns)] [WHERE (predicate)]</c>.
 /// </summary>
 /// <param name="Name">The index name.</param>
 /// <param name="IsUnique">Whether the index is declared <c>UNIQUE</c>.</param>
@@ -13,19 +13,26 @@ namespace NSchema.Project.Nsql.Syntax.Indexes;
 /// <param name="Method">The access method after <c>USING</c>, or <see langword="null"/>.</param>
 /// <param name="Include">The <c>INCLUDE</c> columns, or <see langword="null"/> when absent.</param>
 /// <param name="Predicate">The partial-index predicate, or <see langword="null"/>.</param>
+/// <param name="Clustered">Whether <c>CLUSTERED</c> or <c>NONCLUSTERED</c> was written.</param>
 public sealed record IndexDefinition(
     Identifier Name,
     bool IsUnique,
     SeparatedSyntaxList<IndexElement> Columns,
     Identifier? Method = null,
     ColumnList? Include = null,
-    SqlText? Predicate = null
+    SqlText? Predicate = null,
+    bool? Clustered = null
 ) : TableMember
 {
     /// <summary>
     /// The <c>UNIQUE</c> keyword token, when written unique.
     /// </summary>
     public Token? UniqueKeyword { get; init; }
+
+    /// <summary>
+    /// The <c>CLUSTERED</c> or <c>NONCLUSTERED</c> keyword token, when either was written.
+    /// </summary>
+    public Token? ClusteredKeyword { get; init; }
 
     /// <summary>
     /// The <c>INDEX</c> keyword token.
@@ -83,6 +90,10 @@ public sealed record IndexDefinition(
             if (IsUnique)
             {
                 yield return UniqueKeyword ?? Token.Keyword(NsqlKeywords.Unique);
+            }
+            if (Clustered is { } clustered)
+            {
+                yield return ClusteredKeyword ?? Token.Keyword(clustered ? NsqlKeywords.Clustered : NsqlKeywords.Nonclustered);
             }
             yield return IndexKeyword;
             yield return Name;

@@ -16,6 +16,14 @@ internal static class StructuralIntegrityDiagnostics
         Diagnostic.Error(Source, "duplicate-index-name", $"Schema '{schema}' declares the index name '{name}' more than once ({sites:text}).");
 
     /// <summary>
+    /// More than one clustered index on a relation. A clustered index *is* the relation's row order, so a
+    /// second one would have nothing left to order.
+    /// </summary>
+    public static Diagnostic MultipleClusteredIndexes(ObjectAddress relation, string sites) =>
+        Diagnostic.Error(Source, "multiple-clustered-indexes",
+            $"'{relation}' declares more than one clustered index ({sites:text}). A clustered index is the relation's physical row order, so at most one may be clustered.");
+
+    /// <summary>
     /// An object name declared more than once for the same kind.
     /// </summary>
     public static Diagnostic DuplicateObjectName(ObjectAddress name, string kind) =>

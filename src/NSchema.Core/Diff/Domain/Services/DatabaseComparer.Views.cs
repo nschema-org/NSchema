@@ -16,14 +16,14 @@ internal sealed partial class DatabaseComparer
             (currentView, desiredView, renamedFrom) => BuildModifiedView(schemaName, currentView, desiredView, renamedFrom));
 
     private static ViewDiff RemovedView(SqlIdentifier schema, View view) =>
-        ViewDiff.Removed(schema, view.Name) with { IsMaterialized = view.IsMaterialized };
+        ViewDiff.Removed(schema, view.Name) with { IsMaterialized = view.IsMaterialized, IsSchemaBound = view.IsSchemaBound };
 
     private static ViewDiff BuildNewView(SqlIdentifier schema, View view) => ViewDiff.Added(schema, view);
 
     // A view's body is opaque, so any textual change is a replace. For a plain view that replace is in place
     // (CREATE OR REPLACE VIEW); for a materialized view it must be a drop + recreate (there is no
     // CREATE OR REPLACE MATERIALIZED VIEW), as must a view ⇄ materialized-view conversion. A rename, comment
-    // change, and a materialized view's index changes are tracked independently and may accompany the rest.
+    // change, and a view's index changes are tracked independently and may accompany the rest.
     private ViewDiff? BuildModifiedView(SqlIdentifier schema, View current, View desired, SqlIdentifier? renamedFrom)
     {
         // Compare bodies for *equivalence*, not byte-equality, so a database's cosmetic re-emission
@@ -32,19 +32,30 @@ internal sealed partial class DatabaseComparer
         var comment = ValueChange.Between(current.Comment, desired.Comment);
         var materializationFlipped = current.IsMaterialized != desired.IsMaterialized;
 
-        var requiresRecreate = materializationFlipped || (bodyChanged && desired.IsMaterialized);
+        // Schema binding is written into the view's own declaration, so changing it rewrites the view exactly
+        // as a body change does. It matters on its own account: an engine may require binding before the view
+        // can be indexed, and an index added to an unbound view would otherwise be planned with nothing to
+        // bind it first.
+        var bindingFlipped = current.IsSchemaBound != desired.IsSchemaBound;
+        var redeclared = bodyChanged || bindingFlipped;
 
-        // Indexes are diffed in place only when the materialized view is not being recreated; on a create or
-        // recreate they ride along on the definition and are rebuilt with it.
+        // Indexes hang off the view's stored form, so redeclaring it takes them with it: SQL Server's
+        // CREATE OR ALTER VIEW drops an indexed view's indexes outright. A view that carries any therefore
+        // cannot be replaced in place — it is dropped and recreated, and the indexes are rebuilt with it.
+        var requiresRecreate = materializationFlipped || (redeclared && (desired.IsMaterialized || desired.Indexes.Count > 0));
+
+        // Indexes are diffed in place only when the view is not being recreated; on a create or recreate they
+        // ride along on the definition and are rebuilt with it.
         IReadOnlyList<IndexDiff> indexes = requiresRecreate
             ? []
             : CompareTableMembers(new ObjectAddress(schema, desired.Name), "Index", current.Indexes, desired.Indexes,
                 IndexDiff.Added, IndexDiff.Removed, IndexDiff.CommentChanged);
 
-        // The definition is carried whenever the body must be (re)written: a recreate, or a plain-view replace.
-        var carryDefinition = requiresRecreate || (bodyChanged && !desired.IsMaterialized);
+        // The definition is carried whenever the declaration must be (re)written: a recreate, or a plain-view
+        // replace.
+        var carryDefinition = requiresRecreate || (redeclared && !desired.IsMaterialized);
 
-        if (renamedFrom is null && !bodyChanged && comment is null && !materializationFlipped && indexes.Count == 0)
+        if (renamedFrom is null && !redeclared && comment is null && !materializationFlipped && indexes.Count == 0)
         {
             return null;
         }
@@ -55,7 +66,9 @@ internal sealed partial class DatabaseComparer
             Definition = carryDefinition ? desired : null,
             Comment = comment,
             IsMaterialized = desired.IsMaterialized,
+            IsSchemaBound = desired.IsSchemaBound,
             Materialized = materializationFlipped ? new ValueChange<bool>(current.IsMaterialized, desired.IsMaterialized) : null,
+            SchemaBound = bindingFlipped ? new ValueChange<bool>(current.IsSchemaBound, desired.IsSchemaBound) : null,
             RequiresRecreate = requiresRecreate,
             Indexes = indexes,
         };

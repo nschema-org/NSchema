@@ -4,11 +4,12 @@ using NSchema.Project.Nsql.Tokens;
 namespace NSchema.Project.Nsql.Syntax.Constraints;
 
 /// <summary>
-/// <c>CONSTRAINT name UNIQUE (columns)</c>.
+/// <c>CONSTRAINT name UNIQUE [CLUSTERED|NONCLUSTERED] (columns)</c>.
 /// </summary>
 /// <param name="Name">The constraint name.</param>
 /// <param name="Columns">The unique columns.</param>
-public sealed record UniqueDefinition(Identifier Name, ColumnList Columns) : TableMember
+/// <param name="Clustered">Whether the backing index was written <c>CLUSTERED</c> or <c>NONCLUSTERED</c>.</param>
+public sealed record UniqueDefinition(Identifier Name, ColumnList Columns, bool? Clustered = null) : TableMember
 {
     /// <summary>
     /// The <c>CONSTRAINT</c> keyword token.
@@ -19,6 +20,11 @@ public sealed record UniqueDefinition(Identifier Name, ColumnList Columns) : Tab
     /// The <c>UNIQUE</c> keyword token.
     /// </summary>
     public Token UniqueKeyword { get; init; } = Token.Keyword(NsqlKeywords.Unique);
+
+    /// <summary>
+    /// The <c>CLUSTERED</c> or <c>NONCLUSTERED</c> keyword token, when either was written.
+    /// </summary>
+    public Token? ClusteredKeyword { get; init; }
 
     internal override IEnumerable<NsqlChild> Children
     {
@@ -31,6 +37,10 @@ public sealed record UniqueDefinition(Identifier Name, ColumnList Columns) : Tab
             yield return ConstraintKeyword;
             yield return Name;
             yield return UniqueKeyword;
+            if (Clustered is { } clustered)
+            {
+                yield return ClusteredKeyword ?? Token.Keyword(clustered ? NsqlKeywords.Clustered : NsqlKeywords.Nonclustered);
+            }
             yield return Columns;
         }
     }

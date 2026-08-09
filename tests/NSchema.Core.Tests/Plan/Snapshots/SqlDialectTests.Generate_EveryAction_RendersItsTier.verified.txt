@@ -241,6 +241,18 @@
     ]
   },
   {
+    Action: CreateXmlSchemaCollection,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create xml schema collection' action.
+    ]
+  },
+  {
+    Action: DropXmlSchemaCollection,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop xml schema collection' action.
+    ]
+  },
+  {
     Action: CreateView,
     Statements: [
       -- engine-specific CreateView

@@ -29,6 +29,7 @@ internal sealed class DatabaseLookup(Database schema)
         SchemaObjectKind.Domain => FindSchema(address.Schema)?.Domains.Any(d => d.Name == address.Name) == true,
         SchemaObjectKind.CompositeType => FindSchema(address.Schema)?.CompositeTypes.Any(t => t.Name == address.Name) == true,
         SchemaObjectKind.NativeType => FindSchema(address.Schema)?.NativeTypes.Any(t => t.Name == address.Name) == true,
+        SchemaObjectKind.XmlSchemaCollection => FindSchema(address.Schema)?.XmlSchemaCollections.Any(x => x.Name == address.Name) == true,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

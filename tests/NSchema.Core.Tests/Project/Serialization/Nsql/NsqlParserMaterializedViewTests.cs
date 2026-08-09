@@ -5,7 +5,7 @@ namespace NSchema.Tests.Project.Serialization.Nsql;
 
 /// <summary>
 /// Parser coverage for <c>CREATE MATERIALIZED VIEW</c> and the standalone <c>CREATE [UNIQUE] INDEX … ON s.v</c>
-/// that attaches to a materialized view at build time (like a trigger attaches to its table).
+/// that attaches to a view at build time (like a trigger attaches to its table).
 /// </summary>
 public sealed class NsqlParserMaterializedViewTests
 {
@@ -28,6 +28,39 @@ public sealed class NsqlParserMaterializedViewTests
     [Fact]
     public void Parse_PlainView_IsNotMaterialized()
         => ParseView("CREATE VIEW app.v AS SELECT 1;").IsMaterialized.ShouldBeFalse();
+
+    [Fact]
+    public void Parse_PlainView_IsNotSchemaBound()
+        => ParseView("CREATE VIEW app.v AS SELECT 1;").IsSchemaBound.ShouldBeFalse();
+
+    [Fact]
+    public void Parse_SchemaBoundView_SetsFlag()
+    {
+        // Act
+        var view = ParseView("CREATE VIEW app.v WITH SCHEMABINDING AS SELECT 1;");
+
+        // Assert
+        view.IsSchemaBound.ShouldBeTrue();
+        view.IsMaterialized.ShouldBeFalse();
+        view.Body.ShouldBe("SELECT 1");
+    }
+
+    [Fact]
+    public void Parse_SchemaBoundMaterializedView_SetsBothFlags()
+    {
+        // Act
+        var view = ParseView("CREATE MATERIALIZED VIEW app.v WITH SCHEMABINDING AS SELECT 1;");
+
+        // Assert
+        view.IsSchemaBound.ShouldBeTrue();
+        view.IsMaterialized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Parse_IndexOnSchemaBoundView_Attaches()
+        // SQL Server's indexed view: schema-bound, plain, and carrying a unique clustered index.
+        => ParseView("CREATE VIEW app.v WITH SCHEMABINDING AS SELECT id FROM app.t; CREATE UNIQUE INDEX v_ix ON app.v (id);")
+            .Indexes.ShouldHaveSingleItem().Name.ShouldBe("v_ix");
 
     [Fact]
     public void Parse_StandaloneIndexOnMaterializedView_Attaches()
@@ -62,14 +95,16 @@ public sealed class NsqlParserMaterializedViewTests
             .Indexes.ShouldHaveSingleItem().Name.ShouldBe("daily_ix");
 
     [Fact]
-    public void Parse_IndexOnPlainView_FailsTheRead()
-        => new TestNsqlParser("CREATE SCHEMA app; CREATE VIEW app.v AS SELECT 1; CREATE INDEX ix ON app.v (x);").Project().Errors.ShouldHaveSingleItem()
-            .Message.ShouldContain("not a materialized view");
+    public void Parse_IndexOnPlainView_Attaches()
+        // A plain view carrying an index is SQL Server's indexed view. Which views an engine will actually
+        // index is the dialect's to report, so the read accepts it and the plan is where it is refused.
+        => ParseView("CREATE VIEW app.v AS SELECT 1; CREATE INDEX ix ON app.v (x);")
+            .Indexes.ShouldHaveSingleItem().Name.ShouldBe("ix");
 
     [Fact]
     public void Parse_IndexOnUnknownRelation_FailsTheRead()
         => new TestNsqlParser("CREATE SCHEMA app; CREATE INDEX ix ON app.ghost (x);").Project().Errors.ShouldHaveSingleItem()
-            .Message.ShouldContain("unknown table or materialized view");
+            .Message.ShouldContain("unknown table or view");
 
     [Fact]
     public void Parse_DuplicateIndexOnView_FailsTheRead()

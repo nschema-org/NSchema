@@ -6,6 +6,7 @@ using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Sequences;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
+using NSchema.Diff.Domain.XmlSchemaCollections;
 using NSchema.Model;
 
 namespace NSchema.Diff.Domain.Schemas;
@@ -85,6 +86,11 @@ public sealed record SchemaDiff : IDatabaseObjectDiff
     public IReadOnlyList<CompositeTypeDiff> CompositeTypes { get; init; } = [];
 
     /// <summary>
+    /// The XML schema collections that changed.
+    /// </summary>
+    public IReadOnlyList<XmlSchemaCollectionDiff> XmlSchemaCollections { get; init; } = [];
+
+    /// <summary>
     /// A schema being created.
     /// </summary>
     public static SchemaDiff Added(SqlIdentifier name) => new() { Name = name, Change = ChangeKind.Add };
@@ -128,6 +134,7 @@ public sealed record SchemaDiff : IDatabaseObjectDiff
             Routines = [.. Routines.Where(Covered)],
             Domains = [.. Domains.Where(Covered)],
             CompositeTypes = [.. CompositeTypes.Where(Covered)],
+            XmlSchemaCollections = [.. XmlSchemaCollections.Where(Covered)],
         };
 
         // The container rides only as a dependency: with nothing covered inside it, the schema is not this
@@ -149,5 +156,6 @@ public sealed record SchemaDiff : IDatabaseObjectDiff
             .Concat(Sequences)
             .Concat(Routines)
             .Concat(Domains)
-            .Concat(CompositeTypes);
+            .Concat(CompositeTypes)
+            .Concat(XmlSchemaCollections);
 }

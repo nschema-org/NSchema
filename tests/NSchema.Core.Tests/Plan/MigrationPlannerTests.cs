@@ -182,6 +182,33 @@ public sealed class MigrationPlannerTests
             Arg.Any<ProjectDefinition>());
     }
 
+    /// <summary>
+    /// A schema NSchema neither manages nor declares is not the plan's business, and the managed set alone is
+    /// what says so — no scope is involved. This is what an unscoped run leans on, and what a schema list
+    /// derived from the project and the state used to be credited with keeping safe.
+    /// </summary>
+    [Fact]
+    public void Plan_UnscopedRun_LeavesAnUnmanagedSchemaOutOfTheCompare()
+    {
+        // Arrange — `app` is managed; `unmanaged` is in the observation and is neither managed nor declared.
+        SqlIdentifier app = "app";
+        var current = new CurrentState(new Database
+        {
+            Schemas = [new Schema { Name = app }, new Schema { Name = "unmanaged" }],
+        })
+        {
+            Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema(app)]),
+        };
+
+        // Act
+        Sut.Plan(current, _desired, PlanningScope.All);
+
+        // Assert — it never reaches the comparer, so nothing downstream can propose dropping it.
+        _differ.Received(1).Compare(
+            Arg.Is<CurrentState>(c => c!.Database.Schemas.All(s => s.Name != "unmanaged")),
+            Arg.Any<ProjectDefinition>());
+    }
+
     [Fact]
     public void Plan_ManagedAfterApply_IsTheDeclaredIdentities()
     {

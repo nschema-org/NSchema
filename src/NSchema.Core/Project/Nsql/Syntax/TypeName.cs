@@ -9,8 +9,24 @@ namespace NSchema.Project.Nsql.Syntax;
 /// <param name="Schema">The schema qualifier for a user-defined type, or <see langword="null"/>.</param>
 /// <param name="Name">The type name.</param>
 /// <param name="Arguments">The text inside the parentheses (e.g. <c>100</c> or <c>10,2</c>), or <see langword="null"/>.</param>
-public sealed record TypeName(Identifier? Schema, Identifier Name, string? Arguments = null) : NsqlNode
+/// <param name="XmlCollection">
+/// The XML schema collection a typed <c>xml</c> reads <c>xml(CONTENT s.c)</c>; <see langword="null"/> otherwise.
+/// It occupies the argument position but names an object rather than a number, so it is its own component.
+/// </param>
+/// <param name="IsDocument">Whether a typed <c>xml</c> was written <c>DOCUMENT</c> rather than <c>CONTENT</c>.</param>
+public sealed record TypeName(
+    Identifier? Schema,
+    Identifier Name,
+    string? Arguments = null,
+    QualifiedName? XmlCollection = null,
+    bool IsDocument = false
+) : NsqlNode
 {
+    /// <summary>
+    /// The <c>CONTENT</c>/<c>DOCUMENT</c> keyword token, when parsed as a typed <c>xml</c>.
+    /// </summary>
+    public Token? ContentKeyword { get; init; }
+
     /// <summary>
     /// The <c>.</c> token after the schema qualifier, when parsed qualified.
     /// </summary>
@@ -49,6 +65,14 @@ public sealed record TypeName(Identifier? Schema, Identifier Name, string? Argum
                 yield return SchemaDotToken ?? Token.Punctuation(TokenKind.Dot, NsqlSymbols.Dot);
             }
             yield return Name;
+            if (XmlCollection != null)
+            {
+                yield return OpenParenToken ?? Token.Punctuation(TokenKind.LeftParen, NsqlSymbols.LeftParen);
+                yield return ContentKeyword ?? Token.Keyword(IsDocument ? NsqlKeywords.Document : NsqlKeywords.Content);
+                yield return XmlCollection;
+                yield return CloseParenToken ?? Token.Punctuation(TokenKind.RightParen, NsqlSymbols.RightParen);
+                yield break;
+            }
             if (Arguments is not null)
             {
                 yield return OpenParenToken ?? Token.Punctuation(TokenKind.LeftParen, NsqlSymbols.LeftParen);

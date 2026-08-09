@@ -48,6 +48,12 @@ public sealed class Column : ObjectMember, IEquatable<Column>
     public IReadOnlyList<ObjectAddress> References(SqlIdentifier schema)
     {
         var result = new List<ObjectAddress>();
+
+        // A typed xml column cannot exist before the collection it validates against.
+        if (Type.Xml is { } xml)
+        {
+            result.Add(xml.Collection);
+        }
         if (GeneratedExpression is { } generated)
         {
             result.AddRange(Services.ExpressionDependencyScanner.CallSites(generated.Value, schema));

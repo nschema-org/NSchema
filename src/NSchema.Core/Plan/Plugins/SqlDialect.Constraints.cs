@@ -26,7 +26,7 @@ public abstract partial class SqlDialect
 
     /// <summary>The <c>CONSTRAINT … UNIQUE (…)</c> clause, used inline in a CREATE TABLE and by the ALTER add.</summary>
     protected string UniqueConstraintClause(UniqueConstraint unique) =>
-        $"CONSTRAINT {Quote(unique.Name)} UNIQUE ({ColumnList(unique.ColumnNames)})";
+        $"CONSTRAINT {Quote(unique.Name)} UNIQUE{ClusteringSql(unique.Clustered)} ({ColumnList(unique.ColumnNames)})";
 
     /// <summary>The <c>CONSTRAINT … CHECK (…)</c> clause, used inline in a CREATE TABLE and by the ALTER add.</summary>
     protected string CheckConstraintClause(CheckConstraint check) =>

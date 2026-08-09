@@ -9,6 +9,7 @@ using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Sequences;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
+using NSchema.Diff.Domain.XmlSchemaCollections;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Routines;
@@ -67,6 +68,11 @@ internal static class DiffRenderer
             foreach (var compositeType in schema.CompositeTypes)
             {
                 RenderCompositeType(lines, compositeType);
+            }
+
+            foreach (var collection in schema.XmlSchemaCollections)
+            {
+                RenderXmlSchemaCollection(lines, collection);
             }
 
             foreach (var sequence in schema.Sequences)
@@ -181,12 +187,25 @@ internal static class DiffRenderer
         }
     }
 
+    private static void RenderXmlSchemaCollection(List<DiffLine> lines, XmlSchemaCollectionDiff collection)
+    {
+        // A body change is a rebuild, so it reads as a recreate rather than an alteration.
+        var name = QualifiedName(collection);
+        var label = collection.RequiresRecreate ? "xml schema collection (recreated)" : "xml schema collection";
+        AppendHeader(lines, collection.Change, $"{label} {name}{CommentSuffix(collection.Comment)}");
+    }
+
     private static void RenderView(List<DiffLine> lines, ViewDiff view)
     {
-        // A plain ⇄ materialized conversion renders as a label transition, mirroring the rename arrow.
-        var label = view.Materialized is { } materialized
-            ? $"{ViewLabel(materialized.Old)} → {ViewLabel(materialized.New)}"
-            : ViewLabel(view.IsMaterialized);
+        // A plain ⇄ materialized conversion, or a binding ⇄ unbinding, renders as a label transition, mirroring
+        // the rename arrow. Both say what the view *is*, so they share the one label.
+        var label = (view.Materialized, view.SchemaBound) switch
+        {
+            ({ } m, { } b) => $"{ViewLabel(m.Old, b.Old)} → {ViewLabel(m.New, b.New)}",
+            ({ } m, null) => $"{ViewLabel(m.Old, view.IsSchemaBound)} → {ViewLabel(m.New, view.IsSchemaBound)}",
+            (null, { } b) => $"{ViewLabel(view.IsMaterialized, b.Old)} → {ViewLabel(view.IsMaterialized, b.New)}",
+            _ => ViewLabel(view.IsMaterialized, view.IsSchemaBound),
+        };
         var name = QualifiedName(view);
 
         // A comment-only modify (no body or index change) reports the comment transition rather than a bare header.
@@ -198,14 +217,15 @@ internal static class DiffRenderer
 
         AppendHeader(lines, view.Change, $"{label} {name}{CommentSuffix(view.Comment)}");
 
-        // In-place index changes on a materialized view.
+        // In-place index changes on the view.
         foreach (var index in view.Indexes)
         {
             AppendDetail(lines, index.Change, MemberText("index", index.Name, index.Change, index.Comment));
         }
     }
 
-    private static string ViewLabel(bool isMaterialized) => isMaterialized ? "materialized view" : "view";
+    private static string ViewLabel(bool isMaterialized, bool isSchemaBound) =>
+        (isSchemaBound ? "schema-bound " : "") + (isMaterialized ? "materialized view" : "view");
 
     private static void RenderEnum(List<DiffLine> lines, EnumDiff enumDiff)
     {

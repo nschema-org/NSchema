@@ -7,6 +7,7 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Types;
 using NSchema.Model.Views;
+using NSchema.Model.XmlSchemaCollections;
 
 namespace NSchema.Model.Schemas;
 
@@ -96,6 +97,15 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
     }
 
     /// <summary>
+    /// The XML schema collections the schema declares.
+    /// </summary>
+    public SchemaObjectCollection<XmlSchemaCollection> XmlSchemaCollections
+    {
+        get => field ??= new SchemaObjectCollection<XmlSchemaCollection>(this);
+        init { value.Attach(this); field = value; }
+    }
+
+    /// <summary>
     /// A list of grants that define the permissions associated with the schema.
     /// </summary>
     public List<SchemaGrant> Grants { get; init; } = [];
@@ -111,7 +121,8 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         .Concat(Routines)
         .Concat(Domains)
         .Concat(CompositeTypes)
-        .Concat(NativeTypes);
+        .Concat(NativeTypes)
+        .Concat(XmlSchemaCollections);
 
     /// <inheritdoc/>
     public override Schema Clone() => Copy(IsImplicit);
@@ -135,6 +146,7 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         Domains = [.. Domains.Select(d => d.Clone())],
         CompositeTypes = [.. CompositeTypes.Select(t => t.Clone())],
         NativeTypes = [.. NativeTypes.Select(t => t.Clone())],
+        XmlSchemaCollections = [.. XmlSchemaCollections.Select(x => x.Clone())],
         Comment = Comment,
     };
 
@@ -153,6 +165,7 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         copy.Domains.RemoveWhere(d => !identities.Contains(d));
         copy.CompositeTypes.RemoveWhere(t => !identities.Contains(t));
         copy.NativeTypes.RemoveWhere(t => !identities.Contains(t));
+        copy.XmlSchemaCollections.RemoveWhere(x => !identities.Contains(x));
         return copy;
     }
 
@@ -170,7 +183,8 @@ public sealed class Schema : DatabaseObject, IEquatable<Schema>
         && Routines.SequenceEqual(other.Routines)
         && Domains.SequenceEqual(other.Domains)
         && CompositeTypes.SequenceEqual(other.CompositeTypes)
-        && NativeTypes.SequenceEqual(other.NativeTypes);
+        && NativeTypes.SequenceEqual(other.NativeTypes)
+        && XmlSchemaCollections.SequenceEqual(other.XmlSchemaCollections);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Schema other && Equals(other);

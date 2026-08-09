@@ -78,7 +78,7 @@ public abstract partial class SqlDialect
 
     /// <summary>The <c>CONSTRAINT … PRIMARY KEY (…)</c> clause, used inline in a CREATE TABLE and by the ALTER add.</summary>
     protected string PrimaryKeyClause(PrimaryKey primaryKey) =>
-        $"CONSTRAINT {Quote(primaryKey.Name)} PRIMARY KEY ({ColumnList(primaryKey.ColumnNames)})";
+        $"CONSTRAINT {Quote(primaryKey.Name)} PRIMARY KEY{ClusteringSql(primaryKey.Clustered)} ({ColumnList(primaryKey.ColumnNames)})";
 
     /// <summary>The <c>CONSTRAINT … FOREIGN KEY (…) REFERENCES …</c> clause, used inline in a CREATE TABLE and by the ALTER add.</summary>
     protected string ForeignKeyClause(ForeignKey key)

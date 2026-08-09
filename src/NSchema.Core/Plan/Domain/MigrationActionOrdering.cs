@@ -16,6 +16,7 @@ using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Triggers;
 using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Domain.XmlSchemaCollections;
 
 namespace NSchema.Plan.Domain;
 
@@ -29,7 +30,7 @@ internal static class MigrationActionOrdering
         [typeof(RenameSchema)], [typeof(DropView)], [typeof(DropTrigger)], [typeof(DropForeignKey)],
         [typeof(DropCheckConstraint)], [typeof(DropExclusionConstraint)], [typeof(DropUniqueConstraint)],
         [typeof(DropIndex)], [typeof(DropPrimaryKey)], [typeof(RevokeSchemaUsage)], [typeof(RevokeTablePrivileges)],
-        [typeof(CreateExtension)], [typeof(AlterExtension)], [typeof(CreateSchema)], [typeof(RenameEnum)],
+        [typeof(CreateExtension)], [typeof(AlterExtension)], [typeof(CreateSchema)], [typeof(CreateXmlSchemaCollection)], [typeof(RenameEnum)],
         [typeof(RenameSequence)], [typeof(CreateEnum)], [typeof(CreateSequence)], [typeof(AddEnumValue)],
         [typeof(AlterSequence)], [typeof(RenameDomain)], [typeof(CreateDomain)], [typeof(RecreateDomain)],
         [typeof(AlterDomainDefault)], [typeof(AlterDomainNotNull)], [typeof(AddDomainCheck)], [typeof(DropDomainCheck)],
@@ -48,7 +49,7 @@ internal static class MigrationActionOrdering
         [typeof(SetEnumComment)], [typeof(SetSequenceComment)], [typeof(SetRoutineComment)], [typeof(SetDomainComment)],
         [typeof(SetCompositeTypeComment)], [typeof(SetExtensionComment)],
         [typeof(DropRoutine), typeof(DropTable)],
-        [typeof(DropDomain)], [typeof(DropCompositeType)], [typeof(DropEnum)], [typeof(DropSequence)], [typeof(DropSchema)],
+        [typeof(DropDomain)], [typeof(DropCompositeType)], [typeof(DropEnum)], [typeof(DropSequence)], [typeof(DropXmlSchemaCollection)], [typeof(DropSchema)],
         [typeof(DropExtension)],
     }.Index()
         .SelectMany(band => band.Item.Select(type => (Type: type, band.Index)))

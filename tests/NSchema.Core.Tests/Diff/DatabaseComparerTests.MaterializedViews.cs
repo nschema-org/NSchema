@@ -1,7 +1,6 @@
 using NSchema.Diff.Domain;
 using NSchema.Model;
 using NSchema.Model.Indexes;
-using NSchema.Model.Services;
 using NSchema.Model.Views;
 
 namespace NSchema.Tests.Diff;

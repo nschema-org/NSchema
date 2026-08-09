@@ -14,6 +14,7 @@ using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Model.Triggers;
 using NSchema.Model.Views;
+using NSchema.Model.XmlSchemaCollections;
 using NSchema.Plan.Domain;
 using NSchema.Plan.Domain.Columns;
 using NSchema.Plan.Domain.CompositeTypes;
@@ -30,6 +31,7 @@ using NSchema.Plan.Domain.Services;
 using NSchema.Plan.Domain.Tables;
 using NSchema.Plan.Domain.Triggers;
 using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Domain.XmlSchemaCollections;
 using NSchema.Plan.Plugins;
 
 namespace NSchema.Tests.Plan;
@@ -145,6 +147,8 @@ public sealed class SqlDialectTests
         new SetTriggerComment(new MemberAddress(N("app"), N("users"), N("trg_audit")), null, "Audit trail"),
 
         // Views
+        new CreateXmlSchemaCollection(N("app"), new XmlSchemaCollection { Name = N("survey"), Body = "<xsd:schema />" }),
+        new DropXmlSchemaCollection(new ObjectAddress(N("app"), N("survey"), SchemaObjectKind.XmlSchemaCollection)),
         new CreateView(N("app"), new View { Name = N("active_users"), Body = "SELECT * FROM app.users" }),
         new ReplaceView(N("app"), new View { Name = N("active_users"), Body = "SELECT * FROM app.users WHERE active" }),
         new DropView(new ObjectAddress(N("app"), N("active_users"))),

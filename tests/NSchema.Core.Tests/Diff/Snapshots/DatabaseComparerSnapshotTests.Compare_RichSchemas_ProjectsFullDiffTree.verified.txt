@@ -443,6 +443,7 @@
               Value: SELECT id, email_address FROM app.users WHERE active
             },
             IsMaterialized: false,
+            IsSchemaBound: false,
             Address: {
               Schema: {
                 Value: app
@@ -459,6 +460,7 @@
             IsImplicit: false
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           RequiresRecreate: false
         },
         {
@@ -480,6 +482,7 @@
           },
           Change: Remove,
           IsMaterialized: false,
+          IsSchemaBound: false,
           RequiresRecreate: false
         },
         {
@@ -504,6 +507,7 @@
             Value: legacy_report
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           RequiresRecreate: false
         },
         {
@@ -530,6 +534,7 @@
               Value: SELECT email_address FROM app.active_users
             },
             IsMaterialized: false,
+            IsSchemaBound: false,
             Address: {
               Schema: {
                 Value: app
@@ -546,6 +551,7 @@
             IsImplicit: false
           },
           IsMaterialized: false,
+          IsSchemaBound: false,
           RequiresRecreate: false
         }
       ],
@@ -1329,6 +1335,7 @@
           },
           Change: Remove,
           IsMaterialized: false,
+          IsSchemaBound: false,
           RequiresRecreate: false
         }
       ],

@@ -80,13 +80,7 @@ internal static class ProjectDiagnostics
     /// A standalone index whose relation the project does not declare.
     /// </summary>
     public static NsqlDiagnostic UnknownIndexRelation(SqlIdentifier schema, SqlIdentifier relation, SourcePosition position) =>
-        Positioned($"CREATE INDEX references unknown table or materialized view '{schema}.{relation}'.", position);
-
-    /// <summary>
-    /// A standalone index targeting a plain (non-materialized) view.
-    /// </summary>
-    public static NsqlDiagnostic IndexOnPlainView(SqlIdentifier schema, SqlIdentifier view, SourcePosition position) =>
-        Positioned($"CREATE INDEX targets '{schema}.{view}', which is not a materialized view.", position);
+        Positioned($"CREATE INDEX references unknown table or view '{schema}.{relation}'.", position);
 
     private static NsqlDiagnostic Positioned(FormattedText message, SourcePosition position) =>
         new(Source, "index-on-plain-view", $"{message} (at {position}).", DiagnosticSeverity.Error, position);

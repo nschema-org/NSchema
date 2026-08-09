@@ -413,6 +413,57 @@ public sealed class MigrationWorkflowTests
         _planner.DidNotReceive().Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(), Arg.Any<PlanningScope>());
     }
 
+    /// <summary>
+    /// An unscoped run reaches the planner unscoped. What it may touch is the managed set's business — the
+    /// planner narrows the current side to the managed identities plus what the project declares — so
+    /// synthesising a schema list here can only take reach away. It did: an object can be managed inside a
+    /// schema that is not (NSchema adopts objects out of an implicit `dbo` or `public` without managing the
+    /// schema), and a list built from managed *schemas* omitted them. A teardown showed it, emptying the named
+    /// schemas and leaving everything in `dbo` standing, since a project declaring nothing names no schemas.
+    /// </summary>
+    [Fact]
+    public async Task ComputePlan_Unscoped_ReachesThePlannerUnscoped()
+    {
+        // Arrange — `app` is managed in its own right; `dbo` is not, but holds a managed table.
+        var recorded = new Database
+        {
+            Schemas =
+            [
+                new Schema { Name = "app", Tables = [new Table { Name = "orders" }] },
+                new Schema { Name = "dbo", Tables = [new Table { Name = "users" }] },
+            ],
+        };
+        var sut = SutWithRecordedState(new DatabaseState(recorded, [], new IdentitySet(
+            DatabaseObjects: [DatabaseAddress.Schema("app")],
+            SchemaObjects: [ObjectAddress.Table("app", "orders"), ObjectAddress.Table("dbo", "users")])));
+
+        // The teardown shape: the project declares nothing at all.
+        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectDefinition(new Database { Schemas = [] }));
+
+        // Act
+        await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
+
+        // Assert
+        _planner.Received(1).Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(),
+            Arg.Is<PlanningScope>(s => s!.IsUnscoped));
+    }
+
+    [Fact]
+    public async Task ComputePlan_ExplicitScope_IsPassedThroughUntouched()
+    {
+        // Arrange
+        var scope = PlanningScope.To(DatabaseAddress.Schema("app"));
+        var sut = SutWithRecordedSchema(new Database { Schemas = [new Schema { Name = "app" }] });
+
+        // Act
+        await sut.ComputePlan(PlanTarget.Project, scope, TestContext.Current.CancellationToken);
+
+        // Assert — narrowing is the caller's to ask for, and is carried verbatim.
+        _planner.Received(1).Plan(Arg.Any<CurrentState>(), Arg.Any<ProjectDefinition>(),
+            Arg.Is<PlanningScope>(s => s!.Equals(scope)));
+    }
+
     [Fact]
     public async Task Refresh_RecordsExecutedScripts()
     {
@@ -726,38 +777,6 @@ public sealed class MigrationWorkflowTests
         result.Diagnostics.ShouldBe(diagnostics);
     }
 
-    [Fact]
-    public async Task Prepare_DerivesScopeFromDesiredSchema_WhenNoExplicitScope()
-    {
-        // Arrange
-        // The derived scope covers the declared schemas plus every schema holding managed identities — a
-        // schema whose declarations were all removed stays under management until its drops apply.
-        var desired = new Database
-        {
-            Schemas = [new Schema { Name = "app" }, new Schema { Name = "admin" }],
-        };
-        _projectProvider.GetProject(Arg.Any<PlanningScope>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success(new ProjectDefinition(desired)));
-        var sut = SutWithRecordedState(new DatabaseState(new Database
-        {
-            Schemas = [
-            new Schema { Name = "app" },
-            new Schema { Name = "admin" },
-            new Schema { Name = "legacy" },
-            new Schema { Name = "unmanaged" },
-        ],
-        }) with
-        { Managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Schema("legacy")]) });
-
-        // Act
-        await sut.ComputePlan(PlanTarget.Project, PlanningScope.All, TestContext.Current.CancellationToken);
-
-        // Assert — the derived scope is what keeps the diff from planning to drop the unmanaged schema.
-        _planner.Received(1).Plan(
-            Arg.Any<CurrentState>(),
-            Arg.Any<ProjectDefinition>(),
-            Arg.Is<PlanningScope>(s => !s!.IsUnscoped && s.Addresses.Select(a => a.Value).Order().SequenceEqual(new[] { "admin", "app", "legacy" })));
-    }
 
     [Fact]
     public async Task Prepare_PassesExplicitScopeToTheProjectProvider()

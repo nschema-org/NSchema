@@ -4,15 +4,17 @@ using NSchema.Project.Nsql.Tokens;
 namespace NSchema.Project.Nsql.Syntax.Views;
 
 /// <summary>
-/// <c>CREATE [MATERIALIZED] VIEW schema.name [RENAMED FROM old] AS body;</c>
+/// <c>CREATE [MATERIALIZED] VIEW schema.name [WITH SCHEMABINDING] AS body;</c>
 /// </summary>
 /// <param name="Name">The view name as written.</param>
 /// <param name="Body">The defining query, verbatim (the text after <c>AS</c>).</param>
 /// <param name="IsMaterialized">Whether the view is materialized.</param>
+/// <param name="IsSchemaBound">Whether the view is bound to the schema of what it reads.</param>
 public sealed record CreateViewStatement(
     QualifiedName Name,
     SqlText Body,
-    bool IsMaterialized = false
+    bool IsMaterialized = false,
+    bool IsSchemaBound = false
 ) : NsqlStatement
 {
     /// <summary>
@@ -29,6 +31,16 @@ public sealed record CreateViewStatement(
     /// The <c>VIEW</c> keyword token.
     /// </summary>
     public Token ViewKeyword { get; init; } = Token.Keyword(NsqlKeywords.View);
+
+    /// <summary>
+    /// The <c>WITH</c> keyword token opening the attribute clause, when written schema-bound.
+    /// </summary>
+    public Token? WithKeyword { get; init; }
+
+    /// <summary>
+    /// The <c>SCHEMABINDING</c> keyword token, when written schema-bound.
+    /// </summary>
+    public Token? SchemaBindingKeyword { get; init; }
 
     /// <summary>
     /// The <c>AS</c> keyword token.
@@ -60,6 +72,11 @@ public sealed record CreateViewStatement(
             }
             yield return ViewKeyword;
             yield return Name;
+            if (IsSchemaBound)
+            {
+                yield return WithKeyword ?? Token.Keyword(NsqlKeywords.With);
+                yield return SchemaBindingKeyword ?? Token.Keyword(NsqlKeywords.SchemaBinding);
+            }
             yield return AsKeyword;
             yield return BodyToken;
             yield return SemicolonToken;

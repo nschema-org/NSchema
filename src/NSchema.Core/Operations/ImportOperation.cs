@@ -157,6 +157,7 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
             MergeObjects(schema.Routines, incomingSchema.Routines);
             MergeObjects(schema.Domains, incomingSchema.Domains);
             MergeObjects(schema.CompositeTypes, incomingSchema.CompositeTypes);
+            MergeObjects(schema.XmlSchemaCollections, incomingSchema.XmlSchemaCollections);
             foreach (var grant in incomingSchema.Grants.Where(g => !schema.Grants.Contains(g)))
             {
                 schema.Grants.Add(grant);

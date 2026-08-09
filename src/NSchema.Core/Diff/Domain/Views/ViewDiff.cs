@@ -54,12 +54,22 @@ public sealed record ViewDiff : ISchemaObjectDiff
     public ValueChange<bool>? Materialized { get; init; }
 
     /// <summary>
+    /// Whether the view is schema-bound (after the change, for a modified view).
+    /// </summary>
+    public bool IsSchemaBound { get; init; }
+
+    /// <summary>
+    /// The change to the view's schema binding when it is bound or unbound.
+    /// </summary>
+    public ValueChange<bool>? SchemaBound { get; init; }
+
+    /// <summary>
     /// Whether the change must be applied as a drop + recreate rather than an in-place replace.
     /// </summary>
     public bool RequiresRecreate { get; init; }
 
     /// <summary>
-    /// In-place index changes on a materialized view whose body is unchanged.
+    /// In-place index changes on a view whose definition is unchanged.
     /// </summary>
     public IReadOnlyList<IndexDiff> Indexes { get; init; } = [];
 
@@ -85,6 +95,7 @@ public sealed record ViewDiff : ISchemaObjectDiff
         Definition = definition,
         Comment = ValueChange.Between(null, definition.Comment),
         IsMaterialized = definition.IsMaterialized,
+        IsSchemaBound = definition.IsSchemaBound,
     };
 
     /// <summary>
