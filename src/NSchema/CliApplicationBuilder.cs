@@ -146,7 +146,12 @@ internal sealed class CliApplicationBuilder
 
     private Result<TPlugin> ResolvePlugin<TPlugin>(PluginReference reference) where TPlugin : class, INSchemaPlugin
     {
-        var loaded = Plugins.Load(reference.PackageId, reference.Version, _allowRestore);
+        var loaded = reference.Origin switch
+        {
+            ResolvedPath path => Plugins.LoadFromPath(reference.PackageId, path.AssemblyPath),
+            ResolvedPackage package => Plugins.Load(reference.PackageId, package.Version, _allowRestore),
+            _ => throw new NotSupportedException($"Unknown plugin origin '{reference.Origin.GetType().Name}'."),
+        };
         if (loaded.IsFailure)
         {
             return Result.Failure<TPlugin>(loaded.Diagnostics);

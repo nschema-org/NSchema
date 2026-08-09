@@ -10,7 +10,7 @@ internal sealed record ProjectPlugin(
     string Role,
     PluginLabel Label,
     PackageId PackageId,
-    SemanticVersion Version,
+    SemanticVersion? Version,
     bool Restored,
     string? CachePath
 );

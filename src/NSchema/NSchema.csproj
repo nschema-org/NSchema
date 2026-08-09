@@ -23,7 +23,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>5.9.0</Version>
+    <Version>5.10.0</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -51,10 +51,45 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="NSchema.Core" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
+
+  <!--
+    Core comes from a sibling checkout when one is there, and from the pinned package otherwise. Someone with both
+    repositories cloned is working on them together and wants their Core changes; CI clones this repository alone
+    (NSchema.Build goes into a subdirectory, not a sibling), so it gets the package without being told to.
+
+    Which one was chosen is announced on every build. The ergonomics are worth having, but a build that quietly
+    picked up uncommitted Core changes would be indistinguishable from one that did not, and that is the failure
+    that wastes an afternoon. Force either with -p:UseLocalCore=true|false.
+
+    The CLI is the only place this needs doing. A plugin's own NSchema.Core.dll is never loaded: PluginLoadContext
+    defers NSchema.Core to the host's context so that types like IDatabaseIntrospector are the same Type on both
+    sides of the boundary. Whichever Core the CLI is built against is the one every plugin runs against.
+  -->
+  <PropertyGroup>
+    <LocalCoreProject>$(MSBuildThisFileDirectory)../../../NSchema.Core/src/NSchema.Core/NSchema.Core.csproj</LocalCoreProject>
+    <UseLocalCore Condition="'$(UseLocalCore)' == '' AND Exists('$(LocalCoreProject)')">true</UseLocalCore>
+    <UseLocalCore Condition="'$(UseLocalCore)' == ''">false</UseLocalCore>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalCore)' != 'true'">
+    <PackageReference Include="NSchema.Core" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalCore)' == 'true'">
+    <ProjectReference Include="$(LocalCoreProject)" />
+  </ItemGroup>
+
+  <Target Name="ReportCoreSource" BeforeTargets="ResolveProjectReferences">
+    <Error Condition="'$(UseLocalCore)' == 'true' AND !Exists('$(LocalCoreProject)')"
+           Text="UseLocalCore=true but there is no checkout at $(LocalCoreProject). Clone NSchema.Core beside this repository, or pass -p:UseLocalCore=false to build against the pinned package." />
+    <Message Condition="'$(UseLocalCore)' == 'true'" Importance="high"
+             Text="NSchema.Core: sibling checkout ($(LocalCoreProject)). Pass -p:UseLocalCore=false for the pinned package." />
+    <Message Condition="'$(UseLocalCore)' != 'true'" Importance="high"
+             Text="NSchema.Core: pinned package." />
+  </Target>
 
   <ItemGroup>
     <Using Include="NSchema.Diagnostics" />

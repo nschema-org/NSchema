@@ -109,7 +109,7 @@ public sealed class CommandRunnerTests : IDisposable
         var label = new PluginLabel("nope");
         var reference = new PluginReference(
             new PackageId("Acme.Nonexistent.Plugin"),
-            SemanticVersion.Parse("1.0.0"),
+            new ResolvedPackage(SemanticVersion.Parse("1.0.0")),
             label,
             new PluginSettings(label, new Dictionary<string, string?>()));
         var ran = false;
