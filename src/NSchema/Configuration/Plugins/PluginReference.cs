@@ -47,47 +47,47 @@ internal sealed record PluginReference(PackageId PackageId, ResolvedOrigin Origi
         switch (declaration.Origin)
         {
             case PathOrigin path:
-            {
-                // Absolute here rather than at load time: the project root is known here, and a diagnostic that
-                // quotes the path the loader actually tried is worth more than one quoting what was written.
-                var assemblyPath = Path.GetFullPath(path.Path, root);
-                var name = Path.GetFileNameWithoutExtension(assemblyPath);
-
-                if (!PackageId.IsValid(name))
                 {
-                    return PluginDiagnostics.UnusablePluginPath(label, assemblyPath);
-                }
+                    // Absolute here rather than at load time: the project root is known here, and a diagnostic that
+                    // quotes the path the loader actually tried is worth more than one quoting what was written.
+                    var assemblyPath = Path.GetFullPath(path.Path, root);
+                    var name = Path.GetFileNameWithoutExtension(assemblyPath);
 
-                // Checked here rather than at load, because here is where the label and the project root are both
-                // known: a diagnostic can say which plugin, and quote the absolute path that was actually tried.
-                if (!File.Exists(assemblyPath))
-                {
-                    return PluginDiagnostics.PluginPathNotFound(label, assemblyPath);
-                }
+                    if (!PackageId.IsValid(name))
+                    {
+                        return PluginDiagnostics.UnusablePluginPath(label, assemblyPath);
+                    }
 
-                // A plugin built without EnableDynamicLoading leaves the assembly on disk with none of its closure.
-                // The runtime's own account of that is a resolution failure naming a component nobody mentioned, so
-                // the far more likely cause is named while there is still something useful to say about it.
-                if (!File.Exists(Path.ChangeExtension(assemblyPath, ".deps.json")))
-                {
-                    return PluginDiagnostics.PluginPathNotSelfContained(label, assemblyPath);
-                }
+                    // Checked here rather than at load, because here is where the label and the project root are both
+                    // known: a diagnostic can say which plugin, and quote the absolute path that was actually tried.
+                    if (!File.Exists(assemblyPath))
+                    {
+                        return PluginDiagnostics.PluginPathNotFound(label, assemblyPath);
+                    }
 
-                // The warning rides on the resolved reference rather than being raised at load, so it reaches every
-                // command that reads the configuration — a CI log has to show that a run used a build, not a release.
-                return Result.Success(
-                    new PluginReference(new PackageId(name), new ResolvedPath(assemblyPath), label, config),
-                    PluginDiagnostics.PluginLoadedFromPath(label, assemblyPath));
-            }
+                    // A plugin built without EnableDynamicLoading leaves the assembly on disk with none of its closure.
+                    // The runtime's own account of that is a resolution failure naming a component nobody mentioned, so
+                    // the far more likely cause is named while there is still something useful to say about it.
+                    if (!File.Exists(Path.ChangeExtension(assemblyPath, ".deps.json")))
+                    {
+                        return PluginDiagnostics.PluginPathNotSelfContained(label, assemblyPath);
+                    }
+
+                    // The warning rides on the resolved reference rather than being raised at load, so it reaches every
+                    // command that reads the configuration — a CI log has to show that a run used a build, not a release.
+                    return Result.Success(
+                        new PluginReference(new PackageId(name), new ResolvedPath(assemblyPath), label, config),
+                        PluginDiagnostics.PluginLoadedFromPath(label, assemblyPath));
+                }
 
             case PackageOrigin package:
-            {
-                var version = resolve(package.Package.Source, package.Package.Version);
+                {
+                    var version = resolve(package.Package.Source, package.Package.Version);
 
-                return version.IsFailure
-                    ? Result.Failure<PluginReference>(version.Diagnostics)
-                    : new PluginReference(package.Package.Source, new ResolvedPackage(version.Require()), label, config);
-            }
+                    return version.IsFailure
+                        ? Result.Failure<PluginReference>(version.Diagnostics)
+                        : new PluginReference(package.Package.Source, new ResolvedPackage(version.Require()), label, config);
+                }
 
             default:
                 throw new NotSupportedException($"Unknown plugin origin '{declaration.Origin.GetType().Name}'.");
