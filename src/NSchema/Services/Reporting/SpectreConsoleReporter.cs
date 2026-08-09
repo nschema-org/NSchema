@@ -273,7 +273,7 @@ internal sealed class SpectreConsoleReporter : IConsoleReporter
                 new Markup(Markup.Escape(plugin.Role)),
                 new Markup(Markup.Escape(plugin.Label.Value)),
                 new Markup(Markup.Escape(plugin.PackageId.Value)),
-                new Markup(Markup.Escape(plugin.Version.ToString())),
+                new Markup(Markup.Escape(plugin.Version?.ToString() ?? "(from path)")),
                 new Markup(RestoredLabel(plugin.Restored)));
         }
 

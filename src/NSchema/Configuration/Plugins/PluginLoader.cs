@@ -44,12 +44,31 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
             return Result.Failure<IReadOnlyList<INSchemaPlugin>>(published.Diagnostics);
         }
 
+        return Load(packageId, Path.Combine(published.Value, SynthAssemblyName + ".dll"), version);
+    }
+
+    /// <summary>
+    /// Loads the plugin(s) in an assembly already on disk, with no package, feed or cache involved.
+    /// </summary>
+    /// <param name="packageId">The assembly's simple name, which is what the load context is asked for.</param>
+    /// <param name="assemblyPath">The absolute path to the plugin assembly.</param>
+    /// <remarks>
+    /// A plugin built with <c>EnableDynamicLoading</c> already carries the <c>.deps.json</c> and the closure the
+    /// resolver needs, so there is nothing to restore and no version to key a cache by. The synthesised host that a
+    /// package goes through exists only because a package has no build output to point a resolver at.
+    /// </remarks>
+    public Result<IReadOnlyList<INSchemaPlugin>> LoadFromPath(PackageId packageId, string assemblyPath) =>
+        Load(packageId, assemblyPath, version: null);
+
+    private Result<IReadOnlyList<INSchemaPlugin>> Load(PackageId packageId, string entryAssembly, SemanticVersion? version)
+    {
+
         // Loading a third-party assembly through the isolated context is a genuine external-code boundary: a malformed
         // package, a type that won't instantiate, or a resolver failure surface as reflection/ALC exceptions. This is
         // the right place to catch — convert the failure to a diagnostic rather than let it escape unframed.
         try
         {
-            var context = new PluginLoadContext(Path.Combine(published.Value, SynthAssemblyName + ".dll"));
+            var context = new PluginLoadContext(entryAssembly);
             var assembly = context.LoadFromAssemblyName(new AssemblyName(packageId.Value));
 
             // The engine handshake rejects a plugin built against an incompatible NSchema.Core before any of its
@@ -91,15 +110,29 @@ internal sealed class PluginLoader(string projectDirectory, string? cacheRoot = 
     {
         foreach (var reference in references)
         {
+            // A path is neither fetched nor cached, so the fetch narration would be a lie; say where it came from
+            // instead, which is also the every-run reminder that this project is not reproducible from its lockfile.
+            if (reference.Origin is ResolvedPath fromPath)
+            {
+                var loadedFromPath = LoadFromPath(reference.PackageId, fromPath.AssemblyPath);
+                if (loadedFromPath.IsFailure)
+                {
+                    return Result.From(loadedFromPath.Diagnostics);
+                }
+
+                reporter.Success($"{reference.PackageId} (from {fromPath.AssemblyPath})");
+                continue;
+            }
+
             // Probe before loading so the narration distinguishes a real fetch from an instant cache hit; either way
             // the plugin is loaded (and so revalidated).
-            var alreadyInstalled = Cache.Contains(reference.PackageId, reference.Version);
+            var alreadyInstalled = Cache.Contains(reference.PackageId, reference.Version!);
             if (!alreadyInstalled)
             {
                 reporter.Announce($"Restoring {reference.PackageId} {reference.Version}...");
             }
 
-            var loaded = Load(reference.PackageId, reference.Version);
+            var loaded = Load(reference.PackageId, reference.Version!);
             if (loaded.IsFailure)
             {
                 return Result.From(loaded.Diagnostics);

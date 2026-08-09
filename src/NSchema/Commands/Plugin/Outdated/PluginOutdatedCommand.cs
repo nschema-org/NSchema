@@ -41,7 +41,7 @@ internal static class PluginOutdatedCommand
     {
         var plugins = new List<OutdatedPlugin>();
 
-        if (config.Database is { } provider)
+        if (config.Database is { Origin: ResolvedPackage } provider)
         {
             var described = Describe(PluginInventory.DatabaseRole, provider, config.Plugins, loader);
             if (described.IsFailure)
@@ -52,7 +52,7 @@ internal static class PluginOutdatedCommand
             plugins.Add(described.Require());
         }
 
-        if (config.State?.Plugin is { } backend)
+        if (config.State?.Plugin is { Origin: ResolvedPackage } backend)
         {
             var described = Describe(PluginInventory.StateRole, backend, config.Plugins, loader);
             if (described.IsFailure)
@@ -70,16 +70,20 @@ internal static class PluginOutdatedCommand
     {
         var declaration = declarations.First(declaration => declaration.Label == reference.Label);
 
+        // Callers only reach this for a package origin, so both of these are present.
+        var package = declaration.Package!;
+        var current = reference.Version!;
+
         // 'Wanted' is what 'plugin update' would install: the highest the range admits (an exact pin admits only itself).
         // An unsatisfiable range is the loader's own finding, so its diagnostics are carried rather than restated.
         SemanticVersion wanted;
-        if (declaration.Package.Version.IsExact)
+        if (package.Version.IsExact)
         {
-            wanted = reference.Version;
+            wanted = current;
         }
         else
         {
-            var highest = loader.ResolveHighest(declaration.Package.Source, declaration.Package.Version);
+            var highest = loader.ResolveHighest(package.Source, package.Version);
             if (highest.IsFailure)
             {
                 return Result.Failure<OutdatedPlugin>(highest.Diagnostics);
@@ -94,8 +98,8 @@ internal static class PluginOutdatedCommand
             return Result.Failure<OutdatedPlugin>(latest.Diagnostics);
         }
 
-        var outdated = reference.Version.CompareTo(latest.Require()) < 0;
+        var outdated = current.CompareTo(latest.Require()) < 0;
 
-        return new OutdatedPlugin(role, reference.Label, reference.PackageId, reference.Version, wanted, latest.Require(), outdated);
+        return new OutdatedPlugin(role, reference.Label, reference.PackageId, current, wanted, latest.Require(), outdated);
     }
 }

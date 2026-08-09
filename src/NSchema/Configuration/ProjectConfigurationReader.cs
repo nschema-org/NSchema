@@ -31,7 +31,7 @@ internal static class ProjectConfigurationReader
 
         var lockFile = (await LockFileManager.Read(LockFilePath(root), cancellationToken)).Require();
 
-        return Assemble(definition.Require(), (source, range) =>
+        return Assemble(definition.Require(), root, (source, range) =>
             lockFile.Find(source)?.Version
             ?? Result.Failure<SemanticVersion>(PluginDiagnostics.NotLocked(source, range)));
     }
@@ -55,7 +55,7 @@ internal static class ProjectConfigurationReader
             return Result.Failure<ProjectConfiguration>(definition.Diagnostics);
         }
 
-        return Assemble(definition.Require(), (source, range) =>
+        return Assemble(definition.Require(), root, (source, range) =>
         {
             // Editing a PLUGIN version should outrank a stale pin.
             var reuse = refresh is null || !refresh(source);
@@ -71,10 +71,10 @@ internal static class ProjectConfigurationReader
 
     // Each slice resolves independently so a project with two broken statements reports both, rather than only
     // whichever one happened to be assembled first.
-    private static Result<ProjectConfiguration> Assemble(ConfigurationDefinition definition, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve)
+    private static Result<ProjectConfiguration> Assemble(ConfigurationDefinition definition, string root, Func<PackageId, VersionRange, Result<SemanticVersion>> resolve)
     {
-        var database = definition.Database is { } db ? PluginReference.Resolve(db, definition.Plugins, resolve) : null;
-        var state = definition.State is { } st ? StateConfiguration.Resolve(st, definition.Plugins, resolve) : null;
+        var database = definition.Database is { } db ? PluginReference.Resolve(db, definition.Plugins, root, resolve) : null;
+        var state = definition.State is { } st ? StateConfiguration.Resolve(st, definition.Plugins, root, resolve) : null;
 
         var diagnostics = Enumerable.Empty<Diagnostic>()
             .Concat(database?.Diagnostics ?? Enumerable.Empty<Diagnostic>())

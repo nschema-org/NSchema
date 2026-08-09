@@ -123,6 +123,12 @@ internal static class PluginUpdateCommand
             return Result.Failure<PackageId?>(PluginDiagnostics.NotDeclared(label));
         }
 
-        return Result.Success<PackageId?>(declaration.Package.Version.IsExact ? null : declaration.Package.Source);
+        // A path plugin is updated by rebuilding it, not by resolving a newer package.
+        if (declaration.Package is not { } package)
+        {
+            return Result.Success<PackageId?>(null);
+        }
+
+        return Result.Success<PackageId?>(package.Version.IsExact ? null : package.Source);
     }
 }
