@@ -16,6 +16,7 @@ a major one, and called out explicitly in this changelog.
 
 ### Fixed
 
+- **An unreadable `.editorconfig` no longer crashes `init`, `new`, `plan show` or `completion install`/`uninstall`.**
 - **`.editorconfig` severities now reach the findings that reading a project produces**, not only the engine's. Findings such as `plugin-from-path` and `plugin-not-locked` are minted while the configuration is read, before an engine exists to hold a policy, so they ignored the file that named them — and nothing about them said which category they fell into. They now go through the same enforcement in the same precedence: setting one to `none` silences it, and setting one to `error` stops the command rather than only printing it in red. A finding the configuration cannot be read without is still refused, and says so.
 
 ## [5.11.0] - 2026-08-11

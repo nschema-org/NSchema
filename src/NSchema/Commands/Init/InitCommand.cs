@@ -19,7 +19,15 @@ internal static class InitCommand
         ConfigurationFactory.ApplyWorkingDirectory(parseResult);
         var root = Directory.GetCurrentDirectory();
 
-        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
+        // An unreadable .editorconfig fails the build, and requiring a value it does not carry would crash the
+        // command with an internal error rather than saying what is wrong with the file.
+        var built = CliApplicationBuilder.Create(parseResult).Build();
+        if (built.ReportFailure(ReporterFactory.CreateReporter(parseResult)))
+        {
+            return ExitCodes.Error;
+        }
+
+        using var app = built.Require();
 
         var initialized = await ProjectInitializer.Initialize(root, environment, new PluginLoader(root), app.Reporter, cancellationToken);
         return initialized.ReportFailure(app.Reporter) ? ExitCodes.Error : ExitCodes.NoChanges;
