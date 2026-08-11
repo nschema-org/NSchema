@@ -32,10 +32,15 @@ public sealed record DefinitionSet(
     public IReadOnlyList<TriggerDefinition> Triggers { get; init; } = Triggers ?? [];
 
     /// <summary>
+    /// The check constraint definitions in the set.
+    /// </summary>
+    public IReadOnlyList<CheckConstraintDefinition> Checks { get; init; } = [];
+
+    /// <summary>
     /// Whether the set contains no definitions.
     /// </summary>
     [JsonIgnore]
-    public bool IsEmpty => Views.Count == 0 && Routines.Count == 0 && Triggers.Count == 0;
+    public bool IsEmpty => Views.Count == 0 && Routines.Count == 0 && Triggers.Count == 0 && Checks.Count == 0;
 
     /// <summary>
     /// The definition recorded for the view at <paramref name="address"/>, or <see langword="null"/> when none.
@@ -53,12 +58,20 @@ public sealed record DefinitionSet(
     public TriggerDefinition? FindTrigger(MemberAddress address) => Triggers.FirstOrDefault(t => t.Address == address);
 
     /// <summary>
+    /// The definition recorded for the check constraint at <paramref name="address"/>, or <see langword="null"/> when none.
+    /// </summary>
+    public CheckConstraintDefinition? FindCheck(MemberAddress address) => Checks.FirstOrDefault(c => c.Address == address);
+
+    /// <summary>
     /// The set restricted to the definitions the scope covers.
     /// </summary>
     public DefinitionSet ScopedTo(PlanningScope scope) => scope.IsUnscoped ? this : new(
         [.. Views.Where(v => scope.Contains(v.Address))],
         [.. Routines.Where(r => scope.Contains(r.Address))],
-        [.. Triggers.Where(t => scope.Contains(t.Address))]);
+        [.. Triggers.Where(t => scope.Contains(t.Address))])
+    {
+        Checks = [.. Checks.Where(c => scope.Contains(c.Address))],
+    };
 
     /// <summary>
     /// The set containing every definition in either set.
@@ -66,7 +79,10 @@ public sealed record DefinitionSet(
     public DefinitionSet Union(DefinitionSet other) => new(
         [.. Views.Union(other.Views)],
         [.. Routines.Union(other.Routines)],
-        [.. Triggers.Union(other.Triggers)]);
+        [.. Triggers.Union(other.Triggers)])
+    {
+        Checks = [.. Checks.Union(other.Checks)],
+    };
 
     /// <summary>
     /// The set containing this set's definitions without those in <paramref name="other"/>.
@@ -74,7 +90,10 @@ public sealed record DefinitionSet(
     public DefinitionSet Except(DefinitionSet other) => new(
         [.. Views.Except(other.Views)],
         [.. Routines.Except(other.Routines)],
-        [.. Triggers.Except(other.Triggers)]);
+        [.. Triggers.Except(other.Triggers)])
+    {
+        Checks = [.. Checks.Except(other.Checks)],
+    };
 
     /// <summary>
     /// The set containing the definitions identical in both sets.
@@ -82,15 +101,21 @@ public sealed record DefinitionSet(
     public DefinitionSet Intersect(DefinitionSet other) => new(
         [.. Views.Intersect(other.Views)],
         [.. Routines.Intersect(other.Routines)],
-        [.. Triggers.Intersect(other.Triggers)]);
+        [.. Triggers.Intersect(other.Triggers)])
+    {
+        Checks = [.. Checks.Intersect(other.Checks)],
+    };
 
     /// <summary>
-    /// The set restricted to definitions of objects in the identity set; a trigger rides its owning table.
+    /// The set restricted to definitions of objects in the identity set; a trigger or check rides its owning table.
     /// </summary>
     public DefinitionSet RestrictedTo(IdentitySet identities) => new(
         [.. Views.Where(v => identities.ContainsObject(v.Address))],
         [.. Routines.Where(r => identities.ContainsObject(r.Address))],
-        [.. Triggers.Where(t => identities.SchemaObjects.Any(o => o.Covers(t.Address)))]);
+        [.. Triggers.Where(t => identities.SchemaObjects.Any(o => o.Covers(t.Address)))])
+    {
+        Checks = [.. Checks.Where(c => identities.SchemaObjects.Any(o => o.Covers(c.Address)))],
+    };
 
     /// <summary>
     /// The set restricted to definitions whose address has a definition in <paramref name="other"/>.
@@ -98,5 +123,8 @@ public sealed record DefinitionSet(
     public DefinitionSet RestrictedTo(DefinitionSet other) => new(
         [.. Views.Where(v => other.Views.Any(o => o.Address == v.Address))],
         [.. Routines.Where(r => other.Routines.Any(o => o.Address == r.Address))],
-        [.. Triggers.Where(t => other.Triggers.Any(o => o.Address == t.Address))]);
+        [.. Triggers.Where(t => other.Triggers.Any(o => o.Address == t.Address))])
+    {
+        Checks = [.. Checks.Where(c => other.Checks.Any(o => o.Address == c.Address))],
+    };
 }

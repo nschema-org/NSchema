@@ -9,6 +9,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
@@ -25,6 +28,7 @@ jobs:
         shell: bash
         env:
           Build__ProjectFile: 'src/NSchema.Core/NSchema.Core.csproj'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy

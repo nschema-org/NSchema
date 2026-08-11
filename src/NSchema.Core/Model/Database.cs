@@ -45,7 +45,14 @@ public sealed class Database : IEquatable<Database>
         [.. Objects<View>().Select(v => new ViewDefinition(v.Object.Address, v.Object.Body))],
         [.. Objects<Routine>().Select(r => new RoutineDefinition(r.Object.Address, r.Object.Arguments, r.Object.Definition))],
         [.. Objects<Table>().SelectMany(t => t.Object.Triggers.Select(trigger =>
-            new TriggerDefinition(trigger.Address, trigger.When, trigger.FunctionArguments, trigger.Body)))]);
+            new TriggerDefinition(trigger.Address, trigger.When, trigger.FunctionArguments, trigger.Body)))])
+    {
+        Checks =
+        [
+            .. Objects<Table>().SelectMany(t => t.Object.CheckConstraints.Select(check =>
+                new CheckConstraintDefinition(check.Address, check.Expression))),
+        ],
+    };
 
     /// <summary>
     /// Returns a copy of the database with each body-bearing object's text replaced by its entry in <paramref name="definitions"/>.
@@ -82,6 +89,14 @@ public sealed class Database : IEquatable<Database>
                 trigger.When = declared.When;
                 trigger.FunctionArguments = declared.FunctionArguments;
                 trigger.Body = declared.Body;
+            }
+        }
+
+        foreach (var check in copy.Objects<Table>().SelectMany(t => t.Object.CheckConstraints))
+        {
+            if (definitions.FindCheck(check.Address) is { } declared)
+            {
+                check.Expression = declared.Expression;
             }
         }
 

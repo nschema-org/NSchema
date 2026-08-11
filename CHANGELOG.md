@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.9.3]
+
+### Fixed
+
+- **Authored check constraints settle.** Check expressions are opaque SQL, rewritten by the engine, so a handwritten constraint would never match. Both definitions are now kept and declared like-for-like as they are for triggers, and routines.
+
 ## [5.9.2] - 2026-08-11
 
 ### Fixed

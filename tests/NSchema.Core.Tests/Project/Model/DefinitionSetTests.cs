@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Constraints;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
@@ -14,6 +15,7 @@ public sealed class DefinitionSetTests
     private static ObjectAddress ViewAddress(string name) => ObjectAddress.View(_app, name);
     private static ObjectAddress RoutineAddress(string name) => ObjectAddress.Routine(_app, name);
     private static MemberAddress TriggerAddress(string table, string name) => MemberAddress.Trigger(_app, table, name);
+    private static MemberAddress CheckAddress(string table, string name) => MemberAddress.CheckConstraint(_app, table, name);
 
     /// <summary>A database holding one body-bearing object of each kind.</summary>
     private static Database BodyBearing() => new()
@@ -29,6 +31,7 @@ public sealed class DefinitionSetTests
                 {
                     Name = "users",
                     Triggers = [new Trigger { Name = "audit", Timing = TriggerTiming.After, Events = TriggerEvent.Insert, Body = "CALL audit()" }],
+                    CheckConstraints = { new CheckConstraint { Name = "ck_balance", Expression = "balance >= 10" } },
                 }],
             },
         ],
@@ -44,6 +47,7 @@ public sealed class DefinitionSetTests
         definitions.Views.ShouldHaveSingleItem().ShouldBe(new ViewDefinition(ViewAddress("active"), "SELECT id FROM users"));
         definitions.Routines.ShouldHaveSingleItem().ShouldBe(new RoutineDefinition(RoutineAddress("f"), "a int", "RETURNS int AS $$ SELECT a $$"));
         definitions.Triggers.ShouldHaveSingleItem().ShouldBe(new TriggerDefinition(TriggerAddress("users", "audit"), null, null, "CALL audit()"));
+        definitions.Checks.ShouldHaveSingleItem().ShouldBe(new CheckConstraintDefinition(CheckAddress("users", "ck_balance"), "balance >= 10"));
     }
 
     [Fact]
@@ -54,7 +58,11 @@ public sealed class DefinitionSetTests
         var declared = new DefinitionSet(
             [new ViewDefinition(ViewAddress("active"), "SELECT users.id FROM app.users")],
             [new RoutineDefinition(RoutineAddress("f"), "a integer", "RETURNS integer AS $x$ SELECT a $x$")],
-            [new TriggerDefinition(TriggerAddress("users", "audit"), "(true)", null, "CALL app.audit()")]);
+            [new TriggerDefinition(TriggerAddress("users", "audit"), "(true)", null, "CALL app.audit()")])
+        {
+            // What SQL Server hands back for an author's 'balance >= 10'.
+            Checks = [new CheckConstraintDefinition(CheckAddress("users", "ck_balance"), "([balance]>=(10))")],
+        };
 
         // Act
         var spelled = database.WithDefinitions(declared);
@@ -66,6 +74,7 @@ public sealed class DefinitionSetTests
         schema.Routines[0].Definition.ShouldBe(new SqlText("RETURNS integer AS $x$ SELECT a $x$"));
         schema.Tables[0].Triggers[0].When.ShouldBe(new SqlText("(true)"));
         schema.Tables[0].Triggers[0].Body.ShouldBe(new SqlText("CALL app.audit()"));
+        schema.Tables[0].CheckConstraints[0].Expression.ShouldBe(new SqlText("([balance]>=(10))"));
     }
 
     [Fact]
@@ -177,5 +186,36 @@ public sealed class DefinitionSetTests
 
         // Assert
         restricted.Views.ShouldHaveSingleItem().ShouldBe(new ViewDefinition(ViewAddress("a"), "SELECT 1"));
+    }
+
+    // Every set operation has to carry every kind. They are written out one kind per line, so a kind added later
+    // is dropped by whichever operation nobody remembered — silently, because the result is still a valid set and
+    // the loss only shows up as an object that will not settle.
+    [Theory]
+    [InlineData("Union")]
+    [InlineData("Except")]
+    [InlineData("Intersect")]
+    [InlineData("RestrictedTo")]
+    public void SetOperations_CarryEveryKind(string operation)
+    {
+        // Arrange — one operand holding a definition of every kind, and one holding nothing, so an operation that
+        // drops a kind differs from one that keeps it whichever way round it combines them.
+        var populated = BodyBearing().Definitions();
+        var empty = DefinitionSet.Empty;
+
+        // Act
+        var result = operation switch
+        {
+            "Union" => populated.Union(empty),
+            "Except" => populated.Except(empty),
+            "Intersect" => populated.Intersect(populated),
+            _ => populated.RestrictedTo(populated),
+        };
+
+        // Assert
+        result.Views.ShouldNotBeEmpty($"{operation} dropped the views.");
+        result.Routines.ShouldNotBeEmpty($"{operation} dropped the routines.");
+        result.Triggers.ShouldNotBeEmpty($"{operation} dropped the triggers.");
+        result.Checks.ShouldNotBeEmpty($"{operation} dropped the checks.");
     }
 }
