@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [5.9.1]
+## [5.9.2] - 2026-08-11
+
+### Fixed
+
+- **`SqlStatement` keeps the constructor providers were built against.** 5.9.1 added the action as a positional parameter, which deletes the arity every already-compiled provider calls.
+
+## [5.9.1] - 2026-08-11
 
 ### Added
 
