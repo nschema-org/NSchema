@@ -12,6 +12,18 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.11.1]
+
+### Added
+
+- **`plan --json` names the action behind each statement.** Every entry in `sql` carries the `action` it performs (`CreateTable`, `AddForeignKey`), so what a plan exercises can be read off it rather than inferred from the SQL text. Inherited from NSchema.Core.
+
+### Fixed
+
+- **An unreadable `.editorconfig` no longer crashes `init`, `new`, `plan show` or `completion install`/`uninstall`.**
+- **`plan show` reports a corrupt plan file instead of crashing on it.** Inherited from NSchema.Core: a well-formed JSON object that is not a plan deserialized into nulls, and showing it died with a `NullReferenceException` in the reporter rather than naming the file.
+- **`.editorconfig` severities now reach the findings that reading a project produces**, not only the engine's.
+
 ## [5.11.0] - 2026-08-11
 
 ### Added

@@ -15,9 +15,17 @@ internal static class CompletionUninstallCommand
         return command;
     }
 
-    private static async Task Run(ParseResult parseResult, string shell, CancellationToken cancellationToken)
+    private static async Task<int> Run(ParseResult parseResult, string shell, CancellationToken cancellationToken)
     {
-        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
+        // An unreadable .editorconfig fails the build, and requiring a value it does not carry would crash the
+        // command with an internal error rather than saying what is wrong with the file.
+        var built = CliApplicationBuilder.Create(parseResult).Build();
+        if (built.ReportFailure(ReporterFactory.CreateReporter(parseResult)))
+        {
+            return ExitCodes.Error;
+        }
+
+        using var app = built.Require();
 
         var outcome = await CompletionInstaller.Uninstall(shell, cancellationToken);
         if (outcome.Changed)
@@ -28,5 +36,7 @@ internal static class CompletionUninstallCommand
         {
             app.Reporter.Announce($"No {shell} completion found in {outcome.Path}.");
         }
+
+        return ExitCodes.NoChanges;
     }
 }

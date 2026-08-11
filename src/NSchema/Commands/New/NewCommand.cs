@@ -21,7 +21,15 @@ internal static class NewCommand
 
     private static async Task<int> Run(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        using var app = CliApplicationBuilder.Create(parseResult).Build().Require();
+        // An unreadable .editorconfig fails the build, and requiring a value it does not carry would crash the
+        // command with an internal error rather than saying what is wrong with the file.
+        var built = CliApplicationBuilder.Create(parseResult).Build();
+        if (built.ReportFailure(ReporterFactory.CreateReporter(parseResult)))
+        {
+            return ExitCodes.Error;
+        }
+
+        using var app = built.Require();
         var console = AnsiConsole.Console;
 
         var resolved = await ConfigurationFactory.Load<NewConfiguration>(parseResult, environment: null, cancellationToken);

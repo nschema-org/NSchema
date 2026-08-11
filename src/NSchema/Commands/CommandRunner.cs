@@ -35,14 +35,22 @@ internal static class CommandRunner
             ? await ConfigurationFactory.Load<TConfiguration>(parseResult, environment, cancellationToken)
             : await ConfigurationFactory.Load(parseResult, environment, validator, cancellationToken);
 
-        if (resolved.ReportFailure(reporter))
+        var builder = CliApplicationBuilder.Create(parseResult);
+        var findings = builder.Enforce(resolved.Diagnostics);
+
+        if (findings.Count > 0)
+        {
+            reporter.ReportDiagnostics(findings);
+        }
+
+        if (resolved.IsFailure || findings.HasErrors)
         {
             return ExitCodes.Error;
         }
 
         var configuration = resolved.Require();
 
-        var built = configure(CliApplicationBuilder.Create(parseResult), configuration).Build();
+        var built = configure(builder, configuration).Build();
         if (built.ReportFailure(reporter))
         {
             return ExitCodes.Error;
