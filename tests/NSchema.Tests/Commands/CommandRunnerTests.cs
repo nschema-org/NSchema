@@ -125,6 +125,124 @@ public sealed class CommandRunnerTests : IDisposable
         ran.ShouldBeFalse();
     }
 
+    // A PLUGIN declared by path, which is resolved while the configuration is read and reports an advisory finding
+    // for being one. Only the files' existence is checked there, and this configuration never loads the plugin, so
+    // two placeholder files stand in for a build.
+    private async Task WritePathPluginConfiguration()
+    {
+        var assembly = Path.Combine(_projectDirectory, "Acme.Test.Plugin.dll");
+        await File.WriteAllTextAsync(assembly, "", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.ChangeExtension(assembly, ".deps.json"), "{}", TestContext.Current.CancellationToken);
+
+        await WriteConfiguration(
+            $"""
+             PLUGIN db ( path = '{assembly}' );
+             DATABASE db ( connection_string = 'x' );
+             STATE file ( path = './state.json' );
+             """);
+    }
+
+    private Task WriteEditorConfig(string severities) =>
+        File.WriteAllTextAsync(
+            Path.Combine(_projectDirectory, ".editorconfig"),
+            $"root = true{Environment.NewLine}{Environment.NewLine}[*]{Environment.NewLine}{severities}{Environment.NewLine}",
+            TestContext.Current.CancellationToken);
+
+    // Whether a finding was reported is not visible in an exit code, and silencing an advisory one changes nothing
+    // else — so these two read the report itself, through --json because it is the format meant to be parsed.
+    private async Task<string> RunCapturingReport()
+    {
+        var original = Console.Out;
+        var captured = new StringWriter();
+        Console.SetOut(captured);
+
+        try
+        {
+            await Run(
+                (builder, _) => builder,
+                (_, _) => Task.FromResult(ExitCodes.NoChanges),
+                args: "--json");
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        return captured.ToString();
+    }
+
+    [Fact]
+    public async Task Run_AdvisoryConfigurationFinding_IsReportedAndDoesNotStopTheCommand()
+    {
+        // Arrange — the control for the three tests below: left alone, this finding is reported and only advises.
+        await WritePathPluginConfiguration();
+        var ran = false;
+
+        // Act
+        var report = await RunCapturingReport();
+        var exitCode = await Run(
+            (builder, _) => builder,
+            (_, _) => { ran = true; return Task.FromResult(ExitCodes.NoChanges); });
+
+        // Assert
+        report.ShouldContain("plugin-from-path");
+        exitCode.ShouldBe(ExitCodes.NoChanges);
+        ran.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Run_EditorConfigRaisingAConfigurationFinding_StopsBeforeRunning()
+    {
+        // Arrange — reading the project mints this finding before an engine exists to hold a policy, so the runner
+        // rather than the engine has to enforce the project's .editorconfig over it.
+        await WritePathPluginConfiguration();
+        await WriteEditorConfig("nschema_diagnostic.plugin-from-path.severity = error");
+        var ran = false;
+
+        // Act
+        var exitCode = await Run(
+            (builder, _) => builder,
+            (_, _) => { ran = true; return Task.FromResult(ExitCodes.NoChanges); });
+
+        // Assert — raising it has to stop the command, not merely print it in red.
+        exitCode.ShouldBe(ExitCodes.Error);
+        ran.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Run_EditorConfigSilencingAConfigurationFinding_LeavesItUnreported()
+    {
+        // Arrange — by source rather than by code, which is the other half of the enforcement the runner applies.
+        await WritePathPluginConfiguration();
+        await WriteEditorConfig("nschema_diagnostic_source.plugins.severity = none");
+
+        // Act
+        var report = await RunCapturingReport();
+
+        // Assert
+        report.ShouldNotContain("plugin-from-path");
+    }
+
+    [Fact]
+    public async Task Run_EditorConfigSilencingAStructuralConfigurationFinding_StillStops()
+    {
+        // Arrange — a DATABASE naming a plugin no PLUGIN statement declares, which the configuration cannot be read
+        // without. Enforcement may lower a finding that advises; one the read depends on is refused, or a project
+        // could configure its way out of being unreadable.
+        await WriteConfiguration("DATABASE postgres ( connection_string = 'x' );");
+        await WriteEditorConfig("nschema_diagnostic.unknown-plugin-label.severity = none");
+        var ran = false;
+
+        // Act
+        var exitCode = await Run(
+            (builder, _) => builder,
+            (_, _) => { ran = true; return Task.FromResult(ExitCodes.NoChanges); });
+
+        // Assert
+        exitCode.ShouldBe(ExitCodes.Error);
+        ran.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task Run_WithoutAValidator_SkipsValidationEntirely()
     {

@@ -15,6 +15,7 @@ internal sealed class CliApplicationBuilder
     private readonly DiagnosticCollection _diagnostics = [];
     private PolicyEnforcement? _destructiveActions;
     private PolicyEnforcement? _dataHazards;
+    private bool _editorConfigReported;
 
     private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore, string? environment)
     {
@@ -27,6 +28,31 @@ internal sealed class CliApplicationBuilder
 
     // Lazy: the loader anchors at the project directory, which --directory establishes before first use.
     private PluginLoader Plugins => field ??= new PluginLoader(Directory.GetCurrentDirectory());
+
+    // Lazy, and read exactly once: the file is resolved against the project directory, which --directory
+    // establishes before first use, and a malformed value in it must be reported once however many callers ask.
+    private Result<DiagnosticOverrides> EditorConfig =>
+        field ??= EditorConfigReader.Read(Directory.GetCurrentDirectory(), _environment);
+
+    /// <summary>
+    /// Applies the project's configured severities to findings produced before this builder existed, and returns
+    /// them with anything wrong with the <c>.editorconfig</c> itself.
+    /// </summary>
+    /// <remarks>
+    /// Reading a project reports findings of its own, and they are minted before an engine exists to hold a
+    /// policy. They are enforced here so that one setting means one thing across both, from a single read of the
+    /// file — and while they are still a result, so a setting that raises one to an error can stop the command
+    /// rather than only printing it in red.
+    /// </remarks>
+    public DiagnosticCollection Enforce(IEnumerable<Diagnostic> diagnostics)
+    {
+        var overrides = EditorConfig.Value ?? DiagnosticOverrides.None;
+        var enforced = new DiagnosticCollection([.. EditorConfig.Diagnostics, .. overrides.ToOptions().Apply(diagnostics)]);
+
+        // The caller reports what comes back, so the build must not carry the same complaint about the file again.
+        _editorConfigReported = true;
+        return enforced;
+    }
 
     public CliApplicationBuilder ConfigurePolicies(PolicyEnforcement? destructiveActions, PolicyEnforcement? dataHazards)
     {
@@ -177,9 +203,12 @@ internal sealed class CliApplicationBuilder
     /// </remarks>
     private void ApplyDiagnosticSeverities()
     {
-        var read = EditorConfigReader.Read(Directory.GetCurrentDirectory(), _environment);
-        _diagnostics.AddRange(read.Diagnostics);
-        var overrides = read.Value ?? DiagnosticOverrides.None;
+        if (!_editorConfigReported)
+        {
+            _diagnostics.AddRange(EditorConfig.Diagnostics);
+        }
+
+        var overrides = EditorConfig.Value ?? DiagnosticOverrides.None;
 
         foreach (var (code, enforcement) in overrides.ByCode)
         {
