@@ -8,7 +8,7 @@ namespace NSchema.Diff.Domain.Services;
 /// </summary>
 internal static class DiffDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "diff";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Diff;
 
     /// <summary>
     /// Objects outside the scope that this run's removals cost, and so must go with them.

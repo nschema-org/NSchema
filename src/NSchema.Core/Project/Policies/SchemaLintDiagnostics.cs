@@ -7,7 +7,7 @@ namespace NSchema.Project.Policies;
 /// </summary>
 internal static class SchemaLintDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "schema-lint";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.SchemaLint;
 
     /// <summary>
     /// A table declared without a primary key.

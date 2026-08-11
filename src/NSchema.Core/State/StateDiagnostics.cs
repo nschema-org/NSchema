@@ -5,12 +5,12 @@ namespace NSchema.State;
 /// </summary>
 internal static class StateDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "state";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.State;
 
     /// <summary>
     /// Reading or writing state without a configured store.
     /// </summary>
-    public static Diagnostic NotConfigured => Diagnostic.Error(Source, "not-configured", "No state store is configured.");
+    public static Diagnostic NotConfigured => Diagnostic.Error(Source, "state-store-required", "No state store is configured.");
 
     /// <summary>
     /// A store the backend could not read or write — typically unreachable.

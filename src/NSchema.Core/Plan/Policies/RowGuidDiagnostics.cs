@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class RowGuidDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "row-guid";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Capability;
 
     /// <summary>
     /// A row-guid column declared against an engine that has no such marker.

@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class ClusteringDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "clustering";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Capability;
 
     /// <summary>
     /// Clustering declared against an engine that has no such concept.

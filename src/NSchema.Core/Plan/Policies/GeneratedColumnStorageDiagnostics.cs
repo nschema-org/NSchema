@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class GeneratedColumnStorageDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "generated-columns";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Capability;
 
     /// <summary>
     /// A virtual generated column declared against an engine that only stores them.

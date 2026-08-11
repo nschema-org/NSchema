@@ -8,7 +8,7 @@ namespace NSchema.Configuration.Engine;
 /// </summary>
 internal static class EngineDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "config";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Config;
 
     /// <summary>
     /// The engine's version falls outside the range the project's <c>ENGINE</c> statement requires.

@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class DestructiveActionDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "destructive-actions";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.DestructiveActions;
 
     /// <summary>
     /// Changes in the plan that destroy something: a definition, its data, or a guarantee over it.

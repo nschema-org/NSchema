@@ -657,7 +657,7 @@ public sealed class NsqlFormatterTests
 
         // Assert — the messy table (blank-line gap and reflow) and the over-spaced schema; the first is clean.
         result.Warnings.Select(w => w.Position.Line).ShouldBe([2, 6]);
-        result.Warnings.ShouldAllBe(w => w.Source == "format" && w.Severity == DiagnosticSeverity.Warning);
+        result.Warnings.ShouldAllBe(w => w.Source == "formatting" && w.Severity == DiagnosticSeverity.Warning);
     }
 
     [Fact]

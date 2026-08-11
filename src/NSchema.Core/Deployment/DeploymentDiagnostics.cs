@@ -5,7 +5,7 @@ namespace NSchema.Deployment;
 /// </summary>
 internal static class DeploymentDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "current";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Current;
 
     /// <summary>
     /// An online read without a registered live database provider.

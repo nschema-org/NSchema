@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class ReferentialActionDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "referential-actions";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Capability;
 
     /// <summary>
     /// <c>RESTRICT</c> declared against an engine that has only <c>NO ACTION</c>.

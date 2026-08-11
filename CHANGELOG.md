@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **A column records whether it is the table's row identifier for merge replication.** `Column.IsRowGuid` and the NSQL `ROWGUIDCOL` keyword.
 - **A column default can carry its constraint's name.** `Column.DefaultConstraintName` and the NSQL `CONSTRAINT <name> DEFAULT <expr>` form, for engines that make a default a named constraint.
 - **An identity and a trigger can stand aside for a replication agent.** `IdentityOptions.NotForReplication`, `Trigger.IsNotForReplication`, and the NSQL `NOT FOR REPLICATION` form on both.
+- **`DiagnosticSources`** declares every source the engine reports under, and `DiagnosticSources.All` offers them to a caller checking a configured name against the sources that exist.
+
+### Changed
+
+- Diagnostic sources and codes are a configuration contract, so this release settles their naming before the next CLI makes them addressable from `.editorconfig`.
 
 ### Fixed
 

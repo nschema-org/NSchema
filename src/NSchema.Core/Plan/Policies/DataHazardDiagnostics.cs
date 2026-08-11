@@ -8,7 +8,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class DataHazardDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "data-hazards";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.DataHazards;
 
     /// <summary>
     /// A required column added with nothing to fill existing rows from.

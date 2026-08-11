@@ -5,7 +5,7 @@ namespace NSchema.Diagnostics;
 /// </summary>
 internal static class EnforcementDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "enforcement";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Enforcement;
 
     /// <summary>
     /// A finding configured to be reported more leniently than it can be.

@@ -5,7 +5,7 @@ namespace NSchema.Model.Tables;
 /// </summary>
 internal static class TableDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "table";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Table;
 
     /// <summary>
     /// Adopting members that would give the table a second primary key.

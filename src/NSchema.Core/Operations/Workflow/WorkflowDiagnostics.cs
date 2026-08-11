@@ -5,22 +5,22 @@ namespace NSchema.Operations.Workflow;
 /// </summary>
 internal static class WorkflowDiagnostics
 {
-    internal static readonly DiagnosticSource PlanSource = "plan";
+    internal static readonly DiagnosticSource PlanSource = DiagnosticSources.Plan;
 
-    internal static readonly DiagnosticSource RefreshSource = "refresh";
+    internal static readonly DiagnosticSource RefreshSource = DiagnosticSources.Refresh;
 
-    internal static readonly DiagnosticSource StateSource = "state";
+    internal static readonly DiagnosticSource StateSource = DiagnosticSources.State;
 
     /// <summary>
     /// Planning without a configured state store (the ledger is half of the current state).
     /// </summary>
-    public static Diagnostic StoreRequiredForPlanning => Diagnostic.Error(PlanSource, "store-required-for-planning",
+    public static Diagnostic StoreRequiredForPlanning => Diagnostic.Error(PlanSource, "state-store-required-for-plan",
         "Planning requires a state store to read the recorded state and the run-once ledger. Register one, or declare the database disposable with ephemeral state.");
 
     /// <summary>
     /// Refreshing without a configured state store (nothing to capture to).
     /// </summary>
-    public static Diagnostic StoreRequiredForRefresh => Diagnostic.Error(RefreshSource, "store-required-for-refresh",
+    public static Diagnostic StoreRequiredForRefresh => Diagnostic.Error(RefreshSource, "state-store-required-for-refresh",
         "Unable to refresh state without a configured state store.");
 
     /// <summary>

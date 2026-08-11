@@ -5,7 +5,7 @@ namespace NSchema.Plugins;
 /// </summary>
 internal static class HandshakeDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "plugins";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Plugins;
 
     /// <summary>
     /// An assembly loaded as a plugin that references no NSchema.Core at all.

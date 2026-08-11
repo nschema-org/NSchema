@@ -8,7 +8,7 @@ namespace NSchema.Configuration;
 /// </summary>
 internal static class ConfigurationDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "config";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Config;
 
     /// <summary>
     /// A second statement of a kind the configuration holds at most one of.

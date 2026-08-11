@@ -7,7 +7,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class AdoptionDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "adoption";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Adoption;
 
     // Enough to recognize what is being taken over without printing a whole database back at the user.
     private const int Listed = 5;

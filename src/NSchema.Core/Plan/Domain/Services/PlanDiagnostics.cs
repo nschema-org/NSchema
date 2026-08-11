@@ -7,7 +7,7 @@ namespace NSchema.Plan.Domain.Services;
 /// </summary>
 internal static class PlanDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "plan";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Plan;
 
     /// <summary>
     /// Planning without a registered SQL dialect (the plan's statements cannot be rendered).

@@ -5,7 +5,7 @@ namespace NSchema.Plan.Policies;
 /// </summary>
 internal static class NamedDefaultDiagnostics
 {
-    internal static readonly DiagnosticSource Source = "defaults";
+    internal static readonly DiagnosticSource Source = DiagnosticSources.Capability;
 
     /// <summary>
     /// A named default declared against an engine that does not name defaults.
