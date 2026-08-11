@@ -50,9 +50,9 @@ internal static class ImportCommand
         };
 
         var result = await app.Operations.Import(args, cancellationToken);
+        app.Reporter.ReportDiagnostics(result.Diagnostics);
         if (result.IsFailure)
         {
-            app.Reporter.ReportDiagnostics(result.Diagnostics);
             return ExitCodes.Error;
         }
 

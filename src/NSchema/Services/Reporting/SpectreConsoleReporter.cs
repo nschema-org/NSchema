@@ -415,6 +415,7 @@ internal sealed class SpectreConsoleReporter : IConsoleReporter
             .Title("Diagnostics")
             .AddColumn("Severity")
             .AddColumn("Source")
+            .AddColumn("Code")
             .AddColumn("Message");
 
         foreach (var diagnostic in diagnostics)
@@ -422,6 +423,7 @@ internal sealed class SpectreConsoleReporter : IConsoleReporter
             table.AddRow(
                 new Markup(SeverityLabel(diagnostic.Severity)),
                 new Markup(Markup.Escape(diagnostic.Source.Value)),
+                new Markup(Markup.Escape(diagnostic.Code.Value)),
                 new Markup(Markup.Escape(diagnostic.Message)));
         }
 

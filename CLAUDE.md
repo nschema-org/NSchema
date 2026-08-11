@@ -127,6 +127,15 @@ Two kinds of config are resolved differently:
   `Configuration/Binding/OptionBinding<T>`, which layers **environment variable < CLI option** (CLI wins; env via the
   `EnvironmentVariables` allow-list). As of v4 `OptionBinding` has **no project-config layer** — the only setting that
   used it, `destructive_action`, moved fully to the flag / env var.
+- **Diagnostic severities** are read from the project's **`.editorconfig`** by `Configuration/EditorConfigReader` —
+  `nschema_diagnostic.<code>.severity` and `nschema_diagnostic_source.<source>.severity`, taking Roslyn's severity
+  words, because the file will also carry NSQL formatting rules and is what an editor/LSP already reads. It resolves
+  the chain **per schema file** (the only way the globs mean what they say) and then **requires the results to agree**:
+  enforcement is applied to the *run*, since all but a handful of findings are derived from the model and carry no file,
+  so a severity set in a section narrower than the schema is an error (`scoped-severity`) rather than being quietly
+  widened. `CliApplicationBuilder.Build` layers **`.editorconfig` < policy flag**, and the core prefers a setting by
+  code over one by source — the more specific layer wins, as in every other tool that reads these keys. Formatting keys,
+  when they land, are per-file and carry no such constraint.
 
 `OptionBinding<T>` owns a single binding: an optional System.CommandLine `Option<T>`, an optional env var, and a parser.
 Built fluently (`OptionBinding.Create<T>().FromOption("--x").FromEnvironmentVariable(EnvVar).WithDescription(...)`);

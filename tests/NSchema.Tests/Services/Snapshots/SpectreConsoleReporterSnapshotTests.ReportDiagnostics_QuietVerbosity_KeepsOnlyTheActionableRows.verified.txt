@@ -1,11 +1,11 @@
 ﻿── stdout ──
 
 ── stderr ──
-                                    Diagnostics                                    
-╭──────────┬─────────────────────┬────────────────────────────────────────────────╮
-│ Severity │ Source              │ Message                                        │
-├──────────┼─────────────────────┼────────────────────────────────────────────────┤
-│ warning  │ drift               │ Recorded state differs from the live database. │
-│ error    │ destructive-actions │ Dropping column id                             │
-╰──────────┴─────────────────────┴────────────────────────────────────────────────╯
+                                              Diagnostics                                               
+╭──────────┬─────────────────────┬────────────────────┬────────────────────────────────────────────────╮
+│ Severity │ Source              │ Code               │ Message                                        │
+├──────────┼─────────────────────┼────────────────────┼────────────────────────────────────────────────┤
+│ warning  │ drift               │ drift-detected     │ Recorded state differs from the live database. │
+│ error    │ destructive-actions │ destructive-change │ Dropping column id                             │
+╰──────────┴─────────────────────┴────────────────────┴────────────────────────────────────────────────╯
 
