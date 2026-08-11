@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.9.1]
+
+### Added
+
+- **Statements contain their originating action type.** `SqlStatement.Action` names the `MigrationAction` a statement came from, and is included in the plan file.
+
+### Fixed
+
+- **Invalid plan files now throw immediately.** The JSON held in a plan file is now more strictly deserialized so as to catch an invalid payload earlier.
+
 ## [5.9.0] - 2026-08-11
 
 ### Added

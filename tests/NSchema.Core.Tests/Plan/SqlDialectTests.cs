@@ -249,6 +249,25 @@ public sealed class SqlDialectTests
     }
 
     [Fact]
+    public void Generate_StampsEveryStatementWithTheActionItPerforms()
+    {
+        foreach (var action in Actions)
+        {
+            // Act
+            var result = _sut.Generate(action);
+
+            // Assert — a statement's SQL cannot say what it is for without being parsed back, so the action it came
+            // from rides along. Checked over every fixture: the stamp is applied in one place precisely so that no
+            // renderer can be the one that forgets it.
+            foreach (var statement in result.Value ?? [])
+            {
+                statement.Action.ShouldBe(action.GetType().Name,
+                    $"'{action.GetType().Name}' rendered a statement that does not name it.");
+            }
+        }
+    }
+
+    [Fact]
     public void Actions_CoverEveryConcreteMigrationAction()
     {
         // Arrange

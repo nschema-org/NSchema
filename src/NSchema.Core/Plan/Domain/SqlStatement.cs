@@ -11,4 +11,5 @@ namespace NSchema.Plan.Domain;
 /// Use for statements that the database disallows inside a transaction (for example, Postgres's
 /// <c>CREATE INDEX CONCURRENTLY</c>) or for deployment scripts that manage their own transactions.
 /// </param>
-public sealed record SqlStatement(SqlText Sql, bool RunOutsideTransaction = false);
+/// <param name="Action">The name of the <see cref="MigrationAction"/> this statement performs.</param>
+public sealed record SqlStatement(SqlText Sql, bool RunOutsideTransaction = false, string? Action = null);

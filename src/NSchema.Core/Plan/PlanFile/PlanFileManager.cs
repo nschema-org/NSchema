@@ -8,6 +8,13 @@ namespace NSchema.Plan.PlanFile;
 /// </summary>
 internal class PlanFileManager : IPlanFileManager
 {
+    // Helps tighten up the deserialization validation.
+    private static readonly JsonSerializerOptions _reading = new(ModelSerialization.Options)
+    {
+        RespectNullableAnnotations = true,
+        RespectRequiredConstructorParameters = true,
+    };
+
     public async Task<Result<PlanFileEnvelope>> Read(string path, CancellationToken cancellationToken)
     {
         byte[] bytes;
@@ -54,7 +61,7 @@ internal class PlanFileManager : IPlanFileManager
         PlanFileEnvelope? envelope;
         try
         {
-            envelope = JsonSerializer.Deserialize<PlanFileEnvelope>(value.Span, ModelSerialization.Options);
+            envelope = JsonSerializer.Deserialize<PlanFileEnvelope>(value.Span, _reading);
         }
         catch (Exception ex)
         {
@@ -67,6 +74,12 @@ internal class PlanFileManager : IPlanFileManager
         if (envelope is null)
         {
             throw new PlanFileDeserializationException("The plan file deserialized to null.");
+        }
+
+        // Any JSON object at all deserializes into an envelope.
+        if (envelope.Plan is null)
+        {
+            throw new PlanFileDeserializationException("The plan file carries no plan.");
         }
 
         if (envelope.Version > PlanFileEnvelope.CurrentVersion)

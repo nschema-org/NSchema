@@ -48,7 +48,18 @@ public abstract partial class SqlDialect
     /// </summary>
     /// <param name="action">The migration action to render.</param>
     /// <returns>The ordered statements performing the action, or the diagnostics explaining why it cannot be rendered.</returns>
-    public Result<IReadOnlyList<SqlStatement>> Generate(MigrationAction action) => action switch
+    public Result<IReadOnlyList<SqlStatement>> Generate(MigrationAction action)
+    {
+        var rendered = Render(action);
+
+        return rendered.IsFailure
+            ? rendered
+            : Result.From<IReadOnlyList<SqlStatement>>(
+                [.. rendered.Require().Select(statement => statement with { Action = action.GetType().Name })],
+                rendered.Diagnostics);
+    }
+
+    private Result<IReadOnlyList<SqlStatement>> Render(MigrationAction action) => action switch
     {
         // Schemas
         CreateSchema x => CreateSchema(x),
