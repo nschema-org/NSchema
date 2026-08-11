@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.11.3] - 2026-08-12
+
+### Fixed
+
+- **Check constraints no longer cause permanent drift.** Check constraints are engine-native SQL, so it gets reformatted by the database. We now store both sides of a check constraint and only compare like to like.
+
 ## [5.11.2] - 2026-08-11
 
 ### Fixed
