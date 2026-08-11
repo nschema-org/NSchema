@@ -1,12 +1,12 @@
 ﻿── stdout ──
 
 ── stderr ──
-                                    Diagnostics                                    
-╭──────────┬─────────────────────┬────────────────────────────────────────────────╮
-│ Severity │ Source              │ Message                                        │
-├──────────┼─────────────────────┼────────────────────────────────────────────────┤
-│ info     │ run-once            │ Skipping 'seed-users': already executed.       │
-│ warning  │ drift               │ Recorded state differs from the live database. │
-│ error    │ destructive-actions │ Dropping column id                             │
-╰──────────┴─────────────────────┴────────────────────────────────────────────────╯
+                                              Diagnostics                                               
+╭──────────┬─────────────────────┬────────────────────┬────────────────────────────────────────────────╮
+│ Severity │ Source              │ Code               │ Message                                        │
+├──────────┼─────────────────────┼────────────────────┼────────────────────────────────────────────────┤
+│ info     │ run-once            │ run-once           │ Skipping 'seed-users': already executed.       │
+│ warning  │ drift               │ drift-detected     │ Recorded state differs from the live database. │
+│ error    │ destructive-actions │ destructive-change │ Dropping column id                             │
+╰──────────┴─────────────────────┴────────────────────┴────────────────────────────────────────────────╯
 

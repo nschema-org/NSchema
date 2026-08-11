@@ -50,6 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="editorconfig" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />

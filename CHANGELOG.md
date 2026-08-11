@@ -14,6 +14,11 @@ a major one, and called out explicitly in this changelog.
 
 ## [Unreleased]
 
+### Added
+
+- **Diagnostic severities can be set in `.editorconfig`.** `nschema_diagnostic.<code>.severity` configures one finding and `nschema_diagnostic_source.<source>.severity` every finding from a producer, taking Roslyn's severity words (`none`, `silent`, `suggestion`, `warning`, `error`, `default`). A `--destructive-actions` flag still wins over the file.
+- **The diagnostics table names each finding's code**, which is what a severity is configured by.
+
 ### Fixed
 
 - **`import` reports its diagnostics whether or not it succeeded.** They were shown only on failure, so a successful import had no way to tell you what it could not carry into the project.

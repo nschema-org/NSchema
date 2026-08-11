@@ -13,6 +13,8 @@ internal sealed class CliApplicationBuilder
     private readonly string? _environment;
     private readonly IConsoleReporter _reporter;
     private readonly DiagnosticCollection _diagnostics = [];
+    private PolicyEnforcement? _destructiveActions;
+    private PolicyEnforcement? _dataHazards;
 
     private CliApplicationBuilder(OutputFormat format, Verbosity verbosity, bool allowRestore, string? environment)
     {
@@ -28,16 +30,8 @@ internal sealed class CliApplicationBuilder
 
     public CliApplicationBuilder ConfigurePolicies(PolicyEnforcement? destructiveActions, PolicyEnforcement? dataHazards)
     {
-        if (destructiveActions is { } destructive)
-        {
-            _builder.WithDestructiveActions(destructive);
-        }
-
-        if (dataHazards is { } hazards)
-        {
-            _builder.WithDataHazards(hazards);
-        }
-
+        _destructiveActions = destructiveActions;
+        _dataHazards = dataHazards;
         return this;
     }
 
@@ -169,9 +163,44 @@ internal sealed class CliApplicationBuilder
     /// <summary>
     /// Builds the application, or fails carrying the diagnostics the configuration steps accumulated.
     /// </summary>
-    public Result<CliApplication> Build() => _diagnostics.HasErrors
-        ? Result.Failure<CliApplication>(_diagnostics)
-        : Result.From(new CliApplication(_builder.Build(), _reporter), _diagnostics);
+    public Result<CliApplication> Build()
+    {
+        ApplyDiagnosticSeverities();
+
+        return _diagnostics.HasErrors
+            ? Result.Failure<CliApplication>(_diagnostics)
+            : Result.From(new CliApplication(_builder.Build(), _reporter), _diagnostics);
+    }
+
+    /// <remarks>
+    /// Applies diagnostic overrides in precedence order.
+    /// </remarks>
+    private void ApplyDiagnosticSeverities()
+    {
+        var read = EditorConfigReader.Read(Directory.GetCurrentDirectory(), _environment);
+        _diagnostics.AddRange(read.Diagnostics);
+        var overrides = read.Value ?? DiagnosticOverrides.None;
+
+        foreach (var (code, enforcement) in overrides.ByCode)
+        {
+            _builder.WithDiagnostic(code, enforcement);
+        }
+
+        foreach (var (source, enforcement) in overrides.BySource)
+        {
+            _builder.WithDiagnosticsFrom(source, enforcement);
+        }
+
+        if (_destructiveActions is { } destructive)
+        {
+            _builder.WithDestructiveActions(destructive);
+        }
+
+        if (_dataHazards is { } hazards)
+        {
+            _builder.WithDataHazards(hazards);
+        }
+    }
 
     /// <summary>
     /// Creates a builder rendering formatted (text) output at the default verbosity.
