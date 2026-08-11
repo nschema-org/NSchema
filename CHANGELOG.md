@@ -12,7 +12,13 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [5.11.1]
+## [5.11.2] - 2026-08-11
+
+### Fixed
+
+- **Migration plan file unable to be deserialized.** An accidental breaking change was introduced in NSchema.Core 5.9.1 that now been fixed.
+
+## [5.11.1] - 2026-08-11
 
 ### Added
 
