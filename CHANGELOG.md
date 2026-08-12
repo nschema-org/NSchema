@@ -12,6 +12,12 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.11.4] - 2026-08-12
+
+### Fixed
+
+- **Engines without comment support no-longer cause errors on comments.** Engines that don't support comments now correctly ignore them.
+
 ## [5.11.3] - 2026-08-12
 
 ### Fixed
