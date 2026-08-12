@@ -208,6 +208,11 @@ public abstract partial class SqlDialect
     public virtual bool SupportsRestrict => false;
 
     /// <summary>
+    /// Whether the engine can record a comment on anything at all.
+    /// </summary>
+    public virtual bool SupportsComments => true;
+
+    /// <summary>
     /// Whether the engine can leave a generated column unstored, computing it on read.
     /// </summary>
     public virtual bool SupportsVirtualGeneratedColumns => false;

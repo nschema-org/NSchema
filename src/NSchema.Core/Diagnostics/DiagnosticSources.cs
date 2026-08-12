@@ -78,6 +78,9 @@ public static class DiagnosticSources
     /// <summary>Rendering an action through the dialect.</summary>
     public static readonly DiagnosticSource SqlDialect = "sql-dialect";
 
+    /// <summary>Documentation an engine cannot keep.</summary>
+    public static readonly DiagnosticSource Comments = "comments";
+
     /// <summary>Reading and writing the recorded state.</summary>
     public static readonly DiagnosticSource State = "state";
 
@@ -101,7 +104,7 @@ public static class DiagnosticSources
     /// </remarks>
     public static IReadOnlySet<DiagnosticSource> All { get; } = FrozenSet.ToFrozenSet(
     [
-        Adoption, Apply, Capability, Config, Current, DataHazards, DestructiveActions, Diff, Doctor, Enforcement,
+        Adoption, Apply, Capability, Comments, Config, Current, DataHazards, DestructiveActions, Diff, Doctor, Enforcement,
         EnumValueRemoval, Formatting, Lock, LockFile, Plan, PlanFile, Plugins, Project, Refresh, SchemaLint,
         Settings, SqlDialect, State, StructuralIntegrity, Syntax, Table, Templates,
     ]);

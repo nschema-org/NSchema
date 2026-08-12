@@ -56,6 +56,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         AddPlanPolicy<DataHazardPolicy>();
         AddPlanPolicy<EnumValueRemovalPolicy>();
         AddPlanPolicy<AdoptionPolicy>();
+        AddPlanPolicy<CommentStoragePolicy>();
         AddPlanPolicy<ClusteringPolicy>();
         AddPlanPolicy<ReferentialActionPolicy>();
         AddPlanPolicy<GeneratedColumnStoragePolicy>();

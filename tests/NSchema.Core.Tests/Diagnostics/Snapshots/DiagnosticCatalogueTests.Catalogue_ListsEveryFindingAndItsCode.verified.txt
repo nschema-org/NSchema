@@ -4,6 +4,7 @@ error    structural  apply                  execution-failed                    
 error    structural  apply                  missing-executor                           ApplyDiagnostics.MissingExecutor
 error    structural  apply                  state-store-required-for-apply             ApplyDiagnostics.StoreRequired
 warning  advisory    capability             clustering-not-supported                   ClusteringDiagnostics.ClusteringNotSupported
+warning  advisory    comments               comments-not-supported                     CommentStorageDiagnostics.NotSupported
 error    structural  config                 duplicate-statement                        ConfigurationDiagnostics.DuplicateStatement
 error    structural  config                 unlabelled-reference                       ConfigurationDiagnostics.UnlabelledReference
 warning  advisory    data-hazards           column-becomes-required                    DataHazardDiagnostics.ColumnBecomesRequired

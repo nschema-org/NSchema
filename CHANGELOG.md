@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
-## [5.9.3]
+## [5.10.0] - 2026-08-12
+
+### Added
+
+- **`SqlDialect.SupportsComments`** says whether the engine records a comment at all. True unless a dialect says otherwise, which is the opposite of the other capabilities: they describe something extra an engine might do, while this describes something nearly every engine does, so a provider built before the flag has to keep meaning yes.
+- **`comments-not-supported`** is a warning: documentation declared against an engine that records none, naming every object it covers in one finding rather than one per action skipped while rendering.
+
+## [5.9.3] - 2026-08-12
 
 ### Fixed
 
@@ -598,6 +605,18 @@ First stable release. The public API is now covered by semantic versioning. Brea
 - SourceLink and symbol packages (`.snupkg`) published alongside the main package for source-level debugging.
 
 [Unreleased]: https://github.com/nschema-org/NSchema.Core/compare/v5.2.0...HEAD
+[5.10.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.3...v5.10.0
+[5.9.3]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.2...v5.9.3
+[5.9.2]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.1...v5.9.2
+[5.9.1]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.0...v5.9.1
+[5.9.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.8.0...v5.9.0
+[5.8.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.7.0...v5.8.0
+[5.7.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.6.1...v5.7.0
+[5.6.1]: https://github.com/nschema-org/NSchema.Core/compare/v5.6.0...v5.6.1
+[5.6.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.5.0...v5.6.0
+[5.5.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.4.0...v5.5.0
+[5.4.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.3.0...v5.4.0
+[5.3.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.0.1...v5.1.0
 [5.0.1]: https://github.com/nschema-org/NSchema.Core/compare/v5.0.0...v5.0.1
