@@ -1,5 +1,6 @@
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Sequences;
 
 namespace NSchema.Diff.Plugins;
 
@@ -29,4 +30,15 @@ public class SqlEquivalence
     /// database adds when it stores one.
     /// </summary>
     public virtual IEqualityComparer<SqlDefaultExpression> Defaults => SqlDefaultExpression.CosmeticComparer;
+
+    /// <summary>
+    /// Folds a sequence's options onto the engine's own defaults, reducing an option declared with the value the
+    /// engine would have chosen anyway to the <see langword="null"/> that means the same thing.
+    /// </summary>
+    public virtual SequenceOptions WithDefaults(SequenceOptions options) => options;
+
+    /// <summary>
+    /// Folds an identity column's options onto the engine's own defaults.
+    /// </summary>
+    public virtual IdentityOptions WithDefaults(IdentityOptions options, SqlType columnType) => options;
 }

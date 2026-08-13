@@ -19,6 +19,17 @@ internal sealed class DataHazardPolicy : IPlanPolicy
         // so hazards exist nowhere else.
         foreach (var schema in diff.Schemas)
         {
+            // A surviving sequence whose start moves restarts its counter and reissues every value from there on.
+            // Where an identity's exposure is the rows of the one table, a sequence's consumers are not in the
+            // schema at all, so this is reported wherever the sequence is rather than against anything holding it.
+            foreach (var sequence in schema.Sequences.Where(s => s.Change == ChangeKind.Modify))
+            {
+                if (Moved(sequence.Options?.Old?.StartWith, sequence.Options?.New?.StartWith))
+                {
+                    yield return DataHazardDiagnostics.SequenceRestartsOverIssuedValues(sequence.Address, sequence.Options?.New?.StartWith);
+                }
+            }
+
             foreach (var table in schema.Tables.Where(t => t.Change == ChangeKind.Modify))
             {
                 foreach (var hazard in TableHazards(table))
@@ -28,6 +39,11 @@ internal sealed class DataHazardPolicy : IPlanPolicy
             }
         }
     }
+
+    // Any move restarts the counter, including one back to the engine's own default — a bare RESTART on SQL Server
+    // and a start-plus-RESTART on Postgres, reissuing from the default instead. Both sides reach here already
+    // folded onto those defaults, so a start declared as the value the engine would have chosen has not moved.
+    private static bool Moved(long? before, long? after) => before != after;
 
     private static IEnumerable<Diagnostic> TableHazards(TableDiff table)
     {
@@ -45,6 +61,12 @@ internal sealed class DataHazardPolicy : IPlanPolicy
             if (column.Change != ChangeKind.Modify)
             {
                 continue;
+            }
+
+            // The table is a modified one, so it may already hold rows carrying the values about to be reissued.
+            if (Moved(column.Identity?.Old?.StartWith, column.Identity?.New?.StartWith))
+            {
+                yield return DataHazardDiagnostics.IdentityRestartsOverExistingRows(path, column.Identity?.New?.StartWith);
             }
 
             if (column.Nullability is { New: false })

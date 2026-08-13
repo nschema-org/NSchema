@@ -3,11 +3,13 @@ using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Indexes;
 using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Sequences;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Indexes;
 using NSchema.Model.Scripts;
+using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Plan.Policies;
 
@@ -427,6 +429,100 @@ public class DataHazardPolicyTests
         results.ShouldHaveSingleItem();
         results[0].Message.ShouldContain("ix_users_name");
     }
+
+    // ── Restarting a counter ──────────────────────────────────────────────────
+    //
+    // Moving a start restarts the live counter, and every value from there on is issued a second time — so an
+    // insert collides with a row the table already holds. It discards no object, which is why it is a hazard and
+    // not a destructive action, and it matters only where there is data, which is what this policy already knows.
+
+    [Fact]
+    public void Validate_MovedIdentityStart_IsFlagged()
+    {
+        // Arrange
+        var diff = ModifiedTable(columns: [IdentityChange(new IdentityOptions(1, null, 1), new IdentityOptions(1000, null, 1))]);
+
+        // Act
+        var results = _sut.Validate(diff).ToList();
+
+        // Assert
+        results.ShouldHaveSingleItem();
+        results[0].Source.ShouldBe("data-hazards");
+        results[0].Code.ShouldBe("identity-restart-reissues-values");
+        results[0].Message.ShouldContain("app.users.id");
+        results[0].Message.ShouldContain("1000");
+    }
+
+    [Fact]
+    public void Validate_CounterRestart_IsAnErrorNotAWarning()
+    {
+        // Act — every other hazard here fails the migration when the data does not fit, so the engine announces
+        // it and a warning is enough. A restart succeeds quietly and hands the damage to the next insert.
+        var results = _sut.Validate(
+            ModifiedTable(columns: [IdentityChange(new IdentityOptions(1, null, 1), new IdentityOptions(1000, null, 1))]));
+
+        // Assert
+        results.ShouldHaveSingleItem().Severity.ShouldBe(DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Validate_IdentityIncrementChangedButNotTheStart_IsNotFlagged()
+        // The case that started this: an increment change must not drag a counter restart along with it.
+        => _sut.Validate(ModifiedTable(columns:
+                [IdentityChange(new IdentityOptions(null, null, 1), new IdentityOptions(null, null, 2))]))
+            .ShouldBeEmpty();
+
+    [Fact]
+    public void Validate_MovedSequenceStart_IsFlagged()
+    {
+        // Arrange — a sequence's consumers are not in the schema, so it is reported against the sequence itself.
+        var diff = ModifiedSequence(new SequenceOptions(StartWith: 100), new SequenceOptions(StartWith: 500));
+
+        // Act
+        var results = _sut.Validate(diff).ToList();
+
+        // Assert
+        results.ShouldHaveSingleItem();
+        results[0].Code.ShouldBe("sequence-restart-reissues-values");
+        results[0].Message.ShouldContain("app.order_id");
+    }
+
+    [Fact]
+    public void Validate_SequenceStartResetToTheEngineDefault_IsFlagged()
+        // A bare RESTART is still a restart: the counter reissues from the default instead of a stated value.
+        => _sut.Validate(ModifiedSequence(new SequenceOptions(StartWith: 500), new SequenceOptions()))
+            .ShouldHaveSingleItem().Message.ShouldContain("the engine's default");
+
+    [Fact]
+    public void Validate_SequenceOptionsChangedButNotTheStart_IsNotFlagged()
+        // Every other option moves in place, so a cache change endangers nothing.
+        => _sut.Validate(ModifiedSequence(
+                new SequenceOptions(StartWith: 100, Cache: 1),
+                new SequenceOptions(StartWith: 100, Cache: 50)))
+            .ShouldBeEmpty();
+
+    [Fact]
+    public void Validate_AddedSequence_IsNotFlagged()
+        // A sequence being created has issued nothing yet, so its start endangers nothing — the same reasoning
+        // that keeps an added table out of every other hazard here.
+        => _sut.Validate(new DatabaseDiff([
+                SchemaDiff.Containing("app") with
+                {
+                    Sequences = [SequenceDiff.Added("app", new Sequence { Name = "order_id", Options = new SequenceOptions(StartWith: 500) })],
+                },
+            ])).ShouldBeEmpty();
+
+    private static ColumnDiff IdentityChange(IdentityOptions before, IdentityOptions after) =>
+        ColumnDiff.Modified(new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true }) with
+        {
+            Identity = new ValueChange<IdentityOptions>(before, after),
+        };
+
+    private static DatabaseDiff ModifiedSequence(SequenceOptions before, SequenceOptions after) =>
+        new([SchemaDiff.Containing("app") with
+        {
+            Sequences = [SequenceDiff.Modified("app", "order_id") with { Options = new ValueChange<SequenceOptions>(before, after) }],
+        }]);
 
     private static ChangeScript Migration(ChangeTrigger trigger, string member) =>
         new(member, "UPDATE app.users SET email = ''", new ChangeTarget("app", "users", member, trigger));

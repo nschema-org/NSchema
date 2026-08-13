@@ -60,6 +60,12 @@ internal static class DiffDiagnostics
         $"{Render(dependents)} depends on {RenderNames(types)}, which this plan recreates.");
 
     /// <summary>
+    /// References naming a composite type whose fields the plan retypes in place, which no engine will do while a column holds the type.
+    /// </summary>
+    public static Diagnostic RetypeBlockedByDependents(IEnumerable<Address> dependents, IEnumerable<string> types) => Diagnostic.Error(Source, "retype-blocked-by-dependents",
+        $"{Render(dependents)} depends on {RenderNames(types)}, whose fields this plan retypes.");
+
+    /// <summary>
     /// The same, where the type may come from an extension this run installs.
     /// </summary>
     public static Diagnostic TypeMayComeFromExtension(IEnumerable<Address> dependents, IEnumerable<string> types, IEnumerable<SqlIdentifier> extensions) => Diagnostic.Warning(Source, "unresolved-type-extension-installing",

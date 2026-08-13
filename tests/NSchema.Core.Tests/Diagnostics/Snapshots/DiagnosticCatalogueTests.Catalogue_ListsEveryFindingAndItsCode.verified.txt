@@ -8,9 +8,11 @@ warning  advisory    comments               comments-not-supported              
 error    structural  config                 duplicate-statement                        ConfigurationDiagnostics.DuplicateStatement
 error    structural  config                 unlabelled-reference                       ConfigurationDiagnostics.UnlabelledReference
 warning  advisory    data-hazards           column-becomes-required                    DataHazardDiagnostics.ColumnBecomesRequired
+error    advisory    data-hazards           identity-restart-reissues-values           DataHazardDiagnostics.IdentityRestartsOverExistingRows
 warning  advisory    data-hazards           primary-key-over-existing-data             DataHazardDiagnostics.PrimaryKeyOverExistingData
 warning  advisory    data-hazards           required-column-without-default            DataHazardDiagnostics.RequiredColumnWithoutDefault
 warning  advisory    data-hazards           risky-type-change                          DataHazardDiagnostics.RiskyTypeChange
+error    advisory    data-hazards           sequence-restart-reissues-values           DataHazardDiagnostics.SequenceRestartsOverIssuedValues
 warning  advisory    data-hazards           unique-constraint-over-existing-data       DataHazardDiagnostics.UniqueConstraintOverExistingData
 warning  advisory    data-hazards           unique-index-over-existing-data            DataHazardDiagnostics.UniqueIndexOverExistingData
 error    structural  current                no-online-source                           DeploymentDiagnostics.NoOnlineSource
@@ -26,6 +28,7 @@ warning  advisory    diff                   inferred-column-may-block-removal   
 warning  advisory    diff                   inferred-severed-out-of-scope              DiffDiagnostics.InferredSeveredOutOfScope
 error    structural  diff                   recreate-blocked-by-dependents             DiffDiagnostics.RecreateBlockedByDependents
 error    structural  diff                   removed-type-still-referenced              DiffDiagnostics.RemovedTypeStillReferenced
+error    structural  diff                   retype-blocked-by-dependents               DiffDiagnostics.RetypeBlockedByDependents
 warning  advisory    diff                   severed-out-of-scope                       DiffDiagnostics.SeveredOutOfScope
 warning  advisory    diff                   unresolved-type-extension-installing       DiffDiagnostics.TypeMayComeFromExtension
 error    structural  diff                   unresolved-type                            DiffDiagnostics.UnresolvedTypes

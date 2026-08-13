@@ -46,6 +46,36 @@ internal static class DataHazardDiagnostics
     public static Diagnostic UniqueIndexOverExistingData(MemberAddress index) =>
         Diagnostic.Warning(Source, "unique-index-over-existing-data", $"Unique index '{index.Member}' on '{index.Owner}' is added over existing data. The migration will fail if existing rows hold duplicate values.");
 
+    /// <summary>
+    /// An identity whose start moved, so its counter restarts over rows the table already holds.
+    /// </summary>
+    /// <remarks>
+    /// An error where the rest of this class warns, and the difference is whether the danger announces itself.
+    /// Every other hazard here <em>fails</em> the migration when the data does not fit, so a warning is enough.
+    /// A restart succeeds quietly and hands the damage to whoever inserts next.
+    /// </remarks>
+    public static Diagnostic IdentityRestartsOverExistingRows(MemberAddress column, long? start) =>
+        Diagnostic.Error(Source, "identity-restart-reissues-values",
+            $"Column '{column}' has its identity start moved to {Start(start)}, which restarts the counter.")
+            with
+        { Kind = DiagnosticKind.Advisory };
+
+    /// <summary>
+    /// A sequence whose start moved, so its counter restarts over values it has already handed out.
+    /// </summary>
+    /// <remarks>
+    /// An error rather than a warning for the same reason as <see cref="IdentityRestartsOverExistingRows"/>.
+    /// Proceeding with this change succeeds but will issue duplicate values, causing data corruption.
+    /// </remarks>
+    public static Diagnostic SequenceRestartsOverIssuedValues(ObjectAddress sequence, long? start) =>
+        Diagnostic.Error(Source, "sequence-restart-reissues-values",
+            $"Sequence '{sequence}' has its start moved to {Start(start)}, which restarts the counter.")
+            with
+        { Kind = DiagnosticKind.Advisory };
+
+    private static FormattedText Start(long? start) =>
+        start is { } value ? $"{value}" : $"the engine's default";
+
     private static FormattedText Columns(IReadOnlyList<SqlIdentifier> names) =>
         $"{(names.Count == 1 ? "column" : "columns"):text} {string.Join(", ", names.Select(n => $"'{n}'"))}";
 }

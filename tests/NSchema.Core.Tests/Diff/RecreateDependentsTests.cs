@@ -1,9 +1,11 @@
 using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.CompositeTypes;
 using NSchema.Diff.Domain.Domains;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
@@ -91,5 +93,92 @@ public sealed class RecreateDependentsTests
 
         // Assert
         diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>A diff that retypes one field of app.address in place.</summary>
+    private static DatabaseDiff FieldRetyped() => new()
+    {
+        Schemas =
+        [
+            SchemaDiff.Modified(_app) with
+            {
+                CompositeTypes =
+                [
+                    CompositeTypeDiff.Modified(_app, "address") with
+                    {
+                        Fields = [CompositeFieldDiff.TypeChanged("city", new ValueChange<SqlType>(SqlType.VarChar(10), SqlType.VarChar(20)))],
+                    },
+                ],
+            },
+        ],
+    };
+
+    /// <summary>The composite type, and a table whose column is or is not typed by it.</summary>
+    private static Database CurrentComposite(bool inUse) => new()
+    {
+        Schemas =
+        [
+            new Schema
+            {
+                Name = _app,
+                CompositeTypes = { new CompositeType { Name = "address", Fields = [new CompositeField("city", SqlType.VarChar(10))] } },
+                Tables =
+                [
+                    new Table
+                    {
+                        Name = "people",
+                        Columns = { new Column { Name = "home", Type = inUse ? new SqlType("address") { Schema = _app } : SqlType.Int } },
+                    },
+                ],
+            },
+        ],
+    };
+
+    [Fact]
+    public void Check_ACompositeFieldRetypedWithAColumnHoldingTheType_IsBlocked()
+    {
+        // Act
+        var diagnostics = RecreateDependents.Check(FieldRetyped(), CurrentComposite(inUse: true)).ToList();
+
+        // Assert — Postgres refuses ALTER TYPE … ALTER ATTRIBUTE outright while a column holds the type, and no
+        // CASCADE gets round it, so the plan has to say so rather than fail part-way through the apply.
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.Code.ShouldBe("retype-blocked-by-dependents");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
+        diagnostic.Message.ShouldContain("app.people.home");
+        diagnostic.Message.ShouldContain("app.address");
+    }
+
+    [Fact]
+    public void Check_ACompositeFieldRetypedWithNothingHoldingTheType_IsAllowed()
+        => RecreateDependents.Check(FieldRetyped(), CurrentComposite(inUse: false)).ShouldBeEmpty();
+
+    [Fact]
+    public void Check_ACompositeFieldAddedOrDropped_IsAllowed()
+    {
+        // Arrange — adding and dropping an attribute both work while the type is in use; only a retype does not.
+        var diff = new DatabaseDiff
+        {
+            Schemas =
+            [
+                SchemaDiff.Modified(_app) with
+                {
+                    CompositeTypes =
+                    [
+                        CompositeTypeDiff.Modified(_app, "address") with
+                        {
+                            Fields =
+                            [
+                                CompositeFieldDiff.Added(new CompositeField("postcode", SqlType.VarChar(10))),
+                                CompositeFieldDiff.Removed("city"),
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        // Act & Assert
+        RecreateDependents.Check(diff, CurrentComposite(inUse: true)).ShouldBeEmpty();
     }
 }

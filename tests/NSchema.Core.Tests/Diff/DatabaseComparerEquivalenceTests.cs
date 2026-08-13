@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Sequences;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Plugins;
 using NSchema.Model;
@@ -8,6 +9,7 @@ using NSchema.Model.Columns;
 using NSchema.Model.CompositeTypes;
 using NSchema.Model.Domains;
 using NSchema.Model.Schemas;
+using NSchema.Model.Sequences;
 using NSchema.Model.Tables;
 using NSchema.Project.Domain.Directives;
 
@@ -79,6 +81,75 @@ public sealed class DatabaseComparerEquivalenceTests
         diff.Schemas.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Compare_SequenceOptionEqualToTheEngineDefault_NeutralEquivalence_ReportsChange()
+    {
+        var diff = DiffSequence(new SqlEquivalence(),
+            new Sequence { Name = "q" },
+            new Sequence { Name = "q", Options = new SequenceOptions(StartWith: 1) });
+
+        diff.ShouldNotBeNull().Options.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Compare_SequenceOptionEqualToTheEngineDefault_DialectEquivalence_ReportsNoChange()
+    {
+        // A catalog reports a start whatever was declared, so the engine's own default and an explicit one are the
+        // same schema; only the dialect knows which value that is.
+        var diff = DiffSequence(new DefaultFoldingEquivalence(),
+            new Sequence { Name = "q" },
+            new Sequence { Name = "q", Options = new SequenceOptions(StartWith: 1) });
+
+        diff.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Compare_SequenceOptionDifferingFromTheEngineDefault_StillReportsChange()
+        => DiffSequence(new DefaultFoldingEquivalence(),
+                new Sequence { Name = "q" },
+                new Sequence { Name = "q", Options = new SequenceOptions(StartWith: 100) })
+            .ShouldNotBeNull().Options.ShouldNotBeNull();
+
+    [Fact]
+    public void Compare_IdentityOptionEqualToTheEngineDefault_DialectEquivalence_ReportsNoChange()
+    {
+        var column = DiffColumn(new DefaultFoldingEquivalence(),
+            new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) },
+            new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true, IdentityOptions = null });
+
+        column.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Compare_IdentityOptionDifferingFromTheEngineDefault_StillReportsChange()
+    {
+        var column = DiffColumn(new DefaultFoldingEquivalence(),
+            new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true, IdentityOptions = new IdentityOptions(1, 1, 1) },
+            new Column { Name = "id", Type = SqlType.BigInt, IsIdentity = true, IdentityOptions = new IdentityOptions(StartWith: 50, null, null) });
+
+        column.ShouldNotBeNull().Identity.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Compare_ChangedSequence_CarriesTheFoldedOptions()
+    {
+        // The change is what the dialect writes from: restating a default it never asked to change can restart a
+        // live counter, so the options that reach it are the folded ones, not the declared ones.
+        var diff = DiffSequence(new DefaultFoldingEquivalence(),
+            new Sequence { Name = "q" },
+            new Sequence { Name = "q", Options = new SequenceOptions(StartWith: 1, Cache: 20) });
+
+        var options = diff.ShouldNotBeNull().Options.ShouldNotBeNull().New.ShouldNotBeNull();
+        options.StartWith.ShouldBeNull();
+        options.Cache.ShouldBe(20);
+    }
+
+    private static SequenceDiff? DiffSequence(SqlEquivalence equivalence, Sequence current, Sequence desired) =>
+        DiffSchemas(equivalence,
+            new Schema { Name = "app", Sequences = [current] },
+            new Schema { Name = "app", Sequences = [desired] })
+        .Schemas.SingleOrDefault()?.Sequences.SingleOrDefault();
+
     private static ColumnDiff? DiffColumn(SqlEquivalence equivalence, Column current, Column desired) =>
         DiffSchemas(equivalence,
             new Schema { Name = "app", Tables = [new Table { Name = "t", Columns = [current] }] },
@@ -119,5 +190,23 @@ public sealed class DatabaseComparerEquivalenceTests
             private static SqlType? Fold(SqlType? type) =>
                 type?.Schema == "pg_catalog" ? type with { Schema = null } : type;
         }
+    }
+
+    /// <summary>A dialect rule whose sequences and identities start at 1 and increment by 1 unless told otherwise.</summary>
+    private sealed class DefaultFoldingEquivalence : SqlEquivalence
+    {
+        public override SequenceOptions WithDefaults(SequenceOptions options) => options with
+        {
+            StartWith = options.StartWith == 1 ? null : options.StartWith,
+            IncrementBy = options.IncrementBy == 1 ? null : options.IncrementBy,
+            MinValue = options.MinValue == 1 ? null : options.MinValue,
+        };
+
+        public override IdentityOptions WithDefaults(IdentityOptions options, SqlType columnType) => options with
+        {
+            StartWith = options.StartWith == 1 ? null : options.StartWith,
+            IncrementBy = options.IncrementBy == 1 ? null : options.IncrementBy,
+            MinValue = options.MinValue == 1 ? null : options.MinValue,
+        };
     }
 }

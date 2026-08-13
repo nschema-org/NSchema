@@ -118,13 +118,17 @@ internal sealed partial class DatabaseComparer
 
         // Identity changes when the column is toggled into or out of identity, or when both columns are
         // identity but their sequence options differ. Old/New options are null on the side that isn't identity.
+        // Each side's options are folded onto the engine's defaults first: a catalog reports a bound whether or not
+        // it was declared, so an identity that asked for nothing would otherwise differ from itself forever.
         ValueChange<IdentityOptions>? identity = null;
+        var currentIdentity = Fold(current);
+        var desiredIdentity = Fold(desired);
         var identityToggled = current.IsIdentity != desired.IsIdentity;
-        var identityOptionsChanged = current.IsIdentity && desired.IsIdentity && current.IdentityOptions != desired.IdentityOptions;
+        var identityOptionsChanged = current.IsIdentity && desired.IsIdentity && currentIdentity != desiredIdentity;
         if (identityToggled || identityOptionsChanged)
         {
-            var oldOptions = current.IsIdentity ? current.IdentityOptions : null;
-            var newOptions = desired.IsIdentity ? desired.IdentityOptions : null;
+            var oldOptions = current.IsIdentity ? currentIdentity : null;
+            var newOptions = desired.IsIdentity ? desiredIdentity : null;
             LogColumnIdentityChanged(owner, desired.Name,
                 oldOptions?.StartWith, newOptions?.StartWith,
                 oldOptions?.MinValue, newOptions?.MinValue,
@@ -149,4 +153,21 @@ internal sealed partial class DatabaseComparer
             RowGuid = rowGuid,
         };
     }
+
+    // An identity's bounds follow the column's type, which is why the type goes with the options. An identity that
+    // asked for nothing is the same schema whether that is recorded as no options at all or as a set of unstated
+    // ones — a project writes the first and an introspection that folded every engine default away leaves the
+    // second — so both fold to null.
+    private IdentityOptions? Fold(Column column)
+    {
+        if (column.IdentityOptions is not { } options)
+        {
+            return null;
+        }
+
+        var folded = equivalence.WithDefaults(options, column.Type);
+        return folded == NothingDeclared ? null : folded;
+    }
+
+    private static readonly IdentityOptions NothingDeclared = new(null, null, null);
 }

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.10.2] - 2026-08-13
+
+### Fixed
+
+- **An identity that explicitly declares no options no longer differs from one that does so implicitly.** No options at all and a set of unstated ones now compare equal.
+- **A sequence altered for one reason no longer restates the others.** The change carries the folded options, so a plan that changes the cache does not also restate a start it never asked to change.
+- **Identity and sequence restarts now warn correctly.** Restarts are data hazards: restarting the counter, means duplicate values are issued, meaning inserts collide with what is already stored.
+
 ## [5.10.1] - 2026-08-13
 
 ### Fixed
