@@ -28,7 +28,7 @@ jobs:
         shell: bash
         env:
           Build__ProjectFile: 'src/NSchema/NSchema.csproj'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy
