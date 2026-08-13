@@ -19,6 +19,8 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
+    <!-- Not used here: lifts Testcontainers' vulnerable transitive pin. See Directory.Packages.props. -->
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Verify.XunitV3" />
     <PackageReference Include="xunit.v3" />

@@ -67,6 +67,9 @@ internal sealed class MigrationPlanner(
         // Every type the desired database references must exist once the plan applies.
         diagnostics.AddRange(Result.From(TypeReachability.Check(diff, project.ScopedTo(scope).Database, current.Database, equivalence)));
 
+        // And nothing may still be declared against a type the plan recreates, which is a drop in disguise.
+        diagnostics.AddRange(Result.From(RecreateDependents.Check(diff, current.Database)));
+
         var dependencies = new PlanDependencies(current.Database, project.Database);
         var managed = ManagedAfterApply(current, project, scope);
         var declared = DeclaredAfterApply(current, project, scope, managed);

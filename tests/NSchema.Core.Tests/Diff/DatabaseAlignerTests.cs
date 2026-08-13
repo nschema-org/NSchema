@@ -1,6 +1,7 @@
 using NSchema.Diff.Domain.Services;
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Enums;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
 using NSchema.Project.Domain.Directives;
@@ -165,5 +166,50 @@ public sealed class DatabaseAlignerTests
         schema.Name.ShouldBe(_app);
         schema.Tables.ShouldHaveSingleItem().Name.ShouldBe("users");
         aligned.Renames.RenamedFrom(ObjectAddress.Table(_app, "users")).ShouldBe("people");
+    }
+
+    [Theory]
+    [InlineData(false)] // declared bare, resolving against the schema that holds the column
+    [InlineData(true)]  // declared schema-qualified
+    public void Align_TypeRename_RetargetsTheColumnsDeclaredAgainstIt(bool qualified)
+    {
+        // Arrange — a column typed by an enum that is being renamed. The column itself is not changing, so
+        // anything left pointing at the old name reads as a retype, which is a destructive AlterColumn.
+        var referenced = qualified ? new SqlType("status") { Schema = _app } : new SqlType("status");
+        var current = Db(new Schema
+        {
+            Name = _app,
+            Enums = { new EnumType { Name = "status", Values = ["draft"] } },
+            Tables = [new Table { Name = "invoices", Columns = { new Column { Name = "state", Type = referenced } } }],
+        });
+        var directives = new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Enum(_app, "status"), "invoice_state")]);
+
+        // Act
+        var result = DatabaseAligner.Align(current, Db(), directives);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        var schema = result.Require().Database.Schemas.ShouldHaveSingleItem();
+        schema.Enums[0].Name.ShouldBe("invoice_state");
+        schema.Tables[0].Columns[0].Type.Name.ShouldBe("invoice_state");
+    }
+
+    [Fact]
+    public void Align_TypeRename_LeavesAColumnNamingSomethingElseAlone()
+    {
+        // Arrange — a canonical type shares nothing with the renamed enum.
+        var current = Db(new Schema
+        {
+            Name = _app,
+            Enums = { new EnumType { Name = "status", Values = ["draft"] } },
+            Tables = [T("invoices", "id")],
+        });
+        var directives = new ProjectDirectives(ObjectRenames: [new ObjectRenameDirective(ObjectAddress.Enum(_app, "status"), "invoice_state")]);
+
+        // Act
+        var result = DatabaseAligner.Align(current, Db(), directives);
+
+        // Assert
+        result.Require().Database.Schemas[0].Tables[0].Columns[0].Type.ShouldBe(SqlType.Int);
     }
 }

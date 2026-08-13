@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Columns;
 using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Diff.Domain.Services;
@@ -129,6 +130,34 @@ internal static class DatabaseAligner
         // display), so it is not ours to mutate. The rename maps key by current names, so renames apply
         // inside-out: columns while their table still carries its current name, then objects, then the schema.
         var aligned = current.Clone();
+
+        // A renamed type is still the type its columns were declared against, so every reference to it moves
+        // with it. Left behind, the reference reads as a type change, and the column is altered to the name
+        // the rename has already given it. Done before anything is renamed, while every name is still current.
+        if (objectRenames.Count > 0)
+        {
+            foreach (var schema in aligned.Schemas)
+            {
+                foreach (var column in schema.Tables.SelectMany(t => t.Columns))
+                {
+                    column.Type = Retarget(column.Type, schema.Name, objectRenames);
+                }
+
+                foreach (var domain in schema.Domains)
+                {
+                    domain.DataType = Retarget(domain.DataType, schema.Name, objectRenames);
+                }
+
+                foreach (var composite in schema.CompositeTypes)
+                {
+                    for (var i = 0; i < composite.Fields.Count; i++)
+                    {
+                        composite.Fields[i] = composite.Fields[i] with { DataType = Retarget(composite.Fields[i].DataType, schema.Name, objectRenames) };
+                    }
+                }
+            }
+        }
+
         foreach (var schema in aligned.Schemas)
         {
             var currentSchemaName = schema.Name;
@@ -156,5 +185,25 @@ internal static class DatabaseAligner
         }
 
         return Result.From(new AlignedDatabase(aligned, new RenameLog(schemaLog, objectLog, columnLog)), diagnostics);
+    }
+
+    // The kinds a column, domain or field can name as its type. A bare reference resolves against the schema
+    // that holds whatever is referring to it.
+    private static readonly SchemaObjectKind[] _typeKinds =
+        [SchemaObjectKind.Enum, SchemaObjectKind.Domain, SchemaObjectKind.CompositeType];
+
+    private static SqlType Retarget(SqlType type, SqlIdentifier owner, Dictionary<ObjectAddress, SqlIdentifier> renames)
+    {
+        var schema = type.Schema ?? owner;
+
+        foreach (var kind in _typeKinds)
+        {
+            if (renames.TryGetValue(new ObjectAddress(schema, type.Name, kind), out var renamed))
+            {
+                return type with { Name = renamed };
+            }
+        }
+
+        return type;
     }
 }

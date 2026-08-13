@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using NSchema.Model.Domains;
 using NSchema.Model.Extensions;
+using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
@@ -47,12 +49,44 @@ public sealed class Database : IEquatable<Database>
         [.. Objects<Table>().SelectMany(t => t.Object.Triggers.Select(trigger =>
             new TriggerDefinition(trigger.Address, trigger.When, trigger.FunctionArguments, trigger.Body)))])
     {
+        // A domain's checks are spelled the same way a table's are, and carry their own address.
         Checks =
         [
             .. Objects<Table>().SelectMany(t => t.Object.CheckConstraints.Select(check =>
                 new CheckConstraintDefinition(check.Address, check.Expression))),
+            .. Objects<DomainType>().SelectMany(d => d.Object.Checks.Select(check =>
+                new CheckConstraintDefinition(check.Address, check.Expression))),
+        ],
+        // Only the members carrying an expression: the rest have no spelling to disagree about.
+        Columns =
+        [
+            .. Objects<Table>()
+                .SelectMany(t => t.Object.Columns)
+                .Where(column => column.DefaultExpression is not null || column.GeneratedExpression is not null)
+                .Select(column => new ColumnExpressionDefinition(column.Address, column.DefaultExpression, column.GeneratedExpression)),
+        ],
+        Indexes =
+        [
+            .. Indexed().Where(index => index.Predicate is not null).Select(index => new IndexPredicateDefinition(index.Address, index.Predicate)),
+        ],
+        Exclusions =
+        [
+            .. Objects<Table>()
+                .SelectMany(t => t.Object.ExclusionConstraints)
+                .Where(exclusion => exclusion.Predicate is not null)
+                .Select(exclusion => new ExclusionConstraintDefinition(exclusion.Address, exclusion.Predicate)),
+        ],
+        Domains =
+        [
+            .. Objects<DomainType>()
+                .Where(d => d.Object.Default is not null)
+                .Select(d => new DomainDefinition(d.Object.Address, d.Object.Default)),
         ],
     };
+
+    // Indexes hang off tables and off views, and both spell a filter the same way.
+    private IEnumerable<TableIndex> Indexed() =>
+        Objects<Table>().SelectMany(t => t.Object.Indexes).Concat(Objects<View>().SelectMany(v => v.Object.Indexes));
 
     /// <summary>
     /// Returns a copy of the database with each body-bearing object's text replaced by its entry in <paramref name="definitions"/>.
@@ -92,11 +126,57 @@ public sealed class Database : IEquatable<Database>
             }
         }
 
-        foreach (var check in copy.Objects<Table>().SelectMany(t => t.Object.CheckConstraints))
+        foreach (var check in copy.Objects<Table>().SelectMany(t => t.Object.CheckConstraints)
+                     .Concat(copy.Objects<DomainType>().SelectMany(d => d.Object.Checks)))
         {
             if (definitions.FindCheck(check.Address) is { } declared)
             {
                 check.Expression = declared.Expression;
+            }
+        }
+
+        foreach (var column in copy.Objects<Table>().SelectMany(t => t.Object.Columns))
+        {
+            if (definitions.FindColumn(column.Address) is not { } declared)
+            {
+                continue;
+            }
+
+            // Only where the engine still reports an expression. A member that was dropped out from under us
+            // is simply absent, but a column outlives its default — so overlaying one that is no longer there
+            // would hide the drop rather than report it.
+            if (column.DefaultExpression is not null && declared.Default is not null)
+            {
+                column.DefaultExpression = declared.Default;
+            }
+
+            if (column.GeneratedExpression is not null && declared.Generated is not null)
+            {
+                column.GeneratedExpression = declared.Generated;
+            }
+        }
+
+        foreach (var index in copy.Indexed())
+        {
+            if (index.Predicate is not null && definitions.FindIndex(index.Address) is { Predicate: not null } declared)
+            {
+                index.Predicate = declared.Predicate;
+            }
+        }
+
+        foreach (var exclusion in copy.Objects<Table>().SelectMany(t => t.Object.ExclusionConstraints))
+        {
+            if (exclusion.Predicate is not null && definitions.FindExclusion(exclusion.Address) is { Predicate: not null } declared)
+            {
+                exclusion.Predicate = declared.Predicate;
+            }
+        }
+
+        foreach (var (_, domain) in copy.Objects<DomainType>())
+        {
+            if (domain.Default is not null && definitions.FindDomain(domain.Address) is { Default: not null } declared)
+            {
+                domain.Default = declared.Default;
             }
         }
 

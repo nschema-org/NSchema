@@ -54,6 +54,12 @@ internal static class DiffDiagnostics
         $"{Render(dependents)} depends on {RenderNames(types)}, which this plan removes.");
 
     /// <summary>
+    /// References naming a type the plan recreates, which no engine will drop out from under them.
+    /// </summary>
+    public static Diagnostic RecreateBlockedByDependents(IEnumerable<Address> dependents, IEnumerable<string> types) => Diagnostic.Error(Source, "recreate-blocked-by-dependents",
+        $"{Render(dependents)} depends on {RenderNames(types)}, which this plan recreates.");
+
+    /// <summary>
     /// The same, where the type may come from an extension this run installs.
     /// </summary>
     public static Diagnostic TypeMayComeFromExtension(IEnumerable<Address> dependents, IEnumerable<string> types, IEnumerable<SqlIdentifier> extensions) => Diagnostic.Warning(Source, "unresolved-type-extension-installing",

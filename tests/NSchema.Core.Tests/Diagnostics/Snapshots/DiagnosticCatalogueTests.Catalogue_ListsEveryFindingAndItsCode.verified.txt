@@ -24,6 +24,7 @@ info     advisory    diff                   dead-migration                      
 warning  advisory    diff                   foreign-key-target-out-of-scope            DiffDiagnostics.ForeignKeyTargetOutOfScope
 warning  advisory    diff                   inferred-column-may-block-removal          DiffDiagnostics.InferredColumnMayBlockRemoval
 warning  advisory    diff                   inferred-severed-out-of-scope              DiffDiagnostics.InferredSeveredOutOfScope
+error    structural  diff                   recreate-blocked-by-dependents             DiffDiagnostics.RecreateBlockedByDependents
 error    structural  diff                   removed-type-still-referenced              DiffDiagnostics.RemovedTypeStillReferenced
 warning  advisory    diff                   severed-out-of-scope                       DiffDiagnostics.SeveredOutOfScope
 warning  advisory    diff                   unresolved-type-extension-installing       DiffDiagnostics.TypeMayComeFromExtension

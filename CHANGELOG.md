@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 > Versions before 3.0.0 covered the library-only era of NSchema. They are kept for historical reference only.
 
+## [5.10.1] - 2026-08-13
+
+### Fixed
+
+- **Every remaining authored expression settles.** Column defaults and generated expressions, index and exclusion predicates, and a domain's checks and default are opaque SQL, rewritten by the engine, so a handwritten one would never match. All are now kept and declared like-for-like as they are for triggers, routines etc. An expression the database no longer reports is still drift, not a spelling to restore.
+- **Renaming a type no longer retypes the columns declared against it.** The rename moved the type but left every reference naming the old one, so each column read as a retype.
+- **Recreate is now correctly blocked by dependents.** Recreating a type that's in use now causes an error.
+
 ## [5.10.0] - 2026-08-12
 
 ### Added
