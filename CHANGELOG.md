@@ -12,6 +12,19 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
+## [5.11.5] - 2026-08-13
+
+All inherited from the latest NSchema.Core update.
+
+### Fixed
+
+- **Every remaining authored expression settles.** Column defaults and generated expressions, index and exclusion predicates, and a domain's checks and default are opaque SQL, rewritten by the engine, so a handwritten one would never match. All are now kept and declared like-for-like as they are for triggers, routines etc. An expression the database no longer reports is still drift, not a spelling to restore.
+- **Renaming a type no longer retypes the columns declared against it.** The rename moved the type but left every reference naming the old one, so each column read as a retype.
+- **Recreate is now correctly blocked by dependents.** Recreating a type that's in use now causes an error.
+- **An identity that explicitly declares no options no longer differs from one that does so implicitly.** No options at all and a set of unstated ones now compare equal.
+- **A sequence altered for one reason no longer restates the others.** The change carries the folded options, so a plan that changes the cache does not also restate a start it never asked to change.
+- **Identity and sequence restarts now warn correctly.** Restarts are data hazards: restarting the counter, means duplicate values are issued, meaning inserts collide with what is already stored.
+
 ## [5.11.4] - 2026-08-12
 
 ### Fixed
