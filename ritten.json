@@ -1,0 +1,6 @@
+{
+  "pipeline": "dotnet-tool",
+  "build": {
+    "project": "src/NSchema/NSchema.csproj"
+  }
+}
