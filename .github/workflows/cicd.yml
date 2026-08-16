@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Check
     runs-on: ubuntu-latest
     permissions:
       contents: read
