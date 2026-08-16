@@ -1,0 +1,6 @@
+{
+  "pipeline": "dotnet-package",
+  "build": {
+    "project": "src/NSchema.Core/NSchema.Core.csproj"
+  }
+}

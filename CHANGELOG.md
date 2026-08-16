@@ -620,7 +620,8 @@ First stable release. The public API is now covered by semantic versioning. Brea
 - Pre- and post-deployment script support via `IScriptProvider`, `AddScriptFromFile(...)`, and `AddScriptsFromEmbeddedResources(...)`.
 - SourceLink and symbol packages (`.snupkg`) published alongside the main package for source-level debugging.
 
-[Unreleased]: https://github.com/nschema-org/NSchema.Core/compare/v5.2.0...HEAD
+[5.10.2]: https://github.com/nschema-org/NSchema.Core/compare/v5.10.1...v5.10.2
+[5.10.1]: https://github.com/nschema-org/NSchema.Core/compare/v5.10.0...v5.10.1
 [5.10.0]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.3...v5.10.0
 [5.9.3]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.2...v5.9.3
 [5.9.2]: https://github.com/nschema-org/NSchema.Core/compare/v5.9.1...v5.9.2
@@ -646,7 +647,11 @@ First stable release. The public API is now covered by semantic versioning. Brea
 [4.2.0]: https://github.com/nschema-org/NSchema.Core/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/nschema-org/NSchema.Core/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/nschema-org/NSchema.Core/compare/v4.0.0...v4.0.1
-[4.0.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.1.0...v4.0.0
+[4.0.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.4.0...v4.0.0
+[3.4.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.3.0...v3.4.0
+[3.3.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.2.1...v3.3.0
+[3.2.1]: https://github.com/nschema-org/NSchema.Core/compare/v3.2.0...v3.2.1
+[3.2.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/nschema-org/NSchema.Core/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/nschema-org/NSchema.Core/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/nschema-org/NSchema.Core/compare/v2.0.1...v2.1.0
