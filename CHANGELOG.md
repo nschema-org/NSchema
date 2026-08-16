@@ -412,8 +412,21 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.4.0...HEAD
-[5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.3.0...v5.4.0
+[5.11.5]: https://github.com/nschema-org/NSchema/compare/v5.11.4...v5.11.5
+[5.11.4]: https://github.com/nschema-org/NSchema/compare/v5.11.3...v5.11.4
+[5.11.3]: https://github.com/nschema-org/NSchema/compare/v5.11.2...v5.11.3
+[5.11.2]: https://github.com/nschema-org/NSchema/compare/v5.11.1...v5.11.2
+[5.11.1]: https://github.com/nschema-org/NSchema/compare/v5.11.0...v5.11.1
+[5.11.0]: https://github.com/nschema-org/NSchema/compare/v5.10.0...v5.11.0
+[5.10.0]: https://github.com/nschema-org/NSchema/compare/v5.9.0...v5.10.0
+[5.9.0]: https://github.com/nschema-org/NSchema/compare/v5.8.0...v5.9.0
+[5.8.0]: https://github.com/nschema-org/NSchema/compare/v5.7.1...v5.8.0
+[5.7.1]: https://github.com/nschema-org/NSchema/compare/v5.7.0...v5.7.1
+[5.7.0]: https://github.com/nschema-org/NSchema/compare/v5.6.1...v5.7.0
+[5.6.1]: https://github.com/nschema-org/NSchema/compare/v5.6.0...v5.6.1
+[5.6.0]: https://github.com/nschema-org/NSchema/compare/v5.5.0...v5.6.0
+[5.5.0]: https://github.com/nschema-org/NSchema/compare/v5.4.0...v5.5.0
+[5.4.0]: https://github.com/nschema-org/NSchema/compare/v5.3.0...v5.4.0
 [5.3.0]: https://github.com/nschema-org/NSchema/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/nschema-org/NSchema/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/nschema-org/NSchema/compare/v5.0.1...v5.1.0
@@ -424,7 +437,7 @@ See https://nschema.dev for full documentation.
 [4.4.0]: https://github.com/nschema-org/NSchema/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/nschema-org/NSchema/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/nschema-org/NSchema/compare/v4.1.0...v4.2.0
-[4.1.0]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.1.0
+[4.1.0]: https://github.com/nschema-org/NSchema/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/nschema-org/NSchema/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/nschema-org/NSchema/compare/v3.4.0...v4.0.0
 [3.4.0]: https://github.com/nschema-org/NSchema/compare/v3.3.0...v3.4.0

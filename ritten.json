@@ -1,0 +1,5 @@
+{
+  "build": {
+    "project": "src/NSchema/NSchema.csproj"
+  }
+}
