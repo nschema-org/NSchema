@@ -49,6 +49,22 @@ public sealed class AddProjectSourceTests : IDisposable
     }
 
     [Fact]
+    public async Task AddSqlSchemas_WithoutAPattern_ReadsBothProjectExtensions()
+    {
+        // Arrange
+        // .nsql names the language; .sql is read alongside it, so a project can carry either or both.
+        WriteSchemaFile("current.nsql", "current");
+        WriteSchemaFile("legacy.sql", "legacy");
+        WriteSchemaFile("notes.md", "ignored");
+
+        // Act
+        var names = await ResolveSchemaNames(b => b.AddProjectSource(_root));
+
+        // Assert
+        names.ShouldBe(["current", "legacy"], ignoreOrder: true);
+    }
+
+    [Fact]
     public async Task AddSqlSchemas_MatchesFilesAtEveryDepth()
     {
         // Arrange

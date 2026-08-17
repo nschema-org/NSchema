@@ -56,14 +56,19 @@ public sealed class ImportOperationTests : IDisposable
         return new TestNsqlParser(text).Parse().Database;
     }
 
-    private string ObjectPath(string type, string name) => Path.Combine(_dir, "app", type, $"{name}.sql");
-    private string HeaderPath => Path.Combine(_dir, "app", "schema.sql");
+    // Both extensions, because import keeps an existing file where it already lives.
+    private static IEnumerable<string> ProjectFiles(string directory) =>
+        Directory.EnumerateFiles(directory, "*.nsql", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(directory, "*.sql", SearchOption.AllDirectories));
 
-    // Assembles every .sql file written under the output directory, as the project provider would.
+    private string ObjectPath(string type, string name) => Path.Combine(_dir, "app", type, $"{name}.nsql");
+    private string HeaderPath => Path.Combine(_dir, "app", "schema.nsql");
+
+    // Assembles every project file written under the output directory, as the project provider would.
     private async Task<Database> ReadAll()
     {
         var sources = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(_dir, "*.sql", SearchOption.AllDirectories))
+        foreach (var file in ProjectFiles(_dir))
         {
             sources.Add(await File.ReadAllTextAsync(file));
         }
@@ -132,13 +137,45 @@ public sealed class ImportOperationTests : IDisposable
     }
 
     [Fact]
+    public async Task Execute_MergesIntoAnExistingFile_WhateverExtensionItCarries()
+    {
+        // A project imported before the extension existed holds its objects in .sql files. Writing the .nsql
+        // sibling instead would leave the same table declared twice, so the existing file is what gets merged.
+        var existing = Path.Combine(_dir, "app", "tables", "users.sql");
+        Directory.CreateDirectory(Path.GetDirectoryName(existing)!);
+        await File.WriteAllTextAsync(existing, "CREATE TABLE app.users (id int NOT NULL);", TestContext.Current.CancellationToken);
+
+        await Execute(new ImportArguments { OutputDirectory = _dir });
+
+        File.Exists(existing).ShouldBeTrue();
+        File.Exists(ObjectPath("tables", "users")).ShouldBeFalse();
+        (await ReadSchema(existing)).Schemas.Single().Tables.Single().Name.ShouldBe("users");
+    }
+
+    [Fact]
+    public async Task Execute_WritesNewObjectsAsNsql_AlongsideTheFilesItKept()
+    {
+        // Arrange — one object already lives in a .sql file, the other has never been imported.
+        var existing = Path.Combine(_dir, "app", "tables", "users.sql");
+        Directory.CreateDirectory(Path.GetDirectoryName(existing)!);
+        await File.WriteAllTextAsync(existing, "CREATE TABLE app.users (id int NOT NULL);", TestContext.Current.CancellationToken);
+
+        // Act
+        await Execute(new ImportArguments { OutputDirectory = _dir });
+
+        // Assert
+        File.Exists(existing).ShouldBeTrue();
+        File.Exists(ObjectPath("tables", "orders")).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Execute_CreatesOutputDirectoryIfMissing()
     {
         var nested = Path.Combine(_dir, "nested", "deep");
 
         await Execute(new ImportArguments { OutputDirectory = nested });
 
-        File.Exists(Path.Combine(nested, "app", "tables", "users.sql")).ShouldBeTrue();
+        File.Exists(Path.Combine(nested, "app", "tables", "users.nsql")).ShouldBeTrue();
     }
 
     // ── Object layout ───────────────────────────────────────────────────────
@@ -235,8 +272,8 @@ public sealed class ImportOperationTests : IDisposable
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
-        (await ReadSchema(Path.Combine(_dir, "app", "tables", "users.sql"))).Schemas.Single().Tables.Single().Name.ShouldBe("users");
-        (await ReadSchema(Path.Combine(_dir, "audit", "tables", "logs.sql"))).Schemas.Single().Tables.Single().Name.ShouldBe("logs");
+        (await ReadSchema(Path.Combine(_dir, "app", "tables", "users.nsql"))).Schemas.Single().Tables.Single().Name.ShouldBe("users");
+        (await ReadSchema(Path.Combine(_dir, "audit", "tables", "logs.nsql"))).Schemas.Single().Tables.Single().Name.ShouldBe("logs");
     }
 
     [Fact]
@@ -250,7 +287,7 @@ public sealed class ImportOperationTests : IDisposable
 
         foreach (var type in new[] { "tables", "views", "routines" })
         {
-            foreach (var file in Directory.EnumerateFiles(Path.Combine(_dir, "app", type), "*.sql"))
+            foreach (var file in ProjectFiles(Path.Combine(_dir, "app", type)))
             {
                 var text = await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken);
                 text.ShouldNotContain("CREATE SCHEMA", customMessage: file);
@@ -350,7 +387,7 @@ public sealed class ImportOperationTests : IDisposable
 
         // Act
         // Extensions land in a single top-level file, not under any per-schema directory.
-        var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.sql"))).Extensions;
+        var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.nsql"))).Extensions;
 
         // Assert
         extensions.Select(e => e.Name).ShouldBe(["citext", "postgis"], ignoreOrder: true);
@@ -361,7 +398,7 @@ public sealed class ImportOperationTests : IDisposable
     {
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
-        File.Exists(Path.Combine(_dir, "extensions.sql")).ShouldBeFalse();
+        File.Exists(Path.Combine(_dir, "extensions.nsql")).ShouldBeFalse();
     }
 
     [Fact]
@@ -383,7 +420,7 @@ public sealed class ImportOperationTests : IDisposable
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
         // Act
-        var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.sql"))).Extensions;
+        var extensions = (await ReadSchema(Path.Combine(_dir, "extensions.nsql"))).Extensions;
 
         // Assert
         extensions.Select(e => e.Name).ShouldBe(["citext", "postgis"], ignoreOrder: true);
@@ -401,7 +438,7 @@ public sealed class ImportOperationTests : IDisposable
 
         await Execute(new ImportArguments { OutputDirectory = _dir });
 
-        foreach (var file in Directory.EnumerateFiles(_dir, "*.sql", SearchOption.AllDirectories))
+        foreach (var file in ProjectFiles(_dir))
         {
 
             // Act

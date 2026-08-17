@@ -28,6 +28,7 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
 
         async Task Import(string path, Database partition, bool declareSchemas)
         {
+            path = WhereItAlreadyLives(path);
             var wrote = await WritePartition(path, partition, declareSchemas, cancellationToken);
             diagnostics.AddRange(wrote);
             if (wrote.IsSuccess)
@@ -38,7 +39,7 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
 
         foreach (var definition in schema.Schemas)
         {
-            var headerPath = Path.Combine(arguments.OutputDirectory, definition.Name.Value, "schema.sql");
+            var headerPath = Path.Combine(arguments.OutputDirectory, definition.Name.Value, "schema.nsql");
             var header = definition.Clone();
             header.Tables.Clear();
             header.Views.Clear();
@@ -55,11 +56,24 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
         // any per-schema directory.
         if (schema.Extensions.Count > 0)
         {
-            var path = Path.Combine(arguments.OutputDirectory, "extensions.sql");
+            var path = Path.Combine(arguments.OutputDirectory, "extensions.nsql");
             await Import(path, new Database { Extensions = [.. schema.Extensions.Select(e => e.Clone())] }, declareSchemas: true);
         }
 
         return diagnostics.ToResult(new ImportResult(schema, written));
+    }
+
+    // Import writes .nsql, but a file the reader already accepts keeps the name it has: an object imported before
+    // the extension existed lives in a .sql file, and writing the .nsql sibling instead would declare it twice.
+    private static string WhereItAlreadyLives(string path)
+    {
+        if (File.Exists(path))
+        {
+            return path;
+        }
+
+        var existing = Path.ChangeExtension(path, ".sql");
+        return File.Exists(existing) ? existing : path;
     }
 
     // Each major object (table, view, routine) gets its own file, grouped by type under the schema's directory;
@@ -68,18 +82,18 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
     {
         foreach (var table in s.Tables)
         {
-            yield return (Path.Combine(directory, s.Name.Value, "tables", $"{table.Name}.sql"),
+            yield return (Path.Combine(directory, s.Name.Value, "tables", $"{table.Name}.nsql"),
                 new Database { Schemas = [new Schema { Name = s.Name, Tables = [table.Clone()] }] });
         }
         foreach (var view in s.Views)
         {
-            yield return (Path.Combine(directory, s.Name.Value, "views", $"{view.Name}.sql"),
+            yield return (Path.Combine(directory, s.Name.Value, "views", $"{view.Name}.nsql"),
                 new Database { Schemas = [new Schema { Name = s.Name, Views = [view.Clone()] }] });
         }
         // Functions and procedures share one name space, so they share one directory.
         foreach (var routine in s.Routines)
         {
-            yield return (Path.Combine(directory, s.Name.Value, "routines", $"{routine.Name}.sql"),
+            yield return (Path.Combine(directory, s.Name.Value, "routines", $"{routine.Name}.nsql"),
                 new Database { Schemas = [new Schema { Name = s.Name, Routines = [routine.Clone()] }] });
         }
     }
