@@ -12,11 +12,11 @@ compatibility is always clear.
 As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
 a major one, and called out explicitly in this changelog.
 
-## [Unreleased]
+## [5.12.0] - 2026-08-17
 
 ## Added
 
-- **NSQL extension.** Project files can now be written as `.nsql` files, which will soon have their own dedicated syntax highlighting.
+- **NSQL extension.** Project files can now be written as `.nsql` files, which can be syntax highlighted using NSchema.Core's TextMate grammar.
 
 ## Changed
 
@@ -422,7 +422,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.11.5...HEAD
+[5.12.0]: https://github.com/nschema-org/NSchema/compare/v5.11.5...v5.12.0
 [5.11.5]: https://github.com/nschema-org/NSchema/compare/v5.11.4...v5.11.5
 [5.11.4]: https://github.com/nschema-org/NSchema/compare/v5.11.3...v5.11.4
 [5.11.3]: https://github.com/nschema-org/NSchema/compare/v5.11.2...v5.11.3

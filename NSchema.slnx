@@ -4,6 +4,7 @@
     <File Path=".github\workflows\cicd.yml" />
     <File Path="CLAUDE.md" />
     <File Path="Directory.Packages.props" />
+    <File Path="dotnet-tools.json" />
   </Folder>
   <Folder Name="/cli/">
     <Project Path="src\NSchema\NSchema.csproj" />
