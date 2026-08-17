@@ -1,0 +1,176 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "NSQL",
+  "scopeName": "source.nsql",
+  "fileTypes": ["nsql"],
+  "patterns": [
+    { "include": "#doc-comments" },
+    { "include": "#comments" },
+    { "include": "#bodies" },
+    { "include": "#strings" },
+    { "include": "#declarations" },
+    { "include": "#quoted-identifiers" },
+    { "include": "#numbers" },
+    { "include": "#constants" },
+    { "include": "#keywords" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "doc-comments": {
+      "comment": "A doc-comment is semantic: it becomes the catalog comment of the declaration it precedes, so it is scoped apart from an ordinary note.",
+      "patterns": [
+        {
+          "name": "comment.block.documentation.nsql",
+          "begin": "/\\*\\*(?!/)",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.documentation.nsql",
+          "match": "---.*$"
+        }
+      ]
+    },
+    "comments": {
+      "comment": "Source comments, stripped by the reader and never persisted.",
+      "patterns": [
+        {
+          "name": "comment.block.nsql",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.double-dash.nsql",
+          "match": "--.*$"
+        }
+      ]
+    },
+    "bodies": {
+      "comment": "A dollar-quoted body (a script, routine, or trigger action). Its contents are engine SQL passed through verbatim, so they highlight as SQL wherever a SQL grammar is installed. Only the opening tag closes the body, which is why the end pattern back-references it.",
+      "patterns": [
+        {
+          "begin": "(\\$)(\\w*)(\\$)",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.nsql" }
+          },
+          "end": "\\$\\2\\$",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.nsql" }
+          },
+          "contentName": "meta.embedded.block.sql",
+          "comment": "A host without a SQL grammar cannot resolve the include, and an include that resolves to nothing takes its whole rule with it — bodies would then be read as NSQL, which is worse than reading them as nothing. The two fallbacks keep the rule standing, and give a body its comments and literals wherever SQL itself is unavailable. Order matters: a real SQL grammar is tried first.",
+          "patterns": [
+            { "include": "source.sql" },
+            { "include": "#comments" },
+            { "include": "#strings" }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "comment": "A single-quoted literal; a doubled quote escapes one. The end pattern refuses a quote that opens an escape.",
+      "patterns": [
+        {
+          "name": "string.quoted.single.nsql",
+          "begin": "'",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.nsql" }
+          },
+          "end": "'(?!')",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.nsql" }
+          },
+          "patterns": [
+            { "name": "constant.character.escape.nsql", "match": "''" }
+          ]
+        }
+      ]
+    },
+    "quoted-identifiers": {
+      "comment": "Double quotes and brackets are two spellings of one delimited name, each doubling its own closing delimiter to escape it. Empty brackets are left alone: that is how an array type is spelled.",
+      "patterns": [
+        {
+          "name": "variable.other.quoted.nsql",
+          "begin": "\"",
+          "end": "\"(?!\")",
+          "patterns": [
+            { "name": "constant.character.escape.nsql", "match": "\"\"" }
+          ]
+        },
+        {
+          "name": "variable.other.quoted.nsql",
+          "begin": "\\[(?=[^\\]])",
+          "end": "\\](?!\\])",
+          "patterns": [
+            { "name": "constant.character.escape.nsql", "match": "\\]\\]" }
+          ]
+        }
+      ]
+    },
+    "declarations": {
+      "comment": "The name an object is declared under, so a declaration reads differently from a reference to it. Every other delimited name stays a variable.",
+      "patterns": [
+        {
+          "comment": "CREATE and RENAME both name an object of a stated kind.",
+          "match": "(?i)\\b(create|rename)\\s+((?:materialized|unique|primary|clustered|nonclustered)\\s+)*(xml\\s+schema\\s+collection|xml\\s+index|schema|table|column|view|enum|domain|type|sequence|function|procedure|aggregate|routine|trigger|extension|index)\\b[ \\t]*((?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\])(?:\\.(?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\]))*)?",
+          "captures": {
+            "1": { "name": "keyword.control.nsql" },
+            "2": { "name": "keyword.other.nsql" },
+            "3": { "name": "storage.type.nsql" },
+            "4": { "name": "entity.name.type.nsql" }
+          }
+        },
+        {
+          "comment": "A template, whether declared or applied.",
+          "match": "(?i)\\b(template)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.control.nsql" },
+            "2": { "name": "entity.name.type.nsql" }
+          }
+        },
+        {
+          "comment": "A configuration statement and its label. Anchored to the start of a line, because these words are common enough as column names that an unanchored rule would label the type that follows one.",
+          "match": "(?i)^\\s*(engine|plugin|database|state)\\b[ \\t]*([A-Za-z_][A-Za-z0-9_]*)?",
+          "captures": {
+            "1": { "name": "keyword.control.nsql" },
+            "2": { "name": "entity.name.type.nsql" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.integer.nsql", "match": "\\b\\d+\\b" }
+      ]
+    },
+    "constants": {
+      "comment": "Attribute values in a configuration statement.",
+      "patterns": [
+        { "name": "constant.language.boolean.nsql", "match": "(?i)\\b(?:true|false)\\b" }
+      ]
+    },
+    "keywords": {
+      "comment": "The vocabulary, in three groups: the words that open a statement, the words that name a kind of object, and the rest. NsqlGrammarTests holds these to NsqlKeywords, so a word added there fails the build until it is placed here.",
+      "patterns": [
+        {
+          "name": "keyword.control.nsql",
+          "match": "(?i)\\b(?:apply|create|database|engine|grant|plugin|rename|script|state|template)\\b"
+        },
+        {
+          "name": "storage.type.nsql",
+          "match": "(?i)\\b(?:aggregate|collection|column|constraint|domain|enum|extension|function|index|procedure|routine|schema|sequence|table|trigger|type|view|xml)\\b"
+        },
+        {
+          "name": "keyword.other.nsql",
+          "match": "(?i)\\b(?:action|add|after|alter|always|as|asc|before|begin|cache|cascade|check|clustered|content|cycle|default|delete|deployment|desc|document|each|end|exclude|execute|first|for|foreign|generated|identity|in|include|increment|insert|instead|key|last|lock|materialized|maxvalue|minvalue|no|nonclustered|not|null|nulls|of|on|once|or|path|post|pre|primary|property|references|replication|restrict|row|rowguidcol|run|schemabinding|select|set|start|statement|stored|to|truncate|unique|unless|update|usage|using|value|version|virtual|when|where|with)\\b"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.terminator.statement.nsql", "match": ";" },
+        { "name": "punctuation.separator.comma.nsql", "match": "," },
+        { "name": "keyword.operator.assignment.nsql", "match": "=" }
+      ]
+    }
+  }
+}
