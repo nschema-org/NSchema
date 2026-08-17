@@ -4,37 +4,51 @@ using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 namespace NSchema.Configuration;
 
 /// <summary>
-/// The glob patterns that classify a project's <c>.sql</c> files by role.
+/// The glob patterns that classify a project's files by role.
 /// </summary>
 internal static class ProjectGlobs
 {
     /// <summary>
-    /// Every SQL file, recursively.
+    /// The extensions a project file may carry.
     /// </summary>
-    public const string AllSql = "**/*.sql";
+    public static readonly IReadOnlyList<string> Extensions = ["nsql", "sql"];
+
+    /// <summary>
+    /// Every project file, recursively — one pattern per extension.
+    /// </summary>
+    public static IEnumerable<string> AllProjectFiles => Extensions.Select(extension => $"**/*.{extension}");
 
     /// <summary>
     /// Any environment overlay file, for any environment.
     /// </summary>
-    public const string AnyEnvironmentGlob = "**/*.env.*.sql";
+    public static IEnumerable<string> AnyEnvironmentGlobs => Extensions.Select(extension => $"**/*.env.*.{extension}");
 
     /// <summary>
-    /// The overlay glob for a single environment.
+    /// The overlay globs for a single environment.
     /// </summary>
-    public static string EnvironmentGlob(string environment) => $"**/*.env.{environment}.sql";
+    public static IEnumerable<string> EnvironmentGlobs(string environment) =>
+        Extensions.Select(extension => $"**/*.env.{environment}.{extension}");
 
     /// <summary>
-    /// Matches the base files: every <c>.sql</c> file except environment overlays.
+    /// Matches the base files: every project file except environment overlays.
     /// </summary>
-    public static Matcher Base() => new Matcher()
-        .AddInclude(AllSql)
-        .AddExclude(AnyEnvironmentGlob);
+    public static Matcher Base()
+    {
+        var matcher = new Matcher();
+        matcher.AddIncludePatterns(AllProjectFiles);
+        matcher.AddExcludePatterns(AnyEnvironmentGlobs);
+        return matcher;
+    }
 
     /// <summary>
     /// Matches a single environment's overlay files.
     /// </summary>
-    public static Matcher Environment(string environment) => new Matcher()
-        .AddInclude(EnvironmentGlob(environment));
+    public static Matcher Environment(string environment)
+    {
+        var matcher = new Matcher();
+        matcher.AddIncludePatterns(EnvironmentGlobs(environment));
+        return matcher;
+    }
 
     /// <summary>
     /// Runs <paramref name="matcher"/> against <paramref name="root"/> and returns the matched files as sorted absolute paths.
@@ -45,4 +59,15 @@ internal static class ProjectGlobs
         .Select(match => Path.GetFullPath(match.Path, root))
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToList();
+
+    /// <summary>
+    /// Every project file under <paramref name="directory"/>, recursively and in a stable order, for the callers that
+    /// walk the filesystem rather than matching a glob.
+    /// </summary>
+    public static IReadOnlyList<string> Enumerate(string directory) =>
+    [
+        .. Extensions
+            .SelectMany(extension => Directory.EnumerateFiles(directory, $"*.{extension}", SearchOption.AllDirectories))
+            .OrderBy(file => file, StringComparer.Ordinal)
+    ];
 }

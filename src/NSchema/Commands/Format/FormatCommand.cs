@@ -159,8 +159,7 @@ internal static class FormatCommand
 
         if (Directory.Exists(path))
         {
-            return Result.Success<IReadOnlyList<string>>(
-                [.. Directory.EnumerateFiles(path, "*.sql", SearchOption.AllDirectories).OrderBy(file => file, StringComparer.Ordinal)]);
+            return Result.Success(ProjectGlobs.Enumerate(path));
         }
 
         return Result.Failure<IReadOnlyList<string>>(FormatDiagnostics.PathNotFound(path));

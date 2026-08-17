@@ -12,5 +12,5 @@ internal static class ImportDiagnostics
     /// </summary>
     public static Diagnostic OutputNotEmpty(string directory) =>
         Diagnostic.Error(Source, "output-not-empty",
-            $"{directory} already contains .sql files that import would overwrite. Re-run with --force to overwrite.");
+            $"{directory} already contains project files that import would overwrite. Re-run with --force to overwrite.");
 }

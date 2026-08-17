@@ -107,7 +107,7 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNs
 
 Project configuration lives in the project files — as **`DATABASE` / `STATE` statements**.
 `ConfigurationFactory.Load<T>(ParseResult)` drives resolution. It first honors **`--directory`** (the recursive root
-option; it `SetCurrentDirectory`s so the project's `.sql` files and the relative paths in them resolve against the
+option; it `SetCurrentDirectory`s so the project's files and the relative paths in them resolve against the
 project dir, Terraform-`-chdir`-style — the one chokepoint every command funnels through, so it holds whether the CLI
 runs via `Program` or is invoked directly in a test). It then reads the configuration statements via
 `ProjectConfigReader` (globs the config files, layering an environment's overlay over the base; the core parses them
@@ -176,7 +176,7 @@ The provider/backend slices are now **plain data**, not `IBindable`:
 Presence is just a null check (`Provider is not null`, `State is not null`) — there is no `ConfiguredSectionCount` /
 `IsConfigured`. Each command validator adds its **presence** rules on top: `apply` requires a provider
 (`RuleFor(x => x.Provider).NotNull()`); `plan` requires a current-schema source — a provider (live) **or** a state store
-(offline); `refresh`/`drift` require both. The desired schema is **not** a config concern (always the recursive `*.sql`
+(offline); `refresh`/`drift` require both. The desired schema is **not** a config concern (always the recursive project-file
 glob), so no command validates its presence — the builder guards the zero-files case (an empty desired schema would read
 as "drop everything").
 
@@ -256,10 +256,14 @@ are owned by the plugins, not listed here.)
 
 ## Desired-schema files
 
-The desired schema is every schema `.sql` file found recursively under the project directory (the `--directory` root) —
-every `.sql` file without the `.env.` configuration marker — written in **NSchema DDL** (**NSQL**), the core's canonical,
-SQL-flavoured schema serialization. Column types are canonical compact strings (`bigint`, `text`, `varchar(255)`). There
-is no format, directory, or glob to configure. See `README.md` for a worked example.
+The desired schema is every schema file found recursively under the project directory (the `--directory` root) — every
+file without the `.env.` configuration marker — written in **NSchema DDL** (**NSQL**), the core's canonical,
+SQL-flavoured schema serialization. A project file carries **either extension: `.nsql` or `.sql`**, both read the same
+way (`Configuration/ProjectGlobs` owns the pair and is the only place either is spelled). `.nsql` names the language, so
+it is what the CLI *writes* — `new` scaffolds `config.nsql` / `schemas/example.nsql` — while `.sql` keeps every project
+written before the extension existed working, with no migration and no deprecation. Column types are canonical
+compact strings (`bigint`, `text`, `varchar(255)`). There is no format, directory, or glob to configure. See
+`README.md` for a worked example.
 
 **Scripts** are declared **inline** in the DDL with the unified `SCRIPT '<name>' RUN [ALWAYS | ONCE] ON <event>
 [(run_outside_transaction = true)] AS $$…$$;` statement (Core 4.4+). The event is a deployment bookend
@@ -268,7 +272,7 @@ with a `schema.table.member` path — the data-migration form, spliced into the 
 planned). `RUN ONCE` scripts are recorded in the state backend on a successful apply and skipped by later plans (skip
 = `run-once` Info diagnostic; a changed body warns and stays skipped). Script names are unique project-wide. The
 pre-4.4 spellings (`PRE|POST DEPLOYMENT 'name' AS $$…$$;`, `MIGRATION ['name'] FOR <trigger> <path> AS $$…$$;`) were
-removed in 5.0. The CLI does **almost nothing special** with any of this: scripts ride the same `.sql` glob into the
+removed in 5.0. The CLI does **almost nothing special** with any of this: scripts ride the same project-file glob into the
 core's parser, the core plans/executes/records them (the run-once manifest travels on `MigrationPlan` inside the plan
 result and plan file, so apply needs no extra wiring), and the CLI's only additions are presentation — scripts are
 folded into the plan's diff (run-once ones annotated `(run once)`; `runCondition` in `--json`), and the `run-once`

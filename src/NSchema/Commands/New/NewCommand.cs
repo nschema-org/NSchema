@@ -159,7 +159,7 @@ internal static class NewCommand
         // band, so point the user at the right environment variable.
         if (configuration.Database == DatabaseKind.Sqlite)
         {
-            app.Reporter.Announce($"Edit {"connection_string"} in {"config.sql"}, then run {"nschema plan"}.");
+            app.Reporter.Announce($"Edit {"connection_string"} in {"config.nsql"}, then run {"nschema plan"}.");
         }
         else
         {

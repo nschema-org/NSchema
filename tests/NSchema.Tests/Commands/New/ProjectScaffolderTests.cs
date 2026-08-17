@@ -97,10 +97,10 @@ public sealed class ProjectScaffolderTests : IDisposable
         var created = await Scaffold();
 
         // Assert
-        created.ShouldBe(["config.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql")]);
-        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
-        File.Exists(Path.Combine(_directory, "config.env.prod.sql")).ShouldBeTrue();
-        File.Exists(Path.Combine(_directory, "schemas", "example.sql")).ShouldBeTrue();
+        created.ShouldBe(["config.nsql", "config.env.prod.nsql", Path.Combine("schemas", "example.nsql")]);
+        File.Exists(Path.Combine(_directory, "config.nsql")).ShouldBeTrue();
+        File.Exists(Path.Combine(_directory, "config.env.prod.nsql")).ShouldBeTrue();
+        File.Exists(Path.Combine(_directory, "schemas", "example.nsql")).ShouldBeTrue();
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Assert
-        var config = await ReadAsync("config.sql");
+        var config = await ReadAsync("config.nsql");
         config.ShouldContain("ENGINE (");
         config.ShouldContain("version = '[5.0,6.0)'");
         config.ShouldContain("PLUGIN postgres");
@@ -127,7 +127,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Assert
-        (await ReadAsync(Path.Combine("schemas", "example.sql"))).ShouldContain("CREATE TABLE app.widgets");
+        (await ReadAsync(Path.Combine("schemas", "example.nsql"))).ShouldContain("CREATE TABLE app.widgets");
     }
 
     [Fact]
@@ -140,11 +140,11 @@ public sealed class ProjectScaffolderTests : IDisposable
             plugins: [Plugin("postgres", "NSchema.Postgres"), Plugin("s3", "NSchema.Aws")]);
 
         // Assert
-        var config = await ReadAsync("config.sql");
+        var config = await ReadAsync("config.nsql");
         config.ShouldContain("PLUGIN s3");
         config.ShouldContain("STATE s3");
         config.ShouldNotContain("STATE file");
-        (await ReadAsync("config.env.prod.sql")).ShouldContain("key = 'prod/nschema.state.json'");
+        (await ReadAsync("config.env.prod.nsql")).ShouldContain("key = 'prod/nschema.state.json'");
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Act
-        var ddl = await ReadAsync(Path.Combine("schemas", "example.sql"));
+        var ddl = await ReadAsync(Path.Combine("schemas", "example.nsql"));
         var document = NsqlReader.Read(ddl);
 
         // Assert
@@ -206,7 +206,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Act
-        var lines = (await ReadAsync("config.sql")).Split('\n');
+        var lines = (await ReadAsync("config.nsql")).Split('\n');
 
         // Assert — a header introduces the file as plain comment lines above a blank line, not as a doc-comment
         // (which the language would read as ENGINE's catalog comment).
@@ -234,7 +234,7 @@ public sealed class ProjectScaffolderTests : IDisposable
             plugins: [Plugin("postgres", "NSchema.Postgres"), Plugin("s3", "NSchema.Aws")]);
 
         // Assert
-        var overlay = await ReadAsync("config.env.prod.sql");
+        var overlay = await ReadAsync("config.env.prod.nsql");
         overlay.IndexOf("-- Overlay for", StringComparison.Ordinal)
             .ShouldBeLessThan(overlay.IndexOf("--- Credentials", StringComparison.Ordinal));
     }
@@ -247,8 +247,8 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Act
-        var config = await ReadAsync("config.sql");
-        var overlay = await ReadAsync("config.env.prod.sql");
+        var config = await ReadAsync("config.nsql");
+        var overlay = await ReadAsync("config.env.prod.nsql");
 
         // Assert
         NsqlWriter.Format(config).Require().ShouldBe(config);
@@ -262,7 +262,7 @@ public sealed class ProjectScaffolderTests : IDisposable
         await Scaffold();
 
         // Act
-        var written = await ReadAsync(Path.Combine("schemas", "example.sql"));
+        var written = await ReadAsync(Path.Combine("schemas", "example.nsql"));
 
         // Assert
         NsqlWriter.Format(written).Require().ShouldBe(written);
@@ -290,6 +290,6 @@ public sealed class ProjectScaffolderTests : IDisposable
 
         // Act & Assert
         await Should.NotThrowAsync(() => Scaffold(force: true));
-        File.Exists(Path.Combine(_directory, "config.sql")).ShouldBeTrue();
+        File.Exists(Path.Combine(_directory, "config.nsql")).ShouldBeTrue();
     }
 }
