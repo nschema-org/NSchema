@@ -107,7 +107,7 @@
       ]
     },
     "declarations": {
-      "comment": "The name an object is declared under, so a declaration reads differently from a reference to it. Every other delimited name stays a variable.",
+      "comment": "The name an object is declared under, so a declaration reads differently from a reference to it. Every other delimited name stays a variable. Each name carries two scopes: what it is, and the nearest scope themes actually colour — plenty of themes style entity.name.class while leaving a bare entity.name.type to the default foreground.",
       "patterns": [
         {
           "comment": "CREATE and RENAME both name an object of a stated kind.",
@@ -116,7 +116,7 @@
             "1": { "name": "keyword.control.nsql" },
             "2": { "name": "keyword.other.nsql" },
             "3": { "name": "storage.type.nsql" },
-            "4": { "name": "entity.name.type.nsql" }
+            "4": { "name": "entity.name.type.nsql entity.name.class.nsql" }
           }
         },
         {
@@ -124,7 +124,7 @@
           "match": "(?i)\\b(template)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
             "1": { "name": "keyword.control.nsql" },
-            "2": { "name": "entity.name.type.nsql" }
+            "2": { "name": "entity.name.type.nsql entity.name.class.nsql" }
           }
         },
         {
@@ -132,7 +132,7 @@
           "match": "(?i)^\\s*(engine|plugin|database|state)\\b[ \\t]*([A-Za-z_][A-Za-z0-9_]*)?",
           "captures": {
             "1": { "name": "keyword.control.nsql" },
-            "2": { "name": "entity.name.type.nsql" }
+            "2": { "name": "entity.name.type.nsql entity.name.class.nsql" }
           }
         }
       ]
