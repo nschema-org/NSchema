@@ -32,6 +32,24 @@ public sealed class ProjectConfigurationReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Configuration_IsReadFromNsqlFiles()
+    {
+        // Scaffolding writes config.nsql, so a project made by `nschema new` resolves from one.
+        await WriteLock(Locked("NSchema.Postgres", "5.0.0"));
+        await File.WriteAllTextAsync(
+            Path.Combine(_directory, "config.nsql"),
+            """
+            PLUGIN postgres ( source = 'NSchema.Postgres', version = '5.0.0' );
+            DATABASE postgres ( connection_string = 'host=db' );
+            """,
+            TestContext.Current.CancellationToken);
+
+        var config = (await ProjectConfigurationReader.Read(_directory, environment: null, TestContext.Current.CancellationToken)).Require();
+
+        config.Database!.PackageId.ShouldBe("NSchema.Postgres");
+    }
+
+    [Fact]
     public async Task Database_ResolvesDeclaredPlugin()
     {
         await WriteLock(Locked("NSchema.Postgres", "5.0.0"));

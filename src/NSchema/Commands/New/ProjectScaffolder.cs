@@ -11,8 +11,8 @@ namespace NSchema.Commands.New;
 /// </summary>
 internal static class ProjectScaffolder
 {
-    private const string ConfigurationFileName = "config.sql";
-    private const string EnvironmentOverlayFileName = "config.env.prod.sql";
+    private const string ConfigurationFileName = "config.nsql";
+    private const string EnvironmentOverlayFileName = "config.env.prod.nsql";
     private const string SchemaDirectoryName = "schemas";
 
     private const string ConfigurationHeader =
@@ -73,7 +73,7 @@ internal static class ProjectScaffolder
         var overlay = NsqlDocument.Concat([template.DatabaseOverlay, template.StateOverlay]);
         await File.WriteAllTextAsync(Path.Combine(directory, EnvironmentOverlayFileName), Introduced(OverlayHeader, overlay), cancellationToken);
 
-        var sampleRelativePath = Path.Combine(SchemaDirectoryName, "example.sql");
+        var sampleRelativePath = Path.Combine(SchemaDirectoryName, "example.nsql");
         var samplePath = Path.Combine(directory, sampleRelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(samplePath)!);
         await File.WriteAllTextAsync(samplePath, NsqlWriter.Write(template.Schema), cancellationToken);

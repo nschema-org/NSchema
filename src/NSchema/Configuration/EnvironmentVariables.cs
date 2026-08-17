@@ -21,7 +21,7 @@ internal static class EnvironmentVariables
     public const string DataHazardPolicy = "NSCHEMA_DATA_HAZARD_POLICY";
 
     /// <summary>
-    /// The environment to target. Selects the <c>*.env.&lt;name&gt;.sql</c> overlay files layered over the base project.
+    /// The environment to target. Selects the <c>*.env.&lt;name&gt;</c> overlay files layered over the base project.
     /// </summary>
     public const string Environment = "NSCHEMA_ENVIRONMENT";
 

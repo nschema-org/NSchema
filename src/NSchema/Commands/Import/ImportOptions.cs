@@ -16,7 +16,7 @@ internal static class ImportOptions
 
     public static readonly OptionBinding<bool> Force = OptionBinding.Create<bool>()
         .FromOption("--force", "-f")
-        .WithDescription("Overwrite existing .sql files in the output directory.");
+        .WithDescription("Overwrite existing project files in the output directory.");
 
     public static IEnumerable<Option> All =>
     [

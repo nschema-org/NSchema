@@ -57,6 +57,34 @@ public sealed class DesiredSchemaSourceTests : IDisposable
     }
 
     [Fact]
+    public async Task DesiredSchema_ReadsBothExtensions_SideBySide()
+    {
+        // Arrange — .nsql names the language, .sql is still read, so a project can rename its files at its leisure.
+        Write("orders.nsql", "CREATE TABLE public.orders (id INT NOT NULL);");
+        Write("legacy.sql", "CREATE TABLE public.legacy (id INT NOT NULL);");
+
+        // Act
+        var project = await Project("plan");
+
+        // Assert
+        TableNames(project).ShouldBe(["legacy", "orders"]);
+    }
+
+    [Fact]
+    public async Task DesiredSchema_SelectsAnEnvironmentOverlay_WhicheverExtensionItCarries()
+    {
+        // Arrange
+        Write("schema.nsql", "CREATE TABLE public.orders (id INT NOT NULL);");
+        Write("fixtures.env.test.nsql", "CREATE TABLE public.fixtures (id INT NOT NULL);");
+
+        // Act
+        var project = await Project("plan", "--environment", "test");
+
+        // Assert
+        TableNames(project).ShouldBe(["fixtures", "orders"]);
+    }
+
+    [Fact]
     public async Task DesiredSchema_ExcludesEveryEnvironmentsTables_WhenNoEnvironmentIsSelected()
     {
         // Arrange

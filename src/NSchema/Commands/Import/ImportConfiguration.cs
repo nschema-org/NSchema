@@ -26,7 +26,7 @@ internal sealed class ImportConfiguration : IBindable
     public string[]? Scope { get; private set; }
 
     /// <summary>
-    /// Whether to overwrite existing <c>.sql</c> files in the output directory.
+    /// Whether to overwrite existing project files in the output directory.
     /// </summary>
     public bool Force { get; private set; }
 

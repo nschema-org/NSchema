@@ -1,4 +1,5 @@
 using System.CommandLine;
+using NSchema.Configuration;
 using NSchema.Operations;
 
 namespace NSchema.Commands.Import;
@@ -67,7 +68,7 @@ internal static class ImportCommand
             return Result.Success();
         }
 
-        return Directory.EnumerateFiles(outputDirectory, "*.sql", SearchOption.AllDirectories).Any()
+        return ProjectGlobs.Enumerate(outputDirectory).Count != 0
             ? Result.From(ImportDiagnostics.OutputNotEmpty(outputDirectory))
             : Result.Success();
     }

@@ -62,13 +62,13 @@ public sealed class NewSmokeTests : IDisposable
         config.State!.File.ShouldNotBeNull();
 
         // Assert — the sample schema parses.
-        var ddl = await File.ReadAllTextAsync(Path.Combine(_directory, "schemas", "example.sql"), TestContext.Current.CancellationToken);
+        var ddl = await File.ReadAllTextAsync(Path.Combine(_directory, "schemas", "example.nsql"), TestContext.Current.CancellationToken);
         var document = NsqlReader.Read(ddl);
         document.IsSuccess.ShouldBeTrue();
         document.Require().Statements.OfType<CreateTableStatement>().ShouldHaveSingleItem().Name.Name.Value.ShouldBe("widgets");
 
         // Assert — every generated file is already formatter-canonical (new → format --check is a no-op).
-        foreach (var file in new[] { "config.sql", "config.env.prod.sql", Path.Combine("schemas", "example.sql") })
+        foreach (var file in new[] { "config.nsql", "config.env.prod.nsql", Path.Combine("schemas", "example.nsql") })
         {
             var content = await File.ReadAllTextAsync(Path.Combine(_directory, file), TestContext.Current.CancellationToken);
             NsqlWriter.Format(content).Require().ShouldBe(content, $"{file} should be formatter-canonical");
