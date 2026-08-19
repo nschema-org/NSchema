@@ -1,5 +1,5 @@
 {
-  "pipeline": "dotnet-tool",
+  "workflow": "dotnet-tool",
   "build": {
     "project": "src/NSchema/NSchema.csproj"
   }
