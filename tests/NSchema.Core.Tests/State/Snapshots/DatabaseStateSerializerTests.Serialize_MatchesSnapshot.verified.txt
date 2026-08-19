@@ -1,0 +1,554 @@
+﻿{
+  version: 1,
+  database: {
+    schemas: [
+      {
+        tables: [
+          {
+            primaryKey: {
+              columnNames: [
+                id
+              ],
+              clustered: null,
+              name: users_pkey,
+              comment: surrogate key
+            },
+            columns: [
+              {
+                type: {
+                  name: bigint,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                },
+                isNullable: false,
+                isIdentity: true,
+                defaultExpression: null,
+                identityOptions: {
+                  startWith: 1,
+                  minValue: 1,
+                  incrementBy: 1,
+                  notForReplication: false
+                },
+                generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: id,
+                comment: null
+              },
+              {
+                type: {
+                  name: varchar,
+                  schema: null,
+                  length: 255,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                },
+                isNullable: false,
+                isIdentity: false,
+                defaultExpression: null,
+                identityOptions: null,
+                generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: name,
+                comment: display name
+              },
+              {
+                type: {
+                  name: decimal,
+                  schema: null,
+                  length: null,
+                  precision: 18,
+                  scale: 2,
+                  xml: null
+                },
+                isNullable: true,
+                isIdentity: false,
+                defaultExpression: 0,
+                identityOptions: null,
+                generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: balance,
+                comment: null
+              },
+              {
+                type: {
+                  name: char,
+                  schema: null,
+                  length: 8,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                },
+                isNullable: false,
+                isIdentity: false,
+                defaultExpression: null,
+                identityOptions: null,
+                generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: code,
+                comment: null
+              },
+              {
+                type: {
+                  name: jsonb,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                },
+                isNullable: true,
+                isIdentity: false,
+                defaultExpression: null,
+                identityOptions: null,
+                generatedExpression: null,
+                isStored: false,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: metadata,
+                comment: null
+              },
+              {
+                type: {
+                  name: text,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                },
+                isNullable: true,
+                isIdentity: false,
+                defaultExpression: null,
+                identityOptions: null,
+                generatedExpression: upper(name),
+                isStored: true,
+                isRowGuid: false,
+                defaultConstraintName: null,
+                name: name_upper,
+                comment: null
+              }
+            ],
+            foreignKeys: [
+              {
+                columnNames: [
+                  org_id
+                ],
+                references: {
+                  schema: app,
+                  name: orgs
+                },
+                referencedColumnNames: [
+                  id
+                ],
+                onDelete: Cascade,
+                onUpdate: SetNull,
+                name: users_org_fk,
+                comment: owning org
+              }
+            ],
+            uniqueConstraints: [
+              {
+                columnNames: [
+                  code
+                ],
+                clustered: null,
+                name: users_code_uq,
+                comment: external code
+              }
+            ],
+            checkConstraints: [
+              {
+                expression: balance >= 0,
+                name: users_balance_chk,
+                comment: no overdraft
+              }
+            ],
+            exclusionConstraints: [
+              {
+                elements: [
+                  {
+                    operator: =,
+                    column: code,
+                    expression: null
+                  },
+                  {
+                    operator: &&,
+                    column: null,
+                    expression: int4range(0, balance)
+                  }
+                ],
+                method: gist,
+                predicate: balance > 0,
+                name: users_code_excl,
+                comment: no overlap
+              }
+            ],
+            indexes: [
+              {
+                columns: [
+                  {
+                    column: name,
+                    expression: null,
+                    sort: Default,
+                    nulls: Default
+                  }
+                ],
+                isUnique: true,
+                predicate: name IS NOT NULL,
+                method: null,
+                clustered: null,
+                xml: null,
+                name: users_name_ix,
+                comment: unique names
+              },
+              {
+                columns: [
+                  {
+                    column: balance,
+                    expression: null,
+                    sort: Descending,
+                    nulls: Last
+                  },
+                  {
+                    column: null,
+                    expression: lower(name),
+                    sort: Default,
+                    nulls: Default
+                  }
+                ],
+                isUnique: false,
+                predicate: null,
+                method: btree,
+                clustered: null,
+                include: [
+                  code
+                ],
+                xml: null,
+                name: users_balance_ix,
+                comment: covering balance index
+              }
+            ],
+            grants: [
+              {
+                role: readers,
+                privileges: All
+              }
+            ],
+            triggers: [
+              {
+                timing: After,
+                events: Insert, Update,
+                function: {
+                  schema: app,
+                  name: log_change
+                },
+                level: Row,
+                updateOfColumns: [
+                  name,
+                  balance
+                ],
+                when: new.balance > 0,
+                functionArguments: null,
+                body: null,
+                isNotForReplication: false,
+                name: users_audit,
+                comment: audit row changes
+              },
+              {
+                timing: Before,
+                events: Update,
+                function: {
+                  schema: app,
+                  name: touch_updated_at
+                },
+                level: Statement,
+                when: null,
+                functionArguments: null,
+                body: null,
+                isNotForReplication: false,
+                name: users_stamp,
+                comment: null
+              },
+              {
+                timing: InsteadOf,
+                events: Delete,
+                function: null,
+                level: Statement,
+                when: null,
+                functionArguments: null,
+                body:
+BEGIN
+  INSERT INTO app.audit (msg) VALUES ('blocked');
+  RETURN;
+END,
+                isNotForReplication: false,
+                name: users_guard,
+                comment: block deletes
+              }
+            ],
+            name: users,
+            comment: all users
+          }
+        ],
+        views: [
+          {
+            body: SELECT id, name FROM app.users WHERE balance > 0,
+            isMaterialized: false,
+            isSchemaBound: false,
+            name: active_users,
+            comment: currently active users
+          },
+          {
+            body: SELECT name FROM app.active_users,
+            isMaterialized: false,
+            isSchemaBound: false,
+            name: user_directory,
+            comment: null
+          },
+          {
+            body: SELECT name, balance FROM app.users,
+            isMaterialized: true,
+            isSchemaBound: false,
+            indexes: [
+              {
+                columns: [
+                  {
+                    column: name,
+                    expression: null,
+                    sort: Default,
+                    nulls: Default
+                  }
+                ],
+                isUnique: true,
+                predicate: null,
+                method: null,
+                clustered: null,
+                xml: null,
+                name: daily_balances_name_ix,
+                comment: by name
+              }
+            ],
+            name: daily_balances,
+            comment: balances rollup
+          }
+        ],
+        enums: [
+          {
+            values: [
+              pending,
+              shipped,
+              delivered
+            ],
+            name: order_status,
+            comment: order lifecycle
+          },
+          {
+            values: [
+              low,
+              high
+            ],
+            name: priority,
+            comment: null
+          }
+        ],
+        sequences: [
+          {
+            options: {
+              dataType: null,
+              startWith: null,
+              incrementBy: null,
+              minValue: null,
+              maxValue: null,
+              cache: null,
+              cycle: false
+            },
+            name: invoice_id,
+            comment: null
+          },
+          {
+            options: {
+              dataType: {
+                name: bigint,
+                schema: null,
+                length: null,
+                precision: null,
+                scale: null,
+                xml: null
+              },
+              startWith: 100,
+              incrementBy: 5,
+              minValue: -10,
+              maxValue: 999999,
+              cache: 10,
+              cycle: true
+            },
+            name: order_id,
+            comment: order numbers
+          }
+        ],
+        routines: [
+          {
+            routineKind: Function,
+            arguments: amount numeric, rate numeric,
+            definition:
+RETURNS numeric LANGUAGE sql AS $$
+  SELECT amount * (1 + rate);
+$$,
+            name: add_tax,
+            comment: adds tax
+          },
+          {
+            routineKind: Function,
+            arguments: code text DEFAULT 'N/A',
+            definition: RETURNS text LANGUAGE sql AS $body$ SELECT upper(code || ';suffix'); $body$,
+            name: normalize_code,
+            comment: null
+          },
+          {
+            routineKind: Procedure,
+            arguments: ,
+            definition:
+LANGUAGE sql AS $$
+  DELETE FROM app.users WHERE name <> 'a;b';
+$$,
+            name: archive_users,
+            comment: archival job
+          }
+        ],
+        domains: [
+          {
+            dataType: {
+              name: text,
+              schema: null,
+              length: null,
+              precision: null,
+              scale: null,
+              xml: null
+            },
+            default: null,
+            notNull: false,
+            name: typeid,
+            comment: unique id as text
+          },
+          {
+            dataType: {
+              name: decimal,
+              schema: null,
+              length: null,
+              precision: 18,
+              scale: 2,
+              xml: null
+            },
+            default: 0,
+            notNull: true,
+            checks: [
+              {
+                expression: VALUE >= 0,
+                name: positive_amount_chk,
+                comment: null
+              }
+            ],
+            name: positive_amount,
+            comment: null
+          }
+        ],
+        compositeTypes: [
+          {
+            fields: [
+              {
+                name: street,
+                dataType: {
+                  name: text,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                }
+              },
+              {
+                name: zip,
+                dataType: {
+                  name: int,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                }
+              }
+            ],
+            name: address,
+            comment: a postal address
+          },
+          {
+            fields: [
+              {
+                name: amount,
+                dataType: {
+                  name: decimal,
+                  schema: null,
+                  length: null,
+                  precision: 18,
+                  scale: 2,
+                  xml: null
+                }
+              },
+              {
+                name: currency,
+                dataType: {
+                  name: text,
+                  schema: null,
+                  length: null,
+                  precision: null,
+                  scale: null,
+                  xml: null
+                }
+              }
+            ],
+            name: money_amount,
+            comment: null
+          }
+        ],
+        grants: [
+          {
+            role: app_role
+          }
+        ],
+        name: app,
+        comment: application schema
+      }
+    ],
+    extensions: [
+      {
+        version: null,
+        name: citext,
+        comment: null
+      },
+      {
+        version: 3.4,
+        name: postgis,
+        comment: spatial types
+      },
+      {
+        version: null,
+        name: uuid-ossp,
+        comment: uuid generation
+      }
+    ]
+  },
+  managed: {},
+  declared: {}
+}

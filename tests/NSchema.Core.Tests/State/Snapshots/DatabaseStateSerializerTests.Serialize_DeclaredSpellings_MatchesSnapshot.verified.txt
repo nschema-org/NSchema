@@ -1,0 +1,45 @@
+﻿{
+  version: 1,
+  database: {},
+  managed: {},
+  declared: {
+    views: [
+      {
+        address: {
+          schema: app,
+          name: active,
+          kind: View
+        },
+        body: SELECT id FROM users
+      }
+    ],
+    routines: [
+      {
+        address: {
+          schema: app,
+          name: f,
+          kind: Routine
+        },
+        arguments: a int,
+        definition: RETURNS int AS $$ SELECT a $$
+      }
+    ],
+    triggers: [
+      {
+        address: {
+          schema: app,
+          object: users,
+          member: audit,
+          kind: Trigger,
+          owner: {
+            schema: app,
+            name: users
+          }
+        },
+        when: (true),
+        functionArguments: null,
+        body: CALL audit()
+      }
+    ]
+  }
+}

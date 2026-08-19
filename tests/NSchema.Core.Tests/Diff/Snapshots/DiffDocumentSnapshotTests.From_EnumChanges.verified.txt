@@ -1,0 +1,69 @@
+﻿{
+  Lines: [
+    {
+      Change: Add,
+      Text: enum app.order_status (pending, shipped, delivered) ("order lifecycle")
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: enum app.priority
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: value 'lowest' (before 'low')
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: value 'medium' (after 'low')
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: value 'highest' (append)
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: enum app.severity
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: values: [info, warn, error] → [warn, error] (removal/reorder; requires manual recreate)
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: enum app.kind comment: "old note" → "new note"
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: enum app.state → status
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Remove,
+      Text: enum app.stale_enum
+    }
+  ],
+  Summary: {
+    Added: 1,
+    Modified: 4,
+    Removed: 1
+  },
+  IsEmpty: false
+}

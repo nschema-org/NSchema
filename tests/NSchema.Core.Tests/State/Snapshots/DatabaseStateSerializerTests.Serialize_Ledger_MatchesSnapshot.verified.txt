@@ -1,0 +1,24 @@
+﻿{
+  version: 1,
+  database: {},
+  scripts: [
+    {
+      script: {
+        schema: null,
+        name: api-login
+      },
+      hash: abc123,
+      executedUtc: DateTimeOffset_1
+    },
+    {
+      script: {
+        schema: sales,
+        name: seed
+      },
+      hash: def456,
+      executedUtc: DateTimeOffset_1
+    }
+  ],
+  managed: {},
+  declared: {}
+}

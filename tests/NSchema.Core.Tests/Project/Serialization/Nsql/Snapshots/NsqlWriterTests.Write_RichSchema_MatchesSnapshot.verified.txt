@@ -1,0 +1,113 @@
+﻿CREATE EXTENSION citext;
+
+--- spatial types
+CREATE EXTENSION postgis VERSION '3.4';
+
+--- uuid generation
+CREATE EXTENSION "uuid-ossp";
+
+--- application schema
+CREATE SCHEMA app;
+
+GRANT USAGE ON SCHEMA app TO app_role;
+
+--- order lifecycle
+CREATE ENUM app.order_status('pending', 'shipped', 'delivered');
+
+CREATE ENUM app.priority('low', 'high');
+
+--- unique id as text
+CREATE DOMAIN app.typeid AS text;
+
+CREATE DOMAIN app.positive_amount AS decimal(18,2) NOT NULL CONSTRAINT positive_amount_chk CHECK (VALUE >= 0) DEFAULT 0;
+
+--- a postal address
+CREATE TYPE app.address AS (street text, zip int);
+
+CREATE TYPE app.money_amount AS (amount decimal(18,2), currency text);
+
+CREATE SEQUENCE app.invoice_id;
+
+--- order numbers
+CREATE SEQUENCE app.order_id(AS bigint, START 100, INCREMENT 5, MINVALUE -10, MAXVALUE 999999, CACHE 10, CYCLE);
+
+--- adds tax
+CREATE FUNCTION app.add_tax(amount numeric, rate numeric) RETURNS numeric LANGUAGE sql AS $$
+  SELECT amount * (1 + rate);
+$$;
+
+CREATE FUNCTION app.normalize_code(code text DEFAULT 'N/A') RETURNS text LANGUAGE sql AS $body$ SELECT upper(code || ';suffix'); $body$;
+
+--- archival job
+CREATE PROCEDURE app.archive_users() LANGUAGE sql AS $$
+  DELETE FROM app.users WHERE name <> 'a;b';
+$$;
+
+--- all users
+CREATE TABLE app.users (
+  id bigint NOT NULL IDENTITY (START 1, INCREMENT 1, MINVALUE 1),
+  --- display name
+  name varchar(255) NOT NULL,
+  balance decimal(18,2) DEFAULT 0,
+  code char(8) NOT NULL,
+  metadata jsonb,
+  name_upper text GENERATED ALWAYS AS (upper(name)) STORED,
+  --- surrogate key
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  --- owning org
+  CONSTRAINT users_org_fk FOREIGN KEY (org_id) REFERENCES app.orgs(id) ON DELETE CASCADE ON UPDATE SET NULL,
+  --- external code
+  CONSTRAINT users_code_uq UNIQUE (code),
+  --- no overdraft
+  CONSTRAINT users_balance_chk CHECK (balance >= 0),
+  --- no overlap
+  CONSTRAINT users_code_excl EXCLUDE USING gist(code WITH =, (int4range(0, balance)) WITH &&) WHERE (balance > 0),
+  --- unique names
+  UNIQUE INDEX users_name_ix(name) WHERE (name IS NOT NULL),
+  --- covering balance index
+  INDEX users_balance_ix USING btree(balance DESC NULLS LAST, (lower(name))) INCLUDE (code)
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON app.users TO readers;
+
+--- audit row changes
+CREATE TRIGGER users_audit AFTER INSERT OR UPDATE OF (name, balance) ON app.users FOR EACH ROW WHEN (new.balance > 0) EXECUTE FUNCTION app.log_change();
+
+CREATE TRIGGER users_stamp BEFORE UPDATE ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.touch_updated_at();
+
+--- block deletes
+CREATE TRIGGER users_guard INSTEAD OF DELETE ON app.users AS $$
+BEGIN
+  INSERT INTO app.audit (msg) VALUES ('blocked');
+  RETURN;
+END
+$$;
+
+--- currently active users
+CREATE VIEW app.active_users AS SELECT id, name FROM app.users WHERE balance > 0;
+
+CREATE VIEW app.user_directory AS SELECT name FROM app.active_users;
+
+--- balances rollup
+CREATE MATERIALIZED VIEW app.daily_balances AS SELECT name, balance FROM app.users;
+
+--- by name
+CREATE UNIQUE INDEX daily_balances_name_ix ON app.daily_balances(name);
+
+RENAME SCHEMA legacy_app TO app;
+
+RENAME TABLE legacy_app.members TO users;
+
+RENAME VIEW legacy_app.legacy_directory TO user_directory;
+
+RENAME ENUM legacy_app.importance TO priority;
+
+RENAME SEQUENCE legacy_app.bill_id TO invoice_id;
+
+RENAME ROUTINE legacy_app.clean_code TO normalize_code;
+
+RENAME DOMAIN legacy_app.legacy_id TO typeid;
+
+RENAME TYPE legacy_app.legacy_address TO address;
+
+RENAME COLUMN legacy_app.members.short_code TO code;

@@ -1,0 +1,29 @@
+﻿{
+  Lines: [
+    {
+      Change: Modify,
+      Text: table app.users
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: trigger audit
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: trigger noted comment: "old note" → "new note"
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: trigger stale_trg
+    }
+  ],
+  Summary: {
+    Added: 1,
+    Modified: 2,
+    Removed: 1
+  },
+  IsEmpty: false
+}

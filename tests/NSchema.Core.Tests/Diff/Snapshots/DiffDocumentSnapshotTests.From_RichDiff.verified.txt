@@ -1,0 +1,138 @@
+﻿{
+  Lines: [
+    {
+      Change: Add,
+      Text: schema reporting ("analytics")
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: grant usage to analyst
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Add,
+      Text: table app.users ("all users")
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: id bigint not null identity
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: name varchar(255) not null default 'anonymous'
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: primary key users_pkey
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: unique constraint users_email_uq
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: check constraint users_age_chk
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: index users_name_ix
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: grant SELECT to readers
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: table app.purchases → orders
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: total type: int → bigint
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: total nullable: null → not null
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: total_label generated: <none> → total::text
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: amount int not null generated as (total * 100)
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: legacy_flag boolean not null
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: primary key orders_pkey comment: "old note" → "new note"
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: foreign key orders_user_fk
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: unique constraint orders_code_uq
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: check constraint orders_total_chk
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: exclusion constraint orders_slot_excl
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: exclusion constraint orders_old_excl
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: revoke INSERT from writers
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Remove,
+      Text: schema scratch
+    }
+  ],
+  Summary: {
+    Added: 10,
+    Modified: 4,
+    Removed: 6
+  },
+  IsEmpty: false
+}

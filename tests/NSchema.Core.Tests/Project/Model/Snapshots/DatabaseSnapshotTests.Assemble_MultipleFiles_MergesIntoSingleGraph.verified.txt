@@ -1,0 +1,381 @@
+﻿{
+  Schemas: [
+    {
+      Address: {
+        Name: {
+          Value: app
+        },
+        Value: app
+      },
+      Tables: [
+        {
+          PrimaryKey: {
+            Kind: PrimaryKey,
+            ColumnNames: [
+              {
+                Value: id
+              }
+            ],
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Object: {
+                Value: users
+              },
+              Member: {
+                Value: users_pkey
+              },
+              Kind: PrimaryKey,
+              Owner: {
+                Schema: {
+                  Value: app
+                },
+                Name: {
+                  Value: users
+                },
+                Value: app.users
+              },
+              Value: app.users.users_pkey
+            },
+            Name: {
+              Value: users_pkey
+            },
+            IsImplicit: false
+          },
+          Columns: [
+            {
+              Type: {
+                Name: {
+                  Value: bigint
+                }
+              },
+              IsNullable: true,
+              IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
+              Address: {
+                Schema: {
+                  Value: app
+                },
+                Object: {
+                  Value: users
+                },
+                Member: {
+                  Value: id
+                },
+                Kind: Column,
+                Owner: {
+                  Schema: {
+                    Value: app
+                  },
+                  Name: {
+                    Value: users
+                  },
+                  Value: app.users
+                },
+                Value: app.users.id
+              },
+              Name: {
+                Value: id
+              },
+              IsImplicit: false
+            },
+            {
+              Type: {
+                Name: {
+                  Value: varchar
+                },
+                Length: 255
+              },
+              IsNullable: true,
+              IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
+              Address: {
+                Schema: {
+                  Value: app
+                },
+                Object: {
+                  Value: users
+                },
+                Member: {
+                  Value: name
+                },
+                Kind: Column,
+                Owner: {
+                  Schema: {
+                    Value: app
+                  },
+                  Name: {
+                    Value: users
+                  },
+                  Value: app.users
+                },
+                Value: app.users.name
+              },
+              Name: {
+                Value: name
+              },
+              IsImplicit: false
+            }
+          ],
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: users
+            },
+            Kind: Table,
+            Value: app.users
+          },
+          Name: {
+            Value: users
+          },
+          IsImplicit: false
+        },
+        {
+          Columns: [
+            {
+              Type: {
+                Name: {
+                  Value: bigint
+                }
+              },
+              IsNullable: true,
+              IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
+              Address: {
+                Schema: {
+                  Value: app
+                },
+                Object: {
+                  Value: invoices
+                },
+                Member: {
+                  Value: id
+                },
+                Kind: Column,
+                Owner: {
+                  Schema: {
+                    Value: app
+                  },
+                  Name: {
+                    Value: invoices
+                  },
+                  Value: app.invoices
+                },
+                Value: app.invoices.id
+              },
+              Name: {
+                Value: id
+              },
+              IsImplicit: false
+            },
+            {
+              Type: {
+                Name: {
+                  Value: decimal
+                },
+                Precision: 18,
+                Scale: 2
+              },
+              IsNullable: true,
+              IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
+              Address: {
+                Schema: {
+                  Value: app
+                },
+                Object: {
+                  Value: invoices
+                },
+                Member: {
+                  Value: amount
+                },
+                Kind: Column,
+                Owner: {
+                  Schema: {
+                    Value: app
+                  },
+                  Name: {
+                    Value: invoices
+                  },
+                  Value: app.invoices
+                },
+                Value: app.invoices.amount
+              },
+              Name: {
+                Value: amount
+              },
+              IsImplicit: false
+            }
+          ],
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: invoices
+            },
+            Kind: Table,
+            Value: app.invoices
+          },
+          Name: {
+            Value: invoices
+          },
+          IsImplicit: false
+        }
+      ],
+      Views: [
+        {
+          Kind: View,
+          Body: {
+            Value: SELECT id, name FROM app.users
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: active_users
+            },
+            Kind: View,
+            Value: app.active_users
+          },
+          Name: {
+            Value: active_users
+          },
+          Comment: currently active users,
+          IsImplicit: false
+        },
+        {
+          Kind: View,
+          Body: {
+            Value: SELECT id, amount FROM app.invoices
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: invoice_totals
+            },
+            Kind: View,
+            Value: app.invoice_totals
+          },
+          Name: {
+            Value: invoice_totals
+          },
+          IsImplicit: false
+        }
+      ],
+      Name: {
+        Value: app
+      },
+      Comment: application schema,
+      IsImplicit: false
+    },
+    {
+      Address: {
+        Name: {
+          Value: reporting
+        },
+        Value: reporting
+      },
+      Tables: [
+        {
+          Columns: [
+            {
+              Type: {
+                Name: {
+                  Value: date
+                }
+              },
+              IsNullable: true,
+              IsIdentity: false,
+              IsStored: false,
+              IsRowGuid: false,
+              Address: {
+                Schema: {
+                  Value: reporting
+                },
+                Object: {
+                  Value: daily_totals
+                },
+                Member: {
+                  Value: day
+                },
+                Kind: Column,
+                Owner: {
+                  Schema: {
+                    Value: reporting
+                  },
+                  Name: {
+                    Value: daily_totals
+                  },
+                  Value: reporting.daily_totals
+                },
+                Value: reporting.daily_totals.day
+              },
+              Name: {
+                Value: day
+              },
+              IsImplicit: false
+            }
+          ],
+          Address: {
+            Schema: {
+              Value: reporting
+            },
+            Name: {
+              Value: daily_totals
+            },
+            Kind: Table,
+            Value: reporting.daily_totals
+          },
+          Name: {
+            Value: daily_totals
+          },
+          IsImplicit: false
+        }
+      ],
+      Views: [
+        {
+          Kind: View,
+          Body: {
+            Value: SELECT day FROM reporting.daily_totals
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          Address: {
+            Schema: {
+              Value: reporting
+            },
+            Name: {
+              Value: weekly_rollup
+            },
+            Kind: View,
+            Value: reporting.weekly_rollup
+          },
+          Name: {
+            Value: weekly_rollup
+          },
+          IsImplicit: false
+        }
+      ],
+      Name: {
+        Value: reporting
+      },
+      Comment: analytics,
+      IsImplicit: false
+    }
+  ]
+}

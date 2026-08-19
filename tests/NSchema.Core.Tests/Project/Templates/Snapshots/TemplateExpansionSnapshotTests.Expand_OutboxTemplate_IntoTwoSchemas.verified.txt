@@ -1,0 +1,51 @@
+﻿CREATE SCHEMA billing;
+
+CREATE ENUM billing.outbox_status('pending', 'sent');
+
+CREATE FUNCTION billing.outbox_notify() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+
+CREATE TABLE billing.events (
+  id guid NOT NULL,
+  status billing.outbox_status NOT NULL,
+  payload text NOT NULL,
+  created_at datetimeoffset NOT NULL,
+  updated_at datetimeoffset NOT NULL,
+  CONSTRAINT pk_events PRIMARY KEY (id),
+  CONSTRAINT chk_audit CHECK (updated_at >= created_at)
+);
+
+GRANT SELECT, INSERT ON billing.events TO svc;
+
+CREATE TRIGGER trg_notify AFTER INSERT ON billing.events FOR EACH ROW EXECUTE FUNCTION billing.outbox_notify();
+
+CREATE TABLE billing.event_locks (
+  event_id guid NOT NULL,
+  CONSTRAINT fk_event FOREIGN KEY (event_id) REFERENCES billing.events(id),
+  CONSTRAINT fk_owner FOREIGN KEY (event_id) REFERENCES public.owners(id)
+);
+
+CREATE SCHEMA ordering;
+
+CREATE ENUM ordering.outbox_status('pending', 'sent');
+
+CREATE FUNCTION ordering.outbox_notify() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+
+CREATE TABLE ordering.events (
+  id guid NOT NULL,
+  status ordering.outbox_status NOT NULL,
+  payload text NOT NULL,
+  created_at datetimeoffset NOT NULL,
+  updated_at datetimeoffset NOT NULL,
+  CONSTRAINT pk_events PRIMARY KEY (id),
+  CONSTRAINT chk_audit CHECK (updated_at >= created_at)
+);
+
+GRANT SELECT, INSERT ON ordering.events TO svc;
+
+CREATE TRIGGER trg_notify AFTER INSERT ON ordering.events FOR EACH ROW EXECUTE FUNCTION ordering.outbox_notify();
+
+CREATE TABLE ordering.event_locks (
+  event_id guid NOT NULL,
+  CONSTRAINT fk_event FOREIGN KEY (event_id) REFERENCES ordering.events(id),
+  CONSTRAINT fk_owner FOREIGN KEY (event_id) REFERENCES public.owners(id)
+);

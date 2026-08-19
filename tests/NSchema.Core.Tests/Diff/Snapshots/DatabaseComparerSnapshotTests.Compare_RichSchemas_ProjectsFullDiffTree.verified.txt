@@ -1,0 +1,1459 @@
+﻿{
+  Schemas: [
+    {
+      Name: {
+        Value: app
+      },
+      Address: {
+        Name: {
+          Value: app
+        },
+        Value: app
+      },
+      Tables: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: users
+            },
+            Kind: Table,
+            Value: app.users
+          },
+          Name: {
+            Value: users
+          },
+          Change: Modify,
+          Columns: [
+            {
+              Name: {
+                Value: legacy_flag
+              },
+              Change: Remove,
+              Definition: {
+                Type: {
+                  Name: {
+                    Value: boolean
+                  }
+                },
+                IsNullable: false,
+                IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: legacy_flag
+                  },
+                  Kind: Column,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.legacy_flag
+                },
+                Name: {
+                  Value: legacy_flag
+                },
+                IsImplicit: false
+              }
+            },
+            {
+              Name: {
+                Value: id
+              },
+              Change: Modify,
+              Definition: {
+                Type: {
+                  Name: {
+                    Value: bigint
+                  }
+                },
+                IsNullable: false,
+                IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: id
+                  },
+                  Kind: Column,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.id
+                },
+                Name: {
+                  Value: id
+                },
+                IsImplicit: false
+              },
+              Type: {
+                Old: {
+                  Name: {
+                    Value: int
+                  }
+                },
+                New: {
+                  Name: {
+                    Value: bigint
+                  }
+                }
+              }
+            },
+            {
+              Name: {
+                Value: email_address
+              },
+              Change: Modify,
+              Definition: {
+                Type: {
+                  Name: {
+                    Value: text
+                  }
+                },
+                IsNullable: false,
+                IsIdentity: false,
+                IsStored: false,
+                IsRowGuid: false,
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: email_address
+                  },
+                  Kind: Column,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.email_address
+                },
+                Name: {
+                  Value: email_address
+                },
+                IsImplicit: false
+              },
+              RenamedFrom: {
+                Value: email
+              },
+              Type: {
+                Old: {
+                  Name: {
+                    Value: varchar
+                  },
+                  Length: 100
+                },
+                New: {
+                  Name: {
+                    Value: text
+                  }
+                }
+              }
+            },
+            {
+              Name: {
+                Value: email_upper
+              },
+              Change: Add,
+              Definition: {
+                Type: {
+                  Name: {
+                    Value: text
+                  }
+                },
+                IsNullable: true,
+                IsIdentity: false,
+                GeneratedExpression: {
+                  Value: upper(email_address)
+                },
+                IsStored: false,
+                IsRowGuid: false,
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: email_upper
+                  },
+                  Kind: Column,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.email_upper
+                },
+                Name: {
+                  Value: email_upper
+                },
+                IsImplicit: false
+              }
+            }
+          ],
+          Indexes: [
+            {
+              Change: Add,
+              Name: {
+                Value: users_email_ix
+              },
+              Definition: {
+                Kind: Index,
+                Columns: [
+                  {
+                    Column: {
+                      Value: email_address
+                    },
+                    Sort: Descending,
+                    Nulls: Last
+                  },
+                  {
+                    Expression: {
+                      Value: lower(email_address)
+                    }
+                  }
+                ],
+                IsUnique: true,
+                Method: {
+                  Value: btree
+                },
+                Include: [
+                  {
+                    Value: id
+                  }
+                ],
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: users_email_ix
+                  },
+                  Kind: Index,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.users_email_ix
+                },
+                Name: {
+                  Value: users_email_ix
+                },
+                IsImplicit: false
+              }
+            }
+          ],
+          UniqueConstraints: [
+            {
+              Change: Add,
+              Name: {
+                Value: users_email_uq
+              },
+              Definition: {
+                Kind: UniqueConstraint,
+                ColumnNames: [
+                  {
+                    Value: email_address
+                  }
+                ],
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: users_email_uq
+                  },
+                  Kind: UniqueConstraint,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.users_email_uq
+                },
+                Name: {
+                  Value: users_email_uq
+                },
+                IsImplicit: false
+              }
+            }
+          ],
+          Checks: [
+            {
+              Change: Add,
+              Name: {
+                Value: users_id_chk
+              },
+              Definition: {
+                Kind: CheckConstraint,
+                Expression: {
+                  Value: id > 0
+                },
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: users_id_chk
+                  },
+                  Kind: CheckConstraint,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.users_id_chk
+                },
+                Name: {
+                  Value: users_id_chk
+                },
+                IsImplicit: false
+              }
+            }
+          ],
+          ExclusionConstraints: [
+            {
+              Change: Add,
+              Name: {
+                Value: users_span_excl
+              },
+              Definition: {
+                Kind: ExclusionConstraint,
+                Elements: [
+                  {
+                    Operator: &&,
+                    Expression: {
+                      Value: int4range(0, id)
+                    }
+                  }
+                ],
+                Method: {
+                  Value: gist
+                },
+                Address: {
+                  Schema: {
+                    Value: app
+                  },
+                  Object: {
+                    Value: users
+                  },
+                  Member: {
+                    Value: users_span_excl
+                  },
+                  Kind: ExclusionConstraint,
+                  Owner: {
+                    Schema: {
+                      Value: app
+                    },
+                    Name: {
+                      Value: users
+                    },
+                    Value: app.users
+                  },
+                  Value: app.users.users_span_excl
+                },
+                Name: {
+                  Value: users_span_excl
+                },
+                IsImplicit: false
+              }
+            }
+          ]
+        }
+      ],
+      Views: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: active_users
+            },
+            Kind: View,
+            Value: app.active_users
+          },
+          Name: {
+            Value: active_users
+          },
+          Change: Modify,
+          Definition: {
+            Kind: View,
+            Body: {
+              Value: SELECT id, email_address FROM app.users WHERE active
+            },
+            IsMaterialized: false,
+            IsSchemaBound: false,
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: active_users
+              },
+              Kind: View,
+              Value: app.active_users
+            },
+            Name: {
+              Value: active_users
+            },
+            IsImplicit: false
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: old_summary
+            },
+            Kind: View,
+            Value: app.old_summary
+          },
+          Name: {
+            Value: old_summary
+          },
+          Change: Remove,
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: report
+            },
+            Kind: View,
+            Value: app.report
+          },
+          Name: {
+            Value: report
+          },
+          Change: Modify,
+          RenamedFrom: {
+            Value: legacy_report
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: user_emails
+            },
+            Kind: View,
+            Value: app.user_emails
+          },
+          Name: {
+            Value: user_emails
+          },
+          Change: Add,
+          Definition: {
+            Kind: View,
+            Body: {
+              Value: SELECT email_address FROM app.active_users
+            },
+            IsMaterialized: false,
+            IsSchemaBound: false,
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: user_emails
+              },
+              Kind: View,
+              Value: app.user_emails
+            },
+            Name: {
+              Value: user_emails
+            },
+            IsImplicit: false
+          },
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          RequiresRecreate: false
+        }
+      ],
+      Enums: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: order_status
+            },
+            Kind: Enum,
+            Value: app.order_status
+          },
+          Name: {
+            Value: order_status
+          },
+          Change: Modify,
+          AddedValues: [
+            {
+              Value: {
+                Value: delivered
+              },
+              After: {
+                Value: shipped
+              }
+            }
+          ],
+          Values: {
+            Old: [
+              {
+                Value: pending
+              },
+              {
+                Value: shipped
+              }
+            ],
+            New: [
+              {
+                Value: pending
+              },
+              {
+                Value: shipped
+              },
+              {
+                Value: delivered
+              }
+            ]
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: priority
+            },
+            Kind: Enum,
+            Value: app.priority
+          },
+          Name: {
+            Value: priority
+          },
+          Change: Modify,
+          RenamedFrom: {
+            Value: importance
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: severity
+            },
+            Kind: Enum,
+            Value: app.severity
+          },
+          Name: {
+            Value: severity
+          },
+          Change: Add,
+          Definition: {
+            Kind: Enum,
+            Values: [
+              {
+                Value: info
+              },
+              {
+                Value: error
+              }
+            ],
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: severity
+              },
+              Kind: Enum,
+              Value: app.severity
+            },
+            Name: {
+              Value: severity
+            },
+            IsImplicit: false
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: stale_enum
+            },
+            Kind: Enum,
+            Value: app.stale_enum
+          },
+          Name: {
+            Value: stale_enum
+          },
+          Change: Remove,
+          RequiresRecreate: false
+        }
+      ],
+      Sequences: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: batch_id
+            },
+            Kind: Sequence,
+            Value: app.batch_id
+          },
+          Name: {
+            Value: batch_id
+          },
+          Change: Add,
+          Definition: {
+            Kind: Sequence,
+            Options: {
+              Cycle: false
+            },
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: batch_id
+              },
+              Kind: Sequence,
+              Value: app.batch_id
+            },
+            Name: {
+              Value: batch_id
+            },
+            IsImplicit: false
+          }
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: order_id
+            },
+            Kind: Sequence,
+            Value: app.order_id
+          },
+          Name: {
+            Value: order_id
+          },
+          Change: Modify,
+          Options: {
+            Old: {
+              StartWith: 1,
+              IncrementBy: 1,
+              Cycle: false
+            },
+            New: {
+              StartWith: 1000,
+              IncrementBy: 10,
+              Cycle: true
+            }
+          }
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: stale_seq
+            },
+            Kind: Sequence,
+            Value: app.stale_seq
+          },
+          Name: {
+            Value: stale_seq
+          },
+          Change: Remove
+        }
+      ],
+      Routines: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: add_tax
+            },
+            Kind: Routine,
+            Value: app.add_tax
+          },
+          Name: {
+            Value: add_tax
+          },
+          Change: Modify,
+          Definition: {
+            Kind: Routine,
+            Arguments: {
+              Value: amount numeric
+            },
+            Definition: {
+              Value: RETURNS numeric AS $$ SELECT amount * 1.2 $$
+            },
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: add_tax
+              },
+              Kind: Routine,
+              Value: app.add_tax
+            },
+            Name: {
+              Value: add_tax
+            },
+            IsImplicit: false
+          },
+          Signature: {
+            Value: amount numeric
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: archive
+            },
+            Kind: Routine,
+            Value: app.archive
+          },
+          Name: {
+            Value: archive
+          },
+          Change: Add,
+          RoutineKind: Procedure,
+          Definition: {
+            Kind: Routine,
+            RoutineKind: Procedure,
+            Arguments: {
+              Value: before date
+            },
+            Definition: {
+              Value: LANGUAGE sql AS $$ DELETE $$
+            },
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: archive
+              },
+              Kind: Routine,
+              Value: app.archive
+            },
+            Name: {
+              Value: archive
+            },
+            IsImplicit: false
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: brand_new
+            },
+            Kind: Routine,
+            Value: app.brand_new
+          },
+          Name: {
+            Value: brand_new
+          },
+          Change: Add,
+          Definition: {
+            Kind: Routine,
+            Arguments: {
+              Value: 
+            },
+            Definition: {
+              Value: RETURNS int AS $$ SELECT 42 $$
+            },
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: brand_new
+              },
+              Kind: Routine,
+              Value: app.brand_new
+            },
+            Name: {
+              Value: brand_new
+            },
+            IsImplicit: false
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: score
+            },
+            Kind: Routine,
+            Value: app.score
+          },
+          Name: {
+            Value: score
+          },
+          Change: Modify,
+          Definition: {
+            Kind: Routine,
+            Arguments: {
+              Value: user_id bigint, weight numeric
+            },
+            Definition: {
+              Value: RETURNS numeric AS $$ SELECT 1 $$
+            },
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: score
+              },
+              Kind: Routine,
+              Value: app.score
+            },
+            Name: {
+              Value: score
+            },
+            IsImplicit: false
+          },
+          Arguments: {
+            Old: {
+              Value: user_id bigint
+            },
+            New: {
+              Value: user_id bigint, weight numeric
+            }
+          },
+          Signature: {
+            Value: user_id bigint, weight numeric
+          },
+          RequiresRecreate: true
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: stale_fn
+            },
+            Kind: Routine,
+            Value: app.stale_fn
+          },
+          Name: {
+            Value: stale_fn
+          },
+          Change: Remove,
+          Signature: {
+            Value: 
+          },
+          RequiresRecreate: false
+        }
+      ],
+      Domains: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: code
+            },
+            Kind: Domain,
+            Value: app.code
+          },
+          Name: {
+            Value: code
+          },
+          Change: Modify,
+          Definition: {
+            Kind: Domain,
+            DataType: {
+              Name: {
+                Value: varchar
+              },
+              Length: 8
+            },
+            NotNull: false,
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: code
+              },
+              Kind: Domain,
+              Value: app.code
+            },
+            Name: {
+              Value: code
+            },
+            IsImplicit: false
+          },
+          DataType: {
+            Old: {
+              Name: {
+                Value: text
+              }
+            },
+            New: {
+              Name: {
+                Value: varchar
+              },
+              Length: 8
+            }
+          },
+          RequiresRecreate: true
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: postal_code
+            },
+            Kind: Domain,
+            Value: app.postal_code
+          },
+          Name: {
+            Value: postal_code
+          },
+          Change: Add,
+          Definition: {
+            Kind: Domain,
+            DataType: {
+              Name: {
+                Value: text
+              }
+            },
+            NotNull: true,
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: postal_code
+              },
+              Kind: Domain,
+              Value: app.postal_code
+            },
+            Name: {
+              Value: postal_code
+            },
+            IsImplicit: false
+          },
+          RequiresRecreate: false
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: stale_domain
+            },
+            Kind: Domain,
+            Value: app.stale_domain
+          },
+          Name: {
+            Value: stale_domain
+          },
+          Change: Remove,
+          RequiresRecreate: false
+        }
+      ],
+      CompositeTypes: [
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: address
+            },
+            Kind: CompositeType,
+            Value: app.address
+          },
+          Name: {
+            Value: address
+          },
+          Change: Modify,
+          Fields: [
+            {
+              Change: Modify,
+              Name: {
+                Value: street
+              },
+              Type: {
+                Old: {
+                  Name: {
+                    Value: text
+                  }
+                },
+                New: {
+                  Name: {
+                    Value: varchar
+                  },
+                  Length: 120
+                }
+              }
+            },
+            {
+              Change: Remove,
+              Name: {
+                Value: old_field
+              }
+            },
+            {
+              Change: Add,
+              Name: {
+                Value: country
+              },
+              Definition: {
+                Name: {
+                  Value: country
+                },
+                DataType: {
+                  Name: {
+                    Value: text
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: coords
+            },
+            Kind: CompositeType,
+            Value: app.coords
+          },
+          Name: {
+            Value: coords
+          },
+          Change: Add,
+          Definition: {
+            Kind: CompositeType,
+            Fields: [
+              {
+                Name: {
+                  Value: lat
+                },
+                DataType: {
+                  Name: {
+                    Value: decimal
+                  },
+                  Precision: 9,
+                  Scale: 6
+                }
+              },
+              {
+                Name: {
+                  Value: lng
+                },
+                DataType: {
+                  Name: {
+                    Value: decimal
+                  },
+                  Precision: 9,
+                  Scale: 6
+                }
+              }
+            ],
+            Address: {
+              Schema: {
+                Value: app
+              },
+              Name: {
+                Value: coords
+              },
+              Kind: CompositeType,
+              Value: app.coords
+            },
+            Name: {
+              Value: coords
+            },
+            IsImplicit: false
+          }
+        },
+        {
+          Schema: {
+            Value: app
+          },
+          Address: {
+            Schema: {
+              Value: app
+            },
+            Name: {
+              Value: stale_type
+            },
+            Kind: CompositeType,
+            Value: app.stale_type
+          },
+          Name: {
+            Value: stale_type
+          },
+          Change: Remove
+        }
+      ]
+    },
+    {
+      Name: {
+        Value: reporting
+      },
+      Address: {
+        Name: {
+          Value: reporting
+        },
+        Value: reporting
+      },
+      Change: Add,
+      Comment: {
+        New: analytics
+      }
+    },
+    {
+      Name: {
+        Value: scratch
+      },
+      Address: {
+        Name: {
+          Value: scratch
+        },
+        Value: scratch
+      },
+      Change: Remove,
+      Tables: [
+        {
+          Schema: {
+            Value: scratch
+          },
+          Address: {
+            Schema: {
+              Value: scratch
+            },
+            Name: {
+              Value: temp_data
+            },
+            Kind: Table,
+            Value: scratch.temp_data
+          },
+          Name: {
+            Value: temp_data
+          },
+          Change: Remove
+        }
+      ],
+      Views: [
+        {
+          Schema: {
+            Value: scratch
+          },
+          Address: {
+            Schema: {
+              Value: scratch
+            },
+            Name: {
+              Value: temp_summary
+            },
+            Kind: View,
+            Value: scratch.temp_summary
+          },
+          Name: {
+            Value: temp_summary
+          },
+          Change: Remove,
+          IsMaterialized: false,
+          IsSchemaBound: false,
+          RequiresRecreate: false
+        }
+      ],
+      Enums: [
+        {
+          Schema: {
+            Value: scratch
+          },
+          Address: {
+            Schema: {
+              Value: scratch
+            },
+            Name: {
+              Value: temp_status
+            },
+            Kind: Enum,
+            Value: scratch.temp_status
+          },
+          Name: {
+            Value: temp_status
+          },
+          Change: Remove,
+          RequiresRecreate: false
+        }
+      ],
+      Sequences: [
+        {
+          Schema: {
+            Value: scratch
+          },
+          Address: {
+            Schema: {
+              Value: scratch
+            },
+            Name: {
+              Value: temp_seq
+            },
+            Kind: Sequence,
+            Value: scratch.temp_seq
+          },
+          Name: {
+            Value: temp_seq
+          },
+          Change: Remove
+        }
+      ]
+    }
+  ],
+  Extensions: [
+    {
+      Name: {
+        Value: legacy_ext
+      },
+      Address: {
+        Name: {
+          Value: legacy_ext
+        },
+        Kind: Extension,
+        Value: legacy_ext
+      },
+      Change: Remove
+    },
+    {
+      Name: {
+        Value: postgis
+      },
+      Address: {
+        Name: {
+          Value: postgis
+        },
+        Kind: Extension,
+        Value: postgis
+      },
+      Change: Modify,
+      Version: {
+        Old: 3.3,
+        New: 3.4
+      }
+    },
+    {
+      Name: {
+        Value: vector
+      },
+      Address: {
+        Name: {
+          Value: vector
+        },
+        Kind: Extension,
+        Value: vector
+      },
+      Change: Add,
+      Definition: {
+        Kind: Extension,
+        Address: {
+          Name: {
+            Value: vector
+          },
+          Kind: Extension,
+          Value: vector
+        },
+        Name: {
+          Value: vector
+        },
+        Comment: embeddings,
+        IsImplicit: false
+      },
+      Comment: {
+        New: embeddings
+      }
+    }
+  ],
+  IsEmpty: false
+}

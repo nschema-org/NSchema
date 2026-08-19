@@ -1,0 +1,73 @@
+﻿{
+  Lines: [
+    {
+      Change: Add,
+      Text: view app.active_users ("currently active users")
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: view app.daily_totals
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: view app.summary comment: "old summary" → "new summary"
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: view app.legacy_report → report
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Remove,
+      Text: view app.stale_view
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Add,
+      Text: materialized view app.mv_sales ("sales rollup")
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: materialized view app.mv_active
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: index mv_active_ix
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: index mv_active_old_ix
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: view → materialized view app.hourly_totals
+    }
+  ],
+  Summary: {
+    Added: 2,
+    Modified: 5,
+    Removed: 1
+  },
+  IsEmpty: false
+}

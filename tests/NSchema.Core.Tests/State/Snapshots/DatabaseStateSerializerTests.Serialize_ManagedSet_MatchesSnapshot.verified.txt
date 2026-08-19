@@ -1,0 +1,24 @@
+﻿{
+  version: 1,
+  database: {},
+  managed: {
+    databaseObjects: [
+      {
+        name: app,
+        kind: Schema
+      },
+      {
+        name: citext,
+        kind: Extension
+      }
+    ],
+    schemaObjects: [
+      {
+        schema: app,
+        name: users,
+        kind: Table
+      }
+    ]
+  },
+  declared: {}
+}

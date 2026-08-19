@@ -1,0 +1,47 @@
+﻿{
+  version: 1,
+  database: {},
+  managed: {
+    databaseObjects: [
+      {
+        name: app,
+        kind: Schema
+      },
+      {
+        name: my.schema,
+        kind: Schema
+      },
+      {
+        name: citext,
+        kind: Extension
+      },
+      {
+        name: uuid-ossp,
+        kind: Extension
+      }
+    ],
+    schemaObjects: [
+      {
+        schema: app,
+        name: users,
+        kind: Table
+      },
+      {
+        schema: app,
+        name: active_users,
+        kind: View
+      },
+      {
+        schema: app,
+        name: user_id_seq,
+        kind: Sequence
+      },
+      {
+        schema: my.schema,
+        name: Order Details,
+        kind: Table
+      }
+    ]
+  },
+  declared: {}
+}

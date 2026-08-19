@@ -8,11 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 framework — a declarative database schema migration engine ("Terraform for database schemas"). The CLI's job is to
 resolve configuration, translate it into a core `NSchemaApplication`, and run one operation.
 
-The CLI consumes **`NSchema.Core` as a pinned NuGet package** (versions in `Directory.Packages.props`); its source lives
-in the sibling repo `../NSchema.Core`. As of **v4 it no longer references the providers or backends** — those are
+The CLI consumes **`NSchema.Core` as a project reference** — the core's source lives in this repo under
+`src/NSchema.Core` (its own `CLAUDE.md` is there), and a release tags once and publishes the `nschema` tool and the
+`NSchema.Core` package at the same version. As of **v4 it no longer references the providers or backends** — those are
 **separate NuGet packages loaded at runtime as plugins** (see *Provider & backend plugins* below), so a database engine
-ships and versions independently of the CLI. Changing core behavior still requires publishing a new core package and
-bumping the pinned version here.
+ships and versions independently of the CLI.
 
 ## Where an operation lives: Core vs CLI
 
@@ -97,9 +97,10 @@ dotnet test  NSchema.slnx --filter "FullyQualifiedName~OptionBindingTests"   # o
 dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNschemaCommandName"  # one test
 ```
 
-- **`dotnet test` no longer needs Docker** — the provider round-trip suites moved to the provider repos in v4. The one
+- The CLI test project needs no Docker — the provider round-trip suites moved to the provider repos in v4. Its one
   integration test, `PluginLoaderTests`, restores a real plugin via `dotnet publish`, so it needs the **.NET SDK and
-  network access** (it reaches nuget.org); everything else is a pure unit test.
+  network access** (it reaches nuget.org). `NSchema.Core.Tests` runs Testcontainers-based integration tests, so the
+  full-solution `dotnet test` needs **Docker**.
 - `TreatWarningsAsErrors` and `GenerateDocumentationFile` are on — builds fail on warnings, and the build packs the tool
   (`GeneratePackageOnBuild`). Target framework is `net10.0`.
 

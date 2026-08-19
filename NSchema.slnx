@@ -7,8 +7,16 @@
     <File Path="dotnet-tools.json" />
     <File Path="ritten.json" />
   </Folder>
+  <Folder Name="/analyzers/">
+    <Project Path="src\NSchema.Analyzers\NSchema.Analyzers.csproj" />
+    <Project Path="tests\NSchema.Analyzers.Tests\NSchema.Analyzers.Tests.csproj" />
+  </Folder>
   <Folder Name="/cli/">
     <Project Path="src\NSchema\NSchema.csproj" />
     <Project Path="tests\NSchema.Tests\NSchema.Tests.csproj" />
+  </Folder>
+  <Folder Name="/core/">
+    <Project Path="src\NSchema.Core\NSchema.Core.csproj" />
+    <Project Path="tests\NSchema.Core.Tests\NSchema.Core.Tests.csproj" />
   </Folder>
 </Solution>

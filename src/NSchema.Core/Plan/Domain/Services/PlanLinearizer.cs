@@ -1,0 +1,908 @@
+using System.Collections.Frozen;
+using NSchema.Diff.Domain;
+using NSchema.Diff.Domain.Columns;
+using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Indexes;
+using NSchema.Diff.Domain.Schemas;
+using NSchema.Diff.Domain.Tables;
+using NSchema.Diff.Domain.Views;
+using NSchema.Model;
+using NSchema.Model.Routines;
+using NSchema.Model.Scripts;
+using NSchema.Model.Services;
+using NSchema.Model.Tables;
+using NSchema.Plan.Domain.Columns;
+using NSchema.Plan.Domain.CompositeTypes;
+using NSchema.Plan.Domain.Constraints;
+using NSchema.Plan.Domain.Domains;
+using NSchema.Plan.Domain.Enums;
+using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Indexes;
+using NSchema.Plan.Domain.Routines;
+using NSchema.Plan.Domain.Schemas;
+using NSchema.Plan.Domain.Scripts;
+using NSchema.Plan.Domain.Sequences;
+using NSchema.Plan.Domain.Tables;
+using NSchema.Plan.Domain.Triggers;
+using NSchema.Plan.Domain.Views;
+using NSchema.Plan.Domain.XmlSchemaCollections;
+
+namespace NSchema.Plan.Domain.Services;
+
+/// <summary>
+/// Walks the structured diff and produces a migration plan.
+/// </summary>
+internal sealed class PlanLinearizer : IPlanLinearizer
+{
+    public IReadOnlyList<MigrationAction> Linearize(DatabaseDiff diff, PlanDependencies dependencies, DialectCapabilities capabilities)
+    {
+        var actions = new List<MigrationAction>();
+        EmitExtensions(diff, actions);
+        foreach (var schema in diff.Schemas)
+        {
+            EmitSchema(schema, actions);
+        }
+
+        // Tables, views, and routines are each emitted in one cross-schema pass; the ordering below owns the
+        // create/drop order (each after what it requires, before what requires it), reading the dependency
+        // graph directly, so emission is just diff-to-action mapping. Emission order still seeds the sort's
+        // tiebreak, which is why table drops trail the routine drops: absent an edge, a routine drops before
+        // the tables it may reference, mirroring creation.
+        EmitXmlSchemaCollections(diff, actions);
+        EmitTables(diff, dependencies, capabilities, actions);
+        EmitRoutines(diff, actions);
+        EmitViews(diff, actions);
+        EmitDroppedTables(diff, dependencies, capabilities, actions);
+
+        actions = [.. MigrationActionOrdering.Order(actions, dependencies)];
+
+        // Deployment scripts bookend the plan: pre scripts run before everything, post scripts after.
+        return [.. ScriptActions(diff, DeploymentPhase.Pre), .. actions, .. ScriptActions(diff, DeploymentPhase.Post)];
+    }
+
+    /// <summary>
+    /// Emits the XML schema collection actions. A change to what a collection holds is a rebuild — an engine can
+    /// add namespaces to one but never take them away — so it drops and creates rather than altering.
+    /// </summary>
+    private static void EmitXmlSchemaCollections(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        foreach (var schema in diff.Schemas)
+        {
+            foreach (var collection in schema.XmlSchemaCollections)
+            {
+                if (collection.Change == ChangeKind.Remove || collection.RequiresRecreate)
+                {
+                    actions.Add(new DropXmlSchemaCollection(
+                        new ObjectAddress(collection.Schema, collection.RenamedFrom ?? collection.Name, SchemaObjectKind.XmlSchemaCollection)));
+                }
+
+                if (collection is { Change: not ChangeKind.Remove, Definition: { } definition })
+                {
+                    actions.Add(new CreateXmlSchemaCollection(collection.Schema, definition));
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<ExecuteScript> ScriptActions(DatabaseDiff diff, DeploymentPhase phase) =>
+        diff.DeploymentScripts.Where(s => s.Phase == phase).Select(s => new ExecuteScript(s));
+
+    /// <summary>
+    /// Emits the table and routine actions across every schema, in the order their dependencies require: a table
+    /// is created after the tables its foreign keys reference and the routines its expressions call; a routine
+    /// after the tables it reads and the routines it calls — the same edges in reverse for drops. Tables may
+    /// legally point at each other, and no order satisfies a cycle — so any foreign key the order leaves
+    /// unsatisfied is taken out of the way first, unless the dialect keeps its keys on the tables that declare
+    /// them.
+    /// </summary>
+    private static void EmitTables(
+        DatabaseDiff diff,
+        PlanDependencies dependencies,
+        DialectCapabilities capabilities,
+        List<MigrationAction> actions)
+    {
+        var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+
+        // The local sorts are not the ordering authority — the graph-driven sort downstream is — but the
+        // foreign-key unfolding must be decided against the order the plan will actually run in, and the
+        // emission order seeds that sort's tiebreak, so deciding and emitting in the same order keeps the
+        // two views of the plan consistent.
+        var created = InCreationOrder([.. tables.Where(table => table.Change != ChangeKind.Remove)], dependencies);
+        var unfolded = capabilities.CanAlterForeignKeys ? UnsatisfiedOnCreate(created) : FrozenSet<MemberAddress>.Empty;
+        foreach (var table in created)
+        {
+            EmitTable(table, dependencies, actions, unfolded);
+        }
+    }
+
+    private static void EmitDroppedTables(
+        DatabaseDiff diff,
+        PlanDependencies dependencies,
+        DialectCapabilities capabilities,
+        List<MigrationAction> actions)
+    {
+        var tables = diff.Schemas.SelectMany(schema => schema.Tables).ToList();
+
+        var dropped = InRemovalOrder([.. tables.Where(table => table.Change == ChangeKind.Remove)], dependencies);
+        if (capabilities.CanAlterForeignKeys)
+        {
+            foreach (var foreignKey in UnsatisfiedOnDrop(dropped, dependencies))
+            {
+                actions.Add(new DropForeignKey(foreignKey));
+            }
+        }
+        foreach (var table in dropped)
+        {
+            EmitTable(table, dependencies, actions, FrozenSet<MemberAddress>.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Emits the routine actions across every schema; the graph-driven sort orders the creates and drops.
+    /// </summary>
+    private static void EmitRoutines(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        var routines = diff.Schemas.SelectMany(schema => schema.Routines).ToList();
+
+        foreach (var routine in routines)
+        {
+            if (routine.Change is not (ChangeKind.Add or ChangeKind.Remove) && routine.RenamedFrom is { } renamedFrom)
+            {
+                actions.Add(new RenameRoutine(new ObjectAddress(routine.Schema, renamedFrom), routine.Name, routine.RoutineKind, routine.Arguments?.Old ?? routine.Signature));
+            }
+            if (routine.Change != ChangeKind.Remove && routine.Comment is { } comment)
+            {
+                actions.Add(new SetRoutineComment(new ObjectAddress(routine.Schema, routine.Name), comment.Old, comment.New, routine.RoutineKind, routine.Signature ?? routine.Definition?.Arguments));
+            }
+
+            if (routine is { Change: not ChangeKind.Remove, Definition: { } definition })
+            {
+                actions.Add(routine.Change == ChangeKind.Add
+                    ? new CreateRoutine(routine.Schema, definition)
+                    // A signature (or kind) change recreates (a replace under different arguments would
+                    // create a separate overload); a definition-only change replaces in place.
+                    : routine.RequiresRecreate
+                        ? new RecreateRoutine(routine.Schema, definition, routine.Arguments?.Old ?? definition.Arguments)
+                        : new ReplaceRoutine(routine.Schema, definition));
+            }
+        }
+
+        // Aggregates are assembled from functions, so absent a scanned edge they still drop first.
+        foreach (var routine in routines.Where(r => r.Change == ChangeKind.Remove)
+                     .OrderBy(r => r.RoutineKind == RoutineKind.Aggregate ? 0 : 1))
+        {
+            actions.Add(new DropRoutine(new ObjectAddress(routine.Schema, routine.Name), routine.RoutineKind, routine.Signature));
+        }
+    }
+
+    /// <summary>
+    /// The foreign keys a created table cannot carry inline, because the table they point at is created later in
+    /// the same plan. They are added afterwards instead, once every table exists.
+    /// </summary>
+    private static IReadOnlySet<MemberAddress> UnsatisfiedOnCreate(IReadOnlyList<TableDiff> created)
+    {
+        var positions = Positions(created, table => new ObjectAddress(table.Schema, table.Name));
+
+        return (from table in created
+                let address = new ObjectAddress(table.Schema, table.Name)
+                from foreignKey in InlineForeignKeys(table)
+                let references = new ObjectAddress(foreignKey.References.Schema, foreignKey.References.Name)
+                where positions.TryGetValue(references, out var referenced) && referenced > positions[address]
+                select new MemberAddress(table.Schema, table.Name, foreignKey.Name)).ToHashSet();
+    }
+
+    /// <summary>The foreign keys a change carries on the table it creates; none when it creates nothing.</summary>
+    private static IEnumerable<ForeignKey> InlineForeignKeys(TableDiff table) => table.IsAdd() ? table.Definition.ForeignKeys : [];
+
+    /// <summary>
+    /// The foreign keys the drop order leaves unsatisfied, held by a table dropped after the one it points at.
+    /// Dropping the constraint first is free: both tables are on their way out.
+    /// </summary>
+    private static IReadOnlyList<MemberAddress> UnsatisfiedOnDrop(IReadOnlyList<TableDiff> dropped, PlanDependencies dependencies)
+    {
+        var positions = Positions(dropped, table => new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name));
+
+        return [.. from table in dropped
+                   let address = new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name)
+                   from foreignKey in dependencies.ForeignKeysInto(address)
+                   where positions.TryGetValue(foreignKey.Owner, out var holder) && holder > positions[address]
+                   select foreignKey];
+    }
+
+    private static Dictionary<ObjectAddress, int> Positions(IReadOnlyList<TableDiff> tables, Func<TableDiff, ObjectAddress> address)
+    {
+        var positions = new Dictionary<ObjectAddress, int>();
+        for (var i = 0; i < tables.Count; i++)
+        {
+            positions[address(tables[i])] = i;
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// The objects in the order they can be created: each after the objects it requires.
+    /// </summary>
+    private static IReadOnlyList<T> InCreationOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
+        where T : ISchemaObjectDiff =>
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.Name), dependencies.RequiresEdges);
+
+    /// <summary>
+    /// The objects in the order they can be dropped: each before the objects it is required by. Addressed under
+    /// the name they currently carry, which is the one the current side knows them by.
+    /// </summary>
+    private static IReadOnlyList<T> InRemovalOrder<T>(IReadOnlyList<T> objects, PlanDependencies dependencies)
+        where T : ISchemaObjectDiff =>
+        Ordered(objects, o => new ObjectAddress(o.Schema, o.RenamedFrom ?? o.Name), dependencies.RequiredByEdges);
+
+    /// <summary>
+    /// The unfold oracle: the table order the plan will actually run in, decided by the same sort the plan's
+    /// ordering uses, so the two views of the plan cannot disagree.
+    /// </summary>
+    /// <remarks>
+    /// Only an edge between two objects being changed together orders anything; everything else the graph knows
+    /// about is left where it is. Cycles are broken rather than reported: mutual foreign keys are legal, and a
+    /// view cycle can only come from a dependency NSchema inferred, which is too weak a thing to fail a plan on.
+    /// </remarks>
+    private static IReadOnlyList<T> Ordered<T>(
+        IReadOnlyList<T> objects,
+        Func<T, ObjectAddress> address,
+        Func<ObjectAddress, IReadOnlyCollection<(ObjectAddress Object, DependencyCertainty Certainty)>> edges
+    ) where T : ISchemaObjectDiff
+    {
+        var positions = new Dictionary<ObjectAddress, int>();
+        for (var i = 0; i < objects.Count; i++)
+        {
+            positions.TryAdd(address(objects[i]), i);
+        }
+
+        var constraints = new List<DependencyEdge>();
+        for (var i = 0; i < objects.Count; i++)
+        {
+            foreach (var (dependency, certainty) in edges(address(objects[i])))
+            {
+                if (positions.TryGetValue(dependency, out var position))
+                {
+                    constraints.Add(new DependencyEdge(i, position, certainty == DependencyCertainty.Stated ? 1 : 0));
+                }
+            }
+        }
+
+        return objects.OrderedByDependencies(_ => 0L, constraints);
+    }
+
+    /// <summary>
+    /// Emits the view actions across every schema; the graph-driven sort orders the creates and drops.
+    /// </summary>
+    private static void EmitViews(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        var creates = new List<ViewDiff>();
+        var drops = new List<ViewDiff>();
+
+        foreach (var schema in diff.Schemas)
+        {
+            foreach (var view in schema.Views)
+            {
+                // A rename that accompanies a recreate is subsumed by it: the drop removes the old name and the
+                // definition recreates the view under the new one, so no RenameView is emitted.
+                if (view.RenamedFrom is not null && !view.RequiresRecreate)
+                {
+                    actions.Add(new RenameView(new ObjectAddress(view.Schema, view.RenamedFrom), view.Name, view.IsMaterialized));
+                }
+
+                if (view.Change == ChangeKind.Remove)
+                {
+                    drops.Add(view);
+                }
+                else if (view.RequiresRecreate)
+                {
+                    // A materialized view's body change (or a view <-> materialized-view conversion) can't be
+                    // replaced in place, so it is both dropped and recreated; its indexes rebuild with it.
+                    drops.Add(view);
+                    creates.Add(view);
+                }
+                else if (view.Definition is not null)
+                {
+                    // A plain view's body change, replaced in place.
+                    creates.Add(view);
+                }
+
+                if (view.Change != ChangeKind.Remove && view.Comment is not null)
+                {
+                    actions.Add(new SetViewComment(new ObjectAddress(view.Schema, view.Name), view.Comment.Old, view.Comment.New, view.IsMaterialized));
+                }
+
+                // In-place index changes on a materialized view whose body is unchanged; on a create/recreate the
+                // indexes ride along on the definition instead. Index drops sort before RenameView, so on a
+                // renamed view they run while it still carries its old name.
+                foreach (var index in view.Indexes)
+                {
+                    actions.Add(IndexAction(view.Schema, view.Name, view.RenamedFrom ?? view.Name, index, onView: true));
+                }
+            }
+        }
+
+        foreach (var view in creates)
+        {
+            if (view.Definition is { } definition)
+            {
+                // A recreate's drop precedes it, so its create is a genuine create; only an in-place body
+                // change on a surviving view is a replacement.
+                actions.Add(view.Change == ChangeKind.Add || view.RequiresRecreate
+                    ? new CreateView(view.Schema, definition)
+                    : new ReplaceView(view.Schema, definition));
+            }
+        }
+
+        // A renamed view recreating is dropped under its old name (no rename precedes the drop), and a converting
+        // view is dropped as what it currently is — IsMaterialized reflects the desired side, so a flip drops with
+        // the old materialization.
+        foreach (var view in drops)
+        {
+            actions.Add(new DropView(new ObjectAddress(view.Schema, view.RenamedFrom ?? view.Name), view.Materialized?.Old ?? view.IsMaterialized));
+        }
+    }
+
+    /// <summary>
+    /// Emits the root-level extension actions. Ordering (extensions created/updated before schemas, dropped after
+    /// everything) is governed by the priority table above; this just maps each <see cref="ExtensionDiff"/> to its
+    /// action(s).
+    /// </summary>
+    private static void EmitExtensions(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        foreach (var extension in diff.Extensions)
+        {
+            switch (extension.Change)
+            {
+                case ChangeKind.Add when extension.IsAdd():
+                    actions.Add(new CreateExtension(extension.Definition));
+                    break;
+
+                case ChangeKind.Remove:
+                    actions.Add(new DropExtension(extension.Name));
+                    break;
+
+                default: // Modify
+                    if (extension.Version is not null)
+                    {
+                        actions.Add(new AlterExtension(extension.Name, extension.Version.Old, extension.Version.New));
+                    }
+                    break;
+            }
+
+            if (extension.Change != ChangeKind.Remove && extension.Comment is not null)
+            {
+                actions.Add(new SetExtensionComment(extension.Name, extension.Comment.Old, extension.Comment.New));
+            }
+        }
+    }
+
+    private static void EmitSchema(SchemaDiff schema, List<MigrationAction> actions)
+    {
+        switch (schema.Change)
+        {
+            case ChangeKind.Add:
+                actions.Add(new CreateSchema(schema.Name));
+                EmitSchemaAttributes(schema, actions);
+                EmitEnums(schema, actions);
+                EmitSequences(schema, actions);
+                EmitDomains(schema, actions);
+                EmitCompositeTypes(schema, actions);
+                break;
+
+            case ChangeKind.Remove:
+                // Drop everything the schema contains before the schema itself, rather than relying on a
+                // provider-specific DROP SCHEMA CASCADE. The final type-sort orders these object drops ahead of
+                // the DropSchema, and tables and views are emitted by their own cross-schema passes.
+                EmitEnums(schema, actions);
+                EmitSequences(schema, actions);
+                EmitDomains(schema, actions);
+                EmitCompositeTypes(schema, actions);
+                actions.Add(new DropSchema(schema.Name));
+                break;
+
+            default: // Modify, or a null-Kind container whose tables changed.
+                if (schema.RenamedFrom is not null)
+                {
+                    actions.Add(new RenameSchema(schema.RenamedFrom, schema.Name));
+                }
+                EmitSchemaAttributes(schema, actions);
+                EmitEnums(schema, actions);
+                EmitSequences(schema, actions);
+                EmitDomains(schema, actions);
+                EmitCompositeTypes(schema, actions);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Emits one schema-object kind: create on add, drop on remove, and on modify a rename (when one is
+    /// recorded) followed by the kind's own modify actions; a comment change trails every non-remove.
+    /// </summary>
+    private static void EmitObjects<T, TDefinition>(
+        IReadOnlyList<T> objects,
+        List<MigrationAction> actions,
+        Func<T, TDefinition?> definition,
+        Func<T, TDefinition, MigrationAction> create,
+        Func<T, MigrationAction> drop,
+        Func<T, SqlIdentifier, MigrationAction> rename,
+        Func<T, ValueChange<string>, MigrationAction> comment,
+        Action<T> modify
+    ) where T : ISchemaObjectDiff where TDefinition : class
+    {
+        // The rename and comment builders receive the narrowed value rather than re-reading it: the guard is
+        // here, so the lambda should not have to restate that it holds.
+        foreach (var diff in objects)
+        {
+            switch (diff.Change)
+            {
+                // An add always carries the definition to create from; one without is not a change we can emit.
+                case ChangeKind.Add when definition(diff) is { } toCreate:
+                    actions.Add(create(diff, toCreate));
+                    break;
+
+                case ChangeKind.Add:
+                    break;
+
+                case ChangeKind.Remove:
+                    actions.Add(drop(diff));
+                    break;
+
+                default: // Modify
+                    if (diff.RenamedFrom is { } renamedFrom)
+                    {
+                        actions.Add(rename(diff, renamedFrom));
+                    }
+                    modify(diff);
+                    break;
+            }
+
+            if (diff.Change != ChangeKind.Remove && diff.Comment is { } changedComment)
+            {
+                actions.Add(comment(diff, changedComment));
+            }
+        }
+    }
+
+
+    private static void EmitDomains(SchemaDiff schema, List<MigrationAction> actions) =>
+        EmitObjects(schema.Domains, actions,
+            d => d.Definition,
+            (d, definition) => new CreateDomain(d.Schema, definition),
+            d => new DropDomain(new ObjectAddress(d.Schema, d.Name)),
+            (d, renamedFrom) => new RenameDomain(new ObjectAddress(d.Schema, renamedFrom), d.Name),
+            (d, comment) => new SetDomainComment(new ObjectAddress(d.Schema, d.Name), comment.Old, comment.New),
+            d =>
+            {
+                // A base-type change can't be altered in place, so it recreates (default/not-null/checks rebuild
+                // with the definition); otherwise each facet is altered in place.
+                if (d.RequiresRecreate)
+                {
+                    if (d.Definition is { } definition)
+                    {
+                        actions.Add(new RecreateDomain(d.Schema, definition));
+                    }
+                    return;
+                }
+
+                if (d.Default is not null)
+                {
+                    actions.Add(new AlterDomainDefault(new ObjectAddress(d.Schema, d.Name), d.Default.Old, d.Default.New));
+                }
+                if (d.NotNull is not null)
+                {
+                    actions.Add(new AlterDomainNotNull(new ObjectAddress(d.Schema, d.Name), d.NotNull.New));
+                }
+                foreach (var check in d.Checks)
+                {
+                    if (check.Change == ChangeKind.Remove)
+                    {
+                        actions.Add(new DropDomainCheck(new MemberAddress(d.Schema, d.Name, check.Name)));
+                    }
+                    else if (check.Definition is { } definition)
+                    {
+                        actions.Add(new AddDomainCheck(new ObjectAddress(d.Schema, d.Name), definition));
+                    }
+                }
+            });
+
+    private static void EmitCompositeTypes(SchemaDiff schema, List<MigrationAction> actions) =>
+        EmitObjects(schema.CompositeTypes, actions,
+            t => t.Definition,
+            (t, definition) => new CreateCompositeType(t.Schema, definition),
+            t => new DropCompositeType(new ObjectAddress(t.Schema, t.Name)),
+            (t, renamedFrom) => new RenameCompositeType(new ObjectAddress(t.Schema, renamedFrom), t.Name),
+            (t, comment) => new SetCompositeTypeComment(new ObjectAddress(t.Schema, t.Name), comment.Old, comment.New),
+            t =>
+            {
+                // Every field change applies in place: a matched field whose type differs is retyped, a missing
+                // field is dropped, a new field is added. There is no recreate.
+                foreach (var field in t.Fields)
+                {
+                    actions.Add(field switch
+                    {
+                        { Change: ChangeKind.Remove } => new DropCompositeField(new MemberAddress(t.Schema, t.Name, field.Name)),
+                        { Change: ChangeKind.Modify, Type: { Old: { } oldType, New: { } newType } } =>
+                            new AlterCompositeFieldType(new MemberAddress(t.Schema, t.Name, field.Name), oldType, newType),
+                        { Definition: { } definition } => new AddCompositeField(new ObjectAddress(t.Schema, t.Name), definition),
+                        _ => throw new NotSupportedException(
+                            $"Cannot linearize composite field change {field.Change} on '{t.Schema}.{t.Name}'."),
+                    });
+                }
+            });
+
+    private static void EmitEnums(SchemaDiff schema, List<MigrationAction> actions) =>
+        EmitObjects(schema.Enums, actions,
+            e => e.Definition,
+            (e, definition) => new CreateEnum(e.Schema, definition),
+            e => new DropEnum(new ObjectAddress(e.Schema, e.Name)),
+            (e, renamedFrom) => new RenameEnum(new ObjectAddress(e.Schema, renamedFrom), e.Name),
+            (e, comment) => new SetEnumComment(new ObjectAddress(e.Schema, e.Name), comment.Old, comment.New),
+            e =>
+            {
+                // Additions are emitted in list order so each anchor exists when its addition runs (the
+                // stable priority sort preserves this). A removal/reorder has no AddedValues — it cannot be
+                // planned, and the always-on EnumValueRemovalPolicy fails the run before execution.
+                foreach (var addition in e.AddedValues)
+                {
+                    actions.Add(new AddEnumValue(new ObjectAddress(e.Schema, e.Name), addition.Value, addition.Before, addition.After));
+                }
+            });
+
+    private static void EmitSequences(SchemaDiff schema, List<MigrationAction> actions) =>
+        EmitObjects(schema.Sequences, actions,
+            s => s.Definition,
+            (s, definition) => new CreateSequence(s.Schema, definition),
+            s => new DropSequence(new ObjectAddress(s.Schema, s.Name)),
+            (s, renamedFrom) => new RenameSequence(new ObjectAddress(s.Schema, renamedFrom), s.Name),
+            (s, comment) => new SetSequenceComment(new ObjectAddress(s.Schema, s.Name), comment.Old, comment.New),
+            s =>
+            {
+                if (s.Options is { Old: { } oldOptions, New: { } newOptions })
+                {
+                    actions.Add(new AlterSequence(new ObjectAddress(s.Schema, s.Name), oldOptions, newOptions));
+                }
+            });
+
+    private static void EmitSchemaAttributes(SchemaDiff schema, List<MigrationAction> actions)
+    {
+        if (schema.Comment is not null)
+        {
+            actions.Add(new SetSchemaComment(schema.Name, schema.Comment.Old, schema.Comment.New));
+        }
+
+        foreach (var grant in schema.Grants)
+        {
+            actions.Add(grant.Change == ChangeKind.Add
+                ? new GrantSchemaUsage(schema.Name, grant.Role)
+                : new RevokeSchemaUsage(schema.Name, grant.Role));
+        }
+    }
+
+    /// <summary>
+    /// Emits one table's actions.
+    /// </summary>
+    /// <param name="table">The change to emit.</param>
+    /// <param name="dependencies">What the current database knows about the table.</param>
+    /// <param name="actions">The action list being built.</param>
+    /// <param name="unfolded">
+    /// The foreign keys that cannot ride the CREATE TABLE, and are added separately afterwards instead.
+    /// </param>
+    private static void EmitTable(TableDiff table, PlanDependencies dependencies, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
+    {
+        switch (table.Change)
+        {
+            case ChangeKind.Add when table.IsAdd():
+                // The columns and every table constraint are created inline by CREATE TABLE (carried on
+                // Definition); only indexes, triggers, comments and grants arrive as separate actions.
+                actions.Add(new CreateTable(table.Schema, WithoutForeignKeys(table, unfolded)));
+                if (table.Comment is { } tableComment)
+                {
+                    actions.Add(new SetTableComment(new ObjectAddress(table.Schema, table.Name), tableComment.Old, tableComment.New));
+                }
+                foreach (var column in table.Columns)
+                {
+                    if (column.Comment is { } columnComment)
+                    {
+                        actions.Add(new SetColumnComment(new MemberAddress(table.Schema, table.Name, column.Name), columnComment.Old, columnComment.New));
+                    }
+                }
+                EmitConstraints(table, actions, unfolded);
+                EmitIndexes(table, actions);
+                EmitTriggers(table, actions);
+                EmitGrants(table, actions);
+                break;
+
+            case ChangeKind.Remove:
+                // A dropped table sheds its triggers explicitly first.
+                foreach (var trigger in dependencies.TriggersOn(new ObjectAddress(table.Schema, table.Name)))
+                {
+                    actions.Add(new DropTrigger(trigger));
+                }
+                actions.Add(new DropTable(new ObjectAddress(table.Schema, table.Name)));
+                break;
+
+            default: // Modify
+                if (table.RenamedFrom is not null)
+                {
+                    actions.Add(new RenameTable(new ObjectAddress(table.Schema, table.RenamedFrom), table.Name));
+                }
+                if (table.Comment is not null)
+                {
+                    actions.Add(new SetTableComment(new ObjectAddress(table.Schema, table.Name), table.Comment.Old, table.Comment.New));
+                }
+                foreach (var column in table.Columns)
+                {
+                    EmitColumn(table, column, actions);
+                }
+                EmitConstraints(table, actions, unfolded);
+                EmitIndexes(table, actions);
+                EmitTriggers(table, actions);
+                EmitGrants(table, actions);
+                break;
+        }
+    }
+
+    private static void EmitColumn(TableDiff table, ColumnDiff column, List<MigrationAction> actions)
+    {
+        switch (column.Change)
+        {
+            case ChangeKind.Add:
+                // A required column with a matched backfill migration is decomposed: added nullable, backfilled
+                // by the migration SQL, then tightened to NOT NULL. Identity and generated columns fill
+                // themselves and a default covers existing rows, so those adds keep their declared shape.
+                if (column is { MigrationScript: { } backfill, Definition: { IsNullable: false, DefaultExpression: null, IsIdentity: false, GeneratedExpression: null } })
+                {
+                    // The declared column belongs to the project tree, so the nullable variant is a copy.
+                    var nullable = column.Definition.Clone();
+                    nullable.IsNullable = true;
+                    actions.Add(new AddColumn(new ObjectAddress(table.Schema, table.Name), nullable));
+                    actions.Add(new ExecuteScript(backfill) { Anchor = new ObjectAddress(table.Schema, table.Name) });
+                    actions.Add(new AlterColumn(new ObjectAddress(table.Schema, table.Name), column.Definition, Nullability: new ValueChange<bool>(true, false)));
+                }
+                else
+                {
+                    actions.Add(new AddColumn(new ObjectAddress(table.Schema, table.Name), column.Definition));
+                    if (column.MigrationScript is { } migration)
+                    {
+                        actions.Add(new ExecuteScript(migration) { Anchor = new ObjectAddress(table.Schema, table.Name) });
+                    }
+                }
+                if (column.Comment is not null)
+                {
+                    actions.Add(new SetColumnComment(new MemberAddress(table.Schema, table.Name, column.Name), column.Comment.Old, column.Comment.New));
+                }
+                break;
+
+            case ChangeKind.Remove:
+                actions.Add(new DropColumn(new ObjectAddress(table.Schema, table.Name), column.Definition));
+                break;
+
+            case ChangeKind.Modify:
+                if (column.RenamedFrom is not null)
+                {
+                    actions.Add(new RenameColumn(new MemberAddress(table.Schema, table.Name, column.RenamedFrom), column.Name));
+                }
+                if (column.Type is not null)
+                {
+                    // A matched migration prepares the data for the cast; the priority table runs it first.
+                    if (column.MigrationScript is { } prep)
+                    {
+                        actions.Add(new ExecuteScript(prep) { Anchor = new ObjectAddress(table.Schema, table.Name) });
+                    }
+                }
+                if (column.Type is not null || column.Nullability is not null)
+                {
+                    actions.Add(new AlterColumn(new ObjectAddress(table.Schema, table.Name), column.Definition, column.Type, column.Nullability));
+                }
+                if (column.Default is not null)
+                {
+                    actions.Add(new SetColumnDefault(new MemberAddress(table.Schema, table.Name, column.Name), column.Default.Old, column.Default.New));
+                }
+                if (column.Generated is not null)
+                {
+                    actions.Add(new SetColumnGenerated(new MemberAddress(table.Schema, table.Name, column.Name), column.Generated.Old, column.Generated.New));
+                }
+                if (column.Identity is not null)
+                {
+                    actions.Add(new AlterIdentitySequence(new MemberAddress(table.Schema, table.Name, column.Name), column.Identity.Old, column.Identity.New));
+                }
+                if (column.Comment is not null)
+                {
+                    actions.Add(new SetColumnComment(new MemberAddress(table.Schema, table.Name, column.Name), column.Comment.Old, column.Comment.New));
+                }
+                break;
+            default: throw new NotSupportedException($"Cannot linearize column change {column.Change}.");
+        }
+    }
+
+    // Drops and revokes are sorted before RenameTable, so on a renamed table they run while it still carries
+    // its old name; every action from the rename onward targets the new name.
+    private static void EmitConstraints(TableDiff table, List<MigrationAction> actions, IReadOnlySet<MemberAddress> unfolded)
+    {
+        var preRenameName = table.RenamedFrom ?? table.Name;
+
+        // A newly-created table carries its constraints inline on CreateTable's definition, so their adds fold
+        // into the CREATE TABLE and only comment changes still arrive as separate actions.
+        var foldAdds = table.Change == ChangeKind.Add;
+
+        EmitConstraintKind(table.PrimaryKeys, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
+            pk => pk.Definition,
+            (pk, definition) => new AddPrimaryKey(new ObjectAddress(table.Schema, table.Name), definition),
+            pk => new DropPrimaryKey(new MemberAddress(table.Schema, preRenameName, pk.Name)),
+            (pk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, pk.Name), comment.Old, comment.New));
+
+        // A foreign key left out of the CREATE TABLE is added here instead, once the table it points at exists.
+        EmitConstraintKind(table.ForeignKeys, new ObjectAddress(table.Schema, table.Name), actions,
+            fk => foldAdds && !unfolded.Contains(new MemberAddress(table.Schema, table.Name, fk.Name)),
+            fk => fk.Definition,
+            (fk, definition) => new AddForeignKey(new ObjectAddress(table.Schema, table.Name), definition),
+            fk => new DropForeignKey(new MemberAddress(table.Schema, preRenameName, fk.Name)),
+            (fk, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, fk.Name), comment.Old, comment.New));
+
+        EmitConstraintKind(table.UniqueConstraints, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
+            uq => uq.Definition,
+            (uq, definition) => new AddUniqueConstraint(new ObjectAddress(table.Schema, table.Name), definition),
+            uq => new DropUniqueConstraint(new MemberAddress(table.Schema, preRenameName, uq.Name)),
+            (uq, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, uq.Name), comment.Old, comment.New));
+
+        EmitConstraintKind(table.Checks, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
+            ck => ck.Definition,
+            (ck, definition) => new AddCheckConstraint(new ObjectAddress(table.Schema, table.Name), definition),
+            ck => new DropCheckConstraint(new MemberAddress(table.Schema, preRenameName, ck.Name)),
+            (ck, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, ck.Name), comment.Old, comment.New));
+
+        EmitConstraintKind(table.ExclusionConstraints, new ObjectAddress(table.Schema, table.Name), actions, _ => foldAdds,
+            ex => ex.Definition,
+            (ex, definition) => new AddExclusionConstraint(new ObjectAddress(table.Schema, table.Name), definition),
+            ex => new DropExclusionConstraint(new MemberAddress(table.Schema, preRenameName, ex.Name)),
+            (ex, comment) => new SetConstraintComment(new MemberAddress(table.Schema, table.Name, ex.Name), comment.Old, comment.New));
+    }
+
+    /// <summary>
+    /// The table to create, less the foreign keys that cannot ride it. The definition belongs to the project
+    /// tree, so trimming one is a copy.
+    /// </summary>
+    private static Table WithoutForeignKeys(TableDiff table, IReadOnlySet<MemberAddress> unfolded)
+    {
+        if (!table.IsAdd() || unfolded.Count == 0)
+        {
+            return table.Definition!;
+        }
+
+        var trimmed = table.Definition.Clone();
+        foreach (var foreignKey in trimmed.ForeignKeys.Where(fk => unfolded.Contains(new MemberAddress(table.Schema, table.Name, fk.Name))).ToList())
+        {
+            trimmed.ForeignKeys.Remove(foreignKey);
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Emits one constraint kind: an add's matched migration first (it prepares the data the constraint depends
+    /// on — de-duplication, backfill — and the priority table runs every data migration before the constraint
+    /// adds), then the change itself. A constraint Modify is always a comment-only change. When <paramref
+    /// name="foldAdd"/> holds the table is being created, so the add is inlined into the CREATE TABLE and skipped.
+    /// </summary>
+    private static void EmitConstraintKind<T, TDefinition>(
+        IReadOnlyList<T> constraints,
+        ObjectAddress owner,
+        List<MigrationAction> actions,
+        Func<T, bool> foldAdd,
+        Func<T, TDefinition?> definition,
+        Func<T, TDefinition, MigrationAction> add,
+        Func<T, MigrationAction> drop,
+        Func<T, ValueChange<string>, MigrationAction> comment
+    ) where T : IMigratableDiff where TDefinition : class
+    {
+        foreach (var constraint in constraints)
+        {
+            if (constraint.Change == ChangeKind.Add && foldAdd(constraint))
+            {
+                continue;
+            }
+
+            EmitConstraintMigration(constraint.Change, constraint.MigrationScript, owner, actions);
+            switch (constraint.Change)
+            {
+                case ChangeKind.Add when definition(constraint) is { } toAdd:
+                    actions.Add(add(constraint, toAdd));
+                    break;
+                case ChangeKind.Remove:
+                    actions.Add(drop(constraint));
+                    break;
+                // A member Modify is a comment change and nothing else, so one without a comment has nothing to emit.
+                case ChangeKind.Modify when constraint.Comment is { } changed:
+                    actions.Add(comment(constraint, changed));
+                    break;
+            }
+        }
+    }
+
+    private static void EmitConstraintMigration(ChangeKind kind, ChangeScript? migration, ObjectAddress table, List<MigrationAction> actions)
+    {
+        if (kind == ChangeKind.Add && migration is { } script)
+        {
+            actions.Add(new ExecuteScript(script) { Anchor = table });
+        }
+    }
+
+    private static void EmitIndexes(TableDiff table, List<MigrationAction> actions)
+    {
+        foreach (var index in table.Indexes.OrderBy(IndexRank))
+        {
+            actions.Add(IndexAction(table.Schema, table.Name, table.RenamedFrom ?? table.Name, index));
+        }
+    }
+
+    /// <summary>
+    /// Where an index change sorts among its owner's own. A secondary XML index reads the node table a primary
+    /// builds, so the primary has to be created first.
+    /// </summary>
+    private static int IndexRank(IndexDiff index) => index.Definition?.Xml is { IsPrimary: false } ? 1 : 0;
+
+    /// <summary>
+    /// The action for one index change on <paramref name="owner"/>. Drops target <paramref name="preRenameName"/>,
+    /// since they sort before the owner's rename and so run while it still carries its old name.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="onView"/> says whether the owner is a view. The address stays kind-less so the ordering
+    /// layer's subject lookup still matches the owner's create; the nature travels on the action instead.
+    /// </remarks>
+    private static MigrationAction IndexAction(SqlIdentifier schema, SqlIdentifier owner, SqlIdentifier preRenameName, IndexDiff index, bool onView = false) => index switch
+    {
+        { Change: ChangeKind.Add, Definition: { } definition } => new CreateIndex(new ObjectAddress(schema, owner), definition, onView),
+        { Change: ChangeKind.Remove } => new DropIndex(new MemberAddress(schema, preRenameName, index.Name)),
+        { Comment: { } comment } => new SetIndexComment(new MemberAddress(schema, owner, index.Name), comment.Old, comment.New),
+        _ => throw new NotSupportedException($"Cannot linearize index change {index.Change} on '{schema}.{owner}'."),
+    };
+
+
+    private static void EmitTriggers(TableDiff table, List<MigrationAction> actions)
+    {
+        // A structural change diffs as a remove and an add under one name; the pair folds into a single
+        // replacement, leaving the mechanism — in place, or drop and create — to the dialect.
+        var replaced = table.Triggers.Where(t => t.Change == ChangeKind.Add).Select(t => t.Name)
+            .Intersect(table.Triggers.Where(t => t.Change == ChangeKind.Remove).Select(t => t.Name))
+            .ToHashSet();
+
+        foreach (var trigger in table.Triggers)
+        {
+            switch (trigger)
+            {
+                case { Change: ChangeKind.Add, Definition: { } definition } when replaced.Contains(trigger.Name):
+                    actions.Add(new ReplaceTrigger(new ObjectAddress(table.Schema, table.Name), definition));
+                    break;
+                case { Change: ChangeKind.Add, Definition: { } definition }:
+                    actions.Add(new CreateTrigger(new ObjectAddress(table.Schema, table.Name), definition));
+                    break;
+                case { Change: ChangeKind.Remove } when replaced.Contains(trigger.Name):
+                    break; // folded into the replacement
+                case { Change: ChangeKind.Remove }:
+                    actions.Add(new DropTrigger(new MemberAddress(table.Schema, table.RenamedFrom ?? table.Name, trigger.Name)));
+                    break;
+                case { Comment: { } comment }:
+                    actions.Add(new SetTriggerComment(new MemberAddress(table.Schema, table.Name, trigger.Name), comment.Old, comment.New));
+                    break;
+                default:
+                    throw new NotSupportedException($"Cannot linearize trigger change {trigger.Change} on '{table.Schema}.{table.Name}'.");
+            }
+        }
+    }
+
+    private static void EmitGrants(TableDiff table, List<MigrationAction> actions)
+    {
+        foreach (var grant in table.Grants)
+        {
+            if (grant.Privileges is not { } privileges)
+            {
+                continue;
+            }
+
+            actions.Add(grant.Change == ChangeKind.Add
+                ? new GrantTablePrivileges(new ObjectAddress(table.Schema, table.Name), grant.Role, privileges)
+                : new RevokeTablePrivileges(new ObjectAddress(table.Schema, table.RenamedFrom ?? table.Name), grant.Role, privileges));
+        }
+    }
+}

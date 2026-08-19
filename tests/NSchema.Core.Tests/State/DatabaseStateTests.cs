@@ -1,0 +1,229 @@
+using NSchema.Model;
+using NSchema.Model.Schemas;
+using NSchema.Model.Scripts;
+using NSchema.Model.Tables;
+using NSchema.Model.Views;
+using NSchema.State.Domain;
+
+namespace NSchema.Tests.State;
+
+public sealed class DatabaseStateTests
+{
+    private static readonly DateTimeOffset _now = new(2026, 7, 10, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void RecordScripts_AddsEntriesToTheLedger()
+    {
+        // Arrange
+        var state = DatabaseState.Empty;
+
+        // Act
+        var recorded = state.RecordExecution([new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now)]);
+
+        // Assert
+        recorded.Scripts.ShouldHaveSingleItem().ShouldBe(new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now));
+    }
+
+    [Fact]
+    public void RecordScripts_ReplacesAnEarlierExecutionByName()
+    {
+        // Arrange
+        var state = new DatabaseState(new Database(), [new ScriptExecution(new ScriptReference(null, "seed"), "old", DateTimeOffset.UnixEpoch)]);
+
+        // Act
+        var recorded = state.RecordExecution([new ScriptExecution(new ScriptReference(null, "seed"), "new", _now)]);
+
+        // Assert
+        recorded.Scripts.ShouldHaveSingleItem().Hash.ShouldBe("new");
+    }
+
+    [Fact]
+    public void RecordScripts_LeavesOtherEntriesAlone()
+    {
+        // Arrange
+        var existing = new ScriptExecution(new ScriptReference(null, "api-login"), "hash", DateTimeOffset.UnixEpoch);
+        var state = new DatabaseState(new Database(), [existing]);
+
+        // Act
+        var recorded = state.RecordExecution([new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now)]);
+
+        // Assert
+        recorded.Scripts.ShouldBe([existing, new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now)]);
+    }
+
+    [Fact]
+    public void RecordScripts_NothingExecuted_ReturnsTheSameState()
+        => DatabaseState.Empty.RecordExecution([]).ShouldBeSameAs(DatabaseState.Empty);
+
+    [Fact]
+    public void FindScript_MatchesByExactName()
+    {
+        // Arrange
+        var existing = new ScriptExecution(new ScriptReference(null, "Seed"), "abc", _now);
+        var state = new DatabaseState(new Database(), [existing]);
+
+        // Assert — identifiers are case-sensitive, so only the exact name finds the entry.
+        state.FindExecution(new ScriptReference(null, "Seed")).ShouldBe(existing);
+        state.FindExecution(new ScriptReference(null, "seed")).ShouldBeNull();
+    }
+
+    [Fact]
+    public void FindScript_NothingRecordedUnderTheName_ReturnsNull()
+        => DatabaseState.Empty.FindExecution(new ScriptReference(null, "seed")).ShouldBeNull();
+
+    [Fact]
+    public void FindScript_SameNameInAnotherScope_ReturnsNull()
+    {
+        // Arrange — identity is (scope, name): a scoped execution is not found by the global address, nor by
+        // another schema's.
+        var scoped = new ScriptExecution(new ScriptReference("sales", "seed"), "abc", _now);
+        var state = new DatabaseState(new Database(), [scoped]);
+
+        // Assert
+        state.FindExecution(new ScriptReference(null, "seed")).ShouldBeNull();
+        state.FindExecution(new ScriptReference("billing", "seed")).ShouldBeNull();
+        state.FindExecution(new ScriptReference("sales", "seed")).ShouldBe(scoped);
+    }
+
+    [Fact]
+    public void RecordScripts_SameNameInAnotherScope_DoesNotReplace()
+    {
+        // Arrange
+        var global = new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now);
+        var state = new DatabaseState(new Database(), [global]);
+
+        // Act
+        var recorded = state.RecordExecution([new ScriptExecution(new ScriptReference("sales", "seed"), "def", _now)]);
+
+        // Assert
+        recorded.Scripts.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void RemoveScript_RemovesTheEntryByExactName()
+    {
+        // Arrange
+        var other = new ScriptExecution(new ScriptReference(null, "api-login"), "hash", _now);
+        var state = new DatabaseState(new Database(), [new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now), other]);
+
+        // Act
+        var removed = state.RemoveExecution(new ScriptReference(null, "seed"));
+
+        // Assert
+        removed.Scripts.ShouldBe([other]);
+    }
+
+    [Fact]
+    public void RemoveScript_NothingRecordedUnderTheName_ReturnsTheSameState()
+        => DatabaseState.Empty.RemoveExecution(new ScriptReference(null, "seed")).ShouldBeSameAs(DatabaseState.Empty);
+
+    /// <summary>State across two schemas: each holds a table, one of them managed, and each has a ledger entry
+    /// alongside a database-wide one.</summary>
+    private static DatabaseState TwoSchemas() => new(
+        new Database
+        {
+            Schemas =
+            [
+                new Schema { Name = "app", Tables = [new Table { Name = "users" }] },
+                new Schema { Name = "billing", Tables = [new Table { Name = "invoices" }] },
+            ],
+        },
+        [
+            new ScriptExecution(new ScriptReference(null, "seed"), "abc", _now),
+            new ScriptExecution(new ScriptReference("app", "backfill"), "abc", _now),
+            new ScriptExecution(new ScriptReference("billing", "backfill"), "abc", _now),
+        ])
+    {
+        Managed = new IdentitySet(
+            DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Schema("billing")],
+            SchemaObjects: [ObjectAddress.Table("app", "users")]),
+    };
+
+    [Fact]
+    public void ScopedTo_NarrowsTheSchemaAndWhatIsManagedOfIt()
+    {
+        // Act
+        var scoped = TwoSchemas().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert
+        scoped.Database.Schemas.ShouldHaveSingleItem().Name.ShouldBe("app");
+        scoped.Managed.Schemas.Select(s => s.Name).ShouldBe(["app"]);
+        scoped.Managed.SchemaObjects.ShouldBe([ObjectAddress.Table("app", "users")]);
+    }
+
+    [Fact]
+    public void ScopedTo_KeepsTheLedgerEntriesTheScopeHolds_AndTheDatabaseWideOnes()
+    {
+        // Act
+        var scoped = TwoSchemas().ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert — a script scoped to no schema cannot fall outside the scope.
+        scoped.Scripts.Select(e => e.Script).ShouldBe([new ScriptReference(null, "seed"), new ScriptReference("app", "backfill")]);
+    }
+
+    [Fact]
+    public void ScopedTo_Unscoped_ReturnsTheSameState()
+        => DatabaseState.Empty.ScopedTo(PlanningScope.All).ShouldBeSameAs(DatabaseState.Empty);
+
+    [Fact]
+    public void ScopedTo_NarrowsTheDeclaredSpellings()
+    {
+        // Arrange
+        var state = TwoSchemas() with
+        {
+            Declared = new DefinitionSet([
+                new ViewDefinition(ObjectAddress.View("app", "v"), "SELECT 1"),
+                new ViewDefinition(ObjectAddress.View("billing", "v"), "SELECT 2"),
+            ]),
+        };
+
+        // Act
+        var scoped = state.ScopedTo(PlanningScope.To(DatabaseAddress.Schema("app")));
+
+        // Assert
+        scoped.Declared.Views.ShouldHaveSingleItem().Address.ShouldBe(ObjectAddress.View("app", "v"));
+    }
+
+    /// <summary>A captured schema holding one view spelled as <paramref name="body"/>.</summary>
+    private static Database CapturedWithView(string body) => new()
+    {
+        Schemas = [new Schema { Name = "app", Views = [new View { Name = "active", Body = body }] }],
+    };
+
+    /// <summary>State pairing an engine-rendered snapshot with the hand-written spelling that produced it.</summary>
+    private static DatabaseState WithDeclaredView() => new DatabaseState(CapturedWithView("SELECT users.id FROM app.users")) with
+    {
+        Declared = new DefinitionSet([new ViewDefinition(ObjectAddress.View("app", "active"), "SELECT id FROM users")]),
+    };
+
+    [Fact]
+    public void Recapture_KeepsTheDeclaredSpelling_WhileTheEngineReRendersIdentically()
+    {
+        // Act — the fresh capture matches what was recorded, so the object has not changed.
+        var recaptured = WithDeclaredView().Recapture(CapturedWithView("SELECT users.id FROM app.users"));
+
+        // Assert
+        recaptured.Declared.Views.ShouldHaveSingleItem().Body.ShouldBe(new SqlText("SELECT id FROM users"));
+    }
+
+    [Fact]
+    public void Recapture_DropsTheDeclaredSpelling_WhenTheCapturedTextChanged()
+    {
+        // Act — the engine reports a different rendering: the object drifted out of band.
+        var recaptured = WithDeclaredView().Recapture(CapturedWithView("SELECT 1"));
+
+        // Assert — the stale spelling is gone and the snapshot reflects reality.
+        recaptured.Declared.IsEmpty.ShouldBeTrue();
+        recaptured.Database.Schemas[0].Views[0].Body.ShouldBe(new SqlText("SELECT 1"));
+    }
+
+    [Fact]
+    public void Recapture_DropsTheDeclaredSpelling_WhenTheObjectIsGone()
+    {
+        // Act
+        var recaptured = WithDeclaredView().Recapture(new Database { Schemas = [] });
+
+        // Assert
+        recaptured.Declared.IsEmpty.ShouldBeTrue();
+    }
+}

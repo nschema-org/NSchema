@@ -1,0 +1,839 @@
+﻿[
+  {
+    Type: DropView,
+    Action: {
+      View: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: stale_view
+        },
+        Value: app.stale_view
+      },
+      IsMaterialized: false
+    }
+  },
+  {
+    Type: DropView,
+    Action: {
+      View: {
+        Schema: {
+          Value: scratch
+        },
+        Name: {
+          Value: temp_view
+        },
+        Value: scratch.temp_view
+      },
+      IsMaterialized: false
+    }
+  },
+  {
+    Type: DropForeignKey,
+    Action: {
+      ForeignKey: {
+        Schema: {
+          Value: app
+        },
+        Object: {
+          Value: purchases
+        },
+        Member: {
+          Value: orders_user_fk
+        },
+        Owner: {
+          Schema: {
+            Value: app
+          },
+          Name: {
+            Value: purchases
+          },
+          Value: app.purchases
+        },
+        Value: app.purchases.orders_user_fk
+      }
+    }
+  },
+  {
+    Type: CreateSchema,
+    Action: {
+      SchemaName: {
+        Value: reporting
+      }
+    }
+  },
+  {
+    Type: RenameEnum,
+    Action: {
+      Enum: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: importance
+        },
+        Value: app.importance
+      },
+      NewName: {
+        Value: priority
+      }
+    }
+  },
+  {
+    Type: CreateEnum,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Enum: {
+        Kind: Enum,
+        Values: [
+          {
+            Value: pending
+          },
+          {
+            Value: shipped
+          }
+        ],
+        Name: {
+          Value: order_status
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: CreateSequence,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Sequence: {
+        Kind: Sequence,
+        Options: {
+          StartWith: 100,
+          Cycle: false
+        },
+        Name: {
+          Value: order_id
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: AddEnumValue,
+    Action: {
+      Enum: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: priority
+        },
+        Value: app.priority
+      },
+      Value: {
+        Value: medium
+      },
+      After: {
+        Value: low
+      }
+    }
+  },
+  {
+    Type: AlterSequence,
+    Action: {
+      Sequence: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: ticket_id
+        },
+        Value: app.ticket_id
+      },
+      OldOptions: {
+        StartWith: 1,
+        Cycle: false
+      },
+      NewOptions: {
+        StartWith: 1000,
+        Cycle: false
+      }
+    }
+  },
+  {
+    Type: RenameTable,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: purchases
+        },
+        Value: app.purchases
+      },
+      NewName: {
+        Value: orders
+      }
+    }
+  },
+  {
+    Type: RenameView,
+    Action: {
+      View: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: legacy_report
+        },
+        Value: app.legacy_report
+      },
+      NewName: {
+        Value: report
+      },
+      IsMaterialized: false
+    }
+  },
+  {
+    Type: DropColumn,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      Column: {
+        Type: {
+          Name: {
+            Value: boolean
+          }
+        },
+        IsNullable: false,
+        IsIdentity: false,
+        IsStored: false,
+        IsRowGuid: false,
+        Name: {
+          Value: legacy_flag
+        },
+        IsImplicit: false
+      },
+      ColumnName: {
+        Value: legacy_flag
+      }
+    }
+  },
+  {
+    Type: AddColumn,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      Column: {
+        Type: {
+          Name: {
+            Value: text
+          }
+        },
+        IsNullable: true,
+        IsIdentity: false,
+        IsStored: false,
+        IsRowGuid: false,
+        Name: {
+          Value: notes
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: RenameRoutine,
+    Action: {
+      Routine: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: old_score
+        },
+        Value: app.old_score
+      },
+      NewName: {
+        Value: score
+      },
+      Arguments: {
+        Value: user_id bigint
+      }
+    }
+  },
+  {
+    Type: CreateTable,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Table: {
+        PrimaryKey: {
+          Kind: PrimaryKey,
+          ColumnNames: [
+            {
+              Value: id
+            }
+          ],
+          Name: {
+            Value: users_pkey
+          },
+          IsImplicit: false
+        },
+        Columns: [
+          {
+            Type: {
+              Name: {
+                Value: bigint
+              }
+            },
+            IsNullable: false,
+            IsIdentity: true,
+            IdentityOptions: {
+              StartWith: 1,
+              MinValue: 1,
+              IncrementBy: 1,
+              NotForReplication: false
+            },
+            IsStored: false,
+            IsRowGuid: false,
+            Name: {
+              Value: id
+            },
+            IsImplicit: false
+          },
+          {
+            Type: {
+              Name: {
+                Value: varchar
+              },
+              Length: 255
+            },
+            IsNullable: false,
+            IsIdentity: false,
+            IsStored: false,
+            IsRowGuid: false,
+            Name: {
+              Value: name
+            },
+            IsImplicit: false
+          }
+        ],
+        UniqueConstraints: [
+          {
+            Kind: UniqueConstraint,
+            ColumnNames: [
+              {
+                Value: email
+              }
+            ],
+            Name: {
+              Value: users_email_uq
+            },
+            IsImplicit: false
+          }
+        ],
+        Name: {
+          Value: users
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: CreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        Arguments: {
+          Value: amount numeric
+        },
+        Definition: {
+          Value: RETURNS numeric AS $$ SELECT amount $$
+        },
+        Name: {
+          Value: add_tax
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: RecreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        Arguments: {
+          Value: user_id bigint, weight numeric
+        },
+        Definition: {
+          Value: RETURNS numeric AS $$ SELECT 1 $$
+        },
+        Name: {
+          Value: score
+        },
+        IsImplicit: false
+      },
+      PreviousArguments: {
+        Value: user_id bigint
+      }
+    }
+  },
+  {
+    Type: CreateRoutine,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      Routine: {
+        Kind: Routine,
+        RoutineKind: Procedure,
+        Arguments: {
+          Value: before date
+        },
+        Definition: {
+          Value: LANGUAGE sql AS $$ DELETE $$
+        },
+        Name: {
+          Value: archive
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: AlterColumn,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      Column: {
+        Type: {
+          Name: {
+            Value: bigint
+          }
+        },
+        IsNullable: false,
+        IsIdentity: false,
+        IsStored: false,
+        IsRowGuid: false,
+        Name: {
+          Value: total
+        },
+        IsImplicit: false
+      },
+      Type: {
+        Old: {
+          Name: {
+            Value: int
+          }
+        },
+        New: {
+          Name: {
+            Value: bigint
+          }
+        }
+      },
+      Nullability: {
+        Old: true,
+        New: false
+      }
+    }
+  },
+  {
+    Type: SetColumnGenerated,
+    Action: {
+      Column: {
+        Schema: {
+          Value: app
+        },
+        Object: {
+          Value: orders
+        },
+        Member: {
+          Value: total_label
+        },
+        Owner: {
+          Schema: {
+            Value: app
+          },
+          Name: {
+            Value: orders
+          },
+          Value: app.orders
+        },
+        Value: app.orders.total_label
+      },
+      NewExpression: {
+        Value: total::text
+      }
+    }
+  },
+  {
+    Type: AddUniqueConstraint,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      UniqueConstraint: {
+        Kind: UniqueConstraint,
+        ColumnNames: [
+          {
+            Value: code
+          }
+        ],
+        Name: {
+          Value: orders_code_uq
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: AddCheckConstraint,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      CheckConstraint: {
+        Kind: CheckConstraint,
+        Expression: {
+          Value: total >= 0
+        },
+        Name: {
+          Value: orders_total_chk
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: AddExclusionConstraint,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      ExclusionConstraint: {
+        Kind: ExclusionConstraint,
+        Elements: [
+          {
+            Operator: &&,
+            Column: {
+              Value: slot
+            }
+          }
+        ],
+        Method: {
+          Value: gist
+        },
+        Name: {
+          Value: orders_slot_excl
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: CreateIndex,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: users
+        },
+        Value: app.users
+      },
+      Index: {
+        Kind: Index,
+        Columns: [
+          {
+            Column: {
+              Value: name
+            }
+          }
+        ],
+        IsUnique: true,
+        Name: {
+          Value: users_name_ix
+        },
+        IsImplicit: false
+      },
+      OnView: false
+    }
+  },
+  {
+    Type: CreateIndex,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: orders
+        },
+        Value: app.orders
+      },
+      Index: {
+        Kind: Index,
+        Columns: [
+          {
+            Column: {
+              Value: total
+            },
+            Sort: Descending
+          }
+        ],
+        IsUnique: false,
+        Method: {
+          Value: btree
+        },
+        Include: [
+          {
+            Value: code
+          }
+        ],
+        Name: {
+          Value: orders_total_ix
+        },
+        IsImplicit: false
+      },
+      OnView: false
+    }
+  },
+  {
+    Type: CreateView,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      View: {
+        Kind: View,
+        Body: {
+          Value: SELECT * FROM app.users
+        },
+        IsMaterialized: false,
+        IsSchemaBound: false,
+        Address: {
+          Schema: {
+            Value: app
+          },
+          Name: {
+            Value: active_users
+          },
+          Kind: View,
+          Value: app.active_users
+        },
+        Name: {
+          Value: active_users
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: CreateView,
+    Action: {
+      SchemaName: {
+        Value: app
+      },
+      View: {
+        Kind: View,
+        Body: {
+          Value: SELECT * FROM app.active_users
+        },
+        IsMaterialized: false,
+        IsSchemaBound: false,
+        Address: {
+          Schema: {
+            Value: app
+          },
+          Name: {
+            Value: user_summary
+          },
+          Kind: View,
+          Value: app.user_summary
+        },
+        Name: {
+          Value: user_summary
+        },
+        IsImplicit: false
+      }
+    }
+  },
+  {
+    Type: GrantTablePrivileges,
+    Action: {
+      Table: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: users
+        },
+        Value: app.users
+      },
+      Role: {
+        Value: readers
+      },
+      Privileges: ReadOnly
+    }
+  },
+  {
+    Type: DropRoutine,
+    Action: {
+      Routine: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: stale_fn
+        },
+        Value: app.stale_fn
+      }
+    }
+  },
+  {
+    Type: DropRoutine,
+    Action: {
+      Routine: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: stale_proc
+        },
+        Value: app.stale_proc
+      },
+      Kind: Procedure
+    }
+  },
+  {
+    Type: DropTable,
+    Action: {
+      Table: {
+        Schema: {
+          Value: scratch
+        },
+        Name: {
+          Value: temp_data
+        },
+        Value: scratch.temp_data
+      }
+    }
+  },
+  {
+    Type: DropEnum,
+    Action: {
+      Enum: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: stale_enum
+        },
+        Value: app.stale_enum
+      }
+    }
+  },
+  {
+    Type: DropEnum,
+    Action: {
+      Enum: {
+        Schema: {
+          Value: scratch
+        },
+        Name: {
+          Value: temp_status
+        },
+        Value: scratch.temp_status
+      }
+    }
+  },
+  {
+    Type: DropSequence,
+    Action: {
+      Sequence: {
+        Schema: {
+          Value: app
+        },
+        Name: {
+          Value: stale_seq
+        },
+        Value: app.stale_seq
+      }
+    }
+  },
+  {
+    Type: DropSequence,
+    Action: {
+      Sequence: {
+        Schema: {
+          Value: scratch
+        },
+        Name: {
+          Value: temp_seq
+        },
+        Value: scratch.temp_seq
+      }
+    }
+  },
+  {
+    Type: DropSchema,
+    Action: {
+      SchemaName: {
+        Value: scratch
+      }
+    }
+  }
+]

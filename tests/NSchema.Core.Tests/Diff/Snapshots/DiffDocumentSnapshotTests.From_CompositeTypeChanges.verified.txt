@@ -1,0 +1,57 @@
+﻿{
+  Lines: [
+    {
+      Change: Add,
+      Text: type app.address (street text, zip int) ("a postal address")
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: type app.money
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: field currency text
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: field amount type: int → decimal(18,2)
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: field legacy
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: type app.old_t → renamed_t
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: type app.noted comment: "old" → "new"
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Remove,
+      Text: type app.stale_t
+    }
+  ],
+  Summary: {
+    Added: 1,
+    Modified: 3,
+    Removed: 1
+  },
+  IsEmpty: false
+}

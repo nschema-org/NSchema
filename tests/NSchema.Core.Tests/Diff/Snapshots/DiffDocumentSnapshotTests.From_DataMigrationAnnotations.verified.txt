@@ -1,0 +1,28 @@
+﻿{
+  Lines: [
+    {
+      Change: Modify,
+      Text: table app.users
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: email text not null (with migration backfill_emails)
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: total type: text → int (with migration retype_totals)
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: unique constraint users_email_uq (with migration dedupe_emails)
+    }
+  ],
+  Summary: {
+    Added: 2,
+    Modified: 2
+  },
+  IsEmpty: false
+}

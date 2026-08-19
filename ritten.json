@@ -1,6 +1,9 @@
 {
   "workflow": "dotnet-tool",
   "build": {
-    "project": "src/NSchema/NSchema.csproj"
+    "projects": [
+      "src/NSchema/NSchema.csproj",
+      "src/NSchema.Core/NSchema.Core.csproj"
+    ]
   }
 }

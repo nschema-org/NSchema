@@ -1,0 +1,31 @@
+﻿DATABASE (
+  dialect = postgres
+);
+
+create schema app;
+
+grant usage on schema app to readonly;
+
+--- The order status.
+create enum app.status ('pending','shipped','delivered');
+
+create sequence app.order_seq (start 100, increment 1);
+
+create table app.orders (
+  id bigint not null identity,
+  status app.status not null default 'pending',  -- current state
+  total numeric not null,
+  -- the audit columns
+  created_at timestamptz not null default now(),
+  constraint orders_pkey primary key (id),
+  constraint total_positive check (total > 0)
+);
+
+create view app.open_orders as
+    select id, total
+    from app.orders
+    where status = 'pending';
+
+SCRIPT reindex RUN ON POST DEPLOYMENT (run_outside_transaction = true) AS $$
+REINDEX TABLE app.orders;
+$$;

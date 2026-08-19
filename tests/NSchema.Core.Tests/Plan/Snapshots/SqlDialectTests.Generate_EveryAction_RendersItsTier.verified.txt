@@ -1,0 +1,519 @@
+﻿[
+  {
+    Action: CreateSchema,
+    Statements: [
+      CREATE SCHEMA "app"
+    ]
+  },
+  {
+    Action: DropSchema,
+    Statements: [
+      DROP SCHEMA "app"
+    ]
+  },
+  {
+    Action: RenameSchema,
+    Statements: [
+      ALTER SCHEMA "app" RENAME TO "core"
+    ]
+  },
+  {
+    Action: GrantSchemaUsage,
+    Diagnostics: [
+      Error: TestDialect does not support the 'grant schema usage' action.
+    ]
+  },
+  {
+    Action: RevokeSchemaUsage,
+    Diagnostics: [
+      Error: TestDialect does not support the 'revoke schema usage' action.
+    ]
+  },
+  {
+    Action: SetSchemaComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set schema comment' action.
+    ]
+  },
+  {
+    Action: CreateTable,
+    Statements: [
+      -- engine-specific CreateTable
+    ]
+  },
+  {
+    Action: DropTable,
+    Statements: [
+      DROP TABLE "app"."users"
+    ]
+  },
+  {
+    Action: RenameTable,
+    Statements: [
+      ALTER TABLE "app"."users" RENAME TO "accounts"
+    ]
+  },
+  {
+    Action: AddPrimaryKey,
+    Statements: [
+      ALTER TABLE "app"."users" ADD CONSTRAINT "pk_users" PRIMARY KEY ("id")
+    ]
+  },
+  {
+    Action: DropPrimaryKey,
+    Statements: [
+      ALTER TABLE "app"."users" DROP CONSTRAINT "pk_users"
+    ]
+  },
+  {
+    Action: AddForeignKey,
+    Statements: [
+      ALTER TABLE "app"."orders" ADD CONSTRAINT "fk_orders_users" FOREIGN KEY ("user_id") REFERENCES "app"."users" ("id") ON DELETE CASCADE
+    ]
+  },
+  {
+    Action: DropForeignKey,
+    Statements: [
+      ALTER TABLE "app"."orders" DROP CONSTRAINT "fk_orders_users"
+    ]
+  },
+  {
+    Action: GrantTablePrivileges,
+    Statements: [
+      GRANT SELECT, INSERT ON "app"."users" TO "readers"
+    ]
+  },
+  {
+    Action: RevokeTablePrivileges,
+    Statements: [
+      REVOKE SELECT, INSERT, UPDATE, DELETE ON "app"."users" FROM "readers"
+    ]
+  },
+  {
+    Action: SetTableComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set table comment' action.
+    ]
+  },
+  {
+    Action: AddColumn,
+    Statements: [
+      -- engine-specific AddColumn
+    ]
+  },
+  {
+    Action: DropColumn,
+    Statements: [
+      ALTER TABLE "app"."users" DROP COLUMN "email"
+    ]
+  },
+  {
+    Action: RenameColumn,
+    Statements: [
+      ALTER TABLE "app"."users" RENAME COLUMN "email" TO "email_address"
+    ]
+  },
+  {
+    Action: AlterColumn,
+    Statements: [
+      -- engine-specific AlterColumn
+    ]
+  },
+  {
+    Action: AlterColumn,
+    Statements: [
+      -- engine-specific AlterColumn
+    ]
+  },
+  {
+    Action: AlterIdentitySequence,
+    Statements: [
+      -- engine-specific AlterIdentitySequence
+    ]
+  },
+  {
+    Action: SetColumnDefault,
+    Statements: [
+      ALTER TABLE "app"."users" ALTER COLUMN "age" SET DEFAULT 0
+    ]
+  },
+  {
+    Action: SetColumnDefault,
+    Statements: [
+      ALTER TABLE "app"."users" ALTER COLUMN "age" DROP DEFAULT
+    ]
+  },
+  {
+    Action: SetColumnGenerated,
+    Statements: [
+      -- engine-specific SetColumnGenerated
+    ]
+  },
+  {
+    Action: SetColumnComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set column comment' action.
+    ]
+  },
+  {
+    Action: AddCheckConstraint,
+    Statements: [
+      ALTER TABLE "app"."users" ADD CONSTRAINT "ck_age" CHECK (age >= 0)
+    ]
+  },
+  {
+    Action: DropCheckConstraint,
+    Statements: [
+      ALTER TABLE "app"."users" DROP CONSTRAINT "ck_age"
+    ]
+  },
+  {
+    Action: AddUniqueConstraint,
+    Statements: [
+      ALTER TABLE "app"."users" ADD CONSTRAINT "uq_email" UNIQUE ("email")
+    ]
+  },
+  {
+    Action: DropUniqueConstraint,
+    Statements: [
+      ALTER TABLE "app"."users" DROP CONSTRAINT "uq_email"
+    ]
+  },
+  {
+    Action: AddExclusionConstraint,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add exclusion constraint' action.
+    ]
+  },
+  {
+    Action: DropExclusionConstraint,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop exclusion constraint' action.
+    ]
+  },
+  {
+    Action: SetConstraintComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set constraint comment' action.
+    ]
+  },
+  {
+    Action: CreateIndex,
+    Statements: [
+      -- engine-specific CreateIndex
+    ]
+  },
+  {
+    Action: DropIndex,
+    Statements: [
+      -- engine-specific DropIndex
+    ]
+  },
+  {
+    Action: SetIndexComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set index comment' action.
+    ]
+  },
+  {
+    Action: CreateTrigger,
+    Statements: [
+      -- engine-specific CreateTrigger
+    ]
+  },
+  {
+    Action: ReplaceTrigger,
+    Statements: [
+      -- engine-specific DropTrigger,
+      -- engine-specific CreateTrigger
+    ]
+  },
+  {
+    Action: DropTrigger,
+    Statements: [
+      -- engine-specific DropTrigger
+    ]
+  },
+  {
+    Action: SetTriggerComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set trigger comment' action.
+    ]
+  },
+  {
+    Action: CreateXmlSchemaCollection,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create xml schema collection' action.
+    ]
+  },
+  {
+    Action: DropXmlSchemaCollection,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop xml schema collection' action.
+    ]
+  },
+  {
+    Action: CreateView,
+    Statements: [
+      -- engine-specific CreateView
+    ]
+  },
+  {
+    Action: ReplaceView,
+    Diagnostics: [
+      Error: TestDialect does not support the 'replace view' action.
+    ]
+  },
+  {
+    Action: DropView,
+    Statements: [
+      DROP VIEW "app"."active_users"
+    ]
+  },
+  {
+    Action: DropView,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop view' action.
+    ]
+  },
+  {
+    Action: RenameView,
+    Statements: [
+      ALTER VIEW "app"."active_users" RENAME TO "current_users"
+    ]
+  },
+  {
+    Action: RenameView,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename view' action.
+    ]
+  },
+  {
+    Action: SetViewComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set view comment' action.
+    ]
+  },
+  {
+    Action: CreateEnum,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create enum' action.
+    ]
+  },
+  {
+    Action: DropEnum,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop enum' action.
+    ]
+  },
+  {
+    Action: RenameEnum,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename enum' action.
+    ]
+  },
+  {
+    Action: AddEnumValue,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add enum value' action.
+    ]
+  },
+  {
+    Action: SetEnumComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set enum comment' action.
+    ]
+  },
+  {
+    Action: CreateDomain,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create domain' action.
+    ]
+  },
+  {
+    Action: DropDomain,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop domain' action.
+    ]
+  },
+  {
+    Action: RenameDomain,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename domain' action.
+    ]
+  },
+  {
+    Action: RecreateDomain,
+    Diagnostics: [
+      Error: TestDialect does not support the 'recreate domain' action.
+    ]
+  },
+  {
+    Action: AlterDomainDefault,
+    Diagnostics: [
+      Error: TestDialect does not support the 'alter domain default' action.
+    ]
+  },
+  {
+    Action: AlterDomainNotNull,
+    Diagnostics: [
+      Error: TestDialect does not support the 'alter domain not null' action.
+    ]
+  },
+  {
+    Action: AddDomainCheck,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add domain check' action.
+    ]
+  },
+  {
+    Action: DropDomainCheck,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop domain check' action.
+    ]
+  },
+  {
+    Action: SetDomainComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set domain comment' action.
+    ]
+  },
+  {
+    Action: CreateCompositeType,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create composite type' action.
+    ]
+  },
+  {
+    Action: DropCompositeType,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop composite type' action.
+    ]
+  },
+  {
+    Action: RenameCompositeType,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename composite type' action.
+    ]
+  },
+  {
+    Action: AddCompositeField,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add composite field' action.
+    ]
+  },
+  {
+    Action: DropCompositeField,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop composite field' action.
+    ]
+  },
+  {
+    Action: AlterCompositeFieldType,
+    Diagnostics: [
+      Error: TestDialect does not support the 'alter composite field type' action.
+    ]
+  },
+  {
+    Action: SetCompositeTypeComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set composite type comment' action.
+    ]
+  },
+  {
+    Action: CreateSequence,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create sequence' action.
+    ]
+  },
+  {
+    Action: DropSequence,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop sequence' action.
+    ]
+  },
+  {
+    Action: RenameSequence,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename sequence' action.
+    ]
+  },
+  {
+    Action: AlterSequence,
+    Diagnostics: [
+      Error: TestDialect does not support the 'alter sequence' action.
+    ]
+  },
+  {
+    Action: SetSequenceComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set sequence comment' action.
+    ]
+  },
+  {
+    Action: CreateRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create routine' action.
+    ]
+  },
+  {
+    Action: ReplaceRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'replace routine' action.
+    ]
+  },
+  {
+    Action: DropRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop routine' action.
+    ]
+  },
+  {
+    Action: RenameRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename routine' action.
+    ]
+  },
+  {
+    Action: RecreateRoutine,
+    Diagnostics: [
+      Error: TestDialect does not support the 'recreate routine' action.
+    ]
+  },
+  {
+    Action: SetRoutineComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set routine comment' action.
+    ]
+  },
+  {
+    Action: CreateExtension,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create extension' action.
+    ]
+  },
+  {
+    Action: DropExtension,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop extension' action.
+    ]
+  },
+  {
+    Action: AlterExtension,
+    Diagnostics: [
+      Error: TestDialect does not support the 'alter extension' action.
+    ]
+  },
+  {
+    Action: SetExtensionComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set extension comment' action.
+    ]
+  },
+  {
+    Action: ExecuteScript,
+    Statements: [
+      INSERT INTO app.users VALUES (1)
+    ]
+  }
+]

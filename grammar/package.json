@@ -1,0 +1,31 @@
+{
+  "name": "nsql",
+  "displayName": "NSQL",
+  "description": "Syntax highlighting for NSQL, the NSchema project language.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "nsql",
+        "aliases": ["NSQL", "nsql"],
+        "extensions": [".nsql"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nsql",
+        "scopeName": "source.nsql",
+        "path": "./nsql.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.sql": "sql"
+        }
+      }
+    ]
+  }
+}
