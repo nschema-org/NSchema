@@ -4,6 +4,7 @@
     <File Path=".github\workflows\cicd.yml" />
     <File Path="CLAUDE.md" />
     <File Path="Directory.Packages.props" />
+    <File Path="ritten.json" />
   </Folder>
   <Folder Name="/core/">
     <Project Path="src/NSchema.Core/NSchema.Core.csproj" />
