@@ -19,9 +19,6 @@
     <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="/">
       <Link>CHANGELOG.md</Link>
     </None>
-    <None Include="..\..\icon.png" Pack="true" PackagePath="/">
-      <Link>icon.png</Link>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
