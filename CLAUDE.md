@@ -5,19 +5,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `NSchema` is a thin command-line front-end (packaged as the `nschema` .NET global tool) over the **NSchema** core
-framework — a declarative database schema migration engine ("Terraform for database schemas"). The CLI's job is to
-resolve configuration, translate it into a core `NSchemaApplication`, and run one operation.
+framework — a declarative database schema migration engine ("Terraform for database schemas", with extra features to
+facilitate data migration). The CLI's job is to resolve configuration, translate it into a core `NSchemaApplication`,
+and run one operation.
 
 The CLI consumes **`NSchema.Core` as a project reference** — the core's source lives in this repo under
-`src/NSchema.Core` (its own `CLAUDE.md` is there), and a release tags once and publishes the `nschema` tool and the
-`NSchema.Core` package at the same version. As of **v4 it no longer references the providers or backends** — those are
-**separate NuGet packages loaded at runtime as plugins** (see *Provider & backend plugins* below), so a database engine
-ships and versions independently of the CLI.
+`src/NSchema.Core` and is also published as a standalone NuGet package for embedding; a release tags once and
+publishes the `nschema` tool and the `NSchema.Core` package at the same version. As of **v4 the CLI no longer
+references the providers or backends** — those are **separate NuGet packages loaded at runtime as plugins** (see
+*Provider & backend plugins* below), so a database engine ships and versions independently of the CLI. The provider
+and state-backend repos should be checked out alongside this one.
+
+## Instructions
+
+While working in this repo, follow these instructions:
+
+- Never commit. I will review your changes and stage/commit them as I see fit.
+- Be brief. For code comments, and XML docs, one short sentence is enough.
+- Public facing changes should be included in CHANGELOG.md.
+- When updating the changelog, changes are relative to the _previous released version_, not the current branch/PR/commit.
+
+## Commands
+
+```sh
+dotnet build NSchema.slnx
+dotnet test  NSchema.slnx                                   # all tests
+dotnet test  NSchema.slnx --filter "FullyQualifiedName~OptionBindingTests"   # one class
+dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNschemaCommandName"  # one test
+dotnet test  tests/NSchema.Core.Tests --filter "FullyQualifiedName~DatabaseComparerTests"  # one project
+```
+
+- The CLI test project needs no Docker — the provider round-trip suites moved to the provider repos in v4. Its one
+  integration test, `PluginLoaderTests`, restores a real plugin via `dotnet publish`, so it needs the **.NET SDK and
+  network access** (it reaches nuget.org). `NSchema.Core.Tests` runs Testcontainers-based integration tests, so the
+  full-solution `dotnet test` needs **Docker**.
+- `TreatWarningsAsErrors` and `GenerateDocumentationFile` are on — builds fail on warnings, and the build packs the
+  packages (`GeneratePackageOnBuild`; shared package metadata and the single `<Version>` live in
+  `Directory.Build.props`). Target framework is `net10.0`.
 
 ## Where an operation lives: Core vs CLI
 
 A command's *logic* lives in `NSchema.Core` (invoked via a public `NSchemaApplication.X(...)` method that resolves an
-`IXOperation` from DI) or in this CLI repo (a self-contained `*Command`). The dividing axis is **orchestration
+`IXOperation` from DI) or in the CLI (a self-contained `*Command`). The dividing axis is **orchestration
 complexity, not whether it touches live infrastructure** — taking a lock touches infra but is a one-call primitive,
 while `validate` touches no infra yet orchestrates parse+diff. Applied **in order**:
 
@@ -87,22 +116,6 @@ and `ReportScripts` a bare array — so `cmd --json | jq` reads a result without
 still frames a run that reports more than once (each report is its own complete line). Line-level narration
 (`Announce`/etc.) goes to **stderr** as the gated `{"type":"log"}` stream, where the discriminator does the work —
 so `cmd --json | jq` only ever sees the result, never the narration.
-
-## Commands
-
-```sh
-dotnet build NSchema.slnx
-dotnet test  NSchema.slnx                                   # all tests
-dotnet test  NSchema.slnx --filter "FullyQualifiedName~OptionBindingTests"   # one class
-dotnet test  NSchema.slnx --filter "FullyQualifiedName~RootCommandTests.HasTheNschemaCommandName"  # one test
-```
-
-- The CLI test project needs no Docker — the provider round-trip suites moved to the provider repos in v4. Its one
-  integration test, `PluginLoaderTests`, restores a real plugin via `dotnet publish`, so it needs the **.NET SDK and
-  network access** (it reaches nuget.org). `NSchema.Core.Tests` runs Testcontainers-based integration tests, so the
-  full-solution `dotnet test` needs **Docker**.
-- `TreatWarningsAsErrors` and `GenerateDocumentationFile` are on — builds fail on warnings, and the build packs the tool
-  (`GeneratePackageOnBuild`). Target framework is `net10.0`.
 
 ## Configuration resolution (the heart of the CLI)
 
@@ -291,12 +304,122 @@ hash and untaint. `state pull` / `state push` move the raw payload through `Read
 narration when writing to stdout so redirection stays byte-clean; push validates and writes verbatim. Push, taint,
 and untaint take the state lock (each has `--no-lock`); pull and list are reads and do not.
 
+## NSQL
+
+The project language for NSchema is SQL-flavored, so users can write familiar `CREATE TABLE` statements.
+
+### Configuration
+
+NSchema has a small configuration grammar for configuring plugins, the database, the state store, and the engine using `PLUGIN`, `DATABASE`, `STATE` and `ENGINE` statements — ordinary statements in the one grammar, not a separate file format.
+
+Any setting is overridable from the environment as `NSCHEMA_<KEYWORD>_<SETTING>` (`NSCHEMA_DATABASE_CONNECTION_STRING`), so a secret never has to be committed. Core applies this centrally; a plugin never reads the environment itself.
+
+### Directives
+
+For actions outside regular SQL, the language has directives like `TEMPLATE`, `RENAME` or `SCRIPT`. These describe mutations to the desired project structure by renaming objects, attaching migration scripts, or allowing reusable table/column statements.
+
+## Core architecture
+
+NSchema borrows the .NET hosting model, exposing its builder through `NSchemaApplication.CreateBuilder()`, which exposes a set of configuration methods.
+
+The `Build()` function produces a disposable `NSchemaApplication` object, that exposes the public surface for feature areas like locking and state, but also provides commonly-orchestrated actions like plan and apply.
+
+Unlike a common application host, there is no `BackgroundService` and no host lifecycle. The app instance is reusable and may be invoked multiple times across its lifetime.
+
+### Conventions
+
+- Wherever possible, follow the result pattern and return Result<T> instead of throwing exceptions.
+- Prefer value objects over raw primitives, especially when custom behavior or equality are involved.
+- Prefer behavior to live on its owning domain model rather than as helper functions or classes.
+- Diff nodes are built through factories (`TableDiff.Added(...)`, `ColumnDiff.Removed(...)`, `PrimaryKeyDiff.CommentChanged(...)`), not constructors, so a change that cannot happen cannot be expressed. Refine with `with`.
+- Prefer narrowing (`is { } value`, `[MemberNotNullWhen]`) over the null-forgiving `!`, which should not appear outside the odd BCL-annotation gap.
+
+### Layers
+
+The codebase is feature sliced. Each slice owns one pipeline stage or one piece of infrastructure, and is divided into
+a **domain layer** (`<Slice>/Domain/` — the model and the services over it) and the **application services** other
+slices call it through (directly in `<Slice>/`, e.g. `IDatabaseStateManager`, `IProjectProvider`).
+
+The kernel — usable by every slice, dependent on none:
+
+- `Diagnostics/` — `Result<T>`, `Diagnostic`, `PolicyEnforcement`. A global using.
+- `Model/` — the schema model, rooted at `Database`. What every other slice describes.
+- `Extensions/` — collection helpers. A global using.
+
+The slices:
+
+- `Project/` — the declared project. `Domain/` (directives), `Nsql/` (the language: lexer, parser, syntax, writer), `Projection/` (syntax → model), `Policies/`.
+- `Diff/` — `Domain/` rooted at `DatabaseDiff`, the complete current→desired difference. `Rendering/` projects it into a `DiffDocument`.
+- `Plan/` — `Domain/` rooted at `MigrationPlan`: the diff plus the SQL that executes it. `PlanFile/` persists one; `Policies/` validates one.
+- `Apply/` — `ISqlExecutor` and the transaction mode; the only online write.
+- `State/`, `Deployment/`, `Configuration/`, `Plugins/` — recorded state, the live database, project configuration, and the plugin contract.
+- `Operations/` — the shell that drives the slices. Nothing depends on it.
+
+`<Slice>/Plugins/` holds the seams a provider package implements downstream — `SqlDialect` (`Plan`), `SqlEquivalence`
+(`Diff`), `IDatabaseIntrospector` (`Deployment`), state stores and locks (`State`). Core ships no dialect.
+
+Which slice may depend on which is declared as a table in `tests/NSchema.Core.Tests/Architecture/` and enforced by
+ArchUnit — add an edge there deliberately, or the build fails. Namespaces match folders, also enforced.
+
+### Operations
+
+Each operation is its own vertical slice: handlers are registered as `IOperation<{Name}Arguments, Result<{Name}Result>>` and invoked through the public `INSchemaOperations` facade (`app.Operations`). Operations narrate transient progress through `IProgress<OperationProgress>` and leave rendering, locking, and confirmation to the caller.
+
+Built-in operations (`src/NSchema.Core/Operations/`):
+
+- **`PlanOperation`** (`Plan`) — computes a plan without executing. A plan always diffs recorded state against the target. Teardowns are produced by comparing against `Empty`. The plan carries `MigrationPlan.Managed`.
+- **`ApplyOperation`** (`Apply`) — executes a migration plan against a given database. If a plan file is not supplied, it will generate a fresh one. Applying always re-runs any policies for safety.
+- **`RefreshOperation`** — captures the live schema to the state store without planning or applying.
+- **`ValidateOperation`** — loads the project and validates it against registered `IProjectPolicy` implementations; no planning/applying.
+- **`DriftOperation`** — reads recorded (offline) state and live (online) schema and compares (direction recorded → live, so an out-of-band add reads as `Add`).
+- **`ImportOperation`** — fetches the live schema (optionally restricted by `Scope`) and writes it under `OutputDirectory` as NSQL via `NsqlWriter`.
+- **`DoctorOperation`** — runs read-only health checks against the configured infrastructure and reports the outcome of each.
+
+**`IMigrationWorkflow`** (`Operations/Workflow/`) is the imperative shell around the pure planner shared by `Plan`, `Apply`, `Refresh`, and `Validate`: `ComputePlan(target, scope)` resolves the target (the project, or nothing for a teardown) and the recorded current side, then runs `IMigrationPlanner` (returning `Result<MigrationPlan>`), `Validate()` runs just the project policies, and `Refresh()` captures the live schema to the store, returning `Result<StateCapture>` (a failure when no store is configured). `Drift`, `Import`, and `Doctor` do **not** use the workflow — they talk to `IDatabaseProvider` / `IDatabaseComparer` / the importer directly. The workflow does not lock, confirm, or render.
+
+### Database
+
+- Database providers are plugins.
+
+### State
+
+- Like Terraform, NSchema tracks the managed state in a backend store.
+- Unlike Terraform, the state includes a snapshot of the entire database schema, along with an index of which objects are managed. This is so that migrations don't cause unexpected errors due to keys or indexes not included in the original plan.
+- The state also stores a list of which migration scripts have already been run, so they remain idempotent
+- The state store supports locking via the `IStateLock` interface, accessible through `IStateLockManager` by consumers.
+- Locking is expected to be done manually by the consumer, where needed.
+
+### Planner pipeline
+
+`MigrationPlanner` (`Plan/Domain/Services/MigrationPlanner.cs`) conducts the pipeline, producing `Result<MigrationPlan>` — the complete artifact — with any `PolicyDiagnostic`s riding on the `Result`. **A policy block is a failure that still carries the complete plan** ("may not apply", not "stopped computing"): every stage runs regardless, and error severity is what blocks application — the CLI decides how to act. **The line between the stages: Diff answers "what is different" — schema changes and the script runs they imply; Plan answers "how it executes" — order and SQL.** Stages:
+
+1. **Project stage** — runs every `IProjectPolicy` against the declared `ProjectDefinition` (schema plus scripts). Also exposed standalone as `IMigrationPlanner.Validate(project)` (used by the validate operation).
+2. **Diff stage** — `IProjectComparer` produces the complete `DatabaseDiff`: `IDatabaseComparer` emits the structural tree directly (no flat-action intermediate), run-once resolution drops already-executed **deployment** declarations (their skip warnings are diff-stage diagnostics; change-event scripts have no ledger and pass through, gated by the compare), and the matcher inlines each change-event script on the node it prepares while the deployment scripts ride the diff's root `DeploymentScripts` list (an unmatched change-event script is a dead-migration info).
+3. **Linearize stage** — `IPlanLinearizer` (default `PlanLinearizer`) walks the diff and emits `MigrationAction`s in a safe dependency order, weaving the diff's own scripts in as `ExecuteScript` actions: each change node's inlined `MigrationScript` splices at that change, the root's deployment scripts bookend the list (pre first, post last).
+4. **Render stage** — the planner walks the actions in order and renders each through the required `SqlDialect` (one action in, one or more statements out — decomposition, never reordering), scripts included: an `ExecuteScript` typically renders as its verbatim `Statement` (the action carries that default), but a dialect may validate or normalize the SQL. A rendering's diagnostics ride the plan result — an action the dialect doesn't support is an error that blocks application, not an exception. The artifact is the diff plus the statements; the actions themselves are discarded.
+5. **Plan stage** — runs every `IPlanPolicy` against the complete artifact, post-render, so policies see exactly what an apply would execute (the diff, its scripts, and the statements) — a matched backfill legitimately suppresses the data-hazard warning because script coverage rides the plan's diff. The built-ins run here: `DestructiveActionPolicy` (enforcing `DestructiveActionOptions.Policy`), `DataHazardPolicy`, and `EnumValueRemovalPolicy`. Apply re-runs the same policies against the plan it is given.
+
 ## Test conventions
 
-Tests use `// Arrange` / `// Act` / `// Assert` sections and a single member-level `_sut` field where the system under
-test is an instance (static types use a small invocation helper instead). Mocks use NSubstitute, assertions use Shouldly.
-Test parallelization is disabled assembly-wide (`[assembly: CollectionBehavior(DisableTestParallelization = true)]` in
-`AssemblyInfo.cs`) because config resolution reads and mutates process-global state — environment variables, and the
-current working directory via `--directory`. Tests that touch that state restore it: env-var tests (e.g.
-`OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they use in their constructor and `Dispose`,
-and the cwd-changing tests (`ConfigurationFactoryTests`) save and restore the working directory.
+- Tests use `// Arrange` / `// Act` / `// Assert` heading comments, and a single member-level `_sut` field where the
+  system under test is an instance (static types use a small invocation helper instead).
+  - Omit a heading that has no content — a test with nothing to set up starts at `// Act`.
+  - Single-expression tests need no headings; there is nothing to separate.
+  - Some older tests predate the convention. Bring a test class up to it when you touch it, rather than in bulk.
+- Testing framework is **xUnit V3**; mocks use **NSubstitute**; assertions use **Shouldly**.
+- Output surfaces (the diff renderer, plan renderer, the diagnostic catalogue, …) are snapshot-tested with **Verify**.
+- `NSchema.Core.Tests` uses a combination of unit, integration, and e2e tests, as outlined by the testing pyramid;
+  integration tests are done using Testcontainers. Architecture rules live in `tests/NSchema.Core.Tests/Architecture/`
+  and are asserted, not just described.
+- `NSchema.Tests` disables test parallelization assembly-wide (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`
+  in `AssemblyInfo.cs`) because config resolution reads and mutates process-global state — environment variables, and the
+  current working directory via `--directory`. Tests that touch that state restore it: env-var tests (e.g.
+  `OptionBindingTests`, `ConsoleFactoryTests`) snapshot and clear the variables they use in their constructor and
+  `Dispose`, and the cwd-changing tests (`ConfigurationFactoryTests`) save and restore the working directory.
+
+## When writing documentation and XML/code comments
+
+- Don't overdocument everything. A brief, single-line summary is enough for XML docs. In some advanced cases where explanation is actually needed, then add another sentence or two in a Remarks block.
+- When writing code comments, be aware that repeating the same reasoning in multiple places creates coupling and very quickly becomes out of date, so keep comments restricted to what actually matters at the place they're written.
+- Don't expose implementation details in documentation or changelogs, as documentation is a form of contract, so changing an implementation becomes a breaking change.
+- Stop confirming negatives. If I ask you to change something like "you've accidentally coupled these two services", don't then go and add five comments in various places saying "these two classes aren't coupled", because nobody was expecting them to be in the first place.
