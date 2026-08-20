@@ -432,6 +432,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
+[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.12.0...HEAD
 [5.12.0]: https://github.com/nschema-org/NSchema/compare/v5.11.5...v5.12.0
 [5.11.5]: https://github.com/nschema-org/NSchema/compare/v5.11.4...v5.11.5
 [5.11.4]: https://github.com/nschema-org/NSchema/compare/v5.11.3...v5.11.4
