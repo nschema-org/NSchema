@@ -6,6 +6,7 @@
     <AssemblyName>NSchema.Core</AssemblyName>
     <RootNamespace>NSchema</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>NSchema.Core</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>devops;cicd;build;automation;pipelines;databases;schema;rdbms;deployment;migration</PackageTags>

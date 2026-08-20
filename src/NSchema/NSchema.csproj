@@ -5,6 +5,7 @@
     <Description>A declarative database schema migration tool built for .NET</Description>
     <OutputType>Exe</OutputType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>nschema</ToolCommandName>
     <PackageId>NSchema</PackageId>

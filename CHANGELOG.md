@@ -6,11 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## Versioning policy
 
-This package uses **lockstep major versioning** with the core NSchema package: `NSchema X.*.*` is built on `NSchema.Core X.*.*`, so version
-compatibility is always clear.
+The `NSchema` CLI and the `NSchema.Core` engine ship from this repository with a **single shared version**: a release tags once and publishes both
+packages, so `NSchema X.Y.Z` is always built on `NSchema.Core X.Y.Z`.
 
-As a consequence, breaking changes that are specific to this provider (rather than the core API) are signalled by a **minor version bump** rather than
-a major one, and called out explicitly in this changelog.
+Breaking changes that are specific to the CLI surface (rather than the core API) may be signalled by a **minor version bump** rather than a major
+one, and are called out explicitly in this changelog.
+
+Entries up to and including 5.12.0 predate the repository merge and cover the CLI package alone; the engine's pre-merge history is preserved at
+`src/NSchema.Core/CHANGELOG.md`.
+
+## [Unreleased]
+
+### Changed
+
+- **Repository merge.** The `NSchema.Core` engine now lives in this repository and ships with the CLI from a shared tag, with one version covering
+  both packages.
 
 ## [5.12.0] - 2026-08-17
 

@@ -1,6 +1,6 @@
 # ![NSchema](https://raw.githubusercontent.com/nschema-org/NSchema.Docs/main/assets/nschema-logo-horizontal.png)
 
-[![NSchema.Core](https://github.com/nschema-org/NSchema.Core/actions/workflows/cicd.yml/badge.svg)](https://github.com/nschema-org/NSchema.Core/actions/workflows/cicd.yml)
+[![NSchema.Core](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml/badge.svg)](https://github.com/nschema-org/NSchema/actions/workflows/cicd.yml)
 
 NSchema.Core is the engine behind the [NSchema CLI](https://github.com/nschema-org/NSchema), a declarative database schema migration tool. You describe the schema you want using familiar SQL syntax; the library compares it against the current state of your database and runs the SQL to bring it in line.
 
