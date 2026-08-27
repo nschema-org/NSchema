@@ -1,6 +1,7 @@
 using NSchema.Commands;
 using NSchema.Configuration;
 using Spectre.Console;
+using Wolfe.CommandLine.Completions;
 
 var root = RootCommand.Create();
 var parseResult = root.Parse(args);
@@ -12,6 +13,9 @@ var colorDisabled = CommonOptions.NoColor.GetValueOrDefault(parseResult, false);
 AnsiConsole.Console = ConsoleFactory.Create(Console.Out, colorDisabled);
 
 var reporter = ReporterFactory.CreateReporter(parseResult);
+
+// Offers first-run tab-completion install for the user's shell.
+await CompletionAutoInstall.Run(RootCommand.CommandName, args);
 
 try
 {
