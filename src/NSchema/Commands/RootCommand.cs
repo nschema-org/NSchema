@@ -1,7 +1,5 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using NSchema.Commands.Apply;
-using NSchema.Commands.Completion;
 using NSchema.Commands.Database;
 using NSchema.Commands.Destroy;
 using NSchema.Commands.Doctor;
@@ -18,11 +16,17 @@ using NSchema.Commands.Script;
 using NSchema.Commands.State;
 using NSchema.Commands.Validate;
 using NSchema.Configuration;
+using Wolfe.CommandLine;
 
 namespace NSchema.Commands;
 
 internal static class RootCommand
 {
+    /// <summary>
+    /// The name the tool is invoked by, as the completion scripts must spell it.
+    /// </summary>
+    internal const string CommandName = "nschema";
+
     public static System.CommandLine.RootCommand Create()
     {
         var root = new System.CommandLine.RootCommand("A declarative database schema migration tool.");
@@ -52,11 +56,8 @@ internal static class RootCommand
         root.Subcommands.Add(DoctorCommand.Create());
         root.Subcommands.Add(LockCommand.Create());
         root.Subcommands.Add(PluginCommand.Create());
-        root.Subcommands.Add(CompletionCommand.Create());
 
-        // Backs `nschema [suggest:<pos>] "<command line>"`, which the shell-completion scripts call to compute
-        // candidates for the current word. The `completion <shell>` command emits those scripts.
-        root.Add(new System.CommandLine.Completions.SuggestDirective());
+        root.AddCompletions(CommandName);
 
         AddConflictingFlagValidators(root);
 

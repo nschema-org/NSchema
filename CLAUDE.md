@@ -62,7 +62,8 @@ while `validate` touches no infra yet orchestrates parse+diff. Applied **in orde
    state pull / push and script list / taint / untaint — read → mutate → write loops over the public
    `IDatabaseStateManager` (`app.State`), with untaint taking the declaration's body hash from `app.ProjectDefinition`;
    plugin list / show / cache list / remove / clear — thin over the local plugin cache (`PluginCache`) and
-   project config; init, format, completion.)*
+   project config; init, format. The `completion` group is not CLI code at all — it, the suggest directive, and
+   first-run auto-install come from the external `Wolfe.CommandLine` package, wired in `RootCommand`/`Program.cs`.)*
 
 The reusable behaviour for these commands lives in Core (the contracts and their implementations); the CLI command is
 just a caller, so there's no Core operation to wrap it. Exposing a primitive publicly for the CLI to consume is a
@@ -173,7 +174,7 @@ whichever step first fails — reporting its diagnostics and returning `ExitCode
 `CommandContext<TConfiguration>` (the built `CliApplication`, the validated config, the `ParseResult`, the
 environment). It also prints the environment banner, which `state pull` and `script hash` opt out of
 (`announceEnvironment: false`) when stdout is a payload rather than a report. Commands that configure nothing
-(`plan show`, `completion`, `init`, `new`) or that need the builder itself in the body (`doctor`, which reports plugin
+(`plan show`, `init`, `new`) or that need the builder itself in the body (`doctor`, which reports plugin
 failures via `TryConfigureDatabase`/`TryConfigureState` rather than stopping on them) deliberately bypass it.
 
 The provider/backend slices are now **plain data**, not `IBindable`:
@@ -241,9 +242,10 @@ legitimately change these bytes?* If not, the bytes are a contract with a consum
 rather than a rendering, and the command writes them raw — `completion <shell>` emits a shell script, `state pull`
 the recorded payload verbatim (so pull/push round-trips byte-for-byte), `script hash <name>` a bare hash so
 `$(nschema script hash x)` works, `format` the formatted source plus the compiler-style file list and
-`path(line,col): message` errors an editor or CI problem matcher parses. Two commands split *within themselves* on
-exactly this line — `script hash`'s listing form goes through `ReportScriptHashes` while its single-value form writes
-raw; `completion install/uninstall` narrate while bare `completion <shell>` writes raw — and `announceEnvironment` is
+`path(line,col): message` errors an editor or CI problem matcher parses. (`completion` behaves the same way — raw
+script on stdout, narrated install/uninstall — but as the `Wolfe.CommandLine` package's command group its writes happen
+outside the reporter.) One command splits *within itself* on exactly this line — `script hash`'s listing form goes
+through `ReportScriptHashes` while its single-value form writes raw — and `announceEnvironment` is
 computed per-invocation (`announceEnvironment: parseResult.GetValue(NameArgument) is null`) so the banner is suppressed
 exactly when *that* invocation's stdout is a payload. A command whose whole surface is a payload **rejects the
 presentation flags** rather than ignoring them silently (`format` errors on `--json`/`--format`/`--quiet`/`--verbose`).

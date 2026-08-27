@@ -15,12 +15,18 @@ one, and are called out explicitly in this changelog.
 Entries up to and including 5.12.0 predate the repository merge and cover the CLI package alone; the engine's pre-merge history is preserved at
 `src/NSchema.Core/CHANGELOG.md`.
 
-## [Unreleased]
+## [5.13.0] - 2026-08-27
+
+### Added
+
+- **Tab completion installs itself.** The first time `nschema` runs at an interactive terminal, it installs completion for the current shell.
+- The install is gated behind a `[y/N]` prompt when a startup file would have to be edited.
+- It never triggers on CI, in pipes, or more than once per shell (a decline is remembered).
 
 ### Changed
 
-- **Repository merge.** The `NSchema.Core` engine now lives in this repository and ships with the CLI from a shared tag, with one version covering
-  both packages.
+- **Repository merge.** The `NSchema.Core` engine now lives in this repository and ships with the CLI from a shared tag, with one version covering both packages.
+- **`completion install` avoids startup-file edits where it can.** It now prefers a directory the shell loads completions from automatically.
 
 ## [5.12.0] - 2026-08-17
 
@@ -432,7 +438,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
-[Unreleased]: https://github.com/nschema-org/NSchema/compare/v5.12.0...HEAD
+[5.13.0]: https://github.com/nschema-org/NSchema/compare/v5.12.0...v5.13.0
 [5.12.0]: https://github.com/nschema-org/NSchema/compare/v5.11.5...v5.12.0
 [5.11.5]: https://github.com/nschema-org/NSchema/compare/v5.11.4...v5.11.5
 [5.11.4]: https://github.com/nschema-org/NSchema/compare/v5.11.3...v5.11.4
