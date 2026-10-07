@@ -485,7 +485,8 @@ public sealed class DiffDocumentTests
     {
         // Arrange
         var table = Table("orders", ChangeKind.Add, columns: [AddColumn(new Column { Name = "id", Type = SqlType.Int })])
-            with { ReplicaIdentity = new ValueChange<ReplicaIdentity>(null, ReplicaIdentity.Full) };
+            with
+        { ReplicaIdentity = new ValueChange<ReplicaIdentity>(null, ReplicaIdentity.Full) };
 
         // Act
         var lines = DiffDocument.From(WithTable(table)).Lines;
