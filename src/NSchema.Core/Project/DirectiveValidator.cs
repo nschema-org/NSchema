@@ -25,7 +25,8 @@ internal static class DirectiveValidator
 
         return ValidateSchemaRenames(directives, index)
             .Concat(ValidateObjectRenames(directives, index, declaredNames))
-            .Concat(ValidateColumnRenames(directives, index, declaredNames));
+            .Concat(ValidateColumnRenames(directives, index, declaredNames))
+            .Concat(ValidatePublicationRenames(project));
     }
 
     private static IEnumerable<Diagnostic> ValidateSchemaRenames(ProjectDirectives directives, DatabaseLookup index)
@@ -46,6 +47,30 @@ internal static class DirectiveValidator
             if (index.FindSchema(rename.From.Name) is not null)
             {
                 yield return ProjectDiagnostics.RenameSourceStillDeclared("schema", rename.From, rename.To.Name);
+            }
+        }
+    }
+
+    private static IEnumerable<Diagnostic> ValidatePublicationRenames(ProjectDefinition project)
+    {
+        var renames = project.Directives.PublicationRenames;
+        foreach (var d in ValidateRenameShape("publication",
+                     [.. renames.Select(r => (Container: 0, From: r.From.Name, To: r.To.Name))],
+            (_, name) => DatabaseAddress.Publication(name)))
+        {
+            yield return d;
+        }
+
+        var declared = project.Database.Publications.Select(p => p.Name).ToHashSet();
+        foreach (var rename in renames)
+        {
+            if (!declared.Contains(rename.To.Name))
+            {
+                yield return ProjectDiagnostics.RenameTargetNotDeclared("publication", rename.From, rename.To.Name);
+            }
+            if (declared.Contains(rename.From.Name))
+            {
+                yield return ProjectDiagnostics.RenameSourceStillDeclared("publication", rename.From, rename.To.Name);
             }
         }
     }

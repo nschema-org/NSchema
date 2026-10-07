@@ -6,6 +6,7 @@ using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
@@ -88,6 +89,7 @@ public sealed class DatabaseRendererSnapshotTests
         var orders = new Table
         {
             Name = "orders",
+            ReplicaIdentity = ReplicaIdentity.Full,
             Columns = [new Column { Name = "id", Type = SqlType.BigInt }, new Column { Name = "user_id", Type = SqlType.BigInt }],
             ForeignKeys =
             [
@@ -190,6 +192,22 @@ public sealed class DatabaseRendererSnapshotTests
                 new Extension { Name = "citext" },
                 new Extension { Name = "postgis", Version = "3.4", Comment = "spatial types" },
             ],
+            Publications =
+            [
+                new Publication
+                {
+                    Name = "orders_feed",
+                    Tables =
+                    [
+                        new PublishedTable(new ObjectAddress("app", "orders"), ["id", "user_id"], "user_id > 0"),
+                        new PublishedTable(new ObjectAddress("app", "users")),
+                    ],
+                    Schemas = ["audit"],
+                    Operations = PublishedOperations.Insert | PublishedOperations.Update,
+                    Comment = "order changes",
+                },
+                new Publication { Name = "everything", AllTables = true },
+            ],
         };
     }
 
@@ -205,7 +223,7 @@ public sealed class DatabaseRendererSnapshotTests
     /// </summary>
     [Fact]
     public Task Render_RichSchema_WithManagedSet() => Verify(DatabaseRenderer.Render(RichSchema(), new IdentitySet(
-        DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Extension("citext")],
+        DatabaseObjects: [DatabaseAddress.Schema("app"), DatabaseAddress.Extension("citext"), DatabaseAddress.Publication("orders_feed")],
         SchemaObjects:
         [
             ObjectAddress.Table("app", "users"),

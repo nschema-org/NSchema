@@ -7,6 +7,7 @@ using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
 using NSchema.Model;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Services;
@@ -18,6 +19,7 @@ using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
 using NSchema.Plan.Domain.Indexes;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Scripts;
@@ -53,6 +55,8 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         EmitRoutines(diff, actions);
         EmitViews(diff, actions);
         EmitDroppedTables(diff, dependencies, capabilities, actions);
+        EmitPublications(diff, actions);
+        EmitRepublished(diff, dependencies, actions);
 
         actions = [.. MigrationActionOrdering.Order(actions, dependencies)];
 
@@ -377,6 +381,99 @@ internal sealed class PlanLinearizer : IPlanLinearizer
         }
     }
 
+    /// <summary>
+    /// Emits the publication actions. Switching between every table and a list cannot be altered, so it
+    /// recreates; a changed entry is removed and added again, since an entry's columns and filter are set together.
+    /// </summary>
+    private static void EmitPublications(DatabaseDiff diff, List<MigrationAction> actions)
+    {
+        foreach (var publication in diff.Publications)
+        {
+            if (publication.Change == ChangeKind.Remove)
+            {
+                actions.Add(new DropPublication(publication.Name));
+                continue;
+            }
+
+            if (publication.IsAdd() || publication.RequiresRecreate)
+            {
+                if (publication.RequiresRecreate)
+                {
+                    actions.Add(new DropPublication(publication.RenamedFrom ?? publication.Name));
+                }
+                actions.Add(new CreatePublication(publication.Definition));
+            }
+            else
+            {
+                if (publication.RenamedFrom is { } renamedFrom)
+                {
+                    actions.Add(new RenamePublication(renamedFrom, publication.Name));
+                }
+                foreach (var table in publication.Tables)
+                {
+                    if (table.Previous is not null)
+                    {
+                        actions.Add(new DropPublicationTable(publication.Name, table.Table));
+                    }
+                    if (table.Definition is { } entry)
+                    {
+                        actions.Add(new AddPublicationTable(publication.Name, entry));
+                    }
+                }
+                foreach (var schema in publication.Schemas)
+                {
+                    actions.Add(schema.Change == ChangeKind.Add
+                        ? new AddPublicationSchema(publication.Name, schema.Schema)
+                        : new DropPublicationSchema(publication.Name, schema.Schema));
+                }
+                if (publication.Operations is { } operations)
+                {
+                    actions.Add(new SetPublicationOperations(publication.Name, operations.Old, operations.New));
+                }
+            }
+
+            if (publication.Comment is { } comment)
+            {
+                actions.Add(new SetPublicationComment(publication.Name, comment.Old, comment.New));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Takes the publication entries reading a column out of the way of its type change, and puts them back after:
+    /// an engine may refuse to retype a column a publication reads.
+    /// </summary>
+    /// <remarks>
+    /// An entry the diff already changes is removed and added anyway, and a column being dropped changes every
+    /// entry that names it, so only a retyped column needs this.
+    /// </remarks>
+    private static void EmitRepublished(DatabaseDiff diff, PlanDependencies dependencies, List<MigrationAction> actions)
+    {
+        var changed = diff.Publications.ToDictionary(p => p.Name);
+
+        var republished = diff.Schemas
+            .SelectMany(schema => schema.Tables)
+            .Where(table => table.Change == ChangeKind.Modify)
+            .SelectMany(table => table.Columns
+                .Where(column => column.Type is not null)
+                .Select(column => new MemberAddress(table.Schema, table.Name, column.Name)))
+            .SelectMany(dependencies.PublishedReading)
+            .Where(Untouched)
+            .Distinct();
+
+        foreach (var (publication, entry) in republished)
+        {
+            actions.Add(new DropPublicationTable(publication, entry.Table));
+            actions.Add(new AddPublicationTable(publication, entry));
+        }
+
+        // A publication the diff creates, drops or recreates is rebuilt whole, and an entry it changes is rebuilt already.
+        bool Untouched((SqlIdentifier Publication, PublishedTable Entry) x) =>
+            !changed.TryGetValue(x.Publication, out var publication)
+            || (publication is { Change: ChangeKind.Modify, RequiresRecreate: false }
+                && publication.Tables.All(t => t.Table.Schema != x.Entry.Table.Schema || t.Table.Name != x.Entry.Table.Name));
+    }
+
     private static void EmitSchema(SchemaDiff schema, List<MigrationAction> actions)
     {
         switch (schema.Change)
@@ -611,6 +708,7 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitIndexes(table, actions);
                 EmitTriggers(table, actions);
                 EmitGrants(table, actions);
+                EmitReplicaIdentity(table, actions);
                 break;
 
             case ChangeKind.Remove:
@@ -639,7 +737,16 @@ internal sealed class PlanLinearizer : IPlanLinearizer
                 EmitIndexes(table, actions);
                 EmitTriggers(table, actions);
                 EmitGrants(table, actions);
+                EmitReplicaIdentity(table, actions);
                 break;
+        }
+    }
+
+    private static void EmitReplicaIdentity(TableDiff table, List<MigrationAction> actions)
+    {
+        if (table.ReplicaIdentity is { } identity)
+        {
+            actions.Add(new SetReplicaIdentity(new ObjectAddress(table.Schema, table.Name), identity.Old, identity.New));
         }
     }
 

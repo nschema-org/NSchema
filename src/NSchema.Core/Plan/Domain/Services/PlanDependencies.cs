@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Publications;
 using NSchema.Model.Services;
 using NSchema.Model.Tables;
 
@@ -49,6 +50,19 @@ internal sealed class PlanDependencies(Database current, Database desired)
     /// The foreign keys the current database points at <paramref name="address"/> with.
     /// </summary>
     public IReadOnlyCollection<MemberAddress> ForeignKeysInto(ObjectAddress address) => _current.ForeignKeysInto(address);
+
+    /// <summary>
+    /// The publication entries the project declares that read the column at <paramref name="address"/>.
+    /// </summary>
+    public IReadOnlyCollection<(SqlIdentifier Publication, PublishedTable Entry)> PublishedReading(MemberAddress address) =>
+        [.. _desired.DependentsOf(new DependencyNode(address, DependencyKind.Column))
+            .Where(node => node.Kind == DependencyKind.Publication)
+            .Select(node => node.Address)
+            .OfType<DatabaseAddress>()
+            .SelectMany(publication => desired.Publications.Where(p => p.Name == publication.Name))
+            .SelectMany(publication => publication.Tables
+                .Where(entry => entry.Table.Schema == address.Schema && entry.Table.Name == address.Object)
+                .Select(entry => (publication.Name, entry)))];
 
     /// <summary>
     /// The triggers the current database carries on the table at <paramref name="address"/>.

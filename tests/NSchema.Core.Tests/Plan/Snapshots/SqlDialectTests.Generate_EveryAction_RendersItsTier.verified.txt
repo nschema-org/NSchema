@@ -96,6 +96,12 @@
     ]
   },
   {
+    Action: SetReplicaIdentity,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set replica identity' action.
+    ]
+  },
+  {
     Action: AddColumn,
     Statements: [
       -- engine-specific AddColumn
@@ -508,6 +514,60 @@
     Action: SetExtensionComment,
     Diagnostics: [
       Error: TestDialect does not support the 'set extension comment' action.
+    ]
+  },
+  {
+    Action: CreatePublication,
+    Diagnostics: [
+      Error: TestDialect does not support the 'create publication' action.
+    ]
+  },
+  {
+    Action: DropPublication,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop publication' action.
+    ]
+  },
+  {
+    Action: RenamePublication,
+    Diagnostics: [
+      Error: TestDialect does not support the 'rename publication' action.
+    ]
+  },
+  {
+    Action: AddPublicationTable,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add publication table' action.
+    ]
+  },
+  {
+    Action: DropPublicationTable,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop publication table' action.
+    ]
+  },
+  {
+    Action: AddPublicationSchema,
+    Diagnostics: [
+      Error: TestDialect does not support the 'add publication schema' action.
+    ]
+  },
+  {
+    Action: DropPublicationSchema,
+    Diagnostics: [
+      Error: TestDialect does not support the 'drop publication schema' action.
+    ]
+  },
+  {
+    Action: SetPublicationOperations,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set publication operations' action.
+    ]
+  },
+  {
+    Action: SetPublicationComment,
+    Diagnostics: [
+      Error: TestDialect does not support the 'set publication comment' action.
     ]
   },
   {

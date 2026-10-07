@@ -5,6 +5,7 @@ using NSchema.Plan.Domain.Constraints;
 using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Indexes;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
@@ -44,6 +45,7 @@ internal class StubSqlDialect : SqlDialect
     protected override Result<IReadOnlyList<SqlStatement>> GrantTablePrivileges(GrantTablePrivileges action) => Comment(action);
     protected override Result<IReadOnlyList<SqlStatement>> RevokeTablePrivileges(RevokeTablePrivileges action) => Comment(action);
     protected override Result<IReadOnlyList<SqlStatement>> SetTableComment(SetTableComment action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> SetReplicaIdentity(SetReplicaIdentity action) => Comment(action);
 
     protected override Result<IReadOnlyList<SqlStatement>> AddColumn(AddColumn action) => Comment(action);
     protected override Result<IReadOnlyList<SqlStatement>> DropColumn(DropColumn action) => Comment(action);
@@ -115,6 +117,16 @@ internal class StubSqlDialect : SqlDialect
     protected override Result<IReadOnlyList<SqlStatement>> DropExtension(DropExtension action) => Comment(action);
     protected override Result<IReadOnlyList<SqlStatement>> AlterExtension(AlterExtension action) => Comment(action);
     protected override Result<IReadOnlyList<SqlStatement>> SetExtensionComment(SetExtensionComment action) => Comment(action);
+
+    protected override Result<IReadOnlyList<SqlStatement>> CreatePublication(CreatePublication action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> DropPublication(DropPublication action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> RenamePublication(RenamePublication action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> AddPublicationTable(AddPublicationTable action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> DropPublicationTable(DropPublicationTable action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> AddPublicationSchema(AddPublicationSchema action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> DropPublicationSchema(DropPublicationSchema action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> SetPublicationOperations(SetPublicationOperations action) => Comment(action);
+    protected override Result<IReadOnlyList<SqlStatement>> SetPublicationComment(SetPublicationComment action) => Comment(action);
 
     protected override Result<IReadOnlyList<SqlStatement>> ExecuteScript(ExecuteScript action) => Statements(action.Statement);
 }

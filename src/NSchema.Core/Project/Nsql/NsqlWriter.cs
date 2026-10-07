@@ -164,7 +164,9 @@ public static class NsqlWriter
 
     private static string Body(NsqlStatement statement) => statement switch
     {
-        CreateTableStatement table => Broken(Header(statement, table.OpenParenToken), RenderMembers(table.Members, table.CloseParenToken)) + NsqlSymbols.Semicolon,
+        CreateTableStatement table => Broken(Header(statement, table.OpenParenToken), RenderMembers(table.Members, table.CloseParenToken))
+            + (table.ReplicaIdentity is { } identity ? " " + NodeText(identity) : "")
+            + NsqlSymbols.Semicolon,
         SettingsStatement settings => Broken(Header(statement, settings.OpenParenToken), RenderMembers(settings.Settings, settings.CloseParenToken)) + NsqlSymbols.Semicolon,
         SchemaTemplateStatement template => Template(template),
         TableTemplateStatement template => Template(template),

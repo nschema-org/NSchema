@@ -6,6 +6,7 @@ using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
@@ -15,6 +16,7 @@ using NSchema.Model.Views;
 using NSchema.Model.XmlSchemaCollections;
 using NSchema.Project.Nsql;
 using NSchema.Project.Nsql.Syntax.Routines;
+using NSchema.Project.Nsql.Tokens;
 using Syn = NSchema.Project.Nsql.Syntax;
 
 namespace NSchema.Project.Projection;
@@ -91,6 +93,9 @@ internal static class DocumentProjector
                 }
             case Syn.Extensions.CreateExtensionStatement s:
                 schemas.AddExtension(new Extension { Name = Name(s.Name), Version = s.Version, Comment = s.Doc }, s.Name.Position);
+                break;
+            case Syn.Publications.CreatePublicationStatement s:
+                schemas.AddPublication(ProjectPublication(s), s.Name.Position);
                 break;
             case Syn.Triggers.CreateTriggerStatement s:
                 {
@@ -272,11 +277,51 @@ internal static class DocumentProjector
     {
         var (schema, name) = Bind(statement.Name, context);
         var (table, includes) = ProjectTableMembers(name, statement.Doc, statement.Members, context);
+        table.ReplicaIdentity = statement.ReplicaIdentity is { } identity
+            ? new ReplicaIdentity(identity.Kind, OptionalName(identity.Index))
+            : null;
         schemas.AddTable(schema, table, statement.Name.Position);
         foreach (var (templateName, columnPosition) in includes)
         {
             schemas.AddInclude(new TemplateInclude(new ObjectAddress(schema, name), templateName, columnPosition));
         }
+    }
+
+    private static Publication ProjectPublication(Syn.Publications.CreatePublicationStatement statement)
+    {
+        var targets = statement.Targets.ToList();
+        return new Publication
+        {
+            Name = Name(statement.Name),
+            AllTables = statement.AllTables,
+            Schemas = [.. targets.OfType<Syn.Publications.PublishedSchemaTarget>().Select(t => Name(t.Schema))],
+            Tables =
+            [
+                .. targets.OfType<Syn.Publications.PublishedTableTarget>().Select(t => new PublishedTable(
+                    Address(t.Table),
+                    t.Columns is { } columns ? Names(columns) : null,
+                    t.Filter)),
+            ],
+            Operations = statement.Publish is { } publish
+                ? publish.Operations.Aggregate(PublishedOperations.None, (all, operation) => all | Operation(operation))
+                : PublishedOperations.All,
+            Comment = statement.Doc,
+        };
+
+        // A publication is outside every template, so its table names are always qualified.
+        static ObjectAddress Address(Syn.QualifiedName name)
+        {
+            var (schema, table) = Bind(name, context: null);
+            return new ObjectAddress(schema, table);
+        }
+
+        static PublishedOperations Operation(Syn.Identifier keyword) => keyword.Value.ToUpperInvariant() switch
+        {
+            NsqlKeywords.Insert => PublishedOperations.Insert,
+            NsqlKeywords.Update => PublishedOperations.Update,
+            NsqlKeywords.Delete => PublishedOperations.Delete,
+            _ => PublishedOperations.Truncate,
+        };
     }
 
     private static TableIndex ProjectIndex(Syn.Identifier name, bool isUnique, IReadOnlyList<Syn.Indexes.IndexElement> columns,

@@ -8,6 +8,13 @@ namespace NSchema.Project.Nsql.Tokens;
 internal static class NsqlKeywords
 {
     public const string Action = "ACTION";
+    public const string AllKeyword = "ALL";
+    public const string Full = "FULL";
+    public const string Nothing = "NOTHING";
+    public const string Publication = "PUBLICATION";
+    public const string Publish = "PUBLISH";
+    public const string Replica = "REPLICA";
+    public const string Tables = "TABLES";
     public const string Add = "ADD";
     public const string After = "AFTER";
     public const string Alter = "ALTER";

@@ -1,5 +1,6 @@
 using NSchema.Model;
 using NSchema.Project.Nsql.Syntax;
+using NSchema.Project.Nsql.Syntax.Publications;
 using NSchema.Project.Nsql.Syntax.Schemas;
 using NSchema.Project.Nsql.Syntax.Tables;
 using NSchema.Project.Nsql.Tokens;
@@ -29,6 +30,21 @@ internal sealed partial class NsqlParser
                 DocComment = doc,
                 RenameKeyword = rename,
                 SchemaKeyword = schemaKeyword,
+                ToKeyword = to,
+                SemicolonToken = semicolon,
+            };
+        }
+        if (_current.IsKeyword(NsqlKeywords.Publication))
+        {
+            var publicationKeyword = Advance();
+            var from = ExpectIdentifierNode("a publication name");
+            var (to, target, semicolon) = ParseRenameTarget("a publication name");
+            return new RenamePublicationStatement(from, target)
+            {
+                Doc = doc?.Text,
+                DocComment = doc,
+                RenameKeyword = rename,
+                PublicationKeyword = publicationKeyword,
                 ToKeyword = to,
                 SemicolonToken = semicolon,
             };
@@ -63,7 +79,7 @@ internal sealed partial class NsqlParser
             };
         }
 
-        throw Error("Expected a renameable kind: SCHEMA, TABLE, COLUMN, VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE or ROUTINE.");
+        throw Error("Expected a renameable kind: SCHEMA, TABLE, COLUMN, VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, ROUTINE or PUBLICATION.");
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ schema app ("application schema")
     index users_email_low_ix (status desc nulls last, (lower(email))) using btree include (id)
     trigger users_audit after insert, update of (email) row -> app.log_change ("audit changes")
     grant SELECT, INSERT to readers
-  table orders
+  table orders (replica identity full)
     id bigint not null
     user_id bigint not null
     foreign key orders_user_fk (user_id) -> app.users (id)
@@ -39,3 +39,10 @@ schema app ("application schema")
   sequence invoice_id
   function add_tax(amount numeric, rate numeric) ("adds tax")
   procedure archive_users(before date)
+
+publication orders_feed (publish insert, update) ("order changes")
+  table app.orders (id, user_id) where (user_id > 0)
+  table app.users
+  tables in schema audit
+
+publication everything for all tables

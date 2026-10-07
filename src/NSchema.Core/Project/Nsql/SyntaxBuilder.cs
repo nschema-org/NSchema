@@ -4,6 +4,7 @@ using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
@@ -24,7 +25,7 @@ namespace NSchema.Project.Nsql;
 /// </summary>
 internal static class SyntaxBuilder
 {
-    private static readonly SourcePosition _none = SourcePosition.None;
+    private static readonly SourcePosition None = SourcePosition.None;
 
     public static NsqlDocument Build(Database database, bool declareSchemas = true) =>
         Build(database, ProjectDirectives.Empty, declareSchemas);
@@ -42,6 +43,12 @@ internal static class SyntaxBuilder
         foreach (var definition in database.Schemas)
         {
             AddSchema(statements, definition, declareSchemas);
+        }
+
+        // Publications name tables, so they follow the schemas that declare them.
+        foreach (var publication in database.Publications)
+        {
+            statements.Add(Build(publication));
         }
 
         // Scripts are directives; each kind renders straight from its home on the directives.
@@ -87,6 +94,10 @@ internal static class SyntaxBuilder
                 new MemberPath(Name(rename.From.Schema), Name(rename.From.Object), Name(rename.From.Member)),
                 Name(rename.To))
            );
+        }
+        foreach (var rename in directives.PublicationRenames)
+        {
+            statements.Add(new Syn.Publications.RenamePublicationStatement(Name(rename.From.Name), Name(rename.To.Name)));
         }
 
 
@@ -247,7 +258,10 @@ internal static class SyntaxBuilder
             });
         }
 
-        statements.Add(new Syn.Tables.CreateTableStatement(Qualified(schemaName, table.Name), new SeparatedSyntaxList<Syn.Tables.TableMember>(members))
+        var replicaIdentity = table.ReplicaIdentity is { } identity
+            ? new Syn.Tables.ReplicaIdentityClause(identity.Kind, OptionalName(identity.Index))
+            : null;
+        statements.Add(new Syn.Tables.CreateTableStatement(Qualified(schemaName, table.Name), new SeparatedSyntaxList<Syn.Tables.TableMember>(members), replicaIdentity)
         {
             Doc = table.Comment,
             DocComment = DocToken(table.Comment),
@@ -354,13 +368,59 @@ internal static class SyntaxBuilder
             VersionToken = extension.Version is { } version ? Token.StringLiteral(version) : null,
         };
 
+    private static Syn.Publications.CreatePublicationStatement Build(Publication publication)
+    {
+        // Each run of one kind opens with its keywords, the way the FOR list is written.
+        List<Syn.Publications.PublicationTarget> targets =
+        [
+            .. publication.Tables.Select((table, i) => new Syn.Publications.PublishedTableTarget(
+                Qualified(table.Table.Schema, table.Table.Name),
+                table.Columns is { } columns ? ColumnList(columns) : null,
+                table.Filter)
+            {
+                KindKeywords = i == 0 ? [Token.Keyword(NsqlKeywords.Table)] : [],
+            }),
+            .. publication.Schemas.Select((schema, i) => new Syn.Publications.PublishedSchemaTarget(Name(schema))
+            {
+                KindKeywords = i == 0
+                    ? [Token.Keyword(NsqlKeywords.Tables), Token.Keyword(NsqlKeywords.In), Token.Keyword(NsqlKeywords.Schema)]
+                    : [],
+            }),
+        ];
+
+        var publish = publication.Operations == PublishedOperations.All
+            ? null
+            : new Syn.Publications.PublishClause(new SeparatedSyntaxList<Identifier>(
+            [
+                .. new[]
+                {
+                    (PublishedOperations.Insert, NsqlKeywords.Insert),
+                    (PublishedOperations.Update, NsqlKeywords.Update),
+                    (PublishedOperations.Delete, NsqlKeywords.Delete),
+                    (PublishedOperations.Truncate, NsqlKeywords.Truncate),
+                }
+                .Where(x => publication.Operations.HasFlag(x.Item1))
+                .Select(x => new Identifier(Token.Keyword(x.Item2))),
+            ]));
+
+        return new Syn.Publications.CreatePublicationStatement(
+            Name(publication.Name),
+            publication.AllTables,
+            new SeparatedSyntaxList<Syn.Publications.PublicationTarget>(targets),
+            publish)
+        {
+            Doc = publication.Comment,
+            DocComment = DocToken(publication.Comment),
+        };
+    }
+
     // --- synthetic tokens -------------------------------------------------------------
 
     /// <summary>A synthetic doc-comment token for a comment body, or null when there is none.</summary>
-    private static Token? DocToken(string? comment) => comment is null ? null : new Token(TokenKind.DocComment, comment, _none);
+    private static Token? DocToken(string? comment) => comment is null ? null : new Token(TokenKind.DocComment, comment, None);
 
     /// <summary>A synthetic dollar-quoted string token wrapping <paramref name="body"/>.</summary>
-    private static Token DollarString(SqlText body) => new(TokenKind.DollarString, body.Value, _none) { Raw = DollarBlock(body) };
+    private static Token DollarString(SqlText body) => new(TokenKind.DollarString, body.Value, None) { Raw = DollarBlock(body) };
 
     /// <summary>
     /// An opaque body as a token: dollar-quoted when the bare text would not re-parse (a top-level <c>;</c>

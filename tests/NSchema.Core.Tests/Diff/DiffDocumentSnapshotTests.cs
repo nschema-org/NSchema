@@ -5,6 +5,7 @@ using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Domains;
 using NSchema.Diff.Domain.Enums;
 using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Publications;
 using NSchema.Diff.Domain.Indexes;
 using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Schemas;
@@ -20,6 +21,7 @@ using NSchema.Model.Constraints;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
+using NSchema.Model.Publications;
 using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
@@ -283,6 +285,44 @@ public sealed class DiffDocumentSnapshotTests
     }
 
     /// <summary>
+    /// A diff exercising every publication change kind: an add listing what it publishes, a switch to every table
+    /// (a recreate), a rename carrying table, schema and operation changes, a comment-only change, and a removal.
+    /// </summary>
+    private static DatabaseDiff PublicationChangesDiff()
+    {
+        var orders = new ObjectAddress("sales", "orders");
+        return new DatabaseDiff([])
+        {
+            Publications =
+            [
+                PublicationDiff.Added(new Publication
+                {
+                    Name = "orders_feed",
+                    Tables = [new PublishedTable(orders, ["id", "status"], "status <> 'draft'"), new PublishedTable(new ObjectAddress("sales", "order_lines"))],
+                    Schemas = ["audit"],
+                    Operations = PublishedOperations.Insert | PublishedOperations.Update,
+                    Comment = "order changes",
+                }),
+                PublicationDiff.Recreated(new Publication { Name = "everything", AllTables = true }, wasAllTables: false),
+                PublicationDiff.Modified("customer_feed") with
+                {
+                    RenamedFrom = "legacy_customer_feed",
+                    Tables =
+                    [
+                        PublishedTableDiff.Added(new PublishedTable(new ObjectAddress("sales", "customers"))),
+                        PublishedTableDiff.Removed(new PublishedTable(new ObjectAddress("sales", "leads"))),
+                        PublishedTableDiff.Modified(new PublishedTable(orders), new PublishedTable(orders, Filter: "total > 0")),
+                    ],
+                    Schemas = [new PublishedSchemaChange(ChangeKind.Remove, "archive")],
+                    Operations = new ValueChange<PublishedOperations>(PublishedOperations.All, PublishedOperations.Insert),
+                },
+                PublicationDiff.Modified("notes_feed") with { Comment = new ValueChange<string>("old note", "new note") },
+                PublicationDiff.Removed("legacy_feed"),
+            ],
+        };
+    }
+
+    /// <summary>
     /// A diff exercising trigger changes on a table: an add, a comment-only modify, and a removal.
     /// </summary>
     private static DatabaseDiff TriggerChangesDiff()
@@ -378,6 +418,9 @@ public sealed class DiffDocumentSnapshotTests
 
     [Fact]
     public Task From_ExtensionChanges() => Verify(DiffDocument.From(ExtensionChangesDiff()));
+
+    [Fact]
+    public Task From_PublicationChanges() => Verify(DiffDocument.From(PublicationChangesDiff()));
 
     [Fact]
     public Task From_TriggerChanges() => Verify(DiffDocument.From(TriggerChangesDiff()));

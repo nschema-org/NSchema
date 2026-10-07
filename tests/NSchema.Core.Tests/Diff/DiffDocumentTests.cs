@@ -2,6 +2,7 @@ using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Columns;
 using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Indexes;
+using NSchema.Diff.Domain.Publications;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Tables;
 using NSchema.Diff.Domain.Views;
@@ -10,6 +11,7 @@ using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
 
@@ -452,6 +454,163 @@ public sealed class DiffDocumentTests
         // Assert
         // Every blank spacer is a kindless, empty line — a formatter renders or ignores it as it sees fit.
         document.Lines.Where(line => line.Change is null).ShouldAllBe(line => line.Text == "");
+    }
+
+    // -------------------------------------------------------------------------
+    // Replica identity
+    // -------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(null, ReplicaIdentityKind.Full, null, "replica identity: default → full")]
+    [InlineData(ReplicaIdentityKind.Full, ReplicaIdentityKind.Nothing, null, "replica identity: full → nothing")]
+    [InlineData(ReplicaIdentityKind.Nothing, ReplicaIdentityKind.Index, "ux_orders", "replica identity: nothing → using index ux_orders")]
+    public void From_ReplicaIdentityChange_EmitsOldToNew(ReplicaIdentityKind? from, ReplicaIdentityKind to, string? index, string expected)
+    {
+        // Arrange
+        var old = from is { } kind ? new ReplicaIdentity(kind) : null;
+        var table = Table("orders", ChangeKind.Modify) with { ReplicaIdentity = new ValueChange<ReplicaIdentity>(old, new ReplicaIdentity(to, index)) };
+
+        // Act & Assert
+        ShouldHaveLine(WithTable(table), ChangeKind.Modify, expected);
+    }
+
+    [Fact]
+    public void From_ReplicaIdentityResetToDefault_SaysDefault()
+        => ShouldHaveLine(
+            WithTable(Table("orders", ChangeKind.Modify) with { ReplicaIdentity = new ValueChange<ReplicaIdentity>(ReplicaIdentity.Full, null) }),
+            ChangeKind.Modify, "replica identity: full → default");
+
+    [Fact]
+    public void From_AddedTableWithReplicaIdentity_SeparatesItFromTheColumnBlock()
+    {
+        // Arrange
+        var table = Table("orders", ChangeKind.Add, columns: [AddColumn(new Column { Name = "id", Type = SqlType.Int })])
+            with { ReplicaIdentity = new ValueChange<ReplicaIdentity>(null, ReplicaIdentity.Full) };
+
+        // Act
+        var lines = DiffDocument.From(WithTable(table)).Lines;
+
+        // Assert — the identity belongs to the trailing block, after the spacer that closes the columns.
+        var spacer = IndexOf(lines, line => line.Change is null);
+        spacer.ShouldBeGreaterThan(0);
+        IndexOf(lines, line => line.Text.Contains("replica identity")).ShouldBeGreaterThan(spacer);
+    }
+
+    // -------------------------------------------------------------------------
+    // Publications
+    // -------------------------------------------------------------------------
+
+    private static readonly ObjectAddress _orders = new("sales", "orders");
+
+    private static DatabaseDiff WithPublication(PublicationDiff publication) => new([]) { Publications = [publication] };
+
+    [Fact]
+    public void From_PublicationAdd_ListsWhatItPublishes()
+    {
+        // Arrange
+        var diff = WithPublication(PublicationDiff.Added(new Publication
+        {
+            Name = "feed",
+            Tables = [new PublishedTable(_orders, ["id", "status"], "status <> 'draft'")],
+            Schemas = ["audit"],
+            Operations = PublishedOperations.Insert,
+        }));
+
+        // Act & Assert
+        ShouldHaveLine(diff, ChangeKind.Add, "publication feed");
+        ShouldHaveLine(diff, ChangeKind.Add, "table sales.orders (id, status) where (status <> 'draft')");
+        ShouldHaveLine(diff, ChangeKind.Add, "tables in schema audit");
+        ShouldHaveLine(diff, ChangeKind.Add, "publish: insert");
+    }
+
+    [Fact]
+    public void From_PublicationAdd_PublishingEverything_OmitsThePublishLine()
+        => DiffDocument.From(WithPublication(PublicationDiff.Added(new Publication { Name = "feed" })))
+            .Lines.ShouldNotContain(line => line.Text.Contains("publish:"));
+
+    [Fact]
+    public void From_PublicationForAllTables_SaysSo()
+        => ShouldHaveLine(WithPublication(PublicationDiff.Added(new Publication { Name = "feed", AllTables = true })), ChangeKind.Add, "publication feed for all tables");
+
+    [Fact]
+    public void From_PublicationRemove_EmitsOnlyTheHeader()
+    {
+        // Act
+        var lines = DiffDocument.From(WithPublication(PublicationDiff.Removed("feed"))).Lines;
+
+        // Assert
+        lines.ShouldHaveSingleItem().ShouldBe(new DiffLine(ChangeKind.Remove, 0, "publication feed"));
+    }
+
+    [Fact]
+    public void From_PublicationRename_EmitsArrow()
+        => ShouldHaveLine(WithPublication(PublicationDiff.Modified("feed") with { RenamedFrom = "legacy_feed" }), ChangeKind.Modify, "publication legacy_feed → feed");
+
+    [Fact]
+    public void From_PublicationRecreate_IsLabelledAndListsTheNewDefinition()
+    {
+        // Arrange
+        var diff = WithPublication(PublicationDiff.Recreated(new Publication { Name = "feed", Tables = [new PublishedTable(_orders)] }, wasAllTables: true));
+
+        // Act & Assert
+        ShouldHaveLine(diff, ChangeKind.Modify, "publication (recreated) feed");
+        ShouldHaveLine(diff, ChangeKind.Add, "table sales.orders");
+    }
+
+    [Fact]
+    public void From_PublishedTableChanges_EmitOneLineEach()
+    {
+        // Arrange
+        var diff = WithPublication(PublicationDiff.Modified("feed") with
+        {
+            Tables =
+            [
+                PublishedTableDiff.Added(new PublishedTable(new ObjectAddress("sales", "customers"))),
+                PublishedTableDiff.Removed(new PublishedTable(new ObjectAddress("sales", "order_lines"))),
+                PublishedTableDiff.Modified(new PublishedTable(_orders), new PublishedTable(_orders, ["id"])),
+            ],
+        });
+
+        // Act & Assert
+        ShouldHaveLine(diff, ChangeKind.Add, "table sales.customers");
+        ShouldHaveLine(diff, ChangeKind.Remove, "table sales.order_lines");
+        ShouldHaveLine(diff, ChangeKind.Modify, "table sales.orders → table sales.orders (id)");
+    }
+
+    [Fact]
+    public void From_PublishedSchemaAndOperationChanges()
+    {
+        // Arrange
+        var diff = WithPublication(PublicationDiff.Modified("feed") with
+        {
+            Schemas = [new PublishedSchemaChange(ChangeKind.Add, "archive"), new PublishedSchemaChange(ChangeKind.Remove, "audit")],
+            Operations = new ValueChange<PublishedOperations>(PublishedOperations.All, PublishedOperations.None),
+        });
+
+        // Act & Assert
+        ShouldHaveLine(diff, ChangeKind.Add, "tables in schema archive");
+        ShouldHaveLine(diff, ChangeKind.Remove, "tables in schema audit");
+        ShouldHaveLine(diff, ChangeKind.Modify, "publish: insert, update, delete, truncate → nothing");
+    }
+
+    [Fact]
+    public void From_PublicationsCountInTheSummary()
+        => DiffDocument.From(new DatabaseDiff([])
+        {
+            Publications = [PublicationDiff.Added(new Publication { Name = "a" }), PublicationDiff.Modified("b"), PublicationDiff.Removed("c")],
+        }).Summary.ShouldBe(new DiffSummary(1, 1, 1));
+
+    [Fact]
+    public void From_PublicationsRenderAfterTheSchemas()
+    {
+        // Arrange
+        var diff = DiffOf([Schema("app", ChangeKind.Add)]) with { Publications = [PublicationDiff.Removed("feed")] };
+
+        // Act
+        var lines = DiffDocument.From(diff).Lines;
+
+        // Assert
+        IndexOf(lines, line => line.Text.StartsWith("publication")).ShouldBeGreaterThan(IndexOf(lines, line => line.Text.StartsWith("schema")));
     }
 
     // The index of the first line matching the predicate, or -1.
