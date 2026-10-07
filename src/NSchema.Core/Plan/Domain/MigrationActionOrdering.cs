@@ -8,6 +8,7 @@ using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
 using NSchema.Plan.Domain.Indexes;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Scripts;
@@ -25,7 +26,7 @@ namespace NSchema.Plan.Domain;
 /// </summary>
 internal static class MigrationActionOrdering
 {
-    private static readonly IReadOnlyDictionary<Type, int> _priorities = new Type[][]
+    private static readonly IReadOnlyDictionary<Type, int> Priorities = new Type[][]
     {
         [typeof(RenameSchema)], [typeof(DropView)], [typeof(DropTrigger)], [typeof(DropForeignKey)],
         [typeof(DropCheckConstraint)], [typeof(DropExclusionConstraint)], [typeof(DropUniqueConstraint)],
@@ -36,18 +37,21 @@ internal static class MigrationActionOrdering
         [typeof(AlterDomainDefault)], [typeof(AlterDomainNotNull)], [typeof(AddDomainCheck)], [typeof(DropDomainCheck)],
         [typeof(RenameCompositeType)], [typeof(CreateCompositeType)], [typeof(AddCompositeField)],
         [typeof(AlterCompositeFieldType)], [typeof(DropCompositeField)],
-        [typeof(RenameTable)], [typeof(RenameView)], [typeof(DropColumn)],
+        [typeof(RenameTable)], [typeof(RenameView)], [typeof(RenamePublication)],
+        [typeof(DropPublication)], [typeof(DropPublicationTable)], [typeof(DropPublicationSchema)], [typeof(DropColumn)],
         [typeof(RenameColumn)], [typeof(AddColumn)], [typeof(RenameRoutine)],
         [typeof(CreateTable), typeof(CreateRoutine), typeof(ReplaceRoutine), typeof(RecreateRoutine)],
         [typeof(ExecuteScript)], [typeof(AlterColumn)],
         [typeof(AlterIdentitySequence)], [typeof(SetColumnDefault)], [typeof(SetColumnGenerated)],
         [typeof(AddPrimaryKey)],
         [typeof(AddUniqueConstraint)], [typeof(AddForeignKey)], [typeof(AddCheckConstraint)], [typeof(AddExclusionConstraint)],
-        [typeof(CreateIndex)], [typeof(CreateTrigger)], [typeof(ReplaceTrigger)], [typeof(CreateView)], [typeof(ReplaceView)], [typeof(GrantSchemaUsage)],
+        [typeof(CreateIndex)], [typeof(CreateTrigger)], [typeof(ReplaceTrigger)], [typeof(CreateView)], [typeof(ReplaceView)],
+        [typeof(SetReplicaIdentity)], [typeof(CreatePublication)], [typeof(AddPublicationSchema)], [typeof(AddPublicationTable)],
+        [typeof(SetPublicationOperations)], [typeof(GrantSchemaUsage)],
         [typeof(GrantTablePrivileges)], [typeof(SetSchemaComment)], [typeof(SetTableComment)], [typeof(SetColumnComment)],
         [typeof(SetIndexComment)], [typeof(SetTriggerComment)], [typeof(SetConstraintComment)], [typeof(SetViewComment)],
         [typeof(SetEnumComment)], [typeof(SetSequenceComment)], [typeof(SetRoutineComment)], [typeof(SetDomainComment)],
-        [typeof(SetCompositeTypeComment)], [typeof(SetExtensionComment)],
+        [typeof(SetCompositeTypeComment)], [typeof(SetExtensionComment)], [typeof(SetPublicationComment)],
         [typeof(DropRoutine), typeof(DropTable)],
         [typeof(DropDomain)], [typeof(DropCompositeType)], [typeof(DropEnum)], [typeof(DropSequence)], [typeof(DropXmlSchemaCollection)], [typeof(DropSchema)],
         [typeof(DropExtension)],
@@ -164,6 +168,7 @@ internal static class MigrationActionOrdering
         AddExclusionConstraint x => x.Table,
         CreateIndex x => x.Table,
         SetTableComment x => x.Table,
+        SetReplicaIdentity x => x.Table,
         GrantTablePrivileges x => x.Table,
         SetColumnDefault x => x.Column.Owner,
         SetColumnGenerated x => x.Column.Owner,
@@ -204,9 +209,9 @@ internal static class MigrationActionOrdering
         _ => null,
     };
 
-    internal static bool HasPriority(Type actionType) => _priorities.ContainsKey(actionType);
+    internal static bool HasPriority(Type actionType) => Priorities.ContainsKey(actionType);
 
-    private static int PriorityOf(MigrationAction action) => _priorities.TryGetValue(action.GetType(), out var priority)
+    private static int PriorityOf(MigrationAction action) => Priorities.TryGetValue(action.GetType(), out var priority)
         ? priority
         : throw new InvalidOperationException($"Migration action '{action.GetType().Name}' has no ordering priority.");
 

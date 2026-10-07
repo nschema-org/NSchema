@@ -80,6 +80,7 @@ internal sealed partial class DatabaseComparer
         }
 
         var comment = table.Comment is not null ? new ValueChange<string>(null, table.Comment) : null;
+        var replicaIdentity = ValueChange.Between(null, table.ReplicaIdentity);
 
         // The full table definition rides along so the linearizer can emit a single CREATE TABLE (with the
         // primary key and columns inline) without reconstructing it from the column diffs. The primary key is
@@ -87,6 +88,7 @@ internal sealed partial class DatabaseComparer
         return TableDiff.Added(schemaName, table) with
         {
             Comment = comment,
+            ReplicaIdentity = replicaIdentity,
             Columns = columns,
             Grants = grants,
             Indexes = indexes,
@@ -117,6 +119,8 @@ internal sealed partial class DatabaseComparer
             comment = new ValueChange<string>(current.Comment, desired.Comment);
         }
 
+        var replicaIdentity = ValueChange.Between(current.ReplicaIdentity, desired.ReplicaIdentity);
+
         var owner = new ObjectAddress(schemaName, desired.Name);
         var columns = CompareColumns(owner, current.Columns, desired.Columns, renames);
 
@@ -130,7 +134,7 @@ internal sealed partial class DatabaseComparer
         var grants = CompareTableGrants(owner, current.Grants, desired.Grants);
         var triggers = CompareTriggers(owner, current.Triggers, desired.Triggers);
 
-        var hasChange = renamedFrom is not null || comment is not null || columns.Count > 0
+        var hasChange = renamedFrom is not null || comment is not null || replicaIdentity is not null || columns.Count > 0
             || primaryKey.Count > 0 || foreignKeys.Count > 0 || uniqueConstraints.Count > 0 || checks.Count > 0
             || exclusions.Count > 0 || indexes.Count > 0 || grants.Count > 0 || triggers.Count > 0;
         if (!hasChange)
@@ -142,6 +146,7 @@ internal sealed partial class DatabaseComparer
         {
             RenamedFrom = renamedFrom,
             Comment = comment,
+            ReplicaIdentity = replicaIdentity,
             Columns = columns,
             Grants = grants,
             Indexes = indexes,

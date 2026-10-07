@@ -2,6 +2,7 @@ using NSchema.Diff.Domain.CompositeTypes;
 using NSchema.Diff.Domain.Constraints;
 using NSchema.Diff.Domain.Domains;
 using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Publications;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Services;
 using NSchema.Diff.Domain.Tables;
@@ -30,6 +31,11 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
     public IReadOnlyList<ExtensionDiff> Extensions { get; init; } = Extensions ?? [];
 
     /// <summary>
+    /// The changed publications.
+    /// </summary>
+    public IReadOnlyList<PublicationDiff> Publications { get; init; } = [];
+
+    /// <summary>
     /// The deployment scripts to run, in declaration order.
     /// </summary>
     public IReadOnlyList<DeploymentScript> DeploymentScripts { get; init; } = [];
@@ -47,7 +53,7 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
     /// <summary>
     /// Gets a value indicating whether the diff contains no changes at all.
     /// </summary>
-    public bool IsEmpty => Schemas.Count == 0 && Extensions.Count == 0 && DeploymentScripts.Count == 0;
+    public bool IsEmpty => Schemas.Count == 0 && Extensions.Count == 0 && Publications.Count == 0 && DeploymentScripts.Count == 0;
 
     /// <summary>
     /// Gets the aggregate counts of every changed element, grouped by <see cref="ChangeKind"/>.
@@ -61,6 +67,11 @@ public sealed record DatabaseDiff(IReadOnlyList<SchemaDiff>? Schemas = null, IRe
         foreach (var extension in Extensions)
         {
             Tally(extension.Change);
+        }
+
+        foreach (var publication in Publications)
+        {
+            Tally(publication.Change);
         }
 
         foreach (var schema in Schemas)

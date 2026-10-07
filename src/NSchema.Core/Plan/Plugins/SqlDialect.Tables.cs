@@ -131,6 +131,12 @@ public abstract partial class SqlDialect
     protected virtual Result<IReadOnlyList<SqlStatement>> SetTableComment(SetTableComment action) =>
         Unsupported(action);
 
+    /// <summary>
+    /// Renders changing a table's replica identity.
+    /// </summary>
+    protected virtual Result<IReadOnlyList<SqlStatement>> SetReplicaIdentity(SetReplicaIdentity action) =>
+        Unsupported(action);
+
     private bool Honours(ReferentialAction action) => action switch
     {
         ReferentialAction.NoAction => false,
