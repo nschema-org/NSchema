@@ -1,4 +1,5 @@
 using NSchema.Model;
+using NSchema.Model.Tables;
 using NSchema.Project.Nsql.Syntax;
 using NSchema.Project.Nsql.Syntax.CompositeTypes;
 using NSchema.Project.Nsql.Syntax.Constraints;
@@ -6,6 +7,7 @@ using NSchema.Project.Nsql.Syntax.Domains;
 using NSchema.Project.Nsql.Syntax.Enums;
 using NSchema.Project.Nsql.Syntax.Extensions;
 using NSchema.Project.Nsql.Syntax.Indexes;
+using NSchema.Project.Nsql.Syntax.Publications;
 using NSchema.Project.Nsql.Syntax.Routines;
 using NSchema.Project.Nsql.Syntax.Schemas;
 using NSchema.Project.Nsql.Syntax.Sequences;
@@ -15,6 +17,7 @@ using NSchema.Project.Nsql.Syntax.Triggers;
 using NSchema.Project.Nsql.Syntax.Views;
 using NSchema.Project.Nsql.Syntax.XmlSchemaCollections;
 using NSchema.Project.Nsql.Tokens;
+using ReferentialAction = NSchema.Project.Nsql.Syntax.Constraints.ReferentialAction;
 
 namespace NSchema.Project.Nsql;
 
@@ -92,6 +95,14 @@ internal sealed partial class NsqlParser
             }
             return ParseCreateExtension(create, doc);
         }
+        if (_current.IsKeyword(NsqlKeywords.Publication))
+        {
+            if (_inTemplateBody)
+            {
+                throw Error("CREATE PUBLICATION is not supported inside a template; publications are database-global.");
+            }
+            return ParseCreatePublication(create, doc);
+        }
         if (_current.IsKeyword(NsqlKeywords.Trigger))
         {
             return ParseCreateTrigger(create, doc);
@@ -117,7 +128,7 @@ internal sealed partial class NsqlParser
             var unique = Advance(); // UNIQUE
             return ParseCreateIndex(create, unique, doc);
         }
-        throw Error($"Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, TRIGGER or INDEX after CREATE, found '{_current.Text}'.");
+        throw Error($"Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, PUBLICATION, TRIGGER or INDEX after CREATE, found '{_current.Text}'.");
     }
 
     private CreateSchemaStatement ParseCreateSchema(Token create, Token? doc)
@@ -151,9 +162,10 @@ internal sealed partial class NsqlParser
         }
         while (TryConsumeSeparator(TokenKind.Comma, separators));
         var close = Expect(TokenKind.RightParen, "')' or ',' after a table member");
+        var replicaIdentity = TryParseReplicaIdentity();
         var semicolon = Expect(TokenKind.Semicolon, "';'");
 
-        return new CreateTableStatement(name, new SeparatedSyntaxList<TableMember>(members, separators))
+        return new CreateTableStatement(name, new SeparatedSyntaxList<TableMember>(members, separators), replicaIdentity)
         {
             Doc = doc?.Text,
             DocComment = doc,
@@ -163,6 +175,34 @@ internal sealed partial class NsqlParser
             CloseParenToken = close,
             SemicolonToken = semicolon,
         };
+    }
+
+    /// <summary>Parses an optional <c>REPLICA IDENTITY {FULL | NOTHING | USING INDEX name}</c>.</summary>
+    private ReplicaIdentityClause? TryParseReplicaIdentity()
+    {
+        if (!_current.IsKeyword(NsqlKeywords.Replica))
+        {
+            return null;
+        }
+        List<Token> keywords = [Advance(), ExpectKeyword(NsqlKeywords.Identity)];
+        if (_current.IsKeyword(NsqlKeywords.Full))
+        {
+            keywords.Add(Advance());
+            return new ReplicaIdentityClause(ReplicaIdentityKind.Full) { Keywords = keywords };
+        }
+        if (_current.IsKeyword(NsqlKeywords.Nothing))
+        {
+            keywords.Add(Advance());
+            return new ReplicaIdentityClause(ReplicaIdentityKind.Nothing) { Keywords = keywords };
+        }
+        if (_current.IsKeyword(NsqlKeywords.Using))
+        {
+            keywords.Add(Advance());
+            keywords.Add(ExpectKeyword(NsqlKeywords.Index));
+            var index = ExpectIdentifierNode("an index name");
+            return new ReplicaIdentityClause(ReplicaIdentityKind.Index, index) { Keywords = keywords };
+        }
+        throw Error("Expected FULL, NOTHING or USING INDEX after REPLICA IDENTITY.");
     }
 
     // The "VIEW" keyword has already been consumed by the dispatcher (preceded by "MATERIALIZED" when the view
@@ -560,6 +600,116 @@ internal sealed partial class NsqlParser
             VersionKeyword = versionKeyword,
             VersionToken = versionToken,
             SemicolonToken = semicolon,
+        };
+    }
+
+    /// <summary>
+    /// Parses <c>CREATE PUBLICATION name [FOR ALL TABLES | FOR target, …] [PUBLISH (operation, …)];</c>. A target
+    /// is <c>TABLE schema.table [(columns)] [WHERE (filter)]</c> or <c>TABLES IN SCHEMA schema</c>, and an item
+    /// without either continues the kind of the one before it.
+    /// </summary>
+    private CreatePublicationStatement ParseCreatePublication(Token create, Token? doc)
+    {
+        var publication = Advance(); // PUBLICATION
+        var name = ExpectIdentifierNode("a publication name");
+
+        Token? forKeyword = null;
+        List<Token> allTables = [];
+        var targets = new List<PublicationTarget>();
+        var separators = new List<Token>();
+        if (_current.IsKeyword(NsqlKeywords.For))
+        {
+            forKeyword = Advance();
+            if (_current.IsKeyword(NsqlKeywords.AllKeyword))
+            {
+                allTables = [Advance(), ExpectKeyword(NsqlKeywords.Tables)];
+            }
+            else
+            {
+                PublicationTarget? previous = null;
+                do
+                {
+                    previous = ParsePublicationTarget(previous);
+                    targets.Add(previous);
+                }
+                while (TryConsumeSeparator(TokenKind.Comma, separators));
+            }
+        }
+
+        var publish = _current.IsKeyword(NsqlKeywords.Publish) ? ParsePublishClause() : null;
+        var semicolon = Expect(TokenKind.Semicolon, "';'");
+
+        return new CreatePublicationStatement(name, allTables.Count > 0, new SeparatedSyntaxList<PublicationTarget>(targets, separators), publish)
+        {
+            Doc = doc?.Text,
+            DocComment = doc,
+            CreateKeyword = create,
+            PublicationKeyword = publication,
+            ForKeyword = forKeyword,
+            AllTablesKeywords = allTables,
+            SemicolonToken = semicolon,
+        };
+    }
+
+    private PublicationTarget ParsePublicationTarget(PublicationTarget? previous)
+    {
+        if (_current.IsKeyword(NsqlKeywords.Tables))
+        {
+            List<Token> keywords = [Advance(), ExpectKeyword(NsqlKeywords.In), ExpectKeyword(NsqlKeywords.Schema)];
+            return new PublishedSchemaTarget(ExpectIdentifierNode("a schema name")) { KindKeywords = keywords };
+        }
+        if (_current.IsKeyword(NsqlKeywords.Table))
+        {
+            return ParsePublishedTable([Advance()]);
+        }
+        return previous switch
+        {
+            PublishedSchemaTarget => new PublishedSchemaTarget(ExpectIdentifierNode("a schema name")),
+            PublishedTableTarget => ParsePublishedTable([]),
+            _ => throw Error("Expected ALL TABLES, TABLE or TABLES IN SCHEMA after FOR."),
+        };
+    }
+
+    private PublishedTableTarget ParsePublishedTable(IReadOnlyList<Token> keywords)
+    {
+        var table = ParseQualifiedNameNode();
+        var columns = _current.Kind == TokenKind.LeftParen ? ParseColumnList() : null;
+        var where = TryParseWhereClause();
+        return new PublishedTableTarget(table, columns, where?.Predicate)
+        {
+            KindKeywords = keywords,
+            WhereKeyword = where?.Where,
+            WhereOpenParenToken = where?.Open,
+            FilterToken = where?.Span,
+            WhereCloseParenToken = where?.Close,
+        };
+    }
+
+    private PublishClause ParsePublishClause()
+    {
+        var publish = Advance(); // PUBLISH
+        var open = Expect(TokenKind.LeftParen, "'(' after PUBLISH");
+        var operations = new List<Identifier>();
+        var separators = new List<Token>();
+        // An empty list publishes nothing, which is a publication switched off rather than a mistake.
+        if (_current.Kind != TokenKind.RightParen)
+        {
+            do
+            {
+                if (!_current.IsAnyKeyword(NsqlKeywords.Insert, NsqlKeywords.Update, NsqlKeywords.Delete, NsqlKeywords.Truncate))
+                {
+                    throw Error("Expected INSERT, UPDATE, DELETE or TRUNCATE.");
+                }
+                operations.Add(new Identifier(Advance()));
+            }
+            while (TryConsumeSeparator(TokenKind.Comma, separators));
+        }
+        var close = Expect(TokenKind.RightParen, "')'");
+        return new PublishClause(new SeparatedSyntaxList<Identifier>(operations, separators))
+        {
+            PublishKeyword = publish,
+            OpenParenToken = open,
+            CloseParenToken = close,
         };
     }
 

@@ -1,0 +1,87 @@
+﻿{
+  Lines: [
+    {
+      Change: Add,
+      Text: publication orders_feed ("order changes")
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: table sales.orders (id, status) where (status <> 'draft')
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: table sales.order_lines
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: tables in schema audit
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: publish: insert, update
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: publication (recreated) everything for all tables
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: publication legacy_customer_feed → customer_feed
+    },
+    {
+      Change: Add,
+      Depth: 1,
+      Text: table sales.customers
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: table sales.leads
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: table sales.orders → table sales.orders where (total > 0)
+    },
+    {
+      Change: Remove,
+      Depth: 1,
+      Text: tables in schema archive
+    },
+    {
+      Change: Modify,
+      Depth: 1,
+      Text: publish: insert, update, delete, truncate → insert
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Modify,
+      Text: publication notes_feed ("old note" → "new note")
+    },
+    {
+      Text: 
+    },
+    {
+      Change: Remove,
+      Text: publication legacy_feed
+    }
+  ],
+  Summary: {
+    Added: 1,
+    Modified: 3,
+    Removed: 1
+  },
+  IsEmpty: false
+}

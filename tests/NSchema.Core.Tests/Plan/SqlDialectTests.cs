@@ -7,6 +7,7 @@ using NSchema.Model.Constraints;
 using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
+using NSchema.Model.Publications;
 using NSchema.Model.Indexes;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
@@ -22,6 +23,7 @@ using NSchema.Plan.Domain.Constraints;
 using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Indexes;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
@@ -97,6 +99,7 @@ public sealed class SqlDialectTests
         new GrantTablePrivileges(new ObjectAddress(N("app"), N("users")), N("readers"), TablePrivilege.AppendOnly),
         new RevokeTablePrivileges(new ObjectAddress(N("app"), N("users")), N("readers"), TablePrivilege.All),
         new SetTableComment(new ObjectAddress(N("app"), N("users")), null, "User accounts"),
+        new SetReplicaIdentity(new ObjectAddress(N("app"), N("users")), null, ReplicaIdentity.Full),
 
         // Columns
         new AddColumn(new ObjectAddress(N("app"), N("users")), new Column { Name = N("email"), Type = SqlType.VarChar(200) }),
@@ -222,6 +225,17 @@ public sealed class SqlDialectTests
         new DropExtension(N("uuid-ossp")),
         new AlterExtension(N("uuid-ossp"), "1.0", "1.1"),
         new SetExtensionComment(N("uuid-ossp"), null, "UUID generation"),
+
+        // Publications
+        new CreatePublication(new Publication { Name = N("orders_cdc"), Tables = [new PublishedTable(new ObjectAddress(N("app"), N("orders")))] }),
+        new DropPublication(N("orders_cdc")),
+        new RenamePublication(N("orders_cdc"), N("orders_feed")),
+        new AddPublicationTable(N("orders_cdc"), new PublishedTable(new ObjectAddress(N("app"), N("users")), [N("id")], "id > 0")),
+        new DropPublicationTable(N("orders_cdc"), new ObjectAddress(N("app"), N("users"))),
+        new AddPublicationSchema(N("orders_cdc"), N("audit")),
+        new DropPublicationSchema(N("orders_cdc"), N("audit")),
+        new SetPublicationOperations(N("orders_cdc"), PublishedOperations.All, PublishedOperations.Insert),
+        new SetPublicationComment(N("orders_cdc"), null, "Order changes"),
 
         // Scripts
         new ExecuteScript(new DeploymentScript(N("seed"), "INSERT INTO app.users VALUES (1)", null, DeploymentPhase.Post)),

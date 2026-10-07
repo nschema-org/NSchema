@@ -1,5 +1,6 @@
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Publications;
 using NSchema.Project.Domain.Directives;
 
 namespace NSchema.Diff.Domain.Services;
@@ -9,6 +10,11 @@ namespace NSchema.Diff.Domain.Services;
 /// </summary>
 internal static class DatabaseAligner
 {
+    // The kinds a column, domain or field can name as its type. A bare reference resolves against the schema
+    // that holds whatever is referring to it.
+    private static readonly SchemaObjectKind[] TypeKinds =
+        [SchemaObjectKind.Enum, SchemaObjectKind.Domain, SchemaObjectKind.CompositeType];
+
     public static Result<AlignedDatabase> Align(Database current, Database desired, ProjectDirectives directives)
     {
         var diagnostics = new List<Diagnostic>();
@@ -21,6 +27,7 @@ internal static class DatabaseAligner
         var objectLog = new Dictionary<ObjectAddress, SqlIdentifier>();
         var columnRenames = new Dictionary<MemberAddress, SqlIdentifier>();
         var columnLog = new Dictionary<MemberAddress, SqlIdentifier>();
+        var publicationRenames = new Dictionary<SqlIdentifier, SqlIdentifier>();
 
         // Schema renames resolve first: object and column directives address current reality, but their
         // entities land in the declared schema, so the logs key through the applied schema renames.
@@ -121,7 +128,35 @@ internal static class DatabaseAligner
             columnLog[address] = rename.From.Member;
         }
 
-        if (schemaRenames.Count == 0 && objectRenames.Count == 0 && columnRenames.Count == 0)
+        foreach (var rename in directives.PublicationRenames)
+        {
+            var from = rename.From.Name;
+            var to = rename.To.Name;
+            if (current.Publications.All(p => p.Name != from))
+            {
+                if (current.Publications.Any(p => p.Name == to))
+                {
+                    diagnostics.Add(DiffDiagnostics.AppliedRename("publication", rename.From, to));
+                }
+                continue;
+            }
+
+            if (desired.Publications.Any(p => p.Name == from))
+            {
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameSourceStillDeclared("publication", rename.To, from));
+                continue;
+            }
+            if (current.Publications.Any(p => p.Name == to))
+            {
+                diagnostics.Add(DiffDiagnostics.AmbiguousRenameTargetTaken("publication", rename.To, from, to));
+                continue;
+            }
+
+            publicationRenames[from] = to;
+            schemaLog[rename.To] = from;
+        }
+
+        if (schemaRenames.Count == 0 && objectRenames.Count == 0 && columnRenames.Count == 0 && publicationRenames.Count == 0)
         {
             return Result.From(AlignedDatabase.Unaligned(current), diagnostics);
         }
@@ -158,6 +193,24 @@ internal static class DatabaseAligner
             }
         }
 
+        // A publication names its tables by reference, so they move with the tables, schemas and columns renamed
+        // under it, and it is renamed itself. Done while every name is still current.
+        foreach (var publication in aligned.Publications)
+        {
+            for (var i = 0; i < publication.Tables.Count; i++)
+            {
+                publication.Tables[i] = Retarget(publication.Tables[i], schemaRenames, objectRenames, columnRenames);
+            }
+            for (var i = 0; i < publication.Schemas.Count; i++)
+            {
+                publication.Schemas[i] = schemaRenames.GetValueOrDefault(publication.Schemas[i], publication.Schemas[i]);
+            }
+            if (publicationRenames.TryGetValue(publication.Name, out var publicationName))
+            {
+                publication.Name = publicationName;
+            }
+        }
+
         foreach (var schema in aligned.Schemas)
         {
             var currentSchemaName = schema.Name;
@@ -187,16 +240,27 @@ internal static class DatabaseAligner
         return Result.From(new AlignedDatabase(aligned, new RenameLog(schemaLog, objectLog, columnLog)), diagnostics);
     }
 
-    // The kinds a column, domain or field can name as its type. A bare reference resolves against the schema
-    // that holds whatever is referring to it.
-    private static readonly SchemaObjectKind[] _typeKinds =
-        [SchemaObjectKind.Enum, SchemaObjectKind.Domain, SchemaObjectKind.CompositeType];
+    private static PublishedTable Retarget(
+        PublishedTable entry,
+        Dictionary<SqlIdentifier, SqlIdentifier> schemas,
+        Dictionary<ObjectAddress, SqlIdentifier> objects,
+        Dictionary<MemberAddress, SqlIdentifier> columns)
+    {
+        var (schema, table) = (entry.Table.Schema, entry.Table.Name);
+        return entry with
+        {
+            Table = new ObjectAddress(
+                schemas.GetValueOrDefault(schema, schema),
+                objects.GetValueOrDefault(ObjectAddress.Table(schema, table), table)),
+            Columns = entry.Columns?.Select(c => columns.GetValueOrDefault(new MemberAddress(schema, table, c), c)).ToList(),
+        };
+    }
 
     private static SqlType Retarget(SqlType type, SqlIdentifier owner, Dictionary<ObjectAddress, SqlIdentifier> renames)
     {
         var schema = type.Schema ?? owner;
 
-        foreach (var kind in _typeKinds)
+        foreach (var kind in TypeKinds)
         {
             if (renames.TryGetValue(new ObjectAddress(schema, type.Name, kind), out var renamed))
             {

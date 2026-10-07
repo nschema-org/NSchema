@@ -104,7 +104,7 @@ internal sealed class MigrationPlanner(
             .Select(o => o with { Schema = currentSchemaNames[o.Schema] });
 
         var renameSources = new IdentitySet(
-            [.. directives.SchemaRenames.Select(r => r.From)],
+            [.. directives.SchemaRenames.Select(r => r.From), .. directives.PublicationRenames.Select(r => r.From)],
             [.. directives.ObjectRenames.Select(r => r.From), .. declaredUnderCurrentNames]);
 
         return current.Managed.Union(declared).Union(renameSources);
@@ -150,6 +150,15 @@ internal sealed class MigrationPlanner(
                     && EqualsIgnoringCase(o.Name, identity.Name)) is { } match)
             {
                 yield return PlanDiagnostics.CaseOnlyMismatch(identity, match);
+            }
+        }
+
+        foreach (var publication in declared.Publications)
+        {
+            if (!observed.Publications.Contains(publication)
+                && observed.Publications.FirstOrDefault(o => EqualsIgnoringCase(o.Name, publication.Name)) is { } match)
+            {
+                yield return PlanDiagnostics.CaseOnlyMismatch(publication, match);
             }
         }
 

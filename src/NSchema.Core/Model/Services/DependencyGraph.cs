@@ -150,6 +150,30 @@ internal sealed class DependencyGraph
             }
         }
 
+        // A publication requires the tables it names and the columns an entry lists, which the model states. The
+        // columns an entry's filter reads are scanned out of opaque SQL, so those edges are inferred.
+        foreach (var publication in database.Publications)
+        {
+            var node = new DependencyNode(publication.Address, DependencyKind.Publication);
+            Add(node);
+            foreach (var entry in publication.Tables)
+            {
+                var table = new ObjectAddress(entry.Table.Schema, entry.Table.Name);
+                Connect(node, table, DependencyCertainty.Stated);
+
+                var columns = allTables
+                    .Where(t => t.Schema == table.Schema && t.Object.Name == table.Name)
+                    .SelectMany(t => t.Object.Columns.Select(c => c.Name))
+                    .ToHashSet();
+                foreach (var (column, stated) in entry.References().Where(r => columns.Contains(r.Column)))
+                {
+                    var address = new MemberAddress(table.Schema, table.Name, column);
+                    Add(new DependencyNode(address, DependencyKind.Column));
+                    Connect(node, address, stated ? DependencyCertainty.Stated : DependencyCertainty.Inferred);
+                }
+            }
+        }
+
         foreach (var (schema, domain) in database.Objects<DomainType>())
         {
             ConnectToType(new DependencyNode(new ObjectAddress(schema, domain.Name), DependencyKind.Domain), domain.DataType);

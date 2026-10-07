@@ -4,6 +4,7 @@ using NSchema.Model.Domains;
 using NSchema.Model.Enums;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
@@ -23,6 +24,7 @@ internal sealed class DatabaseAccumulator
     private readonly List<Entry> _entries = [];
     private readonly Dictionary<SqlIdentifier, Entry> _byName = new();
     private readonly List<Extension> _extensions = [];
+    private readonly List<Publication> _publications = [];
     private readonly List<PendingGrant> _tableGrants = [];
     private readonly List<PendingTrigger> _triggers = [];
     private readonly List<PendingIndex> _standaloneIndexes = [];
@@ -157,6 +159,17 @@ internal sealed class DatabaseAccumulator
         _extensions.Add(extension);
     }
 
+    public void AddPublication(Publication publication, SourcePosition position)
+    {
+        if (_publications.Any(p => p.Name == publication.Name))
+        {
+            Report(ProjectDiagnostics.PublicationAlreadyDeclared(publication.Name, position), CurrentFile);
+            return;
+        }
+
+        _publications.Add(publication);
+    }
+
     public Database Build()
     {
         ApplyTableGrants();
@@ -178,7 +191,7 @@ internal sealed class DatabaseAccumulator
                 CompositeTypes = e.CompositeTypes,
                 Comment = e.Comment,
             });
-        return new Database { Schemas = [.. schemas], Extensions = [.. _extensions] };
+        return new Database { Schemas = [.. schemas], Extensions = [.. _extensions], Publications = [.. _publications] };
     }
 
     private void ApplyTableGrants()

@@ -3,13 +3,15 @@ using NSchema.Project.Nsql.Tokens;
 namespace NSchema.Project.Nsql.Syntax.Tables;
 
 /// <summary>
-/// <c>CREATE TABLE schema.name [RENAMED FROM old] ( members… );</c>
+/// <c>CREATE TABLE schema.name ( members… ) [REPLICA IDENTITY …];</c>
 /// </summary>
 /// <param name="Name">The table name as written.</param>
 /// <param name="Members">The body members in declaration order (columns, constraints, indexes, includes).</param>
+/// <param name="ReplicaIdentity">The replica identity clause, or <see langword="null"/> for the engine's default.</param>
 public sealed record CreateTableStatement(
     QualifiedName Name,
-    SeparatedSyntaxList<TableMember> Members
+    SeparatedSyntaxList<TableMember> Members,
+    ReplicaIdentityClause? ReplicaIdentity = null
 ) : NsqlStatement
 {
     /// <summary>
@@ -54,6 +56,10 @@ public sealed record CreateTableStatement(
                 yield return child;
             }
             yield return CloseParenToken;
+            if (ReplicaIdentity is not null)
+            {
+                yield return ReplicaIdentity;
+            }
             yield return SemicolonToken;
         }
     }

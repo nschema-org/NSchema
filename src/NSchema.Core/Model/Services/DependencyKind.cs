@@ -53,5 +53,10 @@ internal enum DependencyKind
     /// <summary>
     /// A database-global extension.
     /// </summary>
-    Extension
+    Extension,
+
+    /// <summary>
+    /// A publication.
+    /// </summary>
+    Publication
 }

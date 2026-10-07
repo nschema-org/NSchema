@@ -19,10 +19,11 @@ internal sealed partial class DatabaseComparer(ILogger<DatabaseComparer> logger,
 
         var schemas = CompareSchemas(current.Database.Schemas, desired.Schemas, current.Renames);
         var extensions = CompareExtensions(current.Database.Extensions, desired.Extensions);
+        var publications = ComparePublications(current.Database.Publications, desired.Publications, current.Renames);
 
         LogComparisonComplete(schemas.Count);
 
-        return new DatabaseDiff(schemas, extensions);
+        return new DatabaseDiff(schemas, extensions) { Publications = publications };
     }
 
     private List<SchemaDiff> CompareSchemas(IReadOnlyList<Schema> current, IReadOnlyList<Schema> desired, RenameLog renames)

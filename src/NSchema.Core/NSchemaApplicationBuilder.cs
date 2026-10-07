@@ -52,6 +52,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         // Policies registered up front so users can remove them before Build().
         AddProjectPolicy<StructuralIntegrityPolicy>();
         AddProjectPolicy<SchemaLintPolicy>();
+        AddProjectPolicy<ReplicationPolicy>();
         AddPlanPolicy<DestructiveActionPolicy>();
         AddPlanPolicy<DataHazardPolicy>();
         AddPlanPolicy<EnumValueRemovalPolicy>();
@@ -63,6 +64,7 @@ public partial class NSchemaApplicationBuilder : IHostApplicationBuilder
         AddPlanPolicy<RowGuidPolicy>();
         AddPlanPolicy<NamedDefaultPolicy>();
         AddPlanPolicy<NotForReplicationPolicy>();
+        AddPlanPolicy<PublicationRenamePolicy>();
     }
 
     /// <inheritdoc />

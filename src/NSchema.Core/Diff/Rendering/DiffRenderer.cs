@@ -4,6 +4,7 @@ using NSchema.Diff.Domain.CompositeTypes;
 using NSchema.Diff.Domain.Domains;
 using NSchema.Diff.Domain.Enums;
 using NSchema.Diff.Domain.Extensions;
+using NSchema.Diff.Domain.Publications;
 using NSchema.Diff.Domain.Routines;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Diff.Domain.Sequences;
@@ -12,6 +13,7 @@ using NSchema.Diff.Domain.Views;
 using NSchema.Diff.Domain.XmlSchemaCollections;
 using NSchema.Model;
 using NSchema.Model.Columns;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Scripts;
 using NSchema.Model.Sequences;
@@ -86,6 +88,11 @@ internal static class DiffRenderer
             }
         }
 
+        foreach (var publication in diff.Publications)
+        {
+            RenderPublication(lines, publication);
+        }
+
         RenderDeploymentScripts(lines, diff.DeploymentScripts);
 
         return new DiffDocument(lines, diff.GetSummary());
@@ -134,12 +141,17 @@ internal static class DiffRenderer
 
         // A new table renders its columns as a block, separated from the constraint/index/grant block by a
         // blank line. An existing table lists its column changes inline with everything that follows.
-        var hasTrailingBlock = table.PrimaryKeys.Count > 0 || table.ForeignKeys.Count > 0
+        var hasTrailingBlock = table.ReplicaIdentity is not null || table.PrimaryKeys.Count > 0 || table.ForeignKeys.Count > 0
             || table.UniqueConstraints.Count > 0 || table.Checks.Count > 0
             || table.Indexes.Count > 0 || table.Triggers.Count > 0 || table.Grants.Count > 0;
         if (table is { Change: ChangeKind.Add, Columns.Count: > 0 } && hasTrailingBlock)
         {
             lines.Add(DiffLine.Blank);
+        }
+
+        if (table.ReplicaIdentity is { } identity)
+        {
+            AppendDetail(lines, ChangeKind.Modify, $"replica identity: {Describe(identity.Old)} → {Describe(identity.New)}");
         }
 
         foreach (var pk in table.PrimaryKeys)
@@ -323,6 +335,78 @@ internal static class DiffRenderer
             AppendDetail(lines, ChangeKind.Modify, $"version: {FormatVersion(change.Old)} → {FormatVersion(change.New)}");
         }
     }
+
+    private static string Describe(ReplicaIdentity? identity) => identity?.Kind switch
+    {
+        null => "default",
+        ReplicaIdentityKind.Full => "full",
+        ReplicaIdentityKind.Nothing => "nothing",
+        _ => $"using index {identity.Index}",
+    };
+
+    private static void RenderPublication(List<DiffLine> lines, PublicationDiff publication)
+    {
+        var name = publication.RenamedFrom is null ? publication.Name.Value : $"{publication.RenamedFrom} → {publication.Name}";
+        var label = publication.RequiresRecreate ? "publication (recreated)" : "publication";
+        var all = publication is { Definition.AllTables: true, Change: not ChangeKind.Remove } ? " for all tables" : string.Empty;
+        AppendHeader(lines, publication.Change, $"{label} {name}{all}{CommentSuffix(publication.Comment)}");
+
+        if (publication.Change == ChangeKind.Remove)
+        {
+            return;
+        }
+
+        // A created one lists what it publishes; an altered one, what changed.
+        if (publication is { Definition: { } definition } && (publication.IsAdd() || publication.RequiresRecreate))
+        {
+            foreach (var table in definition.Tables)
+            {
+                AppendDetail(lines, ChangeKind.Add, Describe(table));
+            }
+            foreach (var schema in definition.Schemas)
+            {
+                AppendDetail(lines, ChangeKind.Add, $"tables in schema {schema}");
+            }
+            if (definition.Operations != PublishedOperations.All)
+            {
+                AppendDetail(lines, ChangeKind.Add, $"publish: {Describe(definition.Operations)}");
+            }
+            return;
+        }
+
+        foreach (var table in publication.Tables)
+        {
+            var text = table switch
+            {
+                { Previous: { } previous, Definition: { } current } => $"{Describe(previous)} → {Describe(current)}",
+                { Definition: { } added } => Describe(added),
+                { Previous: { } removed } => Describe(removed),
+                _ => $"table {table.Table}",
+            };
+            AppendDetail(lines, table.Change, text);
+        }
+        foreach (var schema in publication.Schemas)
+        {
+            AppendDetail(lines, schema.Change, $"tables in schema {schema.Schema}");
+        }
+        if (publication.Operations is { } operations)
+        {
+            AppendDetail(lines, ChangeKind.Modify, $"publish: {Describe(operations.Old)} → {Describe(operations.New)}");
+        }
+    }
+
+    private static string Describe(PublishedTable table)
+    {
+        var columns = table.Columns is { } list ? $" ({string.Join(", ", list)})" : string.Empty;
+        var filter = table.Filter is { } where ? $" where ({where.Value})" : string.Empty;
+        return $"table {table.Table.Schema}.{table.Table.Name}{columns}{filter}";
+    }
+
+    private static string Describe(PublishedOperations operations) => operations == PublishedOperations.None
+        ? "nothing"
+        : string.Join(", ", Enum.GetValues<PublishedOperations>()
+            .Where(o => o is not (PublishedOperations.None or PublishedOperations.All) && operations.HasFlag(o))
+            .Select(o => o.ToString().ToLowerInvariant()));
 
     private static void RenderDomain(List<DiffLine> lines, DomainDiff domain)
     {

@@ -66,6 +66,9 @@ public static class DiagnosticSources
     /// <summary>Loading the declared project.</summary>
     public static readonly DiagnosticSource Project = "project";
 
+    /// <summary>Publishing row changes to subscribers.</summary>
+    public static readonly DiagnosticSource Replication = "replication";
+
     /// <summary>Capturing the live schema to the state store.</summary>
     public static readonly DiagnosticSource Refresh = "refresh";
 
@@ -105,7 +108,7 @@ public static class DiagnosticSources
     public static IReadOnlySet<DiagnosticSource> All { get; } = FrozenSet.ToFrozenSet(
     [
         Adoption, Apply, Capability, Comments, Config, Current, DataHazards, DestructiveActions, Diff, Doctor, Enforcement,
-        EnumValueRemoval, Formatting, Lock, LockFile, Plan, PlanFile, Plugins, Project, Refresh, SchemaLint,
+        EnumValueRemoval, Formatting, Lock, LockFile, Plan, PlanFile, Plugins, Project, Refresh, Replication, SchemaLint,
         Settings, SqlDialect, State, StructuralIntegrity, Syntax, Table, Templates,
     ]);
 }

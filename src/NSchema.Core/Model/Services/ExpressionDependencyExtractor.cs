@@ -1,14 +1,13 @@
 namespace NSchema.Model.Services;
 
 /// <summary>
-/// Scans an opaque SQL expression for the call sites it references (<c>name(</c>, <c>schema.name(</c>),
-/// in bare, bracket-quoted, or double-quoted spelling.
+/// Scans an opaque SQL expression for what it references.
 /// </summary>
 /// <remarks>
 /// Over-collecting is free — a reference only forms an ordering edge when it names an object in the same
 /// database — so casts and builtins match harmlessly.
 /// </remarks>
-internal static class ExpressionDependencyScanner
+internal static class ExpressionDependencyExtractor
 {
     /// <summary>
     /// The call sites <paramref name="expression"/> references, unqualified names resolved against
@@ -50,6 +49,33 @@ internal static class ExpressionDependencyScanner
             previous[2] = previous[1];
             previous[1] = previous[0];
             previous[0] = token;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The names <paramref name="expression"/> mentions other than as a call: the columns it may read.
+    /// </summary>
+    /// <remarks>
+    /// Keywords and type names are collected too; they only matter when a column happens to share the name.
+    /// </remarks>
+    public static List<SqlIdentifier> Names(string expression)
+    {
+        var result = new List<SqlIdentifier>();
+        var seen = new HashSet<SqlIdentifier>();
+
+        var scanner = new SqlLexer(expression);
+        var token = scanner.Next();
+        while (token.Kind != SqlTokenKind.End)
+        {
+            var next = scanner.Next();
+            if (IsName(token) && next.Kind != SqlTokenKind.LeftParen && seen.Add(new SqlIdentifier(token.Value)))
+            {
+                result.Add(new SqlIdentifier(token.Value));
+            }
+
+            token = next;
         }
 
         return result;

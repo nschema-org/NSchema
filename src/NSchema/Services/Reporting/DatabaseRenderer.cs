@@ -2,6 +2,7 @@ using System.Text;
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Sequences;
@@ -32,7 +33,7 @@ internal static class DatabaseRenderer
     /// management is not known (a live database has no managed set of its own).</param>
     public static string Render(Database database, IdentitySet? managed = null)
     {
-        if (database.Schemas.Count == 0 && database.Extensions.Count == 0)
+        if (database.Schemas.Count == 0 && database.Extensions.Count == 0 && database.Publications.Count == 0)
         {
             return "Schema is empty.";
         }
@@ -55,6 +56,12 @@ internal static class DatabaseRenderer
         foreach (var definition in database.Schemas)
         {
             RenderSchema(sb, definition, managed);
+        }
+
+        // Publications name tables across schemas, so they follow them.
+        foreach (var publication in database.Publications)
+        {
+            RenderPublication(sb, publication, ManagementSuffix(managed?.ContainsPublication(publication.Name)));
         }
 
         if (managed is not null)
@@ -149,6 +156,46 @@ internal static class DatabaseRenderer
     // never a column or a constraint. Nothing is marked at all when the caller has no managed set to compare with.
     private static string ManagementSuffix(bool? isManaged) => isManaged == false ? UnmanagedMarker : string.Empty;
 
+    private static void RenderPublication(StringBuilder sb, Publication publication, string management)
+    {
+        sb.AppendLine();
+        sb.Append("publication ").Append(publication.Name);
+        if (publication.AllTables)
+        {
+            sb.Append(" for all tables");
+        }
+        if (publication.Operations != PublishedOperations.All)
+        {
+            sb.Append(" (publish ").Append(PublishedOperationNames(publication.Operations)).Append(')');
+        }
+        sb.Append(CommentSuffix(publication.Comment)).AppendLine(management);
+
+        foreach (var table in publication.Tables)
+        {
+            sb.Append(Indent).Append("table ").Append(table.Table.Schema).Append('.').Append(table.Table.Name);
+            if (table.Columns is { } columns)
+            {
+                sb.Append(" (").Append(string.Join(", ", columns)).Append(')');
+            }
+            if (table.Filter is { } filter)
+            {
+                sb.Append(" where (").Append(filter).Append(')');
+            }
+            sb.AppendLine();
+        }
+
+        foreach (var schema in publication.Schemas)
+        {
+            sb.Append(Indent).Append("tables in schema ").Append(schema).AppendLine();
+        }
+    }
+
+    private static string PublishedOperationNames(PublishedOperations operations) => operations == PublishedOperations.None
+        ? "nothing"
+        : string.Join(", ", new[] { PublishedOperations.Insert, PublishedOperations.Update, PublishedOperations.Delete, PublishedOperations.Truncate }
+            .Where(o => operations.HasFlag(o))
+            .Select(o => o.ToString().ToLowerInvariant()));
+
     private static string ManagementSummary(Database database, IdentitySet managed)
     {
         var identities = database.Identities();
@@ -216,8 +263,17 @@ internal static class DatabaseRenderer
 
     private static void RenderTable(StringBuilder sb, Table table, string management)
     {
-        sb.Append(Indent).Append("table ").Append(table.Name)
-            .Append(CommentSuffix(table.Comment)).AppendLine(management);
+        sb.Append(Indent).Append("table ").Append(table.Name);
+        if (table.ReplicaIdentity is { } identity)
+        {
+            sb.Append(" (replica identity ").Append(identity.Kind switch
+            {
+                ReplicaIdentityKind.Full => "full",
+                ReplicaIdentityKind.Nothing => "nothing",
+                _ => $"using index {identity.Index}",
+            }).Append(')');
+        }
+        sb.Append(CommentSuffix(table.Comment)).AppendLine(management);
 
         foreach (var column in table.Columns)
         {

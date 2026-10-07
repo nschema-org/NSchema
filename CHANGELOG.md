@@ -15,6 +15,13 @@ one, and are called out explicitly in this changelog.
 Entries up to and including 5.12.0 predate the repository merge and cover the CLI package alone; the engine's pre-merge history is preserved at
 `src/NSchema.Core/CHANGELOG.md`.
 
+## [5.14.0] - 2026-10-07
+
+### Added
+
+- **Publication support.** `CREATE PUBLICATION ...` is now valid syntax under NSchema. Support will be added downstream in due course where possible.
+- **Replica identity.** `CREATE TABLE … ( … ) REPLICA IDENTITY {FULL | NOTHING | USING INDEX name};` can be used to configure a row's identity to subscribers.
+
 ## [5.13.0] - 2026-08-27
 
 ### Added
@@ -438,6 +445,7 @@ Initial release of the NSchema CLI. `dotnet tool install -g nschema`
 
 See https://nschema.dev for full documentation.
 
+[5.14.0]: https://github.com/nschema-org/NSchema/compare/v5.13.0...v5.14.0
 [5.13.0]: https://github.com/nschema-org/NSchema/compare/v5.12.0...v5.13.0
 [5.12.0]: https://github.com/nschema-org/NSchema/compare/v5.11.5...v5.12.0
 [5.11.5]: https://github.com/nschema-org/NSchema/compare/v5.11.4...v5.11.5

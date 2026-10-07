@@ -60,6 +60,13 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
             await Import(path, new Database { Extensions = [.. schema.Extensions.Select(e => e.Clone())] }, declareSchemas: true);
         }
 
+        // Publications belong to no schema either, and name tables across several.
+        if (schema.Publications.Count > 0)
+        {
+            var path = Path.Combine(arguments.OutputDirectory, "publications.nsql");
+            await Import(path, new Database { Publications = [.. schema.Publications.Select(p => p.Clone())] }, declareSchemas: true);
+        }
+
         return diagnostics.ToResult(new ImportResult(schema, written));
     }
 
@@ -187,6 +194,12 @@ internal sealed class ImportOperation(IDatabaseProvider database, IProgress<Oper
         foreach (var extension in incoming.Extensions)
         {
             existing.Extensions.Add(extension.Clone());
+        }
+
+        PruneByName(existing.Publications, incoming.Publications);
+        foreach (var publication in incoming.Publications)
+        {
+            existing.Publications.Add(publication.Clone());
         }
 
         return existing;

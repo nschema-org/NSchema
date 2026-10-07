@@ -188,6 +188,7 @@ internal sealed partial class NsqlParser
         var rejected = directive switch
         {
             RenameSchemaStatement => "RENAME SCHEMA",
+            Syntax.Publications.RenamePublicationStatement => "RENAME PUBLICATION",
             RenameObjectStatement { Kind: SchemaObjectKind.View } => "RENAME VIEW",
             _ => null,
         };

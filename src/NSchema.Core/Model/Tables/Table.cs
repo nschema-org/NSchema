@@ -93,6 +93,11 @@ public sealed class Table : SchemaObject, IEquatable<Table>
     public List<TableGrant> Grants { get; init; } = [];
 
     /// <summary>
+    /// What identifies a row to a publication's subscribers, or <see langword="null"/> for the engine's default.
+    /// </summary>
+    public ReplicaIdentity? ReplicaIdentity { get; set; }
+
+    /// <summary>
     /// A list of triggers defined on the table.
     /// </summary>
     public ObjectMemberCollection<Trigger> Triggers
@@ -100,6 +105,19 @@ public sealed class Table : SchemaObject, IEquatable<Table>
         get => field ??= new ObjectMemberCollection<Trigger>(this);
         init { value.Attach(this); field = value; }
     }
+
+    /// <summary>
+    /// The columns identifying a row to a publication's subscribers: those of its replica identity, or of its
+    /// primary key when it declares none. Empty when nothing identifies a row.
+    /// </summary>
+    internal IReadOnlySet<SqlIdentifier> IdentifyingColumns() => ReplicaIdentity switch
+    {
+        { Kind: ReplicaIdentityKind.Full } => [.. Columns.Select(c => c.Name)],
+        { Kind: ReplicaIdentityKind.Nothing } => [],
+        { Index: { } index } => Indexes.FirstOrDefault(i => i.Name == index)?.Columns
+            .Select(c => c.Column).OfType<SqlIdentifier>().ToHashSet() ?? [],
+        _ => PrimaryKey?.ColumnNames.ToHashSet() ?? [],
+    };
 
     /// <summary>
     /// Merges a table fragment when none of its members conflict with this table.
@@ -190,6 +208,7 @@ public sealed class Table : SchemaObject, IEquatable<Table>
         Indexes = [.. Indexes.Select(i => i.Clone())],
         Grants = [.. Grants],
         Triggers = [.. Triggers.Select(t => t.Clone())],
+        ReplicaIdentity = ReplicaIdentity,
         ProvidedBy = ProvidedBy,
         Comment = Comment,
     };
@@ -208,7 +227,8 @@ public sealed class Table : SchemaObject, IEquatable<Table>
         && ExclusionConstraints.SequenceEqual(other.ExclusionConstraints)
         && Indexes.SequenceEqual(other.Indexes)
         && Grants.SequenceEqual(other.Grants)
-        && Triggers.SequenceEqual(other.Triggers);
+        && Triggers.SequenceEqual(other.Triggers)
+        && ReplicaIdentity == other.ReplicaIdentity;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Table other && Equals(other);

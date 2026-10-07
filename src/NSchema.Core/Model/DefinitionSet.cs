@@ -57,11 +57,16 @@ public sealed record DefinitionSet(
     public IReadOnlyList<DomainDefinition> Domains { get; init; } = [];
 
     /// <summary>
+    /// The published table definitions in the set.
+    /// </summary>
+    public IReadOnlyList<PublishedTableDefinition> Publications { get; init; } = [];
+
+    /// <summary>
     /// Whether the set contains no definitions.
     /// </summary>
     [JsonIgnore]
     public bool IsEmpty => Views.Count == 0 && Routines.Count == 0 && Triggers.Count == 0 && Checks.Count == 0
-        && Columns.Count == 0 && Indexes.Count == 0 && Exclusions.Count == 0 && Domains.Count == 0;
+        && Columns.Count == 0 && Indexes.Count == 0 && Exclusions.Count == 0 && Domains.Count == 0 && Publications.Count == 0;
 
     /// <summary>
     /// The definition recorded for the view at <paramref name="address"/>, or <see langword="null"/> when none.
@@ -104,6 +109,12 @@ public sealed record DefinitionSet(
     public DomainDefinition? FindDomain(ObjectAddress address) => Domains.FirstOrDefault(d => d.Address == address);
 
     /// <summary>
+    /// The definition recorded for <paramref name="table"/> in the named publication, or <see langword="null"/> when none.
+    /// </summary>
+    public PublishedTableDefinition? FindPublishedTable(SqlIdentifier publication, ObjectAddress table) =>
+        Publications.FirstOrDefault(p => p.Publication == publication && p.Table == table);
+
+    /// <summary>
     /// The set restricted to the definitions the scope covers.
     /// </summary>
     public DefinitionSet ScopedTo(PlanningScope scope) => scope.IsUnscoped ? this : new(
@@ -116,6 +127,7 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Where(i => scope.Contains(i.Address))],
         Exclusions = [.. Exclusions.Where(e => scope.Contains(e.Address))],
         Domains = [.. Domains.Where(d => scope.Contains(d.Address))],
+        Publications = Publications,
     };
 
     /// <summary>
@@ -131,6 +143,7 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Union(other.Indexes)],
         Exclusions = [.. Exclusions.Union(other.Exclusions)],
         Domains = [.. Domains.Union(other.Domains)],
+        Publications = [.. Publications.Union(other.Publications)],
     };
 
     /// <summary>
@@ -146,6 +159,7 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Except(other.Indexes)],
         Exclusions = [.. Exclusions.Except(other.Exclusions)],
         Domains = [.. Domains.Except(other.Domains)],
+        Publications = [.. Publications.Except(other.Publications)],
     };
 
     /// <summary>
@@ -161,6 +175,7 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Intersect(other.Indexes)],
         Exclusions = [.. Exclusions.Intersect(other.Exclusions)],
         Domains = [.. Domains.Intersect(other.Domains)],
+        Publications = [.. Publications.Intersect(other.Publications)],
     };
 
     /// <summary>
@@ -176,6 +191,7 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Where(i => identities.SchemaObjects.Any(o => o.Covers(i.Address)))],
         Exclusions = [.. Exclusions.Where(e => identities.SchemaObjects.Any(o => o.Covers(e.Address)))],
         Domains = [.. Domains.Where(d => identities.ContainsObject(d.Address))],
+        Publications = [.. Publications.Where(p => identities.ContainsPublication(p.Publication))],
     };
 
     /// <summary>
@@ -191,5 +207,6 @@ public sealed record DefinitionSet(
         Indexes = [.. Indexes.Where(i => other.Indexes.Any(o => o.Address == i.Address))],
         Exclusions = [.. Exclusions.Where(e => other.Exclusions.Any(o => o.Address == e.Address))],
         Domains = [.. Domains.Where(d => other.Domains.Any(o => o.Address == d.Address))],
+        Publications = [.. Publications.Where(p => other.Publications.Any(o => o.Publication == p.Publication && o.Table == p.Table))],
     };
 }

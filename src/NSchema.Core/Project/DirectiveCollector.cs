@@ -16,6 +16,7 @@ internal sealed class DirectiveCollector
     private readonly List<SchemaRenameDirective> _schemaRenames = [];
     private readonly List<ObjectRenameDirective> _renames = [];
     private readonly List<MemberRenameDirective> _columnRenames = [];
+    private readonly List<PublicationRenameDirective> _publicationRenames = [];
 
     /// <summary>
     /// Consumes a directive statement, returning <see langword="false"/> when the statement is not one.
@@ -31,6 +32,9 @@ internal sealed class DirectiveCollector
                 return true;
             case Syn.Schemas.RenameSchemaStatement s:
                 _schemaRenames.Add(new SchemaRenameDirective(DatabaseAddress.Schema(Name(s.From)), DatabaseAddress.Schema(Name(s.To))));
+                return true;
+            case Syn.Publications.RenamePublicationStatement s:
+                _publicationRenames.Add(new PublicationRenameDirective(DatabaseAddress.Publication(Name(s.From)), DatabaseAddress.Publication(Name(s.To))));
                 return true;
             case RenameObjectStatement s:
                 _renames.Add(new ObjectRenameDirective(Reference(s.From, context) with { Kind = s.Kind }, Name(s.To)));
@@ -55,6 +59,7 @@ internal sealed class DirectiveCollector
         _schemaRenames.AddRange(other.SchemaRenames);
         _renames.AddRange(other.ObjectRenames);
         _columnRenames.AddRange(other.MemberRenames);
+        _publicationRenames.AddRange(other.PublicationRenames);
     }
 
     public ProjectDirectives Build() => new(
@@ -62,7 +67,8 @@ internal sealed class DirectiveCollector
         _renames,
         _columnRenames,
         _scripts.Change,
-        _scripts.Deployment
+        _scripts.Deployment,
+        _publicationRenames
     );
 
     private static SqlIdentifier Name(Identifier identifier) => new(identifier.Value);

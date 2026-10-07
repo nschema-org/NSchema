@@ -446,4 +446,37 @@ public sealed class StructuralIntegrityPolicyTests
 
         _sut.Validate(Db(table)).ShouldBeEmpty();
     }
+
+    [Fact]
+    public void ReplicaIdentity_NamingAnUndeclaredIndex_IsAnError()
+    {
+        // Arrange
+        var table = new Table { Name = "events", Columns = [Col("id")], ReplicaIdentity = ReplicaIdentity.UsingIndex("ux_events") };
+        table.Indexes.Add(new TableIndex { Name = "ux_events", IsUnique = false, Columns = ["id"] });
+
+        // Act
+        var diagnostic = _sut.Validate(Db(table)).ShouldHaveSingleItem();
+
+        // Assert — the index exists, but only a unique one can identify a row.
+        diagnostic.Code.ShouldBe("unknown-replica-identity-index");
+    }
+
+    [Fact]
+    public void Publication_ListingAnUndeclaredColumn_IsAnError()
+    {
+        // Arrange
+        var database = Db(new Table { Name = "events", Columns = [Col("id")] });
+        database.Publications.Add(new NSchema.Model.Publications.Publication
+        {
+            Name = "feed",
+            Tables = [new NSchema.Model.Publications.PublishedTable(new ObjectAddress("public", "events"), ["id", "missing"])],
+        });
+
+        // Act
+        var diagnostic = _sut.Validate(database).ShouldHaveSingleItem();
+
+        // Assert
+        diagnostic.Code.ShouldBe("unknown-published-column");
+        diagnostic.Message.ShouldContain("'missing'");
+    }
 }

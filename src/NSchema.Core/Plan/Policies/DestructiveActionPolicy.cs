@@ -15,6 +15,7 @@ using NSchema.Plan.Domain.Constraints;
 using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Sequences;
@@ -45,6 +46,12 @@ internal sealed class DestructiveActionPolicy : IPlanPolicy
         foreach (var extension in diff.Extensions.Where(e => e.Change == ChangeKind.Remove))
         {
             yield return nameof(DropExtension);
+        }
+
+        // Dropping a publication, even to recreate it, cuts off its subscribers, which are not managed here.
+        foreach (var publication in diff.Publications.Where(p => p.Change == ChangeKind.Remove || p.RequiresRecreate))
+        {
+            yield return nameof(DropPublication);
         }
 
         foreach (var schema in diff.Schemas)

@@ -10,6 +10,20 @@ internal static class StructuralIntegrityDiagnostics
     internal static readonly DiagnosticSource Source = DiagnosticSources.StructuralIntegrity;
 
     /// <summary>
+    /// A replica identity naming an index the table does not declare as unique.
+    /// </summary>
+    public static Diagnostic UnknownReplicaIdentityIndex(ObjectAddress table, SqlIdentifier index) =>
+        Diagnostic.Error(Source, "unknown-replica-identity-index",
+            $"Table '{table}' uses index '{index}' as its replica identity, but declares no unique index by that name.");
+
+    /// <summary>
+    /// A publication listing a column its table does not declare.
+    /// </summary>
+    public static Diagnostic UnknownPublishedColumn(SqlIdentifier publication, ObjectAddress table, SqlIdentifier column) =>
+        Diagnostic.Error(Source, "unknown-published-column",
+            $"Publication '{publication}' publishes column '{column}' of '{table}', which declares no such column.");
+
+    /// <summary>
     /// An index name reused within a schema, where index and index-backed constraint names are scoped.
     /// </summary>
     public static Diagnostic DuplicateIndexName(DatabaseAddress schema, SqlIdentifier name, string sites) =>

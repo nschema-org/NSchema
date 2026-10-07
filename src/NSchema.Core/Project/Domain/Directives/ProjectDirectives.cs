@@ -11,7 +11,8 @@ public sealed record ProjectDirectives(
     IReadOnlyList<ObjectRenameDirective>? ObjectRenames = null,
     IReadOnlyList<MemberRenameDirective>? MemberRenames = null,
     IReadOnlyList<ChangeScript>? ChangeScripts = null,
-    IReadOnlyList<DeploymentScript>? DeploymentScripts = null
+    IReadOnlyList<DeploymentScript>? DeploymentScripts = null,
+    IReadOnlyList<PublicationRenameDirective>? PublicationRenames = null
 )
 {
     /// <summary>
@@ -45,6 +46,11 @@ public sealed record ProjectDirectives(
     public IReadOnlyList<DeploymentScript> DeploymentScripts { get; init; } = DeploymentScripts ?? [];
 
     /// <summary>
+    /// The declared publication renames.
+    /// </summary>
+    public IReadOnlyList<PublicationRenameDirective> PublicationRenames { get; init; } = PublicationRenames ?? [];
+
+    /// <summary>
     /// Restricts the directives to those addressing in-scope schemas.
     /// </summary>
     public ProjectDirectives ScopedTo(PlanningScope scope)
@@ -57,7 +63,9 @@ public sealed record ProjectDirectives(
             [.. ObjectRenames.Where(r => InScope(r.From) || InScope(r.ToAddress))],
             [.. MemberRenames.Where(r => InScope(r.From.Owner))],
             [.. ChangeScripts.Where(ChangeInScope)],
-            [.. DeploymentScripts.Where(DeploymentInScope)]);
+            [.. DeploymentScripts.Where(DeploymentInScope)],
+            PublicationRenames
+        );
 
         // A deployment script is a schema-level facet, below the schema and no object, so only a
         // whole-schema scope covers it; a change script rides its table.

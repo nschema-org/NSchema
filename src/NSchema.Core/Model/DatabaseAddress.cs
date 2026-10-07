@@ -4,8 +4,7 @@ namespace NSchema.Model;
 /// The address of an object the database owns directly.
 /// </summary>
 /// <param name="Name">The object's name.</param>
-/// <param name="Kind">The object's kind. Schemas and extensions have separate name spaces, so the kind is
-/// part of the address rather than a refinement of it.</param>
+/// <param name="Kind">The object's kind. Each kind has its own name space, so the kind is part of the address.</param>
 public sealed record DatabaseAddress(SqlIdentifier Name, DatabaseObjectKind Kind) : Address
 {
     /// <summary>
@@ -20,10 +19,16 @@ public sealed record DatabaseAddress(SqlIdentifier Name, DatabaseObjectKind Kind
     /// <param name="name">The extension's name.</param>
     public static DatabaseAddress Extension(SqlIdentifier name) => new(name, DatabaseObjectKind.Extension);
 
+    /// <summary>
+    /// The address of the named publication.
+    /// </summary>
+    /// <param name="name">The publication's name.</param>
+    public static DatabaseAddress Publication(SqlIdentifier name) => new(name, DatabaseObjectKind.Publication);
+
     /// <inheritdoc />
     protected override IReadOnlyList<SqlIdentifier> Path => [Name];
 
-    // Only a schema holds objects; an extension is a leaf.
+    // Only a schema holds objects; everything else is a leaf.
     /// <inheritdoc />
     protected override bool CanContain => Kind == DatabaseObjectKind.Schema;
 

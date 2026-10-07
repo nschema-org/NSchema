@@ -327,4 +327,9 @@ public class DestructiveActionPolicyTests
             Grants = [],
             Tables = [table],
         }]);
+
+    [Fact]
+    public void DroppedPublication_IsDestructive()
+        => _sut.Validate(new DatabaseDiff([]) { Publications = [NSchema.Diff.Domain.Publications.PublicationDiff.Removed("feed")] })
+            .ShouldHaveSingleItem().Message.ShouldContain("DropPublication");
 }

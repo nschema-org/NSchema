@@ -87,7 +87,10 @@ error    structural  project                rename-source-still-declared        
 error    structural  project                rename-target-not-declared                 ProjectDiagnostics.RenameTargetNotDeclared
 error    structural  project                self-rename                                ProjectDiagnostics.SelfRename
 error    structural  project                index-on-plain-view                        ProjectDiagnostics.UnknownIndexRelation
+warning  advisory    replication            publication-renamed                        PublicationRenameDiagnostics.Renamed
 warning  advisory    capability             restrict-not-supported                     ReferentialActionDiagnostics.RestrictNotSupported
+warning  advisory    replication            filter-outside-identity                    ReplicationDiagnostics.FilterOutsideIdentity
+warning  advisory    replication            unidentified-published-table               ReplicationDiagnostics.UnidentifiedTable
 warning  advisory    capability             row-guid-not-supported                     RowGuidDiagnostics.RowGuidNotSupported
 warning  advisory    schema-lint            missing-primary-key                        SchemaLintDiagnostics.MissingPrimaryKey
 warning  advisory    schema-lint            nullable-primary-key-column                SchemaLintDiagnostics.NullablePrimaryKeyColumn
@@ -113,7 +116,9 @@ warning  advisory    structural-integrity   undeclared-foreign-key-target       
 error    structural  structural-integrity   unknown-index-column                       StructuralIntegrityDiagnostics.UnknownIndexColumn
 error    structural  structural-integrity   unknown-local-column                       StructuralIntegrityDiagnostics.UnknownLocalColumn
 error    structural  structural-integrity   unknown-primary-key-column                 StructuralIntegrityDiagnostics.UnknownPrimaryKeyColumn
+error    structural  structural-integrity   unknown-published-column                   StructuralIntegrityDiagnostics.UnknownPublishedColumn
 error    structural  structural-integrity   unknown-referenced-column                  StructuralIntegrityDiagnostics.UnknownReferencedColumn
+error    structural  structural-integrity   unknown-replica-identity-index             StructuralIntegrityDiagnostics.UnknownReplicaIdentityIndex
 error    structural  table                  duplicate-member                           TableDiagnostics.DuplicateMember
 error    structural  table                  duplicate-primary-key                      TableDiagnostics.DuplicatePrimaryKey
 error    structural  templates              applied-table-template                     TemplateDiagnostics.AppliedTableTemplate

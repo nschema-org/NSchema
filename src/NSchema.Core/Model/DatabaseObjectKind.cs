@@ -6,28 +6,17 @@ namespace NSchema.Model;
 public enum DatabaseObjectKind
 {
     /// <summary>
-    /// A schema, which holds objects of its own.
+    /// A database schema, that contains tables and other objects..
     /// </summary>
     Schema,
 
     /// <summary>
-    /// An extension, which holds nothing.
+    /// A database extension.
     /// </summary>
-    Extension
-}
+    Extension,
 
-/// <summary>
-/// Rendering for <see cref="DatabaseObjectKind"/>.
-/// </summary>
-internal static class DatabaseObjectKindExtensions
-{
     /// <summary>
-    /// The kind as display prose, for diagnostics.
+    /// A publication that describes table data the database publishes..
     /// </summary>
-    public static string Display(this DatabaseObjectKind kind) => kind switch
-    {
-        DatabaseObjectKind.Schema => "schema",
-        DatabaseObjectKind.Extension => "extension",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
-    };
+    Publication
 }

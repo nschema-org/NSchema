@@ -47,6 +47,11 @@ public sealed record TableDiff : ISchemaObjectDiff
     public ValueChange<string>? Comment { get; init; }
 
     /// <summary>
+    /// The change to the table's replica identity, if any.
+    /// </summary>
+    public ValueChange<ReplicaIdentity>? ReplicaIdentity { get; init; }
+
+    /// <summary>
     /// The changed columns, ordered as encountered in the plan.
     /// </summary>
     public IReadOnlyList<ColumnDiff> Columns { get; init; } = [];

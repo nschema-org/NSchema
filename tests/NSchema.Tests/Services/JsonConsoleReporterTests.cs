@@ -4,6 +4,7 @@ using NSchema.Configuration.Plugins;
 using NSchema.Diff.Domain;
 using NSchema.Diff.Domain.Schemas;
 using NSchema.Model;
+using NSchema.Model.Publications;
 using NSchema.Model.Schemas;
 using NSchema.Model.Scripts;
 using NSchema.Plan.Domain;
@@ -451,6 +452,37 @@ public sealed class JsonConsoleReporterTests
         var reported = Reported();
         reported.ValueKind.ShouldBe(JsonValueKind.Object);
         reported.GetProperty("schemas")[0].GetProperty("name").GetString().ShouldBe("app");
+    }
+
+    [Fact]
+    public void ReportDatabase_EmitsPublications()
+    {
+        // Act
+        _sut.ReportDatabase(new Database
+        {
+            Publications =
+            [
+                new Publication
+                {
+                    Name = "feed",
+                    Tables = [new PublishedTable(new ObjectAddress("app", "orders"), ["id"], "id > 0")],
+                    Schemas = ["audit"],
+                    Operations = PublishedOperations.Insert | PublishedOperations.Update,
+                },
+            ],
+        });
+
+        // Assert
+        var publication = Reported().GetProperty("publications")[0];
+        publication.GetProperty("name").GetString().ShouldBe("feed");
+        publication.GetProperty("allTables").GetBoolean().ShouldBeFalse();
+        publication.GetProperty("schemas")[0].GetString().ShouldBe("audit");
+        publication.GetProperty("operations").GetString().ShouldBe("insert, update");
+        var table = publication.GetProperty("tables")[0];
+        table.GetProperty("table").GetProperty("schema").GetString().ShouldBe("app");
+        table.GetProperty("table").GetProperty("name").GetString().ShouldBe("orders");
+        table.GetProperty("columns")[0].GetString().ShouldBe("id");
+        table.GetProperty("filter").GetString().ShouldBe("id > 0");
     }
 
     [Fact]

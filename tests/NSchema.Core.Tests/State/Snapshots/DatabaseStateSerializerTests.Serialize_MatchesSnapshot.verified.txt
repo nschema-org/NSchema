@@ -246,6 +246,7 @@
                 privileges: All
               }
             ],
+            replicaIdentity: null,
             triggers: [
               {
                 timing: After,

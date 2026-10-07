@@ -1,6 +1,7 @@
 using NSchema.Model;
 using NSchema.Model.Columns;
 using NSchema.Model.Constraints;
+using NSchema.Model.Publications;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
 using NSchema.Model.Views;
@@ -14,6 +15,90 @@ public sealed class DatabaseRendererTests
     public void Render_EmptySchema_ReportsEmpty()
     {
         DatabaseRenderer.Render(new Database()).ShouldBe("Schema is empty.");
+    }
+
+    [Fact]
+    public void Render_PublicationsOnly_IsNotEmpty()
+        // A publication is database-global, so a database holding nothing else still has something to show.
+        => DatabaseRenderer.Render(new Database { Publications = [new Publication { Name = "feed" }] }).ShouldBe("publication feed");
+
+    [Fact]
+    public void Render_Publication_ListsItsTablesSchemasAndOperations()
+    {
+        // Arrange
+        var database = new Database
+        {
+            Publications =
+            [
+                new Publication
+                {
+                    Name = "feed",
+                    Tables = [new PublishedTable(new ObjectAddress("app", "orders"), ["id", "status"], "status <> 'draft'")],
+                    Schemas = ["audit"],
+                    Operations = PublishedOperations.Insert | PublishedOperations.Delete,
+                    Comment = "order changes",
+                },
+            ],
+        };
+
+        // Act
+        var output = DatabaseRenderer.Render(database);
+
+        // Assert
+        output.ShouldBe("""
+            publication feed (publish insert, delete) ("order changes")
+              table app.orders (id, status) where (status <> 'draft')
+              tables in schema audit
+            """.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public void Render_PublicationForAllTables_SaysSo()
+        => DatabaseRenderer.Render(new Database { Publications = [new Publication { Name = "feed", AllTables = true }] })
+            .ShouldBe("publication feed for all tables");
+
+    [Fact]
+    public void Render_PublicationPublishingNothing_SaysSo()
+        => DatabaseRenderer.Render(new Database { Publications = [new Publication { Name = "feed", Operations = PublishedOperations.None }] })
+            .ShouldBe("publication feed (publish nothing)");
+
+    [Theory]
+    [InlineData(ReplicaIdentityKind.Full, null, "table events (replica identity full)")]
+    [InlineData(ReplicaIdentityKind.Nothing, null, "table events (replica identity nothing)")]
+    [InlineData(ReplicaIdentityKind.Index, "ux_events", "table events (replica identity using index ux_events)")]
+    public void Render_TableReplicaIdentity(ReplicaIdentityKind kind, string? index, string expected)
+    {
+        // Arrange
+        var events = new Table { Name = "events", Columns = [new Column { Name = "id", Type = SqlType.Int }], ReplicaIdentity = new ReplicaIdentity(kind, index) };
+
+        // Act
+        var output = DatabaseRenderer.Render(new Database { Schemas = [new Schema { Name = "app", Tables = [events] }] });
+
+        // Assert
+        output.ShouldContain(expected + "\n");
+    }
+
+    [Fact]
+    public void Render_TableWithoutReplicaIdentity_SaysNothingOfIt()
+        => DatabaseRenderer.Render(new Database
+        {
+            Schemas = [new Schema { Name = "app", Tables = [new Table { Name = "events", Columns = [new Column { Name = "id", Type = SqlType.Int }] }] }],
+        }).ShouldNotContain("replica identity");
+
+    [Fact]
+    public void Render_WithAManagedSet_MarksAnUnmanagedPublication()
+    {
+        // Arrange
+        var database = new Database { Publications = [new Publication { Name = "feed" }, new Publication { Name = "dbz_publication" }] };
+        var managed = new IdentitySet(DatabaseObjects: [DatabaseAddress.Publication("feed")]);
+
+        // Act
+        var output = DatabaseRenderer.Render(database, managed);
+
+        // Assert
+        output.ShouldContain("publication feed\n");
+        output.ShouldContain("publication dbz_publication [unmanaged]");
+        output.ShouldContain("Managed: 1 of 2 recorded objects.");
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using NSchema.Model;
 using NSchema.Model.Constraints;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
 using NSchema.Project.Domain.Directives;
@@ -35,7 +36,30 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
             ValidateClustering(definition, diagnostics);
         }
 
+        foreach (var publication in database.Publications)
+        {
+            ValidatePublication(publication, tablesByKey, diagnostics);
+        }
+
         return diagnostics;
+    }
+
+    // Only a declared table can be checked; one the project does not declare is taken as it stands.
+    private static void ValidatePublication(Publication publication, IReadOnlyDictionary<ObjectAddress, Table> tablesByKey, List<Diagnostic> diagnostics)
+    {
+        foreach (var entry in publication.Tables)
+        {
+            var address = new ObjectAddress(entry.Table.Schema, entry.Table.Name);
+            if (!tablesByKey.TryGetValue(address, out var table))
+            {
+                continue;
+            }
+
+            foreach (var column in (entry.Columns ?? []).Where(c => table.Columns.All(declared => declared.Name != c)))
+            {
+                diagnostics.Add(StructuralIntegrityDiagnostics.UnknownPublishedColumn(publication.Name, address, column));
+            }
+        }
     }
 
     // A clustered index is the relation's row order rather than a structure beside it, so a relation has at
@@ -144,6 +168,11 @@ internal sealed class StructuralIntegrityPolicy : IProjectPolicy
         foreach (var column in table.Columns.Where(c => c.DefaultExpression is not null && c.GeneratedExpression is not null))
         {
             diagnostics.Add(StructuralIntegrityDiagnostics.DefaultOnGeneratedColumn(address.Member(column.Name)));
+        }
+
+        if (table.ReplicaIdentity is { Index: { } identityIndex } && !table.Indexes.Any(i => i.Name == identityIndex && i.IsUnique))
+        {
+            diagnostics.Add(StructuralIntegrityDiagnostics.UnknownReplicaIdentityIndex(address, identityIndex));
         }
 
         if (table.PrimaryKey is { } primaryKey)

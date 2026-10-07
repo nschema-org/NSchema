@@ -21,7 +21,7 @@ public sealed class CheckConstraint : ObjectMember, IEquatable<CheckConstraint>
     /// An unqualified reference resolves against <paramref name="schema"/> (the owning object's).
     /// </summary>
     public IReadOnlyList<ObjectAddress> References(SqlIdentifier schema) =>
-        Services.ExpressionDependencyScanner.CallSites(Expression.Value, schema);
+        Services.ExpressionDependencyExtractor.CallSites(Expression.Value, schema);
 
     /// <inheritdoc/>
     public override CheckConstraint Clone() => new() { Name = Name, Expression = Expression, Comment = Comment };

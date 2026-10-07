@@ -53,6 +53,12 @@ internal static class ProjectDiagnostics
         Positioned($"Extension '{name}' is already declared.", position);
 
     /// <summary>
+    /// A publication declared more than once.
+    /// </summary>
+    public static NsqlDiagnostic PublicationAlreadyDeclared(SqlIdentifier name, SourcePosition position) =>
+        Positioned($"Publication '{name}' is already declared.", position);
+
+    /// <summary>
     /// The same named trigger declared more than once on a table.
     /// </summary>
     public static NsqlDiagnostic TriggerAlreadyDeclared(SqlIdentifier name, SqlIdentifier schema, SqlIdentifier table, SourcePosition position) =>

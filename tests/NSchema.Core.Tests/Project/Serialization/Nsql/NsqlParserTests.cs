@@ -164,7 +164,7 @@ public sealed class NsqlParserTests
 
     [Fact]
     public void Parse_UnknownAfterCreate_Throws()
-        => Should.Throw<NsqlSyntaxException>(() => Parse("CREATE THING app;")).Message.ShouldContain("Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, TRIGGER or INDEX");
+        => Should.Throw<NsqlSyntaxException>(() => Parse("CREATE THING app;")).Message.ShouldContain("Expected SCHEMA, TABLE, VIEW, MATERIALIZED VIEW, ENUM, DOMAIN, TYPE, SEQUENCE, FUNCTION, PROCEDURE, AGGREGATE, EXTENSION, PUBLICATION, TRIGGER or INDEX");
 
     [Fact]
     public void Parse_PartialTable_Throws()

@@ -7,6 +7,7 @@ using NSchema.Plan.Domain.Domains;
 using NSchema.Plan.Domain.Enums;
 using NSchema.Plan.Domain.Extensions;
 using NSchema.Plan.Domain.Indexes;
+using NSchema.Plan.Domain.Publications;
 using NSchema.Plan.Domain.Routines;
 using NSchema.Plan.Domain.Schemas;
 using NSchema.Plan.Domain.Scripts;
@@ -80,6 +81,7 @@ public abstract partial class SqlDialect
         GrantTablePrivileges x => GrantTablePrivileges(x),
         RevokeTablePrivileges x => RevokeTablePrivileges(x),
         SetTableComment x => SetTableComment(x),
+        SetReplicaIdentity x => SetReplicaIdentity(x),
 
         // Columns
         AddColumn x => AddColumn(x),
@@ -167,6 +169,17 @@ public abstract partial class SqlDialect
         DropExtension x => DropExtension(x),
         AlterExtension x => AlterExtension(x),
         SetExtensionComment x => SetExtensionComment(x),
+
+        // Publications
+        CreatePublication x => CreatePublication(x),
+        DropPublication x => DropPublication(x),
+        RenamePublication x => RenamePublication(x),
+        AddPublicationTable x => AddPublicationTable(x),
+        DropPublicationTable x => DropPublicationTable(x),
+        AddPublicationSchema x => AddPublicationSchema(x),
+        DropPublicationSchema x => DropPublicationSchema(x),
+        SetPublicationOperations x => SetPublicationOperations(x),
+        SetPublicationComment x => SetPublicationComment(x),
 
         // Scripts
         ExecuteScript x => ExecuteScript(x),
