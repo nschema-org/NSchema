@@ -42,6 +42,7 @@ internal static class DatabaseNarrative
         Add(parts, schemas.Sum(s => s.Enums.Count), "enum");
         Add(parts, schemas.Sum(s => s.CompositeTypes.Count), "composite type");
         Add(parts, database.Extensions.Count, "extension");
+        Add(parts, database.Publications.Count, "publication");
 
         return parts.Count == 0 ? "no objects" : string.Join(", ", parts);
     }

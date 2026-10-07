@@ -25,7 +25,7 @@ internal static partial class RoutineDependencyExtractor
         var result = ViewDependencyExtractor.Extract(definition, defaultSchema);
         var seen = result.ToHashSet();
 
-        foreach (var address in ExpressionDependencyScanner.CallSites(definition.Value, defaultSchema))
+        foreach (var address in ExpressionDependencyExtractor.CallSites(definition.Value, defaultSchema))
         {
             if (seen.Add(address))
             {

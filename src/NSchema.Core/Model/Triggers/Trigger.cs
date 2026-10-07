@@ -75,7 +75,7 @@ public sealed class Trigger : ObjectMember, IEquatable<Trigger>
         }
         if (When is { } when)
         {
-            result.AddRange(Services.ExpressionDependencyScanner.CallSites(when.Value, schema));
+            result.AddRange(Services.ExpressionDependencyExtractor.CallSites(when.Value, schema));
         }
         return [.. result.Distinct()];
     }

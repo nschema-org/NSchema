@@ -41,6 +41,12 @@ public sealed record IdentitySet(IReadOnlyList<DatabaseAddress>? DatabaseObjects
     public IEnumerable<DatabaseAddress> Extensions => DatabaseObjects.Where(o => o.Kind == DatabaseObjectKind.Extension);
 
     /// <summary>
+    /// The publications in the set.
+    /// </summary>
+    [JsonIgnore]
+    public IEnumerable<DatabaseAddress> Publications => DatabaseObjects.Where(o => o.Kind == DatabaseObjectKind.Publication);
+
+    /// <summary>
     /// Whether the named schema is in the set.
     /// </summary>
     public bool ContainsSchema(SqlIdentifier name) => DatabaseObjects.Contains(DatabaseAddress.Schema(name));
@@ -49,6 +55,11 @@ public sealed record IdentitySet(IReadOnlyList<DatabaseAddress>? DatabaseObjects
     /// Whether the named extension is in the set.
     /// </summary>
     public bool ContainsExtension(SqlIdentifier name) => DatabaseObjects.Contains(DatabaseAddress.Extension(name));
+
+    /// <summary>
+    /// Whether the named publication is in the set.
+    /// </summary>
+    public bool ContainsPublication(SqlIdentifier name) => DatabaseObjects.Contains(DatabaseAddress.Publication(name));
 
     /// <summary>
     /// Whether the object identity is in the set.
@@ -71,7 +82,6 @@ public sealed record IdentitySet(IReadOnlyList<DatabaseAddress>? DatabaseObjects
     /// The set restricted to the identities the scope covers.
     /// </summary>
     public IdentitySet ScopedTo(PlanningScope scope) => scope.IsUnscoped ? this : new IdentitySet(
-        // Nothing contains an extension, so no schema scope excludes one.
         [.. DatabaseObjects.Where(o => o.Kind != DatabaseObjectKind.Schema || scope.Contains(o))],
         [.. SchemaObjects.Where(scope.Contains)]);
 

@@ -111,7 +111,7 @@
       "patterns": [
         {
           "comment": "CREATE and RENAME both name an object of a stated kind.",
-          "match": "(?i)\\b(create|rename)\\s+((?:materialized|unique|primary|clustered|nonclustered)\\s+)*(xml\\s+schema\\s+collection|xml\\s+index|schema|table|column|view|enum|domain|type|sequence|function|procedure|aggregate|routine|trigger|extension|index)\\b[ \\t]*((?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\])(?:\\.(?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\]))*)?",
+          "match": "(?i)\\b(create|rename)\\s+((?:materialized|unique|primary|clustered|nonclustered)\\s+)*(xml\\s+schema\\s+collection|xml\\s+index|schema|table|column|view|enum|domain|type|sequence|function|procedure|aggregate|routine|trigger|extension|publication|index)\\b[ \\t]*((?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\])(?:\\.(?:[A-Za-z_][A-Za-z0-9_]*|\"(?:[^\"]|\"\")*\"|\\[(?:[^\\]]|\\]\\])*\\]))*)?",
           "captures": {
             "1": { "name": "keyword.control.nsql" },
             "2": { "name": "keyword.other.nsql" },
@@ -157,11 +157,11 @@
         },
         {
           "name": "storage.type.nsql",
-          "match": "(?i)\\b(?:aggregate|collection|column|constraint|domain|enum|extension|function|index|procedure|routine|schema|sequence|table|trigger|type|view|xml)\\b"
+          "match": "(?i)\\b(?:aggregate|collection|column|constraint|domain|enum|extension|function|index|procedure|publication|routine|schema|sequence|table|tables|trigger|type|view|xml)\\b"
         },
         {
           "name": "keyword.other.nsql",
-          "match": "(?i)\\b(?:action|add|after|alter|always|as|asc|before|begin|cache|cascade|check|clustered|content|cycle|default|delete|deployment|desc|document|each|end|exclude|execute|first|for|foreign|generated|identity|in|include|increment|insert|instead|key|last|lock|materialized|maxvalue|minvalue|no|nonclustered|not|null|nulls|of|on|once|or|path|post|pre|primary|property|references|replication|restrict|row|rowguidcol|run|schemabinding|select|set|start|statement|stored|to|truncate|unique|unless|update|usage|using|value|version|virtual|when|where|with)\\b"
+          "match": "(?i)\\b(?:action|add|after|all|alter|always|as|asc|before|begin|cache|cascade|check|clustered|content|cycle|default|delete|deployment|desc|document|each|end|exclude|execute|first|for|foreign|full|generated|identity|in|include|increment|insert|instead|key|last|lock|materialized|maxvalue|minvalue|no|nonclustered|not|nothing|null|nulls|of|on|once|or|path|post|pre|primary|property|publish|references|replica|replication|restrict|row|rowguidcol|run|schemabinding|select|set|start|statement|stored|to|truncate|unique|unless|update|usage|using|value|version|virtual|when|where|with)\\b"
         }
       ]
     },

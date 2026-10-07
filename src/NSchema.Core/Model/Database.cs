@@ -2,6 +2,7 @@ using System.Diagnostics;
 using NSchema.Model.Domains;
 using NSchema.Model.Extensions;
 using NSchema.Model.Indexes;
+using NSchema.Model.Publications;
 using NSchema.Model.Routines;
 using NSchema.Model.Schemas;
 using NSchema.Model.Tables;
@@ -21,10 +22,14 @@ public sealed class Database : IEquatable<Database>
     public List<Schema> Schemas { get; init; } = [];
 
     /// <summary>
-    /// A list of database-global extensions. Extensions are not schema-scoped, so they live at the root of the
-    /// database schema rather than inside a <see cref="Schema"/>.
+    /// A list of database-global extensions.
     /// </summary>
     public List<Extension> Extensions { get; init; } = [];
+
+    /// <summary>
+    /// A list of publications.
+    /// </summary>
+    public List<Publication> Publications { get; init; } = [];
 
     /// <summary>
     /// Every schema-level object of type <typeparamref name="T"/> across the database's schemas, each paired
@@ -34,10 +39,10 @@ public sealed class Database : IEquatable<Database>
         Schemas.SelectMany(s => s.Objects().OfType<T>().Select(o => (Schema: s.Name, Object: o)));
 
     /// <summary>
-    /// The identity of everything the database contains: its schemas, their objects, and its extensions.
+    /// The identity of everything the database contains.
     /// </summary>
     public IdentitySet Identities() => new(
-        [.. Schemas.Select(s => s.Address), .. Extensions.Select(e => e.Address)],
+        [.. Schemas.Select(s => s.Address), .. Extensions.Select(e => e.Address), .. Publications.Select(p => p.Address)],
         [.. Schemas.SelectMany(s => s.Objects()).Select(o => o.Address)]);
 
     /// <summary>
@@ -81,6 +86,12 @@ public sealed class Database : IEquatable<Database>
             .. Objects<DomainType>()
                 .Where(d => d.Object.Default is not null)
                 .Select(d => new DomainDefinition(d.Object.Address, d.Object.Default)),
+        ],
+        Publications =
+        [
+            .. Publications.SelectMany(p => p.Tables
+                .Where(t => t.Filter is not null)
+                .Select(t => new PublishedTableDefinition(p.Name, t.Table, t.Filter))),
         ],
     };
 
@@ -180,6 +191,18 @@ public sealed class Database : IEquatable<Database>
             }
         }
 
+        foreach (var publication in copy.Publications)
+        {
+            for (var i = 0; i < publication.Tables.Count; i++)
+            {
+                var table = publication.Tables[i];
+                if (table.Filter is not null && definitions.FindPublishedTable(publication.Name, table.Table) is { Filter: { } filter })
+                {
+                    publication.Tables[i] = table with { Filter = filter };
+                }
+            }
+        }
+
         return copy;
     }
 
@@ -190,15 +213,17 @@ public sealed class Database : IEquatable<Database>
     {
         Schemas = [.. Schemas.Select(s => s.Clone())],
         Extensions = [.. Extensions.Select(e => e.Clone())],
+        Publications = [.. Publications.Select(p => p.Clone())],
     };
 
     /// <summary>
-    /// Returns a copy of the database restricted to the schemas, objects, and extensions whose identity is in the set.
+    /// Returns a copy of the database restricted to entities whose identities are in the set.
     /// </summary>
     public Database FilteredTo(IdentitySet identities) => new()
     {
         Schemas = [.. Schemas.Select(schema => Filter(schema, identities)).OfType<Schema>()],
         Extensions = [.. Extensions.Where(e => identities.ContainsExtension(e.Name)).Select(e => e.Clone())],
+        Publications = [.. Publications.Where(p => identities.ContainsPublication(p.Name)).Select(p => p.Clone())],
     };
 
     private static Schema? Filter(Schema schema, IdentitySet identities)
@@ -243,7 +268,8 @@ public sealed class Database : IEquatable<Database>
     public bool Equals(Database? other) =>
         other is not null
         && Schemas.SequenceEqual(other.Schemas)
-        && Extensions.SequenceEqual(other.Extensions);
+        && Extensions.SequenceEqual(other.Extensions)
+        && Publications.SequenceEqual(other.Publications);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Database other && Equals(other);

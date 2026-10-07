@@ -72,11 +72,11 @@ public sealed class Column : ObjectMember, IEquatable<Column>
         }
         if (GeneratedExpression is { } generated)
         {
-            result.AddRange(Services.ExpressionDependencyScanner.CallSites(generated.Value, schema));
+            result.AddRange(Services.ExpressionDependencyExtractor.CallSites(generated.Value, schema));
         }
         if (DefaultExpression is { } fallback)
         {
-            result.AddRange(Services.ExpressionDependencyScanner.CallSites(fallback.Value, schema));
+            result.AddRange(Services.ExpressionDependencyExtractor.CallSites(fallback.Value, schema));
         }
         return [.. result.Distinct()];
     }
